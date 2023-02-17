@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package temporal.v1;
+
+option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1";
+
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/duration.proto";
+
+extend google.protobuf.MethodOptions {
+  optional WorkflowOptions workflow = 7233;
+  optional ActivityOptions activity = 7234;
+  optional QueryOptions query = 7235;
+  optional SignalOptions signal = 7236;
+  optional CallOptions call = 7237;
+}
+
+message WorkflowOptions {
+  repeated Query query = 1;
+  repeated Signal signal = 2;
+  repeated Call call = 3;
+
+  SignalStart signal_start = 4;
+  string workflow_id_field = 5;
+
+  StartOptions default_options = 6;
+
+  message Query {
+    string ref = 1;
+  }
+
+  message Signal {
+    string ref = 1;
+  }
+
+  message Call {
+    string ref = 1;
+  }
+
+  message SignalStart {
+    string ref = 1;
+  }
+
+  message StartOptions {
+    string task_queue = 1;
+    // TODO(cretz): retry_policy and others
+  }
+}
+
+message ActivityOptions {
+  StartOptions default_options = 1;
+
+  message StartOptions {
+    string task_queue = 1;
+    google.protobuf.Duration schedule_to_close_timeout = 2;
+    google.protobuf.Duration schedule_to_start_timeout = 3;
+    google.protobuf.Duration start_to_close_timeout = 4;
+    google.protobuf.Duration heartbeat_timeout = 5;
+    // TODO(cretz): retry_policy and others
+  }
+}
+
+message QueryOptions {
+  
+}
+
+message SignalOptions {
+  
+}
+
+// Calls must have an "id" field and either or both of "response_task_queue" or
+// "response_workflow_id". If "response_task_queue" is not present, the call
+// cannot be made from a top-level client. If "response_workflow_id" is not
+// present, the call cannot be made from another workflow.
+message CallOptions {
+  
+}
