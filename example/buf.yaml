@@ -1,10 +1,11 @@
 version: v1
-name: buf.build/cludden/protoc-gen-go-temporal
 deps:
+  - buf.build/cludden/protoc-gen-go-temporal
   - buf.build/googleapis/googleapis
 breaking:
   use:
     - FILE
 lint:
+  allow_comment_ignores: true
   use:
     - BASIC

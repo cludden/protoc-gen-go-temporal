@@ -7,10 +7,8 @@ plugins:
   - plugin: go
     out: gen
     opt: paths=source_relative
-  # - plugin: go-grpc
-  #   out: gen
-  #   opt: paths=source_relative
-  # - plugin: go_temporal
-  #   out: gen
-  #   opt: paths=source_relative
-  #   strategy: all
+  - plugin: go_temporal
+    out: gen
+    opt: paths=source_relative
+    strategy: all
+    path: dist/protoc-gen-go-temporal_linux_amd64_v1/protoc-gen-go_temporal
