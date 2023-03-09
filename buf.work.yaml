@@ -1,3 +1,5 @@
 version: v1
 directories:
+  - example
+  - test
   - proto

@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+  // buf:lint:ignore PACKAGE_DIRECTORY_MATCH
+package mycompany.simple;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Simple {
+  option (temporal.v1.service) = {
+    task_queue: 'my-task-queue'
+  };
+
+    // SomeWorkflow1 does some workflow thing.
+  rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
+    option (temporal.v1.workflow) = {
+      query : { ref: 'SomeQuery1' }
+      query : { ref: 'SomeQuery2' }
+      signal: { ref: 'SomeSignal1' }
+      signal: { ref: 'SomeSignal2' }
+    };
+  }
+
+    // SomeWorkflow2 does some workflow thing.
+  rpc SomeWorkflow2(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'SomeSignal1', start: true }
+    };
+  }
+
+    // SomeWorkflow3 does some workflow thing.
+  rpc SomeWorkflow3(SomeWorkflow3Request) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      default_options {
+        id_field       : 'id'
+        id_prefix      : 'some-workflow-3/'
+        task_queue     : 'my-task-queue-2'
+        id_reuse_policy: ALLOW_DUPLICATE
+        execution_timeout: { seconds: 3600 }
+      }
+
+      signal: { ref: 'SomeSignal2', start: true }
+    };
+  }
+
+    // SomeActivity1 does some activity thing.
+  rpc SomeActivity1(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = { };
+  }
+
+    // SomeActivity2 does some activity thing.
+  rpc SomeActivity2(SomeActivity2Request) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      default_options {
+        start_to_close_timeout: { seconds: 10 }
+      }
+    };
+  }
+
+    // SomeActivity3 does some activity thing.
+  rpc SomeActivity3(SomeActivity3Request) returns (SomeActivity3Response) {
+    option (temporal.v1.activity) = {
+      default_options {
+        start_to_close_timeout: { seconds: 10 }
+        retry_policy {
+          max_attempts: 5
+        }
+      }
+    };
+  }
+
+    // SomeQuery1 queries some thing.
+  rpc SomeQuery1(google.protobuf.Empty) returns (SomeQuery1Response) {
+    option (temporal.v1.query) = { };
+  }
+
+    // SomeQuery2 queries some thing.
+  rpc SomeQuery2(SomeQuery2Request) returns (SomeQuery2Response) {
+    option (temporal.v1.query) = { };
+  }
+
+    // SomeSignal1 is a signal.
+  rpc SomeSignal1(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = { };
+  }
+
+    // SomeSignal2 is a signal.
+  rpc SomeSignal2(SomeSignal2Request) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = { };
+  }
+}
+
+message SomeWorkflow1Request {
+  string request_val = 1;
+}
+
+message SomeWorkflow1Response {
+  string response_val = 1;
+}
+
+message SomeWorkflow3Request {
+  string id          = 1;
+  string request_val = 2;
+}
+
+message SomeActivity2Request {
+  string request_val = 1;
+}
+
+message SomeActivity3Request {
+  string request_val = 1;
+}
+
+message SomeActivity3Response {
+  string response_val = 1;
+}
+
+message SomeQuery1Response {
+  string response_val = 1;
+}
+
+message SomeQuery2Request {
+  string request_val = 1;
+}
+
+message SomeQuery2Response {
+  string response_val = 1;
+}
+
+message SomeSignal2Request {
+  string request_val = 1;
+}

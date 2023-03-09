@@ -6,16 +6,16 @@ before:
     # You may remove this if you don't use go modules.
     - go mod tidy
 builds:
-  - id: protoc-gen-go_temporal
-    main: ./cmd/protoc-gen-go_temporal
+  - id: protoc-gen-go-temporal
+    binary: protoc-gen-go_temporal
+    main: ./cmd/protoc-gen-go-temporal
     env:
       - CGO_ENABLED=0
     goos:
-      - linux
       - darwin
+      - linux
     goarch:
       - amd64
-      - arm64
 archives:
   - files:
       - LICENSE.md
