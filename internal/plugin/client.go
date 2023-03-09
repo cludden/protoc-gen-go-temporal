@@ -3,10 +3,12 @@ package plugin
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	pgs "github.com/lyft/protoc-gen-star/v2"
+	"google.golang.org/protobuf/compiler/protogen"
 )
 
 // genClientInterface generates a Client interface for a given service
@@ -362,7 +364,6 @@ func (svc *Service) genClientConstructor(f *g.File) {
 
 // genClientWorkflowExecute generates an Execute<Workflow> client method
 func (svc *Service) genClientWorkflowExecute(f *g.File, workflow string) {
-	opts := svc.workflows[workflow]
 	method := svc.methods[workflow]
 	name := pgs.Name(method.GoName).LowerCamelCase().String()
 	hasInput := !isEmpty(method.Input)
@@ -382,88 +383,8 @@ func (svc *Service) genClientWorkflowExecute(f *g.File, workflow string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			// initialize options if nil
-			fn.If(g.Id("opts").Op("==").Nil()).Block(
-				g.Id("opts").Op("=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Block(),
-			)
-
-			// set task queue if unset and default available
-			taskQueue := opts.GetDefaultOptions().GetTaskQueue()
-			if taskQueue == "" {
-				taskQueue = svc.opts.GetTaskQueue()
-			}
-			if taskQueue != "" {
-				fn.If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
-					g.Id("opts").Dot("TaskQueue").Op("=").Lit(taskQueue),
-				)
-			}
-
-			// set workflow id if unset and  id field and/or prefix defined
-			idField, idPrefix := opts.GetDefaultOptions().GetIdField(), opts.GetDefaultOptions().GetIdPrefix()
-			if idPrefix != "" || (hasInput && idField != "") {
-				fn.If(g.Id("opts").Dot("ID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-					var id *g.Statement
-					if idField == "" {
-						id = g.Qual(uuidPkg, "New").Call().Dot("String").Call()
-					} else {
-						for _, field := range method.Input.Fields {
-							if string(field.Desc.Name()) == idField {
-								id = g.Id("req").Dot(field.GoName)
-								break
-							}
-						}
-					}
-					if idPrefix != "" {
-						id = g.Qual("fmt", "Sprintf").Call(
-							g.Lit("%s%s"),
-							g.Id(fmt.Sprintf("%sIDPrefix", workflow)),
-							id,
-						)
-					}
-					b.Id("opts").Dot("ID").Op("=").Add(id)
-				})
-			}
-
-			// set default id reuse policy
-			var defaultPolicy string
-			switch opts.GetDefaultOptions().GetIdReusePolicy() {
-			case temporalv1.IDReusePolicy_ALLOW_DUPLICATE:
-				defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
-			case temporalv1.IDReusePolicy_ALLOW_DUPLICATE_FAILED_ONLY:
-				defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
-			case temporalv1.IDReusePolicy_REJECT_DUPLICATE:
-				defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
-			case temporalv1.IDReusePolicy_TERMINATE_IF_RUNNING:
-				defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
-			}
-
-			if defaultPolicy != "" {
-				fn.If(g.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).
-					Block(
-						g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, defaultPolicy),
-					)
-			}
-
-			if timeout := opts.GetDefaultOptions().GetExecutionTimeout(); timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).
-					Block(
-						g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
-					)
-			}
-
-			if timeout := opts.GetDefaultOptions().GetRunTimeout(); timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("WorkflowRunTimeout").Op("==").Lit(0)).
-					Block(
-						g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
-					)
-			}
-
-			if timeout := opts.GetDefaultOptions().GetTaskTimeout(); timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).
-					Block(
-						g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
-					)
-			}
+			// initialize StartWorkflowOptions with defaults
+			svc.genStartWorkflowOptions(fn, workflow, false)
 
 			// execute workflow
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(args *g.Group) {
@@ -520,7 +441,6 @@ func (svc *Service) genClientWorkflowGet(f *g.File, workflow string) {
 // genClientSignalWithStart adds a Start<Workflow>With<Signal> client method
 func (svc *Service) genClientSignalWithStart(f *g.File, workflow, signal string) {
 	method := svc.methods[workflow]
-	opts := svc.workflows[workflow]
 	handler := svc.methods[signal]
 	name := fmt.Sprintf("Start%sWith%s", workflow, signal)
 	runName := pgs.Name(method.GoName).LowerCamelCase().String()
@@ -545,47 +465,8 @@ func (svc *Service) genClientSignalWithStart(f *g.File, workflow, signal string)
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			// initialize options if nil
-			fn.If(g.Id("opts").Op("==").Nil()).Block(
-				g.Id("opts").Op("=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Block(),
-			)
-
-			// set task queue if unset and default available
-			taskQueue := opts.GetDefaultOptions().GetTaskQueue()
-			if taskQueue == "" {
-				taskQueue = svc.opts.GetTaskQueue()
-			}
-			if taskQueue != "" {
-				fn.If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
-					g.Id("opts").Dot("TaskQueue").Op("=").Lit(taskQueue),
-				)
-			}
-
-			// set workflow id if unset and  id field and/or prefix defined
-			idField, idPrefix := opts.GetDefaultOptions().GetIdField(), opts.GetDefaultOptions().GetIdPrefix()
-			if idPrefix != "" || (hasWorkflowInput && idField != "") {
-				fn.If(g.Id("opts").Dot("ID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-					var id *g.Statement
-					if idField == "" {
-						id = g.Qual(uuidPkg, "New").Dot("String").Call()
-					} else {
-						for _, field := range method.Input.Fields {
-							if string(field.Desc.Name()) == idField {
-								id = g.Id("req").Dot(field.GoName)
-								break
-							}
-						}
-					}
-					if idPrefix != "" {
-						id = g.Qual("fmt", "Sprintf").Call(
-							g.Lit("%s%s"),
-							g.Id(fmt.Sprintf("%sIDPrefix", workflow)),
-							id,
-						)
-					}
-					b.Id("opts").Dot("ID").Op("=").Add(id)
-				})
-			}
+			// initialize StartWorkflowOptions
+			svc.genStartWorkflowOptions(fn, workflow, false)
 
 			// signal with start workflow
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *g.Group) {
@@ -697,4 +578,136 @@ func (svc *Service) genClientSignalMethod(f *g.File, signal string) {
 				}),
 			),
 		)
+}
+
+// genStartWorkflowOptions adds logic for initializing StartWorkflowOptions with default values
+func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child bool) {
+	method := svc.methods[workflow]
+	opts := svc.workflows[workflow]
+	hasInput := !isEmpty(method.Input)
+
+	// initialize options if nil
+	fn.If(g.Id("opts").Op("==").Nil()).BlockFunc(func(bl *g.Group) {
+		if child {
+			bl.Id("childOpts").Op(":=").Qual(workflowPkg, "GetChildWorkflowOptions").Call(g.Id("ctx"))
+			bl.Id("opts").Op("=").Op("&").Id("childOpts")
+		} else {
+			bl.Id("opts").Op("=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Block()
+		}
+	})
+
+	// set task queue if unset and default available
+	taskQueue := opts.GetDefaultOptions().GetTaskQueue()
+	if taskQueue == "" {
+		taskQueue = svc.opts.GetTaskQueue()
+	}
+	if taskQueue != "" {
+		fn.If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
+			g.Id("opts").Dot("TaskQueue").Op("=").Lit(taskQueue),
+		)
+	}
+
+	idFieldName := "ID"
+	if child {
+		idFieldName = "WorkflowID"
+	}
+
+	// set workflow id if unset and  id field and/or prefix defined
+	idFields, idPrefix := opts.GetDefaultOptions().GetIdFields(), opts.GetDefaultOptions().GetIdPrefix()
+	idDelimiter := opts.GetDefaultOptions().GetIdDelimiter()
+	if idDelimiter == "" {
+		idDelimiter = "/"
+	}
+	if idPrefix != "" || (hasInput && idFields != "") {
+		fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+			// build list of id parameters from options
+			var fieldFormats []string
+			var fields []g.Code
+
+			// if set, add prefix to id params
+			if idPrefix != "" {
+				fields = append(fields, g.Id(fmt.Sprintf("%sIDPrefix", workflow)))
+				fieldFormats = append(fieldFormats, "%s")
+			}
+
+			// if no id_fields provided, default to uuid()
+			if idFields == "" {
+				idFields = "uuid()"
+			}
+
+			// create index of input message fields
+			fieldsByName := map[string]*protogen.Field{}
+			for _, field := range method.Input.Fields {
+				fieldsByName[string(field.Desc.Name())] = field
+			}
+
+			// add id fields
+			for _, idField := range strings.Split(idFields, ",") {
+				switch idField {
+				case "uuid()":
+					fields = append(fields, g.Qual(uuidPkg, "New").Call().Dot("String").Call())
+					fieldFormats = append(fieldFormats, "%s")
+				default:
+					field, ok := fieldsByName[idField]
+					if !ok {
+						svc.Plugin.Error(fmt.Errorf("workflow default options references nonexistent id field: %s", idField))
+						return
+					}
+					// add field to list
+					fields = append(fields, g.Id("req").Dot(fmt.Sprintf("Get%s", field.GoName)).Call())
+					fieldFormats = append(fieldFormats, "%v")
+				}
+			}
+
+			if len(fields) == 1 {
+				b.Id("opts").Dot(idFieldName).Op("=").Add(fields[0])
+			} else {
+				b.Id("opts").Dot(idFieldName).Op("=").Qual("fmt", "Sprintf").Call(
+					g.Lit(strings.Join(fieldFormats, idDelimiter)),
+					g.List(fields...),
+				)
+			}
+		})
+	}
+
+	// set default id reuse policy
+	var defaultPolicy string
+	switch opts.GetDefaultOptions().GetIdReusePolicy() {
+	case temporalv1.IDReusePolicy_ALLOW_DUPLICATE:
+		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
+	case temporalv1.IDReusePolicy_ALLOW_DUPLICATE_FAILED_ONLY:
+		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
+	case temporalv1.IDReusePolicy_REJECT_DUPLICATE:
+		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
+	case temporalv1.IDReusePolicy_TERMINATE_IF_RUNNING:
+		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
+	}
+
+	if defaultPolicy != "" {
+		fn.If(g.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).
+			Block(
+				g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, defaultPolicy),
+			)
+	}
+
+	if timeout := opts.GetDefaultOptions().GetExecutionTimeout(); timeout.IsValid() {
+		fn.If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).
+			Block(
+				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+			)
+	}
+
+	if timeout := opts.GetDefaultOptions().GetRunTimeout(); timeout.IsValid() {
+		fn.If(g.Id("opts").Dot("WorkflowRunTimeout").Op("==").Lit(0)).
+			Block(
+				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+			)
+	}
+
+	if timeout := opts.GetDefaultOptions().GetTaskTimeout(); timeout.IsValid() {
+		fn.If(g.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).
+			Block(
+				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+			)
+	}
 }

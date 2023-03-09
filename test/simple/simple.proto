@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-  // buf:lint:ignore PACKAGE_DIRECTORY_MATCH
+// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package mycompany.simple;
 
 import "google/protobuf/empty.proto";
@@ -11,7 +11,7 @@ service Simple {
     task_queue: 'my-task-queue'
   };
 
-    // SomeWorkflow1 does some workflow thing.
+  // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
     option (temporal.v1.workflow) = {
       query : { ref: 'SomeQuery1' }
@@ -21,21 +21,21 @@ service Simple {
     };
   }
 
-    // SomeWorkflow2 does some workflow thing.
+  // SomeWorkflow2 does some workflow thing.
   rpc SomeWorkflow2(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       signal: { ref: 'SomeSignal1', start: true }
     };
   }
 
-    // SomeWorkflow3 does some workflow thing.
+  // SomeWorkflow3 does some workflow thing.
   rpc SomeWorkflow3(SomeWorkflow3Request) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       default_options {
-        id_field       : 'id'
-        id_prefix      : 'some-workflow-3/'
-        task_queue     : 'my-task-queue-2'
-        id_reuse_policy: ALLOW_DUPLICATE
+        id_fields        : 'id,request_val'
+        id_prefix        : 'some-workflow-3'
+        task_queue       : 'my-task-queue-2'
+        id_reuse_policy  : ALLOW_DUPLICATE
         execution_timeout: { seconds: 3600 }
       }
 
@@ -43,12 +43,12 @@ service Simple {
     };
   }
 
-    // SomeActivity1 does some activity thing.
+  // SomeActivity1 does some activity thing.
   rpc SomeActivity1(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = { };
   }
 
-    // SomeActivity2 does some activity thing.
+  // SomeActivity2 does some activity thing.
   rpc SomeActivity2(SomeActivity2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
       default_options {
@@ -57,7 +57,7 @@ service Simple {
     };
   }
 
-    // SomeActivity3 does some activity thing.
+  // SomeActivity3 does some activity thing.
   rpc SomeActivity3(SomeActivity3Request) returns (SomeActivity3Response) {
     option (temporal.v1.activity) = {
       default_options {
@@ -69,22 +69,22 @@ service Simple {
     };
   }
 
-    // SomeQuery1 queries some thing.
+  // SomeQuery1 queries some thing.
   rpc SomeQuery1(google.protobuf.Empty) returns (SomeQuery1Response) {
     option (temporal.v1.query) = { };
   }
 
-    // SomeQuery2 queries some thing.
+  // SomeQuery2 queries some thing.
   rpc SomeQuery2(SomeQuery2Request) returns (SomeQuery2Response) {
     option (temporal.v1.query) = { };
   }
 
-    // SomeSignal1 is a signal.
+  // SomeSignal1 is a signal.
   rpc SomeSignal1(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = { };
   }
 
-    // SomeSignal2 is a signal.
+  // SomeSignal2 is a signal.
   rpc SomeSignal2(SomeSignal2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = { };
   }
@@ -92,6 +92,7 @@ service Simple {
 
 message SomeWorkflow1Request {
   string request_val = 1;
+  string id = 2;
 }
 
 message SomeWorkflow1Response {

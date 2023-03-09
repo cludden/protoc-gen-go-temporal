@@ -32,7 +32,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 		var hasContent bool
 
 		for _, service := range file.Services {
-			svc := parseService(service)
+			svc := parseService(plugin, service)
 			if len(svc.activities) == 0 && len(svc.workflows) == 0 && len(svc.signals) == 0 && len(svc.queries) == 0 {
 				continue
 			}

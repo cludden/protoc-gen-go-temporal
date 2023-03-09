@@ -294,7 +294,8 @@ func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	f.Commentf("%sChild executes a child %s workflow", workflow, workflow)
-	f.Func().Id(fmt.Sprintf("%sChild", workflow)).
+	f.Func().
+		Id(fmt.Sprintf("%sChild", workflow)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			args.Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
@@ -303,13 +304,12 @@ func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
 			}
 		}).
 		Id(fmt.Sprintf("%sChildRun", workflow)).
-		Block(
-			g.If(g.Id("opts").Op("==").Nil()).Block(
-				g.Id("childOpts").Op(":=").Qual(workflowPkg, "GetChildWorkflowOptions").Call(g.Id("ctx")),
-				g.Id("opts").Op("=").Op("&").Id("childOpts"),
-			),
-			g.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts")),
-			g.Return(
+		BlockFunc(func(fn *g.Group) {
+			// initialize child workflow options with default values
+			svc.genStartWorkflowOptions(fn, workflow, true)
+
+			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
+			fn.Return(
 				g.Id(fmt.Sprintf("%sChildRun", workflow)).Block(
 					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
 						args.Id("ctx")
@@ -321,8 +321,8 @@ func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
 						}
 					}).Op(","),
 				),
-			),
-		)
+			)
+		})
 }
 
 // genWorkflowChildRun generates a <Workflow>ChildRun struct

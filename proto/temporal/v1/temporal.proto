@@ -48,27 +48,30 @@ message WorkflowOptions {
     // Override service task queeu
     string task_queue = 1;
 
-    // Request message field to use as workflow id
-    string id_field = 2;
+    // Delimiter used when joining id prefix and/or id fields
+    string id_delimiter = 2;
+
+    // Comma separated list of input message fields to use as workflow id
+    string id_fields = 3;
 
     // Prefix to prepend to workflow ids
-    string id_prefix = 3;
+    string id_prefix = 4;
 
     // Whether server allow reuse of workflow ID
-    IDReusePolicy id_reuse_policy = 4;
+    IDReusePolicy id_reuse_policy = 5;
 
     // The timeout for duration of workflow execution.
     // It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
     // of a single workflow run.
-    google.protobuf.Duration execution_timeout = 5;
+    google.protobuf.Duration execution_timeout = 6;
 
     // The timeout for duration of a single workflow run.
-    google.protobuf.Duration run_timeout = 6;
+    google.protobuf.Duration run_timeout = 7;
 
     // The timeout for processing workflow task from the time the worker
     // pulled this task. If a workflow task is lost, it is retried after this timeout.
     // The resolution is seconds.
-    google.protobuf.Duration task_timeout = 7;
+    google.protobuf.Duration task_timeout = 8;
   }
 }
 

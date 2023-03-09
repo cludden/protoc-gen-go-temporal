@@ -20,8 +20,8 @@ const (
 
 // Foo id prefixes
 const (
-	TransferIDPrefix    = "transfer/"
-	LockAccountIDPrefix = "lock/"
+	LockAccountIDPrefix = "lock"
+	TransferIDPrefix    = "transfer"
 )
 
 // Foo signal names
@@ -34,30 +34,30 @@ const (
 
 // Foo activity names
 const (
-	DepositName  = "mycompany.foo.v1.Foo.Deposit"
 	WithdrawName = "mycompany.foo.v1.Foo.Withdraw"
+	DepositName  = "mycompany.foo.v1.Foo.Deposit"
 )
 
 // Client describes a client for a Foo worker
 type Client interface {
+	// ExecuteTransfer executes a Transfer workflow
+	ExecuteTransfer(ctx context.Context, opts *client.StartWorkflowOptions, req *TransferRequest) (TransferRun, error)
+	// GetTransfer retrieves a Transfer workflow execution
+	GetTransfer(ctx context.Context, workflowID string, runID string) (TransferRun, error)
 	// ExecuteLockAccount executes a LockAccount workflow
 	ExecuteLockAccount(ctx context.Context, opts *client.StartWorkflowOptions, req *LockAccountRequest) (LockAccountRun, error)
 	// GetLockAccount retrieves a LockAccount workflow execution
 	GetLockAccount(ctx context.Context, workflowID string, runID string) (LockAccountRun, error)
 	// StartLockAccountWithAcquireLease sends a AcquireLease signal to a LockAccount workflow, starting it if not present
 	StartLockAccountWithAcquireLease(ctx context.Context, opts *client.StartWorkflowOptions, req *LockAccountRequest, signal *AcquireLeaseSignal) (LockAccountRun, error)
-	// ExecuteTransfer executes a Transfer workflow
-	ExecuteTransfer(ctx context.Context, opts *client.StartWorkflowOptions, req *TransferRequest) (TransferRun, error)
-	// GetTransfer retrieves a Transfer workflow execution
-	GetTransfer(ctx context.Context, workflowID string, runID string) (TransferRun, error)
+	// RenewLeaseends a RenewLease signal to an existing workflow
+	RenewLease(ctx context.Context, workflowID string, runID string, signal *RenewLeaseSignal) error
 	// RevokeLeaseends a RevokeLease signal to an existing workflow
 	RevokeLease(ctx context.Context, workflowID string, runID string, signal *RevokeLeaseSignal) error
 	// AcquireLeaseends a AcquireLease signal to an existing workflow
 	AcquireLease(ctx context.Context, workflowID string, runID string, signal *AcquireLeaseSignal) error
 	// LeaseAcquiredends a LeaseAcquired signal to an existing workflow
 	LeaseAcquired(ctx context.Context, workflowID string, runID string, signal *LeaseAcquiredSignal) error
-	// RenewLeaseends a RenewLease signal to an existing workflow
-	RenewLease(ctx context.Context, workflowID string, runID string, signal *RenewLeaseSignal) error
 }
 
 // Compile-time check that workflowClient satisfies Client
@@ -82,7 +82,7 @@ func (c *workflowClient) ExecuteLockAccount(ctx context.Context, opts *client.St
 		opts.TaskQueue = "foo-v1"
 	}
 	if opts.ID == "" {
-		opts.ID = fmt.Sprintf("%s%s", LockAccountIDPrefix, req.Account)
+		opts.ID = fmt.Sprintf("%s/%v", LockAccountIDPrefix, req.GetAccount())
 	}
 	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
@@ -117,7 +117,13 @@ func (c *workflowClient) StartLockAccountWithAcquireLease(ctx context.Context, o
 		opts.TaskQueue = "foo-v1"
 	}
 	if opts.ID == "" {
-		opts.ID = fmt.Sprintf("%s%s", LockAccountIDPrefix, req.Account)
+		opts.ID = fmt.Sprintf("%s/%v", LockAccountIDPrefix, req.GetAccount())
+	}
+	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+	}
+	if opts.WorkflowExecutionTimeout == 0 {
+		opts.WorkflowRunTimeout = 3600000000000 // 1h0m0s
 	}
 	run, err := c.client.SignalWithStartWorkflow(ctx, opts.ID, AcquireLeaseName, signal, *opts, LockAccountName, req)
 	if run == nil || err != nil {
@@ -138,7 +144,7 @@ func (c *workflowClient) ExecuteTransfer(ctx context.Context, opts *client.Start
 		opts.TaskQueue = "foo-v1"
 	}
 	if opts.ID == "" {
-		opts.ID = fmt.Sprintf("%s%s", TransferIDPrefix, uuid.New().String())
+		opts.ID = fmt.Sprintf("%s/%v/%v/%s", TransferIDPrefix, req.GetSrc(), req.GetDest(), uuid.New().String())
 	}
 	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
@@ -182,6 +188,48 @@ func (c *workflowClient) RenewLease(ctx context.Context, workflowID string, runI
 // RevokeLease sends a RevokeLease signal to an existing workflow
 func (c *workflowClient) RevokeLease(ctx context.Context, workflowID string, runID string, signal *RevokeLeaseSignal) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, RevokeLeaseName, signal)
+}
+
+// TransferRun describes a Transfer workflow run
+type TransferRun interface {
+	// ID returns the workflow ID
+	ID() string
+	// RunID returns the workflow instance ID
+	RunID() string
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*TransferResponse, error)
+	// LeaseAcquired sends a LeaseAcquired signal to the workflow
+	LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error
+}
+
+// transferRun provides an internal implementation of a TransferRun
+type transferRun struct {
+	client *workflowClient
+	run    client.WorkflowRun
+}
+
+// ID returns the workflow ID
+func (r *transferRun) ID() string {
+	return r.run.GetID()
+}
+
+// RunID returns the execution ID
+func (r *transferRun) RunID() string {
+	return r.run.GetRunID()
+}
+
+// Get blocks until the workflow is complete, returning the result if applicable
+func (r *transferRun) Get(ctx context.Context) (*TransferResponse, error) {
+	var resp TransferResponse
+	if err := r.run.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// LeaseAcquired sends a LeaseAcquired signal to the workflow
+func (r *transferRun) LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error {
+	return r.client.LeaseAcquired(ctx, r.ID(), "", req)
 }
 
 // LockAccountRun describes a LockAccount workflow run
@@ -236,60 +284,18 @@ func (r *lockAccountRun) RevokeLease(ctx context.Context, req *RevokeLeaseSignal
 	return r.client.RevokeLease(ctx, r.ID(), "", req)
 }
 
-// TransferRun describes a Transfer workflow run
-type TransferRun interface {
-	// ID returns the workflow ID
-	ID() string
-	// RunID returns the workflow instance ID
-	RunID() string
-	// Get blocks until the workflow is complete and returns the result
-	Get(ctx context.Context) (*TransferResponse, error)
-	// LeaseAcquired sends a LeaseAcquired signal to the workflow
-	LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error
-}
-
-// transferRun provides an internal implementation of a TransferRun
-type transferRun struct {
-	client *workflowClient
-	run    client.WorkflowRun
-}
-
-// ID returns the workflow ID
-func (r *transferRun) ID() string {
-	return r.run.GetID()
-}
-
-// RunID returns the execution ID
-func (r *transferRun) RunID() string {
-	return r.run.GetRunID()
-}
-
-// Get blocks until the workflow is complete, returning the result if applicable
-func (r *transferRun) Get(ctx context.Context) (*TransferResponse, error) {
-	var resp TransferResponse
-	if err := r.run.Get(ctx, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// LeaseAcquired sends a LeaseAcquired signal to the workflow
-func (r *transferRun) LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error {
-	return r.client.LeaseAcquired(ctx, r.ID(), "", req)
-}
-
 // Workflows provides methods for initializing new Foo workflow values
 type Workflows interface {
-	// Transfer initializes a new TransferWorkflow value
-	Transfer(ctx workflow.Context, input *TransferInput) (Transfer, error)
 	// LockAccount initializes a new LockAccountWorkflow value
 	LockAccount(ctx workflow.Context, input *LockAccountInput) (LockAccount, error)
+	// Transfer initializes a new TransferWorkflow value
+	Transfer(ctx workflow.Context, input *TransferInput) (Transfer, error)
 }
 
 // RegisterWorkflows registers Foo workflows with the given worker
 func RegisterWorkflows(r worker.Registry, workflows Workflows) {
-	RegisterTransfer(r, workflows.Transfer)
 	RegisterLockAccount(r, workflows.LockAccount)
+	RegisterTransfer(r, workflows.Transfer)
 }
 
 // RegisterLockAccount registers a LockAccount workflow with the given worker
@@ -347,6 +353,18 @@ func LockAccountChild(ctx workflow.Context, opts *workflow.ChildWorkflowOptions,
 	if opts == nil {
 		childOpts := workflow.GetChildWorkflowOptions(ctx)
 		opts = &childOpts
+	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "foo-v1"
+	}
+	if opts.WorkflowID == "" {
+		opts.WorkflowID = fmt.Sprintf("%s/%v", LockAccountIDPrefix, req.GetAccount())
+	}
+	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+	}
+	if opts.WorkflowExecutionTimeout == 0 {
+		opts.WorkflowRunTimeout = 3600000000000 // 1h0m0s
 	}
 	ctx = workflow.WithChildOptions(ctx, *opts)
 	return LockAccountChildRun{
@@ -457,6 +475,18 @@ func TransferChild(ctx workflow.Context, opts *workflow.ChildWorkflowOptions, re
 		childOpts := workflow.GetChildWorkflowOptions(ctx)
 		opts = &childOpts
 	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "foo-v1"
+	}
+	if opts.WorkflowID == "" {
+		opts.WorkflowID = fmt.Sprintf("%s/%v/%v/%s", TransferIDPrefix, req.GetSrc(), req.GetDest(), uuid.New().String())
+	}
+	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
+	}
+	if opts.WorkflowExecutionTimeout == 0 {
+		opts.WorkflowRunTimeout = 3600000000000 // 1h0m0s
+	}
 	ctx = workflow.WithChildOptions(ctx, *opts)
 	return TransferChildRun{
 		Future: workflow.ExecuteChildWorkflow(ctx, "TransferName", req),
@@ -507,74 +537,6 @@ func (r *TransferChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution,
 // LeaseAcquired sends the corresponding signal request to the child workflow
 func (r *TransferChildRun) LeaseAcquired(ctx workflow.Context, input *LeaseAcquiredSignal) workflow.Future {
 	return r.Future.SignalChildWorkflow(ctx, LeaseAcquiredName, input)
-}
-
-// RevokeLease describes a RevokeLease signal
-type RevokeLease struct {
-	Channel workflow.ReceiveChannel
-}
-
-// Receive blocks until a RevokeLease signal is received
-func (s *RevokeLease) Receive(ctx workflow.Context) (*RevokeLeaseSignal, bool) {
-	var resp RevokeLeaseSignal
-	more := s.Channel.Receive(ctx, &resp)
-	return &resp, more
-}
-
-// ReceiveAsync checks for a RevokeLease signal without blocking
-func (s *RevokeLease) ReceiveAsync() *RevokeLeaseSignal {
-	var resp RevokeLeaseSignal
-	s.Channel.ReceiveAsync(&resp)
-	return &resp
-}
-
-// Select checks for a RevokeLease signal without blocking
-func (s *RevokeLease) Select(sel workflow.Selector, fn func(*RevokeLeaseSignal)) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		req := s.ReceiveAsync()
-		if fn != nil {
-			fn(req)
-		}
-	})
-}
-
-// RevokeLeaseExternal sends a RevokeLease signal to an existing workflow
-func RevokeLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *RevokeLeaseSignal) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, RevokeLeaseName, req)
-}
-
-// AcquireLease describes a AcquireLease signal
-type AcquireLease struct {
-	Channel workflow.ReceiveChannel
-}
-
-// Receive blocks until a AcquireLease signal is received
-func (s *AcquireLease) Receive(ctx workflow.Context) (*AcquireLeaseSignal, bool) {
-	var resp AcquireLeaseSignal
-	more := s.Channel.Receive(ctx, &resp)
-	return &resp, more
-}
-
-// ReceiveAsync checks for a AcquireLease signal without blocking
-func (s *AcquireLease) ReceiveAsync() *AcquireLeaseSignal {
-	var resp AcquireLeaseSignal
-	s.Channel.ReceiveAsync(&resp)
-	return &resp
-}
-
-// Select checks for a AcquireLease signal without blocking
-func (s *AcquireLease) Select(sel workflow.Selector, fn func(*AcquireLeaseSignal)) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		req := s.ReceiveAsync()
-		if fn != nil {
-			fn(req)
-		}
-	})
-}
-
-// AcquireLeaseExternal sends a AcquireLease signal to an existing workflow
-func AcquireLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *AcquireLeaseSignal) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, AcquireLeaseName, req)
 }
 
 // LeaseAcquired describes a LeaseAcquired signal
@@ -643,6 +605,74 @@ func (s *RenewLease) Select(sel workflow.Selector, fn func(*RenewLeaseSignal)) w
 // RenewLeaseExternal sends a RenewLease signal to an existing workflow
 func RenewLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *RenewLeaseSignal) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, RenewLeaseName, req)
+}
+
+// RevokeLease describes a RevokeLease signal
+type RevokeLease struct {
+	Channel workflow.ReceiveChannel
+}
+
+// Receive blocks until a RevokeLease signal is received
+func (s *RevokeLease) Receive(ctx workflow.Context) (*RevokeLeaseSignal, bool) {
+	var resp RevokeLeaseSignal
+	more := s.Channel.Receive(ctx, &resp)
+	return &resp, more
+}
+
+// ReceiveAsync checks for a RevokeLease signal without blocking
+func (s *RevokeLease) ReceiveAsync() *RevokeLeaseSignal {
+	var resp RevokeLeaseSignal
+	s.Channel.ReceiveAsync(&resp)
+	return &resp
+}
+
+// Select checks for a RevokeLease signal without blocking
+func (s *RevokeLease) Select(sel workflow.Selector, fn func(*RevokeLeaseSignal)) workflow.Selector {
+	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
+		req := s.ReceiveAsync()
+		if fn != nil {
+			fn(req)
+		}
+	})
+}
+
+// RevokeLeaseExternal sends a RevokeLease signal to an existing workflow
+func RevokeLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *RevokeLeaseSignal) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, RevokeLeaseName, req)
+}
+
+// AcquireLease describes a AcquireLease signal
+type AcquireLease struct {
+	Channel workflow.ReceiveChannel
+}
+
+// Receive blocks until a AcquireLease signal is received
+func (s *AcquireLease) Receive(ctx workflow.Context) (*AcquireLeaseSignal, bool) {
+	var resp AcquireLeaseSignal
+	more := s.Channel.Receive(ctx, &resp)
+	return &resp, more
+}
+
+// ReceiveAsync checks for a AcquireLease signal without blocking
+func (s *AcquireLease) ReceiveAsync() *AcquireLeaseSignal {
+	var resp AcquireLeaseSignal
+	s.Channel.ReceiveAsync(&resp)
+	return &resp
+}
+
+// Select checks for a AcquireLease signal without blocking
+func (s *AcquireLease) Select(sel workflow.Selector, fn func(*AcquireLeaseSignal)) workflow.Selector {
+	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
+		req := s.ReceiveAsync()
+		if fn != nil {
+			fn(req)
+		}
+	})
+}
+
+// AcquireLeaseExternal sends a AcquireLease signal to an existing workflow
+func AcquireLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *AcquireLeaseSignal) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, AcquireLeaseName, req)
 }
 
 // Activities describes available worker activites

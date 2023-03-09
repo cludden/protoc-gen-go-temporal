@@ -22,6 +22,7 @@ const (
 
 // Service describes a temporal protobuf service definition
 type Service struct {
+	*protogen.Plugin
 	*protogen.Service
 	opts       *temporalv1.ServiceOptions
 	activities map[string]*temporalv1.ActivityOptions
@@ -32,8 +33,9 @@ type Service struct {
 }
 
 // parseService extracts a Service from a protogen.Service value
-func parseService(service *protogen.Service) *Service {
+func parseService(p *protogen.Plugin, service *protogen.Service) *Service {
 	svc := Service{
+		Plugin:     p,
 		Service:    service,
 		activities: make(map[string]*temporalv1.ActivityOptions),
 		methods:    make(map[string]*protogen.Method),

@@ -4,10 +4,8 @@ a protobuf generator for temporal clients and workers
 
 based a fork of [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
 
-For general usage, see [https://github.com/cretz/temporal-sdk-go-advanced/tree/main/temporalproto]
-
 ## Getting Started
-1. Install [buf]
+1. Install [buf](https://docs.buf.build/installation)
 2. Initialize buf repository
 ```shell
 mkdir proto && cd proto && buf init
@@ -17,13 +15,6 @@ mkdir proto && cd proto && buf init
 version: v1
 deps:
   - buf.build/cludden/protoc-gen-go-temporal
-breaking:
-  use:
-    - FILE
-lint:
-  allow_comment_ignores: true
-  use:
-    - BASIC
 ```
 4. Add plugin to `buf.gen.yaml` and exclude it from managed mode go prefix
 ```yaml
@@ -43,7 +34,8 @@ plugins:
     opt: paths=source_relative
     strategy: all
 ```
-5. Define your service (see [example](./example/) and [test](./test/) for generated code and usage)
+5. Define your service  
+<small><b><i>note:</i></b> see [example](./example/) and [test](./test/) for more details on generated code and usage</small>
 ```protobuf
 syntax="proto3";
 
@@ -63,9 +55,9 @@ service Foo {
   rpc LockAccount(LockAccountRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       default_options {
-        id_field: 'account'
-        id_prefix: 'lock/'
-        id_reuse_policy: ALLOW_DUPLICATE
+        id_fields        : 'account'
+        id_prefix        : 'lock'
+        id_reuse_policy  : ALLOW_DUPLICATE
         execution_timeout: { seconds: 3600 }
       }
       signal: { ref: 'AcquireLease', start: true }
@@ -98,8 +90,9 @@ service Foo {
   rpc Transfer(TransferRequest) returns (TransferResponse) {
     option (temporal.v1.workflow) = {
       default_options {
-        id_prefix: 'transfer/'
-        id_reuse_policy: ALLOW_DUPLICATE_FAILED_ONLY
+        id_fields        : 'src,dest,amount,uuid()'
+        id_prefix        : 'transfer'
+        id_reuse_policy  : ALLOW_DUPLICATE_FAILED_ONLY
         execution_timeout: { seconds: 3600 }
       }
       signal: { ref: 'LeaseAcquired' }
@@ -136,19 +129,19 @@ message LockAccountRequest {
 }
 
 message AcquireLeaseSignal {
-  string workflow_id = 1;
-  google.protobuf.Duration timeout = 2;
+  string                   workflow_id = 1;
+  google.protobuf.Duration timeout     = 2;
 }
 
 message LeaseAcquiredSignal {
   string workflow_id = 1;
-  string run_id = 2;
-  string lease_id = 3;
+  string run_id      = 2;
+  string lease_id    = 3;
 }
 
 message RenewLeaseSignal {
-  string lease_id = 1;
-  google.protobuf.Duration timeout = 2;
+  string                   lease_id = 1;
+  google.protobuf.Duration timeout  = 2;
 }
 
 message RevokeLeaseSignal {
@@ -156,8 +149,8 @@ message RevokeLeaseSignal {
 }
 
 message TransferRequest {
-  string src = 1;
-  string dest = 2;
+  string src    = 1;
+  string dest   = 2;
   double amount = 3;
 }
 
@@ -167,7 +160,7 @@ message TransferResponse {
 
 message DepositRequest {
   string account = 1;
-  double amount = 2;
+  double amount  = 2;
 }
 
 message DepositResponse {
@@ -176,7 +169,7 @@ message DepositResponse {
 
 message WithdrawRequest {
   string account = 1;
-  double amount = 2;
+  double amount  = 2;
 }
 
 message WithdrawResponse {

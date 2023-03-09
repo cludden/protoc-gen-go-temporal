@@ -20,7 +20,7 @@ const (
 
 // Simple id prefixes
 const (
-	SomeWorkflow3IDPrefix = "some-workflow-3/"
+	SomeWorkflow3IDPrefix = "some-workflow-3"
 )
 
 // Simple query names
@@ -31,8 +31,8 @@ const (
 
 // Simple signal names
 const (
-	SomeSignal1Name = "mycompany.simple.Simple.SomeSignal1"
 	SomeSignal2Name = "mycompany.simple.Simple.SomeSignal2"
+	SomeSignal1Name = "mycompany.simple.Simple.SomeSignal1"
 )
 
 // Simple activity names
@@ -81,32 +81,6 @@ type workflowClient struct {
 // NewClient initializes a new Simple client
 func NewClient(c client.Client) Client {
 	return &workflowClient{client: c}
-}
-
-// ExecuteSomeWorkflow1 starts a SomeWorkflow1 workflow
-func (c *workflowClient) ExecuteSomeWorkflow1(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow1Request) (SomeWorkflow1Run, error) {
-	if opts == nil {
-		opts = &client.StartWorkflowOptions{}
-	}
-	if opts.TaskQueue == "" {
-		opts.TaskQueue = "my-task-queue"
-	}
-	run, err := c.client.ExecuteWorkflow(ctx, *opts, SomeWorkflow1Name, req)
-	if run == nil || err != nil {
-		return nil, err
-	}
-	return &someWorkflow1Run{
-		client: c,
-		run:    run,
-	}, nil
-}
-
-// GetSomeWorkflow1 fetches an existing SomeWorkflow1 execution
-func (c *workflowClient) GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) (SomeWorkflow1Run, error) {
-	return &someWorkflow1Run{
-		client: c,
-		run:    c.client.GetWorkflow(ctx, workflowID, runID),
-	}, nil
 }
 
 // ExecuteSomeWorkflow2 starts a SomeWorkflow2 workflow
@@ -162,7 +136,7 @@ func (c *workflowClient) ExecuteSomeWorkflow3(ctx context.Context, opts *client.
 		opts.TaskQueue = "my-task-queue-2"
 	}
 	if opts.ID == "" {
-		opts.ID = fmt.Sprintf("%s%s", SomeWorkflow3IDPrefix, req.Id)
+		opts.ID = fmt.Sprintf("%s/%v/%v", SomeWorkflow3IDPrefix, req.GetId(), req.GetRequestVal())
 	}
 	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
@@ -197,7 +171,13 @@ func (c *workflowClient) StartSomeWorkflow3WithSomeSignal2(ctx context.Context, 
 		opts.TaskQueue = "my-task-queue-2"
 	}
 	if opts.ID == "" {
-		opts.ID = fmt.Sprintf("%s%s", SomeWorkflow3IDPrefix, req.Id)
+		opts.ID = fmt.Sprintf("%s/%v/%v", SomeWorkflow3IDPrefix, req.GetId(), req.GetRequestVal())
+	}
+	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+	}
+	if opts.WorkflowExecutionTimeout == 0 {
+		opts.WorkflowRunTimeout = 3600000000000 // 1h0m0s
 	}
 	run, err := c.client.SignalWithStartWorkflow(ctx, opts.ID, SomeSignal2Name, signal, *opts, SomeWorkflow3Name, req)
 	if run == nil || err != nil {
@@ -209,10 +189,36 @@ func (c *workflowClient) StartSomeWorkflow3WithSomeSignal2(ctx context.Context, 
 	}, nil
 }
 
-// SomeQuery2 sends a SomeQuery2 query to an existing workflow
-func (c *workflowClient) SomeQuery2(ctx context.Context, workflowID string, runID string, query *SomeQuery2Request) (*SomeQuery2Response, error) {
-	var resp SomeQuery2Response
-	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, SomeQuery2Name, query); err != nil {
+// ExecuteSomeWorkflow1 starts a SomeWorkflow1 workflow
+func (c *workflowClient) ExecuteSomeWorkflow1(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow1Request) (SomeWorkflow1Run, error) {
+	if opts == nil {
+		opts = &client.StartWorkflowOptions{}
+	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "my-task-queue"
+	}
+	run, err := c.client.ExecuteWorkflow(ctx, *opts, SomeWorkflow1Name, req)
+	if run == nil || err != nil {
+		return nil, err
+	}
+	return &someWorkflow1Run{
+		client: c,
+		run:    run,
+	}, nil
+}
+
+// GetSomeWorkflow1 fetches an existing SomeWorkflow1 execution
+func (c *workflowClient) GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) (SomeWorkflow1Run, error) {
+	return &someWorkflow1Run{
+		client: c,
+		run:    c.client.GetWorkflow(ctx, workflowID, runID),
+	}, nil
+}
+
+// SomeQuery1 sends a SomeQuery1 query to an existing workflow
+func (c *workflowClient) SomeQuery1(ctx context.Context, workflowID string, runID string) (*SomeQuery1Response, error) {
+	var resp SomeQuery1Response
+	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, SomeQuery1Name); err != nil {
 		return nil, err
 	} else if err = val.Get(&resp); err != nil {
 		return nil, err
@@ -220,10 +226,10 @@ func (c *workflowClient) SomeQuery2(ctx context.Context, workflowID string, runI
 	return &resp, nil
 }
 
-// SomeQuery1 sends a SomeQuery1 query to an existing workflow
-func (c *workflowClient) SomeQuery1(ctx context.Context, workflowID string, runID string) (*SomeQuery1Response, error) {
-	var resp SomeQuery1Response
-	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, SomeQuery1Name); err != nil {
+// SomeQuery2 sends a SomeQuery2 query to an existing workflow
+func (c *workflowClient) SomeQuery2(ctx context.Context, workflowID string, runID string, query *SomeQuery2Request) (*SomeQuery2Response, error) {
+	var resp SomeQuery2Response
+	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, SomeQuery2Name, query); err != nil {
 		return nil, err
 	} else if err = val.Get(&resp); err != nil {
 		return nil, err
@@ -392,9 +398,9 @@ type Workflows interface {
 
 // RegisterWorkflows registers Simple workflows with the given worker
 func RegisterWorkflows(r worker.Registry, workflows Workflows) {
+	RegisterSomeWorkflow1(r, workflows.SomeWorkflow1)
 	RegisterSomeWorkflow2(r, workflows.SomeWorkflow2)
 	RegisterSomeWorkflow3(r, workflows.SomeWorkflow3)
-	RegisterSomeWorkflow1(r, workflows.SomeWorkflow1)
 }
 
 // RegisterSomeWorkflow1 registers a SomeWorkflow1 workflow with the given worker
@@ -458,6 +464,9 @@ func SomeWorkflow1Child(ctx workflow.Context, opts *workflow.ChildWorkflowOption
 	if opts == nil {
 		childOpts := workflow.GetChildWorkflowOptions(ctx)
 		opts = &childOpts
+	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "my-task-queue"
 	}
 	ctx = workflow.WithChildOptions(ctx, *opts)
 	return SomeWorkflow1ChildRun{
@@ -562,6 +571,9 @@ func SomeWorkflow2Child(ctx workflow.Context, opts *workflow.ChildWorkflowOption
 		childOpts := workflow.GetChildWorkflowOptions(ctx)
 		opts = &childOpts
 	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "my-task-queue"
+	}
 	ctx = workflow.WithChildOptions(ctx, *opts)
 	return SomeWorkflow2ChildRun{
 		Future: workflow.ExecuteChildWorkflow(ctx, "SomeWorkflow2Name", nil),
@@ -661,6 +673,18 @@ func SomeWorkflow3Child(ctx workflow.Context, opts *workflow.ChildWorkflowOption
 		childOpts := workflow.GetChildWorkflowOptions(ctx)
 		opts = &childOpts
 	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "my-task-queue-2"
+	}
+	if opts.WorkflowID == "" {
+		opts.WorkflowID = fmt.Sprintf("%s/%v/%v", SomeWorkflow3IDPrefix, req.GetId(), req.GetRequestVal())
+	}
+	if opts.WorkflowIDReusePolicy == v1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+	}
+	if opts.WorkflowExecutionTimeout == 0 {
+		opts.WorkflowRunTimeout = 3600000000000 // 1h0m0s
+	}
 	ctx = workflow.WithChildOptions(ctx, *opts)
 	return SomeWorkflow3ChildRun{
 		Future: workflow.ExecuteChildWorkflow(ctx, "SomeWorkflow3Name", req),
@@ -712,6 +736,38 @@ func (r *SomeWorkflow3ChildRun) SomeSignal2(ctx workflow.Context, input *SomeSig
 	return r.Future.SignalChildWorkflow(ctx, SomeSignal2Name, input)
 }
 
+// SomeSignal1 describes a SomeSignal1 signal
+type SomeSignal1 struct {
+	Channel workflow.ReceiveChannel
+}
+
+// Receive blocks until a SomeSignal1 signal is received
+func (s *SomeSignal1) Receive(ctx workflow.Context) bool {
+	more := s.Channel.Receive(ctx, nil)
+	return more
+}
+
+// ReceiveAsync checks for a SomeSignal1 signal without blocking
+func (s *SomeSignal1) ReceiveAsync() bool {
+	ok := s.Channel.ReceiveAsync(nil)
+	return ok
+}
+
+// Select checks for a SomeSignal1 signal without blocking
+func (s *SomeSignal1) Select(sel workflow.Selector, fn func()) workflow.Selector {
+	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
+		s.ReceiveAsync()
+		if fn != nil {
+			fn()
+		}
+	})
+}
+
+// SomeSignal1External sends a SomeSignal1 signal to an existing workflow
+func SomeSignal1External(ctx workflow.Context, workflowID string, runID string) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SomeSignal1Name, nil)
+}
+
 // SomeSignal2 describes a SomeSignal2 signal
 type SomeSignal2 struct {
 	Channel workflow.ReceiveChannel
@@ -746,46 +802,14 @@ func SomeSignal2External(ctx workflow.Context, workflowID string, runID string, 
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SomeSignal2Name, req)
 }
 
-// SomeSignal1 describes a SomeSignal1 signal
-type SomeSignal1 struct {
-	Channel workflow.ReceiveChannel
-}
-
-// Receive blocks until a SomeSignal1 signal is received
-func (s *SomeSignal1) Receive(ctx workflow.Context) bool {
-	more := s.Channel.Receive(ctx, nil)
-	return more
-}
-
-// ReceiveAsync checks for a SomeSignal1 signal without blocking
-func (s *SomeSignal1) ReceiveAsync() bool {
-	ok := s.Channel.ReceiveAsync(nil)
-	return ok
-}
-
-// Select checks for a SomeSignal1 signal without blocking
-func (s *SomeSignal1) Select(sel workflow.Selector, fn func()) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		s.ReceiveAsync()
-		if fn != nil {
-			fn()
-		}
-	})
-}
-
-// SomeSignal1External sends a SomeSignal1 signal to an existing workflow
-func SomeSignal1External(ctx workflow.Context, workflowID string, runID string) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SomeSignal1Name, nil)
-}
-
 // Activities describes available worker activites
 type Activities interface {
-	// SomeActivity1 does some activity thing.
-	SomeActivity1(ctx context.Context) error
 	// SomeActivity2 does some activity thing.
 	SomeActivity2(ctx context.Context, req *SomeActivity2Request) error
 	// SomeActivity3 does some activity thing.
 	SomeActivity3(ctx context.Context, req *SomeActivity3Request) (*SomeActivity3Response, error)
+	// SomeActivity1 does some activity thing.
+	SomeActivity1(ctx context.Context) error
 }
 
 // RegisterActivities registers activities with a worker

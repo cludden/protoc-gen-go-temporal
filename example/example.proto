@@ -16,8 +16,8 @@ service Foo {
   rpc LockAccount(LockAccountRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       default_options {
-        id_field: 'account'
-        id_prefix: 'lock/'
+        id_fields: 'account'
+        id_prefix: 'lock'
         id_reuse_policy: ALLOW_DUPLICATE
         execution_timeout: { seconds: 3600 }
       }
@@ -51,7 +51,8 @@ service Foo {
   rpc Transfer(TransferRequest) returns (TransferResponse) {
     option (temporal.v1.workflow) = {
       default_options {
-        id_prefix: 'transfer/'
+        id_fields: 'src,dest,uuid()'
+        id_prefix: 'transfer'
         id_reuse_policy: ALLOW_DUPLICATE_FAILED_ONLY
         execution_timeout: { seconds: 3600 }
       }
