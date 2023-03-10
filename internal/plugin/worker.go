@@ -12,7 +12,7 @@ func (svc *Service) genWorkflowsInterface(f *g.File) {
 	// generate workflows interface
 	f.Commentf("Workflows provides methods for initializing new %s workflow values", svc.GoName)
 	f.Type().Id("Workflows").InterfaceFunc(func(methods *g.Group) {
-		for workflow := range svc.workflows {
+		for _, workflow := range svc.workflowsOrdered {
 			// method := svc.methods[workflow]
 			methods.Commentf("%s initializes a new %sWorkflow value", workflow, workflow).Line().
 				Id(workflow).
@@ -39,7 +39,7 @@ func (svc *Service) genRegisterWorkflows(f *g.File) {
 			g.Id("workflows").Id("Workflows"),
 		).
 		BlockFunc(func(fn *g.Group) {
-			for workflow := range svc.workflows {
+			for _, workflow := range svc.workflowsOrdered {
 				fn.Id(fmt.Sprintf("Register%s", workflow)).Call(
 					g.Id("r"), g.Id("workflows").Dot(workflow),
 				)

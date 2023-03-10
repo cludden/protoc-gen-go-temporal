@@ -12,7 +12,7 @@ import (
 func (svc *Service) genActivitiesInterface(f *g.File) {
 	f.Comment("Activities describes available worker activites")
 	f.Type().Id("Activities").InterfaceFunc(func(methods *g.Group) {
-		for activity := range svc.activities {
+		for _, activity := range svc.activitiesOrdered {
 			method := svc.methods[activity]
 			methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
 			hasInput := !isEmpty(method.Input)
@@ -43,7 +43,7 @@ func (svc *Service) genRegisterActivities(f *g.File) {
 			g.Id("activities").Id("Activities"),
 		).
 		BlockFunc(func(fn *g.Group) {
-			for activity := range svc.activities {
+			for _, activity := range svc.activitiesOrdered {
 				fn.Id(fmt.Sprintf("Register%s", activity)).Call(
 					g.Id("r"), g.Id("activities").Dot(activity),
 				)

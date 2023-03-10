@@ -15,7 +15,8 @@ import (
 func (svc *Service) genClientInterface(f *g.File) {
 	f.Commentf("Client describes a client for a %s worker", svc.GoName)
 	f.Type().Id("Client").InterfaceFunc(func(methods *g.Group) {
-		for workflow, opts := range svc.workflows {
+		for _, workflow := range svc.workflowsOrdered {
+			opts := svc.workflows[workflow]
 			// generate Execute<Workflow> method
 			method := svc.methods[workflow]
 			hasInput := !isEmpty(method.Input)
@@ -77,7 +78,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 		}
 
 		// add <Query> methods
-		for query := range svc.queries {
+		for _, query := range svc.queriesOrdered {
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
 			methods.Commentf("% sends a %s query to an existing workflow", query, query)
@@ -97,7 +98,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 		}
 
 		// add <Signal> methods
-		for signal := range svc.signals {
+		for _, signal := range svc.signalsOrdered {
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
 			methods.Commentf("% sends a %s signal to an existing workflow", signal, signal)

@@ -42,8 +42,8 @@ const (
 
 // Foo activity names
 const (
-	WithdrawName = "mycompany.foo.v1.Foo.Withdraw"
 	DepositName  = "mycompany.foo.v1.Foo.Deposit"
+	WithdrawName = "mycompany.foo.v1.Foo.Withdraw"
 )
 
 // Client describes a client for a Foo worker
@@ -58,14 +58,14 @@ type Client interface {
 	ExecuteTransfer(ctx context.Context, opts *client.StartWorkflowOptions, req *TransferRequest) (TransferRun, error)
 	// GetTransfer retrieves a Transfer workflow execution
 	GetTransfer(ctx context.Context, workflowID string, runID string) (TransferRun, error)
+	// AcquireLeaseends a AcquireLease signal to an existing workflow
+	AcquireLease(ctx context.Context, workflowID string, runID string, signal *AcquireLeaseSignal) error
 	// LeaseAcquiredends a LeaseAcquired signal to an existing workflow
 	LeaseAcquired(ctx context.Context, workflowID string, runID string, signal *LeaseAcquiredSignal) error
 	// RenewLeaseends a RenewLease signal to an existing workflow
 	RenewLease(ctx context.Context, workflowID string, runID string, signal *RenewLeaseSignal) error
 	// RevokeLeaseends a RevokeLease signal to an existing workflow
 	RevokeLease(ctx context.Context, workflowID string, runID string, signal *RevokeLeaseSignal) error
-	// AcquireLeaseends a AcquireLease signal to an existing workflow
-	AcquireLease(ctx context.Context, workflowID string, runID string, signal *AcquireLeaseSignal) error
 }
 
 // Compile-time check that workflowClient satisfies Client

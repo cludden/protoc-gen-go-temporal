@@ -21,9 +21,9 @@ import (
 
 // Simple workflow names
 const (
+	SomeWorkflow1Name = "mycompany.simple.Simple.SomeWorkflow1"
 	SomeWorkflow2Name = "mycompany.simple.Simple.SomeWorkflow2"
 	SomeWorkflow3Name = "mycompany.simple.Simple.SomeWorkflow3"
-	SomeWorkflow1Name = "mycompany.simple.Simple.SomeWorkflow1"
 )
 
 // Simple id prefixes
@@ -89,6 +89,32 @@ type workflowClient struct {
 // NewClient initializes a new Simple client
 func NewClient(c client.Client) Client {
 	return &workflowClient{client: c}
+}
+
+// ExecuteSomeWorkflow1 starts a SomeWorkflow1 workflow
+func (c *workflowClient) ExecuteSomeWorkflow1(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow1Request) (SomeWorkflow1Run, error) {
+	if opts == nil {
+		opts = &client.StartWorkflowOptions{}
+	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "my-task-queue"
+	}
+	run, err := c.client.ExecuteWorkflow(ctx, *opts, SomeWorkflow1Name, req)
+	if run == nil || err != nil {
+		return nil, err
+	}
+	return &someWorkflow1Run{
+		client: c,
+		run:    run,
+	}, nil
+}
+
+// GetSomeWorkflow1 fetches an existing SomeWorkflow1 execution
+func (c *workflowClient) GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) (SomeWorkflow1Run, error) {
+	return &someWorkflow1Run{
+		client: c,
+		run:    c.client.GetWorkflow(ctx, workflowID, runID),
+	}, nil
 }
 
 // ExecuteSomeWorkflow2 starts a SomeWorkflow2 workflow
@@ -194,32 +220,6 @@ func (c *workflowClient) StartSomeWorkflow3WithSomeSignal2(ctx context.Context, 
 	return &someWorkflow3Run{
 		client: c,
 		run:    run,
-	}, nil
-}
-
-// ExecuteSomeWorkflow1 starts a SomeWorkflow1 workflow
-func (c *workflowClient) ExecuteSomeWorkflow1(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow1Request) (SomeWorkflow1Run, error) {
-	if opts == nil {
-		opts = &client.StartWorkflowOptions{}
-	}
-	if opts.TaskQueue == "" {
-		opts.TaskQueue = "my-task-queue"
-	}
-	run, err := c.client.ExecuteWorkflow(ctx, *opts, SomeWorkflow1Name, req)
-	if run == nil || err != nil {
-		return nil, err
-	}
-	return &someWorkflow1Run{
-		client: c,
-		run:    run,
-	}, nil
-}
-
-// GetSomeWorkflow1 fetches an existing SomeWorkflow1 execution
-func (c *workflowClient) GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) (SomeWorkflow1Run, error) {
-	return &someWorkflow1Run{
-		client: c,
-		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}, nil
 }
 

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"sort"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
@@ -24,12 +25,16 @@ const (
 type Service struct {
 	*protogen.Plugin
 	*protogen.Service
-	opts       *temporalv1.ServiceOptions
-	activities map[string]*temporalv1.ActivityOptions
-	methods    map[string]*protogen.Method
-	queries    map[string]*temporalv1.QueryOptions
-	signals    map[string]*temporalv1.SignalOptions
-	workflows  map[string]*temporalv1.WorkflowOptions
+	opts              *temporalv1.ServiceOptions
+	activitiesOrdered []string
+	activities        map[string]*temporalv1.ActivityOptions
+	methods           map[string]*protogen.Method
+	queriesOrdered    []string
+	queries           map[string]*temporalv1.QueryOptions
+	signalsOrdered    []string
+	signals           map[string]*temporalv1.SignalOptions
+	workflowsOrdered  []string
+	workflows         map[string]*temporalv1.WorkflowOptions
 }
 
 // parseService extracts a Service from a protogen.Service value
@@ -54,20 +59,28 @@ func parseService(p *protogen.Plugin, service *protogen.Service) *Service {
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Activity).(*temporalv1.ActivityOptions); ok && opts != nil {
 			svc.activities[name] = opts
+			svc.activitiesOrdered = append(svc.activitiesOrdered, name)
 		}
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Query).(*temporalv1.QueryOptions); ok && opts != nil {
 			svc.queries[name] = opts
+			svc.queriesOrdered = append(svc.queriesOrdered, name)
 		}
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Signal).(*temporalv1.SignalOptions); ok && opts != nil {
 			svc.signals[name] = opts
+			svc.signalsOrdered = append(svc.signalsOrdered, name)
 		}
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
 			svc.workflows[name] = opts
+			svc.workflowsOrdered = append(svc.workflowsOrdered, name)
 		}
 	}
+	sort.Strings(svc.activitiesOrdered)
+	sort.Strings(svc.queriesOrdered)
+	sort.Strings(svc.signalsOrdered)
+	sort.Strings(svc.workflowsOrdered)
 	return &svc
 }
 
@@ -81,7 +94,8 @@ func (svc *Service) render(f *g.File) {
 	svc.genClientConstructor(f)
 
 	// generate client workflow methods
-	for workflow, opts := range svc.workflows {
+	for _, workflow := range svc.workflowsOrdered {
+		opts := svc.workflows[workflow]
 		svc.genClientWorkflowExecute(f, workflow)
 		svc.genClientWorkflowGet(f, workflow)
 		for _, signal := range opts.GetSignal() {
@@ -92,17 +106,18 @@ func (svc *Service) render(f *g.File) {
 	}
 
 	// generate client query methods
-	for query := range svc.queries {
+	for _, query := range svc.queriesOrdered {
 		svc.genClientQueryMethod(f, query)
 	}
 
 	// generate client signal methods
-	for signal := range svc.signals {
+	for _, signal := range svc.signalsOrdered {
 		svc.genClientSignalMethod(f, signal)
 	}
 
 	// generate <Workflow>Run interfaces and implementations used by client
-	for workflow, opts := range svc.workflows {
+	for _, workflow := range svc.workflowsOrdered {
+		opts := svc.workflows[workflow]
 		svc.genClientWorkflowRunInterface(f, workflow)
 		svc.genClientWorkflowRun(f, workflow)
 		svc.genClientWorkflowRunIDMethod(f, workflow)
@@ -125,7 +140,7 @@ func (svc *Service) render(f *g.File) {
 	svc.genRegisterWorkflows(f)
 
 	// generate workflow types, methods, functions
-	for workflow := range svc.workflows {
+	for _, workflow := range svc.workflowsOrdered {
 		svc.genRegisterWorkflow(f, workflow)
 		svc.genWorkflowWorkerBuilderFunction(f, workflow)
 		svc.genWorkflowWorker(f, workflow)
@@ -142,7 +157,7 @@ func (svc *Service) render(f *g.File) {
 	}
 
 	// generate signal types, methods, functions
-	for signal := range svc.signals {
+	for _, signal := range svc.signalsOrdered {
 		svc.genWorkerSignal(f, signal)
 		svc.genWorkerSignalReceive(f, signal)
 		svc.genWorkerSignalReceiveAsync(f, signal)
@@ -153,7 +168,7 @@ func (svc *Service) render(f *g.File) {
 	// generate activities
 	svc.genActivitiesInterface(f)
 	svc.genRegisterActivities(f)
-	for activity := range svc.activities {
+	for _, activity := range svc.activitiesOrdered {
 		svc.genRegisterActivity(f, activity)
 		svc.genActivityFuture(f, activity)
 		svc.genActivityFutureGetMethod(f, activity)
@@ -169,7 +184,7 @@ func (svc *Service) genConstants(f *g.File) {
 	if len(svc.workflows) > 0 {
 		f.Commentf("%s workflow names", svc.GoName)
 		f.Const().DefsFunc(func(defs *g.Group) {
-			for workflow := range svc.workflows {
+			for _, workflow := range svc.workflowsOrdered {
 				method := svc.methods[workflow]
 				defs.Id(fmt.Sprintf("%sName", workflow)).Op("=").Lit(string(method.Desc.FullName()))
 			}
@@ -178,7 +193,8 @@ func (svc *Service) genConstants(f *g.File) {
 
 	// add id prefixes
 	workflowsIdPrefixes := map[string]string{}
-	for workflow, opts := range svc.workflows {
+	for _, workflow := range svc.workflowsOrdered {
+		opts := svc.workflows[workflow]
 		if prefix := opts.GetDefaultOptions().GetIdPrefix(); prefix != "" {
 			workflowsIdPrefixes[workflow] = prefix
 		}
@@ -196,7 +212,7 @@ func (svc *Service) genConstants(f *g.File) {
 	if len(svc.queries) > 0 {
 		f.Commentf("%s query names", svc.GoName)
 		f.Const().DefsFunc(func(defs *g.Group) {
-			for query := range svc.queries {
+			for _, query := range svc.queriesOrdered {
 				method := svc.methods[query]
 				defs.Id(fmt.Sprintf("%sName", query)).Op("=").Lit(string(method.Desc.FullName()))
 			}
@@ -207,7 +223,7 @@ func (svc *Service) genConstants(f *g.File) {
 	if len(svc.signals) > 0 {
 		f.Commentf("%s signal names", svc.GoName)
 		f.Const().DefsFunc(func(defs *g.Group) {
-			for signal := range svc.signals {
+			for _, signal := range svc.signalsOrdered {
 				method := svc.methods[signal]
 				defs.Id(fmt.Sprintf("%sName", signal)).Op("=").Lit(string(method.Desc.FullName()))
 			}
@@ -218,7 +234,7 @@ func (svc *Service) genConstants(f *g.File) {
 	if len(svc.activities) > 0 {
 		f.Commentf("%s activity names", svc.GoName)
 		f.Const().DefsFunc(func(defs *g.Group) {
-			for activity := range svc.activities {
+			for _, activity := range svc.activitiesOrdered {
 				method := svc.methods[activity]
 				defs.Id(fmt.Sprintf("%sName", activity)).Op("=").Lit(string(method.Desc.FullName()))
 			}
