@@ -565,18 +565,18 @@ func (svc *Service) genWorkerSignalReceiveAsync(f *g.File, signal string) {
 		BlockFunc(func(b *g.Group) {
 			if hasInput {
 				b.Var().Id("resp").Id(method.Input.GoIdent.GoName)
-				b.Id("s").Dot("Channel").Dot("ReceiveAsync").Call(g.Op("&").Id("resp"))
+				b.If(
+					g.Id("ok").Op(":=").Id("s").Dot("Channel").Dot("ReceiveAsync").Call(
+						g.Op("&").Id("resp"),
+					),
+					g.Op("!").Id("ok"),
+				).Block(
+					g.Return(g.Nil()),
+				)
+				b.Return(g.Op("&").Id("resp"))
 			} else {
-				b.Id("ok").Op(":=").Id("s").Dot("Channel").Dot("ReceiveAsync").Call(g.Nil())
+				b.Return(g.Id("s").Dot("Channel").Dot("ReceiveAsync").Call(g.Nil()))
 			}
-
-			b.ReturnFunc(func(returnVals *g.Group) {
-				if hasInput {
-					returnVals.Op("&").Id("resp")
-				} else {
-					returnVals.Id("ok")
-				}
-			})
 		})
 }
 

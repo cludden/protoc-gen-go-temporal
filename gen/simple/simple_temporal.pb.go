@@ -37,9 +37,9 @@ const (
 
 // Simple activity names
 const (
+	SomeActivity1Name = "mycompany.simple.Simple.SomeActivity1"
 	SomeActivity2Name = "mycompany.simple.Simple.SomeActivity2"
 	SomeActivity3Name = "mycompany.simple.Simple.SomeActivity3"
-	SomeActivity1Name = "mycompany.simple.Simple.SomeActivity1"
 )
 
 // Client describes a client for a Simple worker
@@ -60,10 +60,10 @@ type Client interface {
 	GetSomeWorkflow3(ctx context.Context, workflowID string, runID string) (SomeWorkflow3Run, error)
 	// StartSomeWorkflow3WithSomeSignal2 sends a SomeSignal2 signal to a SomeWorkflow3 workflow, starting it if not present
 	StartSomeWorkflow3WithSomeSignal2(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow3Request, signal *SomeSignal2Request) (SomeWorkflow3Run, error)
-	// SomeQuery2ends a SomeQuery2 query to an existing workflow
-	SomeQuery2(ctx context.Context, workflowID string, runID string, query *SomeQuery2Request) (*SomeQuery2Response, error)
 	// SomeQuery1ends a SomeQuery1 query to an existing workflow
 	SomeQuery1(ctx context.Context, workflowID string, runID string) (*SomeQuery1Response, error)
+	// SomeQuery2ends a SomeQuery2 query to an existing workflow
+	SomeQuery2(ctx context.Context, workflowID string, runID string, query *SomeQuery2Request) (*SomeQuery2Response, error)
 	// SomeSignal1ends a SomeSignal1 signal to an existing workflow
 	SomeSignal1(ctx context.Context, workflowID string, runID string) error
 	// SomeSignal2ends a SomeSignal2 signal to an existing workflow
@@ -736,38 +736,6 @@ func (r *SomeWorkflow3ChildRun) SomeSignal2(ctx workflow.Context, input *SomeSig
 	return r.Future.SignalChildWorkflow(ctx, SomeSignal2Name, input)
 }
 
-// SomeSignal1 describes a SomeSignal1 signal
-type SomeSignal1 struct {
-	Channel workflow.ReceiveChannel
-}
-
-// Receive blocks until a SomeSignal1 signal is received
-func (s *SomeSignal1) Receive(ctx workflow.Context) bool {
-	more := s.Channel.Receive(ctx, nil)
-	return more
-}
-
-// ReceiveAsync checks for a SomeSignal1 signal without blocking
-func (s *SomeSignal1) ReceiveAsync() bool {
-	ok := s.Channel.ReceiveAsync(nil)
-	return ok
-}
-
-// Select checks for a SomeSignal1 signal without blocking
-func (s *SomeSignal1) Select(sel workflow.Selector, fn func()) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		s.ReceiveAsync()
-		if fn != nil {
-			fn()
-		}
-	})
-}
-
-// SomeSignal1External sends a SomeSignal1 signal to an existing workflow
-func SomeSignal1External(ctx workflow.Context, workflowID string, runID string) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SomeSignal1Name, nil)
-}
-
 // SomeSignal2 describes a SomeSignal2 signal
 type SomeSignal2 struct {
 	Channel workflow.ReceiveChannel
@@ -783,7 +751,9 @@ func (s *SomeSignal2) Receive(ctx workflow.Context) (*SomeSignal2Request, bool) 
 // ReceiveAsync checks for a SomeSignal2 signal without blocking
 func (s *SomeSignal2) ReceiveAsync() *SomeSignal2Request {
 	var resp SomeSignal2Request
-	s.Channel.ReceiveAsync(&resp)
+	if ok := s.Channel.ReceiveAsync(&resp); !ok {
+		return nil
+	}
 	return &resp
 }
 
@@ -802,14 +772,45 @@ func SomeSignal2External(ctx workflow.Context, workflowID string, runID string, 
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SomeSignal2Name, req)
 }
 
+// SomeSignal1 describes a SomeSignal1 signal
+type SomeSignal1 struct {
+	Channel workflow.ReceiveChannel
+}
+
+// Receive blocks until a SomeSignal1 signal is received
+func (s *SomeSignal1) Receive(ctx workflow.Context) bool {
+	more := s.Channel.Receive(ctx, nil)
+	return more
+}
+
+// ReceiveAsync checks for a SomeSignal1 signal without blocking
+func (s *SomeSignal1) ReceiveAsync() bool {
+	return s.Channel.ReceiveAsync(nil)
+}
+
+// Select checks for a SomeSignal1 signal without blocking
+func (s *SomeSignal1) Select(sel workflow.Selector, fn func()) workflow.Selector {
+	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
+		s.ReceiveAsync()
+		if fn != nil {
+			fn()
+		}
+	})
+}
+
+// SomeSignal1External sends a SomeSignal1 signal to an existing workflow
+func SomeSignal1External(ctx workflow.Context, workflowID string, runID string) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SomeSignal1Name, nil)
+}
+
 // Activities describes available worker activites
 type Activities interface {
-	// SomeActivity3 does some activity thing.
-	SomeActivity3(ctx context.Context, req *SomeActivity3Request) (*SomeActivity3Response, error)
 	// SomeActivity1 does some activity thing.
 	SomeActivity1(ctx context.Context) error
 	// SomeActivity2 does some activity thing.
 	SomeActivity2(ctx context.Context, req *SomeActivity2Request) error
+	// SomeActivity3 does some activity thing.
+	SomeActivity3(ctx context.Context, req *SomeActivity3Request) (*SomeActivity3Response, error)
 }
 
 // RegisterActivities registers activities with a worker

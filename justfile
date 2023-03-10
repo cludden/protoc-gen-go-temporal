@@ -14,6 +14,7 @@ gen:
     rm -rf {{ justfile_directory() }}/gen/*
     buf lint
     buf generate
+    mv gen/example.pb.go gen/example_temporal.pb.go example/
 
 # install local build
 install:

@@ -20,16 +20,16 @@ const (
 
 // Foo id prefixes
 const (
-	TransferIDPrefix    = "transfer"
 	LockAccountIDPrefix = "lock"
+	TransferIDPrefix    = "transfer"
 )
 
 // Foo signal names
 const (
+	RenewLeaseName    = "mycompany.foo.v1.Foo.RenewLease"
 	RevokeLeaseName   = "mycompany.foo.v1.Foo.RevokeLease"
 	AcquireLeaseName  = "mycompany.foo.v1.Foo.AcquireLease"
 	LeaseAcquiredName = "mycompany.foo.v1.Foo.LeaseAcquired"
-	RenewLeaseName    = "mycompany.foo.v1.Foo.RenewLease"
 )
 
 // Foo activity names
@@ -50,14 +50,14 @@ type Client interface {
 	ExecuteTransfer(ctx context.Context, opts *client.StartWorkflowOptions, req *TransferRequest) (TransferRun, error)
 	// GetTransfer retrieves a Transfer workflow execution
 	GetTransfer(ctx context.Context, workflowID string, runID string) (TransferRun, error)
-	// RenewLeaseends a RenewLease signal to an existing workflow
-	RenewLease(ctx context.Context, workflowID string, runID string, signal *RenewLeaseSignal) error
-	// RevokeLeaseends a RevokeLease signal to an existing workflow
-	RevokeLease(ctx context.Context, workflowID string, runID string, signal *RevokeLeaseSignal) error
 	// AcquireLeaseends a AcquireLease signal to an existing workflow
 	AcquireLease(ctx context.Context, workflowID string, runID string, signal *AcquireLeaseSignal) error
 	// LeaseAcquiredends a LeaseAcquired signal to an existing workflow
 	LeaseAcquired(ctx context.Context, workflowID string, runID string, signal *LeaseAcquiredSignal) error
+	// RenewLeaseends a RenewLease signal to an existing workflow
+	RenewLease(ctx context.Context, workflowID string, runID string, signal *RenewLeaseSignal) error
+	// RevokeLeaseends a RevokeLease signal to an existing workflow
+	RevokeLease(ctx context.Context, workflowID string, runID string, signal *RevokeLeaseSignal) error
 }
 
 // Compile-time check that workflowClient satisfies Client
@@ -286,16 +286,16 @@ func (r *transferRun) LeaseAcquired(ctx context.Context, req *LeaseAcquiredSigna
 
 // Workflows provides methods for initializing new Foo workflow values
 type Workflows interface {
-	// LockAccount initializes a new LockAccountWorkflow value
-	LockAccount(ctx workflow.Context, input *LockAccountInput) (LockAccount, error)
 	// Transfer initializes a new TransferWorkflow value
 	Transfer(ctx workflow.Context, input *TransferInput) (Transfer, error)
+	// LockAccount initializes a new LockAccountWorkflow value
+	LockAccount(ctx workflow.Context, input *LockAccountInput) (LockAccount, error)
 }
 
 // RegisterWorkflows registers Foo workflows with the given worker
 func RegisterWorkflows(r worker.Registry, workflows Workflows) {
-	RegisterLockAccount(r, workflows.LockAccount)
 	RegisterTransfer(r, workflows.Transfer)
+	RegisterLockAccount(r, workflows.LockAccount)
 }
 
 // RegisterLockAccount registers a LockAccount workflow with the given worker
@@ -554,7 +554,9 @@ func (s *AcquireLease) Receive(ctx workflow.Context) (*AcquireLeaseSignal, bool)
 // ReceiveAsync checks for a AcquireLease signal without blocking
 func (s *AcquireLease) ReceiveAsync() *AcquireLeaseSignal {
 	var resp AcquireLeaseSignal
-	s.Channel.ReceiveAsync(&resp)
+	if ok := s.Channel.ReceiveAsync(&resp); !ok {
+		return nil
+	}
 	return &resp
 }
 
@@ -588,7 +590,9 @@ func (s *LeaseAcquired) Receive(ctx workflow.Context) (*LeaseAcquiredSignal, boo
 // ReceiveAsync checks for a LeaseAcquired signal without blocking
 func (s *LeaseAcquired) ReceiveAsync() *LeaseAcquiredSignal {
 	var resp LeaseAcquiredSignal
-	s.Channel.ReceiveAsync(&resp)
+	if ok := s.Channel.ReceiveAsync(&resp); !ok {
+		return nil
+	}
 	return &resp
 }
 
@@ -622,7 +626,9 @@ func (s *RenewLease) Receive(ctx workflow.Context) (*RenewLeaseSignal, bool) {
 // ReceiveAsync checks for a RenewLease signal without blocking
 func (s *RenewLease) ReceiveAsync() *RenewLeaseSignal {
 	var resp RenewLeaseSignal
-	s.Channel.ReceiveAsync(&resp)
+	if ok := s.Channel.ReceiveAsync(&resp); !ok {
+		return nil
+	}
 	return &resp
 }
 
@@ -656,7 +662,9 @@ func (s *RevokeLease) Receive(ctx workflow.Context) (*RevokeLeaseSignal, bool) {
 // ReceiveAsync checks for a RevokeLease signal without blocking
 func (s *RevokeLease) ReceiveAsync() *RevokeLeaseSignal {
 	var resp RevokeLeaseSignal
-	s.Channel.ReceiveAsync(&resp)
+	if ok := s.Channel.ReceiveAsync(&resp); !ok {
+		return nil
+	}
 	return &resp
 }
 
