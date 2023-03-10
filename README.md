@@ -6,16 +6,19 @@ based a fork of [github.com/cretz/temporal-sdk-go-advanced](https://github.com/c
 
 ## Getting Started
 1. Install [buf](https://docs.buf.build/installation)
+
 2. Initialize buf repository
 ```shell
 mkdir proto && cd proto && buf init
 ```
+
 3. Add dependency to `buf.yaml`
 ```yaml
 version: v1
 deps:
   - buf.build/cludden/protoc-gen-go-temporal
 ```
+
 4. Add plugin to `buf.gen.yaml` and exclude it from managed mode go prefix
 ```yaml
 version: v1
@@ -34,8 +37,10 @@ plugins:
     opt: paths=source_relative
     strategy: all
 ```
+
 5. Define your service  
 <small><b><i>note:</i></b> see [example](./example/) and [test](./test/) for more details on generated code and usage</small>
+
 ```protobuf
 syntax="proto3";
 
@@ -51,6 +56,9 @@ service Foo {
     task_queue: "foo-v1"
   };
 
+  // Workflows
+  // =================================================================
+
   // LockAccount provides a mutex for an account
   rpc LockAccount(LockAccountRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
@@ -65,6 +73,22 @@ service Foo {
       signal: { ref: 'RevokeLease' }
     };
   }
+
+  // Transfer amount from src account to dest account
+  rpc Transfer(TransferRequest) returns (TransferResponse) {
+    option (temporal.v1.workflow) = {
+      default_options {
+        id_fields        : 'src,dest,amount,uuid()'
+        id_prefix        : 'transfer'
+        id_reuse_policy  : ALLOW_DUPLICATE_FAILED_ONLY
+        execution_timeout: { seconds: 3600 }
+      }
+      signal: { ref: 'LeaseAcquired' }
+    };
+  }
+
+  // Signals
+  // =================================================================
 
   // AcquireLease enqueues a lease on the given account
   rpc AcquireLease(AcquireLeaseSignal) returns (google.protobuf.Empty) {
@@ -86,17 +110,12 @@ service Foo {
     option (temporal.v1.signal) = {};
   }
 
-  // Transfer amount from src account to dest account
-  rpc Transfer(TransferRequest) returns (TransferResponse) {
-    option (temporal.v1.workflow) = {
-      default_options {
-        id_fields        : 'src,dest,amount,uuid()'
-        id_prefix        : 'transfer'
-        id_reuse_policy  : ALLOW_DUPLICATE_FAILED_ONLY
-        execution_timeout: { seconds: 3600 }
-      }
-      signal: { ref: 'LeaseAcquired' }
-    };
+  // Activities
+  // =================================================================
+
+  // AcquireLease enqueues a lease request for a given account 
+  rpc AcquireLease(AcquireLeaseRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {};
   }
 
   // Deposit amount into an account
@@ -124,58 +143,15 @@ service Foo {
   }
 }
 
-message LockAccountRequest {
-  string account = 1;
-}
-
-message AcquireLeaseSignal {
-  string                   workflow_id = 1;
-  google.protobuf.Duration timeout     = 2;
-}
-
-message LeaseAcquiredSignal {
-  string workflow_id = 1;
-  string run_id      = 2;
-  string lease_id    = 3;
-}
-
-message RenewLeaseSignal {
-  string                   lease_id = 1;
-  google.protobuf.Duration timeout  = 2;
-}
-
-message RevokeLeaseSignal {
-  string lease_id = 1;
-}
-
-message TransferRequest {
-  string src    = 1;
-  string dest   = 2;
-  double amount = 3;
-}
-
-message TransferResponse {
-  string result = 1;
-}
-
-message DepositRequest {
-  string account = 1;
-  double amount  = 2;
-}
-
-message DepositResponse {
-  string result = 1;
-}
-
-message WithdrawRequest {
-  string account = 1;
-  double amount  = 2;
-}
-
-message WithdrawResponse {
-  string result = 1;
-}
+// ...
 ```
+
+6. Generate temporal worker and client types, methods, interfaces, and functions
+```shell
+buf generate
+```
+
+7. Implement your activities, workflows, and worker ([see tests for an example](./test/simple/))
 
 ## License
 Licensed under the [MIT License](LICENSE.md)  
