@@ -53,6 +53,9 @@ service Simple {
     option (temporal.v1.activity) = {
       default_options {
         start_to_close_timeout: { seconds: 10 }
+        retry_policy {
+          max_interval: { seconds: 30 }
+        }
       }
     };
   }

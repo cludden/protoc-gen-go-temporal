@@ -219,10 +219,10 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 				fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
 					g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").BlockFunc(func(fields *g.Group) {
 						if d := policy.GetInitialInterval(); d.IsValid() {
-							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(d.AsDuration().String()).Op(",")
+							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Op(",").Comment(d.AsDuration().String())
 						}
 						if d := policy.GetMaxInterval(); d.IsValid() {
-							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(d.AsDuration().String()).Op(",")
+							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Op(",").Comment(d.AsDuration().String())
 						}
 						if n := policy.GetBackoffCoefficient(); n != 0 {
 							fields.Id("BackoffCoefficient").Op(":").Lit(n).Op(",")

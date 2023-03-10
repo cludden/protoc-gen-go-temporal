@@ -20,8 +20,8 @@ const (
 
 // Foo id prefixes
 const (
-	LockAccountIDPrefix = "lock"
 	TransferIDPrefix    = "transfer"
+	LockAccountIDPrefix = "lock"
 )
 
 // Foo signal names
@@ -34,22 +34,22 @@ const (
 
 // Foo activity names
 const (
-	WithdrawName = "mycompany.foo.v1.Foo.Withdraw"
 	DepositName  = "mycompany.foo.v1.Foo.Deposit"
+	WithdrawName = "mycompany.foo.v1.Foo.Withdraw"
 )
 
 // Client describes a client for a Foo worker
 type Client interface {
-	// ExecuteTransfer executes a Transfer workflow
-	ExecuteTransfer(ctx context.Context, opts *client.StartWorkflowOptions, req *TransferRequest) (TransferRun, error)
-	// GetTransfer retrieves a Transfer workflow execution
-	GetTransfer(ctx context.Context, workflowID string, runID string) (TransferRun, error)
 	// ExecuteLockAccount executes a LockAccount workflow
 	ExecuteLockAccount(ctx context.Context, opts *client.StartWorkflowOptions, req *LockAccountRequest) (LockAccountRun, error)
 	// GetLockAccount retrieves a LockAccount workflow execution
 	GetLockAccount(ctx context.Context, workflowID string, runID string) (LockAccountRun, error)
 	// StartLockAccountWithAcquireLease sends a AcquireLease signal to a LockAccount workflow, starting it if not present
 	StartLockAccountWithAcquireLease(ctx context.Context, opts *client.StartWorkflowOptions, req *LockAccountRequest, signal *AcquireLeaseSignal) (LockAccountRun, error)
+	// ExecuteTransfer executes a Transfer workflow
+	ExecuteTransfer(ctx context.Context, opts *client.StartWorkflowOptions, req *TransferRequest) (TransferRun, error)
+	// GetTransfer retrieves a Transfer workflow execution
+	GetTransfer(ctx context.Context, workflowID string, runID string) (TransferRun, error)
 	// RenewLeaseends a RenewLease signal to an existing workflow
 	RenewLease(ctx context.Context, workflowID string, runID string, signal *RenewLeaseSignal) error
 	// RevokeLeaseends a RevokeLease signal to an existing workflow
@@ -190,48 +190,6 @@ func (c *workflowClient) RevokeLease(ctx context.Context, workflowID string, run
 	return c.client.SignalWorkflow(ctx, workflowID, runID, RevokeLeaseName, signal)
 }
 
-// TransferRun describes a Transfer workflow run
-type TransferRun interface {
-	// ID returns the workflow ID
-	ID() string
-	// RunID returns the workflow instance ID
-	RunID() string
-	// Get blocks until the workflow is complete and returns the result
-	Get(ctx context.Context) (*TransferResponse, error)
-	// LeaseAcquired sends a LeaseAcquired signal to the workflow
-	LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error
-}
-
-// transferRun provides an internal implementation of a TransferRun
-type transferRun struct {
-	client *workflowClient
-	run    client.WorkflowRun
-}
-
-// ID returns the workflow ID
-func (r *transferRun) ID() string {
-	return r.run.GetID()
-}
-
-// RunID returns the execution ID
-func (r *transferRun) RunID() string {
-	return r.run.GetRunID()
-}
-
-// Get blocks until the workflow is complete, returning the result if applicable
-func (r *transferRun) Get(ctx context.Context) (*TransferResponse, error) {
-	var resp TransferResponse
-	if err := r.run.Get(ctx, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// LeaseAcquired sends a LeaseAcquired signal to the workflow
-func (r *transferRun) LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error {
-	return r.client.LeaseAcquired(ctx, r.ID(), "", req)
-}
-
 // LockAccountRun describes a LockAccount workflow run
 type LockAccountRun interface {
 	// ID returns the workflow ID
@@ -282,6 +240,48 @@ func (r *lockAccountRun) RenewLease(ctx context.Context, req *RenewLeaseSignal) 
 // RevokeLease sends a RevokeLease signal to the workflow
 func (r *lockAccountRun) RevokeLease(ctx context.Context, req *RevokeLeaseSignal) error {
 	return r.client.RevokeLease(ctx, r.ID(), "", req)
+}
+
+// TransferRun describes a Transfer workflow run
+type TransferRun interface {
+	// ID returns the workflow ID
+	ID() string
+	// RunID returns the workflow instance ID
+	RunID() string
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*TransferResponse, error)
+	// LeaseAcquired sends a LeaseAcquired signal to the workflow
+	LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error
+}
+
+// transferRun provides an internal implementation of a TransferRun
+type transferRun struct {
+	client *workflowClient
+	run    client.WorkflowRun
+}
+
+// ID returns the workflow ID
+func (r *transferRun) ID() string {
+	return r.run.GetID()
+}
+
+// RunID returns the execution ID
+func (r *transferRun) RunID() string {
+	return r.run.GetRunID()
+}
+
+// Get blocks until the workflow is complete, returning the result if applicable
+func (r *transferRun) Get(ctx context.Context) (*TransferResponse, error) {
+	var resp TransferResponse
+	if err := r.run.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// LeaseAcquired sends a LeaseAcquired signal to the workflow
+func (r *transferRun) LeaseAcquired(ctx context.Context, req *LeaseAcquiredSignal) error {
+	return r.client.LeaseAcquired(ctx, r.ID(), "", req)
 }
 
 // Workflows provides methods for initializing new Foo workflow values
@@ -539,6 +539,40 @@ func (r *TransferChildRun) LeaseAcquired(ctx workflow.Context, input *LeaseAcqui
 	return r.Future.SignalChildWorkflow(ctx, LeaseAcquiredName, input)
 }
 
+// AcquireLease describes a AcquireLease signal
+type AcquireLease struct {
+	Channel workflow.ReceiveChannel
+}
+
+// Receive blocks until a AcquireLease signal is received
+func (s *AcquireLease) Receive(ctx workflow.Context) (*AcquireLeaseSignal, bool) {
+	var resp AcquireLeaseSignal
+	more := s.Channel.Receive(ctx, &resp)
+	return &resp, more
+}
+
+// ReceiveAsync checks for a AcquireLease signal without blocking
+func (s *AcquireLease) ReceiveAsync() *AcquireLeaseSignal {
+	var resp AcquireLeaseSignal
+	s.Channel.ReceiveAsync(&resp)
+	return &resp
+}
+
+// Select checks for a AcquireLease signal without blocking
+func (s *AcquireLease) Select(sel workflow.Selector, fn func(*AcquireLeaseSignal)) workflow.Selector {
+	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
+		req := s.ReceiveAsync()
+		if fn != nil {
+			fn(req)
+		}
+	})
+}
+
+// AcquireLeaseExternal sends a AcquireLease signal to an existing workflow
+func AcquireLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *AcquireLeaseSignal) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, AcquireLeaseName, req)
+}
+
 // LeaseAcquired describes a LeaseAcquired signal
 type LeaseAcquired struct {
 	Channel workflow.ReceiveChannel
@@ -641,40 +675,6 @@ func RevokeLeaseExternal(ctx workflow.Context, workflowID string, runID string, 
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, RevokeLeaseName, req)
 }
 
-// AcquireLease describes a AcquireLease signal
-type AcquireLease struct {
-	Channel workflow.ReceiveChannel
-}
-
-// Receive blocks until a AcquireLease signal is received
-func (s *AcquireLease) Receive(ctx workflow.Context) (*AcquireLeaseSignal, bool) {
-	var resp AcquireLeaseSignal
-	more := s.Channel.Receive(ctx, &resp)
-	return &resp, more
-}
-
-// ReceiveAsync checks for a AcquireLease signal without blocking
-func (s *AcquireLease) ReceiveAsync() *AcquireLeaseSignal {
-	var resp AcquireLeaseSignal
-	s.Channel.ReceiveAsync(&resp)
-	return &resp
-}
-
-// Select checks for a AcquireLease signal without blocking
-func (s *AcquireLease) Select(sel workflow.Selector, fn func(*AcquireLeaseSignal)) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		req := s.ReceiveAsync()
-		if fn != nil {
-			fn(req)
-		}
-	})
-}
-
-// AcquireLeaseExternal sends a AcquireLease signal to an existing workflow
-func AcquireLeaseExternal(ctx workflow.Context, workflowID string, runID string, req *AcquireLeaseSignal) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, AcquireLeaseName, req)
-}
-
 // Activities describes available worker activites
 type Activities interface {
 	// Deposit amount into an account
@@ -687,76 +687,6 @@ type Activities interface {
 func RegisterActivities(r worker.Registry, activities Activities) {
 	RegisterDeposit(r, activities.Deposit)
 	RegisterWithdraw(r, activities.Withdraw)
-}
-
-// RegisterDeposit registers a Deposit activity
-func RegisterDeposit(r worker.Registry, fn func(context.Context, *DepositRequest) (*DepositResponse, error)) {
-	r.RegisterActivityWithOptions(fn, activity.RegisterOptions{
-		Name: DepositName,
-	})
-}
-
-// DepositFuture describes a Deposit activity execution
-type DepositFuture struct {
-	Future workflow.Future
-}
-
-// Get blocks on a Deposit execution, returning the response
-func (f *DepositFuture) Get(ctx workflow.Context) (*DepositResponse, error) {
-	var resp DepositResponse
-	if err := f.Future.Get(ctx, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// Select adds the Deposit completion to the selector, callback can be nil
-func (f *DepositFuture) Select(sel workflow.Selector, fn func(*DepositFuture)) workflow.Selector {
-	return sel.AddFuture(f.Future, func(workflow.Future) {
-		if fn != nil {
-			fn(f)
-		}
-	})
-}
-
-// Deposit amount into an account
-func Deposit(ctx workflow.Context, opts *workflow.ActivityOptions, req *DepositRequest) *DepositFuture {
-	if opts == nil {
-		activityOpts := workflow.GetActivityOptions(ctx)
-		opts = &activityOpts
-	}
-	if opts.RetryPolicy == nil {
-		opts.RetryPolicy = &temporal.RetryPolicy{
-			MaximumAttempts: int32(5),
-		}
-	}
-	if opts.ScheduleToCloseTimeout == 0 {
-		opts.ScheduleToCloseTimeout = 120000000000 // 2m0s
-	}
-	ctx = workflow.WithActivityOptions(ctx, *opts)
-	return &DepositFuture{
-		Future: workflow.ExecuteActivity(ctx, DepositName, req),
-	}
-}
-
-// Deposit amount into an account
-func DepositLocal(ctx workflow.Context, opts *workflow.LocalActivityOptions, fn func(context.Context, *DepositRequest) (*DepositResponse, error), req *DepositRequest) *DepositFuture {
-	if opts == nil {
-		activityOpts := workflow.GetLocalActivityOptions(ctx)
-		opts = &activityOpts
-	}
-	if opts.RetryPolicy == nil {
-		opts.RetryPolicy = &temporal.RetryPolicy{
-			MaximumAttempts: int32(5),
-		}
-	}
-	if opts.ScheduleToCloseTimeout == 0 {
-		opts.ScheduleToCloseTimeout = 120000000000 // 2m0s
-	}
-	ctx = workflow.WithLocalActivityOptions(ctx, *opts)
-	return &DepositFuture{
-		Future: workflow.ExecuteLocalActivity(ctx, fn, req),
-	}
 }
 
 // RegisterWithdraw registers a Withdraw activity
@@ -825,6 +755,76 @@ func WithdrawLocal(ctx workflow.Context, opts *workflow.LocalActivityOptions, fn
 	}
 	ctx = workflow.WithLocalActivityOptions(ctx, *opts)
 	return &WithdrawFuture{
+		Future: workflow.ExecuteLocalActivity(ctx, fn, req),
+	}
+}
+
+// RegisterDeposit registers a Deposit activity
+func RegisterDeposit(r worker.Registry, fn func(context.Context, *DepositRequest) (*DepositResponse, error)) {
+	r.RegisterActivityWithOptions(fn, activity.RegisterOptions{
+		Name: DepositName,
+	})
+}
+
+// DepositFuture describes a Deposit activity execution
+type DepositFuture struct {
+	Future workflow.Future
+}
+
+// Get blocks on a Deposit execution, returning the response
+func (f *DepositFuture) Get(ctx workflow.Context) (*DepositResponse, error) {
+	var resp DepositResponse
+	if err := f.Future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Select adds the Deposit completion to the selector, callback can be nil
+func (f *DepositFuture) Select(sel workflow.Selector, fn func(*DepositFuture)) workflow.Selector {
+	return sel.AddFuture(f.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(f)
+		}
+	})
+}
+
+// Deposit amount into an account
+func Deposit(ctx workflow.Context, opts *workflow.ActivityOptions, req *DepositRequest) *DepositFuture {
+	if opts == nil {
+		activityOpts := workflow.GetActivityOptions(ctx)
+		opts = &activityOpts
+	}
+	if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{
+			MaximumAttempts: int32(5),
+		}
+	}
+	if opts.ScheduleToCloseTimeout == 0 {
+		opts.ScheduleToCloseTimeout = 120000000000 // 2m0s
+	}
+	ctx = workflow.WithActivityOptions(ctx, *opts)
+	return &DepositFuture{
+		Future: workflow.ExecuteActivity(ctx, DepositName, req),
+	}
+}
+
+// Deposit amount into an account
+func DepositLocal(ctx workflow.Context, opts *workflow.LocalActivityOptions, fn func(context.Context, *DepositRequest) (*DepositResponse, error), req *DepositRequest) *DepositFuture {
+	if opts == nil {
+		activityOpts := workflow.GetLocalActivityOptions(ctx)
+		opts = &activityOpts
+	}
+	if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{
+			MaximumAttempts: int32(5),
+		}
+	}
+	if opts.ScheduleToCloseTimeout == 0 {
+		opts.ScheduleToCloseTimeout = 120000000000 // 2m0s
+	}
+	ctx = workflow.WithLocalActivityOptions(ctx, *opts)
+	return &DepositFuture{
 		Future: workflow.ExecuteLocalActivity(ctx, fn, req),
 	}
 }

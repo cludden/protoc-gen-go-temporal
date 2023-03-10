@@ -13,9 +13,9 @@ import (
 
 // Simple workflow names
 const (
+	SomeWorkflow1Name = "mycompany.simple.Simple.SomeWorkflow1"
 	SomeWorkflow2Name = "mycompany.simple.Simple.SomeWorkflow2"
 	SomeWorkflow3Name = "mycompany.simple.Simple.SomeWorkflow3"
-	SomeWorkflow1Name = "mycompany.simple.Simple.SomeWorkflow1"
 )
 
 // Simple id prefixes
@@ -25,21 +25,21 @@ const (
 
 // Simple query names
 const (
-	SomeQuery1Name = "mycompany.simple.Simple.SomeQuery1"
 	SomeQuery2Name = "mycompany.simple.Simple.SomeQuery2"
+	SomeQuery1Name = "mycompany.simple.Simple.SomeQuery1"
 )
 
 // Simple signal names
 const (
-	SomeSignal2Name = "mycompany.simple.Simple.SomeSignal2"
 	SomeSignal1Name = "mycompany.simple.Simple.SomeSignal1"
+	SomeSignal2Name = "mycompany.simple.Simple.SomeSignal2"
 )
 
 // Simple activity names
 const (
-	SomeActivity1Name = "mycompany.simple.Simple.SomeActivity1"
 	SomeActivity2Name = "mycompany.simple.Simple.SomeActivity2"
 	SomeActivity3Name = "mycompany.simple.Simple.SomeActivity3"
+	SomeActivity1Name = "mycompany.simple.Simple.SomeActivity1"
 )
 
 // Client describes a client for a Simple worker
@@ -60,10 +60,10 @@ type Client interface {
 	GetSomeWorkflow3(ctx context.Context, workflowID string, runID string) (SomeWorkflow3Run, error)
 	// StartSomeWorkflow3WithSomeSignal2 sends a SomeSignal2 signal to a SomeWorkflow3 workflow, starting it if not present
 	StartSomeWorkflow3WithSomeSignal2(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow3Request, signal *SomeSignal2Request) (SomeWorkflow3Run, error)
-	// SomeQuery1ends a SomeQuery1 query to an existing workflow
-	SomeQuery1(ctx context.Context, workflowID string, runID string) (*SomeQuery1Response, error)
 	// SomeQuery2ends a SomeQuery2 query to an existing workflow
 	SomeQuery2(ctx context.Context, workflowID string, runID string, query *SomeQuery2Request) (*SomeQuery2Response, error)
+	// SomeQuery1ends a SomeQuery1 query to an existing workflow
+	SomeQuery1(ctx context.Context, workflowID string, runID string) (*SomeQuery1Response, error)
 	// SomeSignal1ends a SomeSignal1 signal to an existing workflow
 	SomeSignal1(ctx context.Context, workflowID string, runID string) error
 	// SomeSignal2ends a SomeSignal2 signal to an existing workflow
@@ -81,6 +81,32 @@ type workflowClient struct {
 // NewClient initializes a new Simple client
 func NewClient(c client.Client) Client {
 	return &workflowClient{client: c}
+}
+
+// ExecuteSomeWorkflow1 starts a SomeWorkflow1 workflow
+func (c *workflowClient) ExecuteSomeWorkflow1(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow1Request) (SomeWorkflow1Run, error) {
+	if opts == nil {
+		opts = &client.StartWorkflowOptions{}
+	}
+	if opts.TaskQueue == "" {
+		opts.TaskQueue = "my-task-queue"
+	}
+	run, err := c.client.ExecuteWorkflow(ctx, *opts, SomeWorkflow1Name, req)
+	if run == nil || err != nil {
+		return nil, err
+	}
+	return &someWorkflow1Run{
+		client: c,
+		run:    run,
+	}, nil
+}
+
+// GetSomeWorkflow1 fetches an existing SomeWorkflow1 execution
+func (c *workflowClient) GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) (SomeWorkflow1Run, error) {
+	return &someWorkflow1Run{
+		client: c,
+		run:    c.client.GetWorkflow(ctx, workflowID, runID),
+	}, nil
 }
 
 // ExecuteSomeWorkflow2 starts a SomeWorkflow2 workflow
@@ -186,32 +212,6 @@ func (c *workflowClient) StartSomeWorkflow3WithSomeSignal2(ctx context.Context, 
 	return &someWorkflow3Run{
 		client: c,
 		run:    run,
-	}, nil
-}
-
-// ExecuteSomeWorkflow1 starts a SomeWorkflow1 workflow
-func (c *workflowClient) ExecuteSomeWorkflow1(ctx context.Context, opts *client.StartWorkflowOptions, req *SomeWorkflow1Request) (SomeWorkflow1Run, error) {
-	if opts == nil {
-		opts = &client.StartWorkflowOptions{}
-	}
-	if opts.TaskQueue == "" {
-		opts.TaskQueue = "my-task-queue"
-	}
-	run, err := c.client.ExecuteWorkflow(ctx, *opts, SomeWorkflow1Name, req)
-	if run == nil || err != nil {
-		return nil, err
-	}
-	return &someWorkflow1Run{
-		client: c,
-		run:    run,
-	}, nil
-}
-
-// GetSomeWorkflow1 fetches an existing SomeWorkflow1 execution
-func (c *workflowClient) GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) (SomeWorkflow1Run, error) {
-	return &someWorkflow1Run{
-		client: c,
-		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}, nil
 }
 
@@ -804,19 +804,19 @@ func SomeSignal2External(ctx workflow.Context, workflowID string, runID string, 
 
 // Activities describes available worker activites
 type Activities interface {
-	// SomeActivity2 does some activity thing.
-	SomeActivity2(ctx context.Context, req *SomeActivity2Request) error
 	// SomeActivity3 does some activity thing.
 	SomeActivity3(ctx context.Context, req *SomeActivity3Request) (*SomeActivity3Response, error)
 	// SomeActivity1 does some activity thing.
 	SomeActivity1(ctx context.Context) error
+	// SomeActivity2 does some activity thing.
+	SomeActivity2(ctx context.Context, req *SomeActivity2Request) error
 }
 
 // RegisterActivities registers activities with a worker
 func RegisterActivities(r worker.Registry, activities Activities) {
+	RegisterSomeActivity3(r, activities.SomeActivity3)
 	RegisterSomeActivity1(r, activities.SomeActivity1)
 	RegisterSomeActivity2(r, activities.SomeActivity2)
-	RegisterSomeActivity3(r, activities.SomeActivity3)
 }
 
 // RegisterSomeActivity1 registers a SomeActivity1 activity
@@ -901,6 +901,11 @@ func SomeActivity2(ctx workflow.Context, opts *workflow.ActivityOptions, req *So
 		activityOpts := workflow.GetActivityOptions(ctx)
 		opts = &activityOpts
 	}
+	if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{
+			MaximumInterval: 30000000000, // 30s
+		}
+	}
 	if opts.StartToCloseTimeout == 0 {
 		opts.StartToCloseTimeout = 10000000000 // 10s
 	}
@@ -915,6 +920,11 @@ func SomeActivity2Local(ctx workflow.Context, opts *workflow.LocalActivityOption
 	if opts == nil {
 		activityOpts := workflow.GetLocalActivityOptions(ctx)
 		opts = &activityOpts
+	}
+	if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{
+			MaximumInterval: 30000000000, // 30s
+		}
 	}
 	if opts.StartToCloseTimeout == 0 {
 		opts.StartToCloseTimeout = 10000000000 // 10s
