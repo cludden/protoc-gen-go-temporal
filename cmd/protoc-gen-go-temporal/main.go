@@ -9,18 +9,24 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-var Version = "dev"
+var (
+	version = "dev"
+	commit  = "latest"
+)
 
 func main() {
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("protoc-gen-go-temporal: %s\n", Version)
+		fmt.Printf("protoc-gen-go-temporal: %s\n", version)
 		fmt.Printf("go: %s\n", runtime.Version())
 		return
 	}
 
-	p := plugin.Plugin{}
+	p := plugin.Plugin{
+		Commit:  commit,
+		Version: version,
+	}
 
 	opts := protogen.Options{
 		ParamFunc: p.Param,

@@ -1,9 +1,6 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
 project_name: protoc-gen-go_temporal
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod tidy
 builds:
   - id: protoc-gen-go-temporal
@@ -17,6 +14,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}"
 archives:
   - files:
       - LICENSE.md
@@ -36,3 +35,11 @@ release:
     name: protoc-gen-go-temporal
 signs:
   - artifacts: checksum
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}" # set this environment variable for your signing key
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
