@@ -6,5 +6,6 @@ breaking:
   use:
     - FILE
 lint:
+  allow_comment_ignores: true
   use:
     - BASIC

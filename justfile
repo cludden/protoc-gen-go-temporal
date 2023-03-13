@@ -5,7 +5,7 @@ _default:
 build:
     #!/usr/bin/env bash
     set -euo pipefail
-    goreleaser release --rm-dist --snapshot
+    goreleaser build --rm-dist --snapshot
 
 # execute code generation
 gen:
@@ -24,7 +24,7 @@ install:
     if [ "{{ os() }}" = "macos" ]; then
         cp ./dist/protoc-gen-go-temporal_darwin_amd64/protoc-gen-go_temporal /usr/local/bin/
     else
-        cp ./dist/protoc-gen-go-temporal_linux_amd64/protoc-gen-go_temporal /usr/local/bin/
+        cp ./dist/protoc-gen-go-temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
     fi
     
 # run tests

@@ -81,7 +81,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, query := range svc.queriesOrdered {
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("% sends a %s query to an existing workflow", query, query)
+			methods.Commentf("%s sends a %s query to an existing workflow", query, query)
 			methods.Id(query).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -101,7 +101,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, signal := range svc.signalsOrdered {
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("% sends a %s signal to an existing workflow", signal, signal)
+			methods.Commentf("%s sends a %s signal to an existing workflow", signal, signal)
 			methods.Id(signal).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
