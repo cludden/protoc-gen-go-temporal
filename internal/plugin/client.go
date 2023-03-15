@@ -672,22 +672,22 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 	}
 
 	// set default id reuse policy
-	var defaultPolicy string
+	var idReusePolicy string
 	switch opts.GetDefaultOptions().GetIdReusePolicy() {
-	case temporalv1.IDReusePolicy_ALLOW_DUPLICATE:
-		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
-	case temporalv1.IDReusePolicy_ALLOW_DUPLICATE_FAILED_ONLY:
-		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
-	case temporalv1.IDReusePolicy_REJECT_DUPLICATE:
-		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
-	case temporalv1.IDReusePolicy_TERMINATE_IF_RUNNING:
-		defaultPolicy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
+	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE:
+		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
+	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY:
+		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
+	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE:
+		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
+	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING:
+		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
 	}
 
-	if defaultPolicy != "" {
+	if idReusePolicy != "" {
 		fn.If(g.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).
 			Block(
-				g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, defaultPolicy),
+				g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, idReusePolicy),
 			)
 	}
 
@@ -710,5 +710,33 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 			Block(
 				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 			)
+	}
+
+	// add child workflow default options
+	if child {
+		if ns := opts.GetDefaultOptions().GetNamespace(); ns != "" {
+			fn.If(g.Id("opts").Dot("Namespace").Op("==").Lit("")).Block(
+				g.Id("opts").Dot("Namespace").Op("=").Lit(ns),
+			)
+		}
+
+		var parentClosePolicy string
+		switch opts.GetDefaultOptions().GetParentClosePolicy() {
+		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
+			parentClosePolicy = "PARENT_CLOSE_POLICY_ABANDON"
+		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+			parentClosePolicy = "PARENT_CLOSE_POLICY_REQUEST_CANCEL"
+		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE:
+			parentClosePolicy = "PARENT_CLOSE_POLICY_TERMINATE"
+		}
+		if parentClosePolicy != "" {
+			fn.If(g.Id("opts").Dot("ParentClosePolicy").Op("==").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).Block(
+				g.Id("opts").Dot("ParentClosePolicy").Op("=").Qual(enumsPkg, parentClosePolicy),
+			)
+		}
+
+		if opts.GetDefaultOptions().GetWaitForCancellation() {
+			fn.Id("opts").Dot("WaitForCancellation").Op("=").Lit(true)
+		}
 	}
 }

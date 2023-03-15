@@ -18,7 +18,7 @@ service Foo {
       default_options {
         id_fields: 'account'
         id_prefix: 'lock'
-        id_reuse_policy: ALLOW_DUPLICATE
+        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
         execution_timeout: { seconds: 3600 }
       }
       signal: { ref: 'AcquireLease', start: true }
@@ -53,7 +53,7 @@ service Foo {
       default_options {
         id_fields: 'src,dest,uuid()'
         id_prefix: 'transfer'
-        id_reuse_policy: ALLOW_DUPLICATE_FAILED_ONLY
+        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
         execution_timeout: { seconds: 3600 }
       }
       signal: { ref: 'LeaseAcquired' }
