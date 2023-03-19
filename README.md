@@ -1,8 +1,8 @@
 # protoc-gen-go-temporal
 
-a protobuf generator for temporal clients and workers
+a protoc plugin for generating temporal clients and workers from protobuf schemas
 
-based a fork of [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
+inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
 
 ## Getting Started
 1. Install [buf](https://docs.buf.build/installation)
