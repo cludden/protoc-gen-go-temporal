@@ -17,9 +17,29 @@ func (svc *Service) genClientInterface(f *g.File) {
 	f.Type().Id("Client").InterfaceFunc(func(methods *g.Group) {
 		for _, workflow := range svc.workflowsOrdered {
 			opts := svc.workflows[workflow]
-			// generate Execute<Workflow> method
+
 			method := svc.methods[workflow]
 			hasInput := !isEmpty(method.Input)
+			hasOutput := !isEmpty(method.Output)
+
+			// generate <Workflow> method
+			methods.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+			methods.Id(workflow).
+				ParamsFunc(func(args *g.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+					if hasInput {
+						args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+					}
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				})
+
+			// generate Execute<Workflow> method
 			methods.Commentf("Execute%s executes a %s workflow", workflow, workflow)
 			methods.Id(fmt.Sprintf("Execute%s", workflow)).
 				ParamsFunc(func(args *g.Group) {
@@ -363,6 +383,51 @@ func (svc *Service) genClientConstructor(f *g.File) {
 		)
 }
 
+// genClientWorkflow generates an <Workflow> client method
+func (svc *Service) genClientWorkflow(f *g.File, workflow string) {
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
+	f.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+	f.Func().
+		Params(g.Id("c").Op("*").Id("workflowClient")).
+		Id(workflow).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+			if hasInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+		}).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasOutput {
+				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(fn *g.Group) {
+			// execute workflow
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(fmt.Sprintf("Execute%s", workflow)).CallFunc(func(args *g.Group) {
+				args.Id("ctx")
+				args.Id("opts")
+				if hasInput {
+					args.Id("req")
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.ReturnFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Nil()
+					}
+					returnVals.Err()
+				}),
+			)
+			fn.Return(
+				g.Id("run").Dot("Get").Call(g.Id("ctx")),
+			)
+		})
+}
+
 // genClientWorkflowExecute generates an Execute<Workflow> client method
 func (svc *Service) genClientWorkflowExecute(f *g.File, workflow string) {
 	method := svc.methods[workflow]
@@ -391,7 +456,7 @@ func (svc *Service) genClientWorkflowExecute(f *g.File, workflow string) {
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Op("*").Id("opts")
-				args.Id(fmt.Sprintf("%sName", workflow))
+				args.Id(fmt.Sprintf("%sWorkflowName", workflow))
 				if hasInput {
 					args.Id("req")
 				}
@@ -473,14 +538,14 @@ func (svc *Service) genClientSignalWithStart(f *g.File, workflow, signal string)
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("opts").Dot("ID")
-				args.Id(fmt.Sprintf("%sName", signal))
+				args.Id(fmt.Sprintf("%sSignalName", signal))
 				if hasSignalInput {
 					args.Id("signal")
 				} else {
 					args.Nil()
 				}
 				args.Op("*").Id("opts")
-				args.Id(fmt.Sprintf("%sName", workflow))
+				args.Id(fmt.Sprintf("%sWorkflowName", workflow))
 				if hasWorkflowInput {
 					args.Id("req")
 				}
@@ -525,7 +590,7 @@ func (svc *Service) genClientQueryMethod(f *g.File, query string) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
-					args.Id(fmt.Sprintf("%sName", query))
+					args.Id(fmt.Sprintf("%sQueryName", query))
 					if hasInput {
 						args.Id("query")
 					}
@@ -570,7 +635,7 @@ func (svc *Service) genClientSignalMethod(f *g.File, signal string) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
-					args.Id(fmt.Sprintf("%sName", signal))
+					args.Id(fmt.Sprintf("%sSignalName", signal))
 					if hasInput {
 						args.Id("signal")
 					} else {

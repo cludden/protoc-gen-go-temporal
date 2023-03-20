@@ -44,7 +44,7 @@ func (svc *Service) genRegisterActivities(f *g.File) {
 		).
 		BlockFunc(func(fn *g.Group) {
 			for _, activity := range svc.activitiesOrdered {
-				fn.Id(fmt.Sprintf("Register%s", activity)).Call(
+				fn.Id(fmt.Sprintf("Register%sActivity", activity)).Call(
 					g.Id("r"), g.Id("activities").Dot(activity),
 				)
 			}
@@ -56,8 +56,8 @@ func (svc *Service) genRegisterActivity(f *g.File, activity string) {
 	method := svc.methods[activity]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	f.Commentf("Register%s registers a %s activity", activity, activity)
-	f.Func().Id(fmt.Sprintf("Register%s", activity)).
+	f.Commentf("Register%sActivity registers a %s activity", activity, activity)
+	f.Func().Id(fmt.Sprintf("Register%sActivity", activity)).
 		Params(
 			g.Id("r").Qual(workerPkg, "Registry"),
 			g.Id("fn").Func().
@@ -77,7 +77,7 @@ func (svc *Service) genRegisterActivity(f *g.File, activity string) {
 		Block(
 			g.Id("r").Dot("RegisterActivityWithOptions").Call(
 				g.Id("fn"), g.Qual(activityPkg, "RegisterOptions").Block(
-					g.Id("Name").Op(":").Id(fmt.Sprintf("%sName", activity)).Op(","),
+					g.Id("Name").Op(":").Id(fmt.Sprintf("%sActivityName", activity)).Op(","),
 				),
 			),
 		)
@@ -205,6 +205,7 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 			g.Op("*").Id(fmt.Sprintf("%sFuture", method.GoName)),
 		).
 		BlockFunc(func(fn *g.Group) {
+			// initialize activity options if nil
 			fn.If(g.Id("opts").Op("==").Nil()).BlockFunc(func(bl *g.Group) {
 				optionsFn := "GetActivityOptions"
 				if local {
@@ -215,6 +216,8 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 				)
 				bl.Id("opts").Op("=").Op("&").Id("activityOpts")
 			})
+
+			// set default retry policy
 			if policy := opts.GetRetryPolicy(); policy != nil {
 				fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
 					g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").BlockFunc(func(fields *g.Group) {
@@ -236,27 +239,36 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 					}),
 				)
 			}
-			if timeout := opts.GetHeartbeatTimeout(); timeout.IsValid() {
+
+			// set default heartbeat timeout
+			if timeout := opts.GetHeartbeatTimeout(); !local && timeout.IsValid() {
 				fn.If(g.Id("opts").Dot("HeartbeatTimeout").Op("==").Lit(0)).Block(
 					g.Id("opts").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
 
+			// set default schedule to close timeout
 			if timeout := opts.GetScheduleToCloseTimeout(); timeout.IsValid() {
 				fn.If(g.Id("opts").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
 					g.Id("opts").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
-			if timeout := opts.GetScheduleToStartTimeout(); timeout.IsValid() {
+
+			// set default schedule to start timeout
+			if timeout := opts.GetScheduleToStartTimeout(); !local && timeout.IsValid() {
 				fn.If(g.Id("opts").Dot("ScheduleToStartTimeout").Op("==").Lit(0)).Block(
 					g.Id("opts").Dot("ScheduleToStartTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
+
+			// set default start to close timeout
 			if timeout := opts.GetStartToCloseTimeout(); timeout.IsValid() {
 				fn.If(g.Id("opts").Dot("StartToCloseTimeout").Op("==").Lit(0)).Block(
 					g.Id("opts").Dot("StartToCloseTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
+
+			// inject ctx with activity options
 			if local {
 				fn.Id("ctx").Op("=").Qual(workflowPkg, "WithLocalActivityOptions").Call(
 					g.Id("ctx"), g.Op("*").Id("opts"),
@@ -267,13 +279,27 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 					g.Id("ctx"), g.Op("*").Id("opts"),
 				)
 			}
+
+			// if activity function nil for local activity, replace with activity name
+			if local {
+				fn.Var().Id("activity").Any()
+				fn.If(g.Id("fn").Op("==").Nil()).
+					Block(
+						g.Id("activity").Op("=").Id(fmt.Sprintf("%sActivityName", activity)),
+					).
+					Else().
+					Block(
+						g.Id("activity").Op("=").Id("fn"),
+					)
+			}
+
 			fn.Return(
-				g.Op("&").Id(fmt.Sprintf("%sFuture", method.GoName)).BlockFunc(func(bl *g.Group) {
+				g.Op("&").Id(fmt.Sprintf("%sFuture", method.GoName)).ValuesFunc(func(bl *g.Group) {
 					future := bl.Id("Future").Op(":")
 					if local {
 						future.Qual(workflowPkg, "ExecuteLocalActivity").CallFunc(func(returnVals *g.Group) {
 							returnVals.Id("ctx")
-							returnVals.Id("fn")
+							returnVals.Id("activity")
 							if hasInput {
 								returnVals.Id("req")
 							}
@@ -281,7 +307,7 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 					} else {
 						future.Qual(workflowPkg, "ExecuteActivity").CallFunc(func(returnVals *g.Group) {
 							returnVals.Id("ctx")
-							returnVals.Id(fmt.Sprintf("%sName", method.GoName))
+							returnVals.Id(fmt.Sprintf("%sActivityName", method.GoName))
 							if hasInput {
 								returnVals.Id("req")
 							}

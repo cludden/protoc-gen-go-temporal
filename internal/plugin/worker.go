@@ -21,7 +21,7 @@ func (svc *Service) genWorkflowsInterface(f *g.File) {
 					g.Id("input").Op("*").Id(fmt.Sprintf("%sInput", workflow)),
 				).
 				Params(
-					g.Id(workflow),
+					g.Id(fmt.Sprintf("%sWorkflow", workflow)),
 					g.Error(),
 				)
 		}
@@ -40,7 +40,7 @@ func (svc *Service) genRegisterWorkflows(f *g.File) {
 		).
 		BlockFunc(func(fn *g.Group) {
 			for _, workflow := range svc.workflowsOrdered {
-				fn.Id(fmt.Sprintf("Register%s", workflow)).Call(
+				fn.Id(fmt.Sprintf("Register%sWorkflow", workflow)).Call(
 					g.Id("r"), g.Id("workflows").Dot(workflow),
 				)
 			}
@@ -63,7 +63,7 @@ func (svc *Service) genWorkflowWorker(f *g.File, workflow string) {
 					g.Op("*").Id(fmt.Sprintf("%sInput", method.GoName)),
 				).
 				Params(
-					g.Id(method.GoName),
+					g.Id(fmt.Sprintf("%sWorkflow", method.GoName)),
 					g.Error(),
 				),
 		)
@@ -105,7 +105,7 @@ func (svc *Service) genWorkflowWorkerExecuteMethod(f *g.File, workflow string) {
 					signal := s.GetRef()
 					fields.Id(signal).Op(":").Op("&").Id(signal).Block(
 						g.Id("Channel").Op(":").Qual(workflowPkg, "GetSignalChannel").Call(
-							g.Id("ctx"), g.Id(fmt.Sprintf("%sName", signal)),
+							g.Id("ctx"), g.Id(fmt.Sprintf("%sSignalName", signal)),
 						).Op(","),
 					).Op(",")
 				}
@@ -129,7 +129,7 @@ func (svc *Service) genWorkflowWorkerExecuteMethod(f *g.File, workflow string) {
 				query := q.GetRef()
 				fn.If(
 					g.Err().Op(":=").Qual(workflowPkg, "SetQueryHandler").Call(
-						g.Id("ctx"), g.Id(fmt.Sprintf("%sName", query)), g.Id("wf").Dot(query),
+						g.Id("ctx"), g.Id(fmt.Sprintf("%sQueryName", query)), g.Id("wf").Dot(query),
 					),
 					g.Err().Op("!=").Nil(),
 				).Block(
@@ -171,7 +171,7 @@ func (svc *Service) genWorkflowWorkerBuilderFunction(f *g.File, workflow string)
 					g.Op("*").Id(fmt.Sprintf("%sInput", method.GoName)),
 				).
 				Params(
-					g.Id(method.GoName),
+					g.Id(fmt.Sprintf("%sWorkflow", method.GoName)),
 					g.Error(),
 				),
 		).
@@ -203,9 +203,9 @@ func (svc *Service) genRegisterWorkflow(f *g.File, workflow string) {
 	builderName := fmt.Sprintf("build%s", method.GoName)
 
 	// generate Register<Workflow> function
-	f.Commentf("Register%s registers a %s workflow with the given worker", method.GoName, method.GoName)
+	f.Commentf("Register%sWorkflow registers a %s workflow with the given worker", method.GoName, method.GoName)
 	f.Func().
-		Id(fmt.Sprintf("Register%s", method.GoName)).
+		Id(fmt.Sprintf("Register%sWorkflow", method.GoName)).
 		Params(
 			g.Id("r").Qual(workerPkg, "Registry"),
 			g.Id("wf").
@@ -215,7 +215,7 @@ func (svc *Service) genRegisterWorkflow(f *g.File, workflow string) {
 					g.Op("*").Id(fmt.Sprintf("%sInput", method.GoName)),
 				).
 				Params(
-					g.Id(method.GoName),
+					g.Id(fmt.Sprintf("%sWorkflow", method.GoName)),
 					g.Error(),
 				),
 			// g.Id("wf").Id("Workflows"),
@@ -224,7 +224,7 @@ func (svc *Service) genRegisterWorkflow(f *g.File, workflow string) {
 			g.Id("r").Dot("RegisterWorkflowWithOptions").Call(
 				g.Id(builderName).Call(g.Id("wf")),
 				g.Qual(workflowPkg, "RegisterOptions").Values(
-					g.Id("Name").Op(":").Id(fmt.Sprintf("%sName", method.GoName)),
+					g.Id("Name").Op(":").Id(fmt.Sprintf("%sWorkflowName", method.GoName)),
 				),
 			),
 		)
@@ -236,8 +236,8 @@ func (svc *Service) genWorkflowInterface(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasOutput := !isEmpty(method.Output)
 	// generate workflow interface
-	f.Commentf("%s describes a %s workflow implementation", workflow, workflow)
-	f.Type().Id(workflow).InterfaceFunc(func(methods *g.Group) {
+	f.Commentf("%sWorkflow describes a %s workflow implementation", workflow, workflow)
+	f.Type().Id(fmt.Sprintf("%sWorkflow", workflow)).InterfaceFunc(func(methods *g.Group) {
 		methods.Commentf("Execute a %s workflow", workflow).Line().
 			Id("Execute").
 			Params(
@@ -313,7 +313,7 @@ func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
 				g.Id(fmt.Sprintf("%sChildRun", workflow)).Block(
 					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
 						args.Id("ctx")
-						args.Lit(fmt.Sprintf("%sName", workflow))
+						args.Lit(fmt.Sprintf("%sWorkflowName", workflow))
 						if hasInput {
 							args.Id("req")
 						} else {
@@ -491,7 +491,7 @@ func (svc *Service) genWorkflowChildRunSignals(f *g.File, workflow string) {
 			Block(
 				g.Return(g.Id("r").Dot("Future").Dot("SignalChildWorkflow").CallFunc(func(args *g.Group) {
 					args.Id("ctx")
-					args.Id(fmt.Sprintf("%sName", signal))
+					args.Id(fmt.Sprintf("%sSignalName", signal))
 					if hasInput {
 						args.Id("input")
 					} else {
@@ -648,7 +648,7 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
-					args.Id(fmt.Sprintf("%sName", signal))
+					args.Id(fmt.Sprintf("%sSignalName", signal))
 					if hasInput {
 						args.Id("req")
 					} else {

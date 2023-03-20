@@ -18,11 +18,11 @@ type someWorkflow1 struct {
 }
 
 func Register(r worker.Registry) {
-	simplepb.RegisterSomeWorkflow1(r, (&Workflows{}).SomeWorkflow1)
+	simplepb.RegisterSomeWorkflow1Workflow(r, (&Workflows{}).SomeWorkflow1)
 	simplepb.RegisterActivities(r, Activities)
 }
 
-func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1Input) (simplepb.SomeWorkflow1, error) {
+func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1Input) (simplepb.SomeWorkflow1Workflow, error) {
 	return &someWorkflow1{SomeWorkflow1Input: in, sel: workflow.NewSelector(ctx)}, nil
 }
 
