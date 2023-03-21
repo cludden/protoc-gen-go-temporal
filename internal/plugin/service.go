@@ -6,6 +6,7 @@ import (
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
+	"github.com/hashicorp/go-multierror"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 )
@@ -38,7 +39,7 @@ type Service struct {
 }
 
 // parseService extracts a Service from a protogen.Service value
-func parseService(p *protogen.Plugin, service *protogen.Service) *Service {
+func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, error) {
 	svc := Service{
 		Plugin:     p,
 		Service:    service,
@@ -81,7 +82,34 @@ func parseService(p *protogen.Plugin, service *protogen.Service) *Service {
 	sort.Strings(svc.queriesOrdered)
 	sort.Strings(svc.signalsOrdered)
 	sort.Strings(svc.workflowsOrdered)
-	return &svc
+
+	errs := multierror.Append(nil)
+	for _, workflow := range svc.workflowsOrdered {
+		opts := svc.workflows[workflow]
+
+		// ensure workflow signals are defined
+		for _, signalOpts := range opts.GetSignal() {
+			signal := signalOpts.GetRef()
+			if _, ok := svc.signals[signal]; !ok {
+				errs = multierror.Append(errs, fmt.Errorf("workflow  %q references undefined signal: %q", workflow, signal))
+			}
+		}
+
+		// ensure workflow queries are defined
+		for _, queryOpts := range opts.GetQuery() {
+			query := queryOpts.GetRef()
+			if _, ok := svc.queries[query]; !ok {
+				errs = multierror.Append(errs, fmt.Errorf("workflow  %q references undefined query: %q", workflow, query))
+			}
+		}
+	}
+	for _, signal := range svc.signalsOrdered {
+		handler := svc.methods[signal]
+		if !isEmpty(handler.Output) {
+			errs = multierror.Append(errs, fmt.Errorf("expected signal %q output to be google.protobuf.Empty, got: %s", signal, handler.Output.GoIdent.GoName))
+		}
+	}
+	return &svc, errs.ErrorOrNil()
 }
 
 // render writes the temporal service to the given File

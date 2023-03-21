@@ -36,7 +36,10 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 
 		var hasContent bool
 		for _, service := range file.Services {
-			svc := parseService(plugin, service)
+			svc, err := parseService(plugin, service)
+			if err != nil {
+				return fmt.Errorf("error parsing service %s: %w", service.GoName, err)
+			}
 			if len(svc.activities) == 0 && len(svc.workflows) == 0 && len(svc.signals) == 0 && len(svc.queries) == 0 {
 				continue
 			}

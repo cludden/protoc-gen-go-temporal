@@ -9,7 +9,8 @@ import "temporal/v1/temporal.proto";
 
 service Foo {
   option (temporal.v1.service) = {
-    task_queue: "foo-v1"
+    namespace: 'foo'
+    task_queue: 'foo-v1'
   };
 
   // LockAccount provides a mutex for an account

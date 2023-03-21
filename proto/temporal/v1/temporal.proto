@@ -89,6 +89,8 @@ message RetryPolicy {
 }
 
 message ServiceOptions {
+  // Default namespace for child workflows, activities
+  string namespace = 2;
   // Default task queue for all workflows, activities
   string task_queue = 1;
 }

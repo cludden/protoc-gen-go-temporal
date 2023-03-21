@@ -779,7 +779,11 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 
 	// add child workflow default options
 	if child {
-		if ns := opts.GetDefaultOptions().GetNamespace(); ns != "" {
+		ns := opts.GetDefaultOptions().GetNamespace()
+		if ns == "" {
+			ns = svc.opts.GetNamespace()
+		}
+		if ns != "" {
 			fn.If(g.Id("opts").Dot("Namespace").Op("==").Lit("")).Block(
 				g.Id("opts").Dot("Namespace").Op("=").Lit(ns),
 			)
