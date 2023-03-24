@@ -678,62 +678,63 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 		idFieldName = "WorkflowID"
 	}
 
-	// set workflow id if unset and  id field and/or prefix defined
-	idFields, idPrefix := opts.GetDefaultOptions().GetIdFields(), opts.GetDefaultOptions().GetIdPrefix()
-	idDelimiter := opts.GetDefaultOptions().GetIdDelimiter()
+	// set workflow id if unset
+	idFields, idDelimiter := opts.GetDefaultOptions().GetIdFields(), opts.GetDefaultOptions().GetIdDelimiter()
 	if idDelimiter == "" {
 		idDelimiter = "/"
 	}
-	if idPrefix != "" || (hasInput && idFields != "") {
-		fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-			// build list of id parameters from options
-			var fieldFormats []string
-			var fields []g.Code
+	fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+		if idFields == "" {
+			b.Id("opts").Dot(idFieldName).Op("=").Qual(uuidPkg, "New").Call().Dot("String").Call()
+			return
+		}
 
-			// if set, add prefix to id params
-			if idPrefix != "" {
-				fields = append(fields, g.Id(fmt.Sprintf("%sIDPrefix", workflow)))
-				fieldFormats = append(fieldFormats, "%s")
-			}
+		// build list of id parameters from options
+		var fieldFormats []string
+		var fields []g.Code
 
-			// if no id_fields provided, default to uuid()
-			if idFields == "" {
-				idFields = "uuid()"
-			}
-
-			// create index of input message fields
-			fieldsByName := map[string]*protogen.Field{}
+		// create index of input message fields
+		fieldsByName := map[string]*protogen.Field{}
+		if hasInput {
 			for _, field := range method.Input.Fields {
 				fieldsByName[string(field.Desc.Name())] = field
 			}
+		}
 
-			// add id fields
-			for _, idField := range strings.Split(idFields, ",") {
-				switch idField {
-				case "uuid()":
-					fields = append(fields, g.Qual(uuidPkg, "New").Call().Dot("String").Call())
-					fieldFormats = append(fieldFormats, "%s")
-				default:
-					field, ok := fieldsByName[idField]
-					if !ok {
-						svc.Plugin.Error(fmt.Errorf("workflow default options references nonexistent id field: %s", idField))
-						return
-					}
-					// add field to list
-					fields = append(fields, g.Id("req").Dot(fmt.Sprintf("Get%s", field.GoName)).Call())
-					fieldFormats = append(fieldFormats, "%v")
+		// add id fields
+		for _, idField := range strings.Split(idFields, ",") {
+			switch idField {
+			case "uuid()":
+				fields = append(fields, g.Qual(uuidPkg, "New").Call().Dot("String").Call())
+				fieldFormats = append(fieldFormats, "%s")
+			default:
+				field, ok := fieldsByName[idField]
+				if !ok {
+					svc.Plugin.Error(fmt.Errorf("workflow default options references nonexistent id field: %s", idField))
+					return
 				}
+				// add field to list
+				fields = append(fields, g.Id("req").Dot(fmt.Sprintf("Get%s", field.GoName)).Call())
+				fieldFormats = append(fieldFormats, "%v")
 			}
+		}
 
-			if len(fields) == 1 {
-				b.Id("opts").Dot(idFieldName).Op("=").Add(fields[0])
-			} else {
-				b.Id("opts").Dot(idFieldName).Op("=").Qual("fmt", "Sprintf").Call(
-					g.Lit(strings.Join(fieldFormats, idDelimiter)),
-					g.List(fields...),
-				)
-			}
-		})
+		if len(fields) == 1 {
+			b.Id("opts").Dot(idFieldName).Op("=").Add(fields[0])
+		} else {
+			b.Id("opts").Dot(idFieldName).Op("=").Qual("fmt", "Sprintf").Call(
+				g.Lit(strings.Join(fieldFormats, idDelimiter)),
+				g.List(fields...),
+			)
+		}
+	})
+
+	// add id prefix if specified
+	idPrefix := opts.GetDefaultOptions().GetIdPrefix()
+	if idPrefix != "" {
+		fn.If(g.Op("!").Qual("strings", "HasPrefix").Call(g.Id("opts").Dot(idFieldName), g.Id(fmt.Sprintf("%sIDPrefix", workflow)))).Block(
+			g.Id("opts").Dot(idFieldName).Op("=").Qual("fmt", "Sprintf").Call(g.Lit(fmt.Sprintf("%%s%s%%s", idDelimiter)), g.Id(fmt.Sprintf("%sIDPrefix", workflow)), g.Id("opts").Dot(idFieldName)),
+		)
 	}
 
 	// set default id reuse policy
