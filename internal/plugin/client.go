@@ -381,6 +381,31 @@ func (svc *Service) genClientConstructor(f *g.File) {
 				),
 			),
 		)
+
+	f.Commentf("NewClientWithOptions initializes a new %s client with the given options", svc.GoName)
+	f.Func().
+		Id("NewClientWithOptions").
+		Params(
+			g.Id("c").Qual(clientPkg, "Client"),
+			g.Id("opts").Qual(clientPkg, "Options"),
+		).
+		Params(
+			g.Id("Client"),
+			g.Error(),
+		).
+		Block(
+			g.Var().Err().Error(),
+			g.List(g.Id("c"), g.Err()).Op("=").Qual(clientPkg, "NewClientFromExisting").Call(g.Id("c"), g.Id("opts")),
+			g.If().Err().Op("!=").Nil().Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client with options: %w"), g.Err())),
+			),
+			g.Return(
+				g.Op("&").Id("workflowClient").Values(
+					g.Id("client").Op(":").Id("c"),
+				),
+				g.Nil(),
+			),
+		)
 }
 
 // genClientWorkflow generates an <Workflow> client method
