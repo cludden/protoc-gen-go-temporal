@@ -3,9 +3,9 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - id: protoc-gen-go-temporal
+  - id: protoc-gen-go_temporal
     binary: protoc-gen-go_temporal
-    main: ./cmd/protoc-gen-go-temporal
+    main: ./cmd/protoc-gen-go_temporal
     env:
       - CGO_ENABLED=0
     goos:
