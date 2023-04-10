@@ -1,0 +1,112 @@
+syntax="proto3";
+
+// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
+package mycompany.mutex.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Mutex {
+  option (temporal.v1.service) = {
+    task_queue: "mutex-v1"
+  };
+
+  // ##########################################################################
+  // Workflows
+  // ##########################################################################
+
+  // Mutex provides a mutex over a shared resource
+  rpc Mutex(MutexRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      default_options {
+        id: 'mutex/${!resource}'
+        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+        execution_timeout: { seconds: 3600 }
+      }
+      signal: { ref: 'AcquireLease', start: true }
+      signal: { ref: 'RenewLease' }
+      signal: { ref: 'RevokeLease' }
+    };
+    option (temporal.v1.activity) = {};
+  }
+
+  // SampleWorkflowWithMutex provides an example of a running workflow that uses
+  // a Mutex workflow to prevent concurrent access to a shared resource
+  rpc SampleWorkflowWithMutex(SampleWorkflowWithMutexRequest) returns (SampleWorkflowWithMutexResponse) {
+    option (temporal.v1.workflow) = {
+      default_options {
+        id: 'sample-workflow-with-mutex/${!resource}/${!uuid_v4()}'
+        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
+        execution_timeout: { seconds: 3600 }
+      }
+      signal: { ref: 'LeaseAcquired' }
+    };
+  }
+
+  // ##########################################################################
+  // Signals
+  // ##########################################################################
+
+  // AcquireLease enqueues a lease on the given resource
+  rpc AcquireLease(AcquireLeaseSignal) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  // LeaseAcquired enqueues a lease on the given resource
+  rpc LeaseAcquired(LeaseAcquiredSignal) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  // RenewLease enqueues a lease on the given resource
+  rpc RenewLease(RenewLeaseSignal) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  // RevokeLease enqueues a lease on the given resource
+  rpc RevokeLease(RevokeLeaseSignal) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+// ############################################################################
+// Workflow Messages
+// ############################################################################
+
+message MutexRequest {
+  string resource = 1;
+}
+
+message SampleWorkflowWithMutexRequest {
+  string resource = 1;
+  string dest = 2;
+  double amount = 3;
+}
+
+message SampleWorkflowWithMutexResponse {
+  string result = 1;
+}
+
+// ############################################################################
+// Signal Messages
+// ############################################################################
+
+message AcquireLeaseSignal {
+  string workflow_id = 1;
+  google.protobuf.Duration timeout = 2;
+}
+
+message LeaseAcquiredSignal {
+  string workflow_id = 1;
+  string run_id = 2;
+  string lease_id = 3;
+}
+
+message RenewLeaseSignal {
+  string lease_id = 1;
+  google.protobuf.Duration timeout = 2;
+}
+
+message RevokeLeaseSignal {
+  string lease_id = 1;
+}

@@ -3,12 +3,10 @@ package plugin
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	pgs "github.com/lyft/protoc-gen-star/v2"
-	"google.golang.org/protobuf/compiler/protogen"
 )
 
 // genClientInterface generates a Client interface for a given service
@@ -703,63 +701,21 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 		idFieldName = "WorkflowID"
 	}
 
-	// set workflow id if unset
-	idFields, idDelimiter := opts.GetDefaultOptions().GetIdFields(), opts.GetDefaultOptions().GetIdDelimiter()
-	if idDelimiter == "" {
-		idDelimiter = "/"
-	}
-	fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-		if idFields == "" {
-			b.Id("opts").Dot(idFieldName).Op("=").Qual(uuidPkg, "New").Call().Dot("String").Call()
-			return
-		}
-
-		// build list of id parameters from options
-		var fieldFormats []string
-		var fields []g.Code
-
-		// create index of input message fields
-		fieldsByName := map[string]*protogen.Field{}
-		if hasInput {
-			for _, field := range method.Input.Fields {
-				fieldsByName[string(field.Desc.Name())] = field
-			}
-		}
-
-		// add id fields
-		for _, idField := range strings.Split(idFields, ",") {
-			switch idField {
-			case "uuid()":
-				fields = append(fields, g.Qual(uuidPkg, "New").Call().Dot("String").Call())
-				fieldFormats = append(fieldFormats, "%s")
-			default:
-				field, ok := fieldsByName[idField]
-				if !ok {
-					svc.Plugin.Error(fmt.Errorf("workflow default options references nonexistent id field: %s", idField))
-					return
+	// set workflow id if unset and  id field and/or prefix defined
+	if idExpr := opts.GetDefaultOptions().GetId(); idExpr != "" {
+		fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+				args.Id(fmt.Sprintf("%sIDExpression", workflow))
+				if hasInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
 				}
-				// add field to list
-				fields = append(fields, g.Id("req").Dot(fmt.Sprintf("Get%s", field.GoName)).Call())
-				fieldFormats = append(fieldFormats, "%v")
-			}
-		}
-
-		if len(fields) == 1 {
-			b.Id("opts").Dot(idFieldName).Op("=").Add(fields[0])
-		} else {
-			b.Id("opts").Dot(idFieldName).Op("=").Qual("fmt", "Sprintf").Call(
-				g.Lit(strings.Join(fieldFormats, idDelimiter)),
-				g.List(fields...),
+			})
+			b.If(g.Err().Op("==").Nil().Op("&&").Id("id").Op("!=").Lit("")).Block(
+				g.Id("opts").Dot(idFieldName).Op("=").Id("id"),
 			)
-		}
-	})
-
-	// add id prefix if specified
-	idPrefix := opts.GetDefaultOptions().GetIdPrefix()
-	if idPrefix != "" {
-		fn.If(g.Op("!").Qual("strings", "HasPrefix").Call(g.Id("opts").Dot(idFieldName), g.Id(fmt.Sprintf("%sIDPrefix", workflow)))).Block(
-			g.Id("opts").Dot(idFieldName).Op("=").Qual("fmt", "Sprintf").Call(g.Lit(fmt.Sprintf("%%s%s%%s", idDelimiter)), g.Id(fmt.Sprintf("%sIDPrefix", workflow)), g.Id("opts").Dot(idFieldName)),
-		)
+		})
 	}
 
 	// set default id reuse policy

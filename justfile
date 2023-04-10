@@ -14,7 +14,8 @@ gen:
     rm -rf {{ justfile_directory() }}/gen/*
     buf lint
     buf generate
-    mv gen/example.pb.go gen/example_temporal.pb.go example/
+    mv gen/example.pb.go gen/example_temporal.pb.go example/mutexv1/
+    go mod tidy
 
 # install local build
 install:
@@ -22,9 +23,9 @@ install:
     set -euo pipefail
     just build
     if [ "{{ os() }}" = "macos" ]; then
-        cp ./dist/protoc-gen-go-temporal_darwin_amd64/protoc-gen-go_temporal /usr/local/bin/
+        cp ./dist/protoc-gen-go_temporal_darwin_amd64/protoc-gen-go_temporal /usr/local/bin/
     else
-        cp ./dist/protoc-gen-go-temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
+        cp ./dist/protoc-gen-go_temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
     fi
     
 # run tests

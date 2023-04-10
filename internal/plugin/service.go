@@ -13,13 +13,14 @@ import (
 
 // imported packages
 const (
-	activityPkg = "go.temporal.io/sdk/activity"
-	clientPkg   = "go.temporal.io/sdk/client"
-	enumsPkg    = "go.temporal.io/api/enums/v1"
-	temporalPkg = "go.temporal.io/sdk/temporal"
-	uuidPkg     = "github.com/google/uuid"
-	workflowPkg = "go.temporal.io/sdk/workflow"
-	workerPkg   = "go.temporal.io/sdk/worker"
+	activityPkg   = "go.temporal.io/sdk/activity"
+	clientPkg     = "go.temporal.io/sdk/client"
+	enumsPkg      = "go.temporal.io/api/enums/v1"
+	expressionPkg = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	temporalPkg   = "go.temporal.io/sdk/temporal"
+	uuidPkg       = "github.com/google/uuid"
+	workflowPkg   = "go.temporal.io/sdk/workflow"
+	workerPkg     = "go.temporal.io/sdk/worker"
 )
 
 // Service describes a temporal protobuf service definition
@@ -209,6 +210,12 @@ func (svc *Service) render(f *g.File) {
 
 // genConstants generates constants
 func (svc *Service) genConstants(f *g.File) {
+	// add task queue
+	if taskQueue := svc.opts.GetTaskQueue(); taskQueue != "" {
+		f.Commentf("%sTaskQueue is the default task-queue for a %s worker", svc.GoName, svc.GoName)
+		f.Const().Id(fmt.Sprintf("%sTaskQueue", svc.GoName)).Op("=").Lit(taskQueue)
+	}
+
 	// add workflow names
 	if len(svc.workflows) > 0 {
 		f.Commentf("%s workflow names", svc.GoName)
@@ -220,19 +227,19 @@ func (svc *Service) genConstants(f *g.File) {
 		})
 	}
 
-	// add id prefixes
-	workflowsIdPrefixes := map[string]string{}
+	// add id expressions
+	workflowIdExpressions := [][]string{}
 	for _, workflow := range svc.workflowsOrdered {
 		opts := svc.workflows[workflow]
-		if prefix := opts.GetDefaultOptions().GetIdPrefix(); prefix != "" {
-			workflowsIdPrefixes[workflow] = prefix
+		if expr := opts.GetDefaultOptions().GetId(); expr != "" {
+			workflowIdExpressions = append(workflowIdExpressions, []string{workflow, expr})
 		}
 	}
-	if len(workflowsIdPrefixes) > 0 {
-		f.Commentf("%s id prefixes", svc.GoName)
-		f.Const().DefsFunc(func(defs *g.Group) {
-			for workflow, prefix := range workflowsIdPrefixes {
-				defs.Id(fmt.Sprintf("%sIDPrefix", workflow)).Op("=").Lit(prefix)
+	if len(workflowIdExpressions) > 0 {
+		f.Commentf("%s id expressions", svc.GoName)
+		f.Var().DefsFunc(func(defs *g.Group) {
+			for _, pair := range workflowIdExpressions {
+				defs.Id(fmt.Sprintf("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
 			}
 		})
 	}

@@ -9,7 +9,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type Workflows struct{}
+type Workflows struct {
+	simplepb.Workflows
+}
 
 type someWorkflow1 struct {
 	*simplepb.SomeWorkflow1Input
@@ -18,8 +20,8 @@ type someWorkflow1 struct {
 }
 
 func Register(r worker.Registry) {
-	simplepb.RegisterSomeWorkflow1Workflow(r, (&Workflows{}).SomeWorkflow1)
-	simplepb.RegisterActivities(r, Activities)
+	simplepb.RegisterWorkflows(r, &Workflows{})
+	simplepb.RegisterActivities(r, &Activities{})
 }
 
 func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1Input) (simplepb.SomeWorkflow1Workflow, error) {
@@ -38,8 +40,9 @@ func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Re
 	s.events = append(s.events, "some activity 3 with response "+resp.ResponseVal)
 
 	// Call local activity
-	resp, err = simplepb.SomeActivity3Local(ctx, nil, Activities.SomeActivity3,
-		&simplepb.SomeActivity3Request{RequestVal: "some local activity param"}).Get(ctx)
+	resp, err = simplepb.SomeActivity3Local(ctx, nil, nil, &simplepb.SomeActivity3Request{
+		RequestVal: "some local activity param",
+	}).Get(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -72,22 +75,21 @@ func (s *someWorkflow1) SomeQuery2(req *simplepb.SomeQuery2Request) (*simplepb.S
 	}, nil
 }
 
-type activities struct{}
+type Activities struct{}
 
-var Activities simplepb.Activities = activities{}
 var ActivityEvents []string
 
-func (activities) SomeActivity1(context.Context) error {
+func (Activities) SomeActivity1(context.Context) error {
 	ActivityEvents = append(ActivityEvents, "some activity 1")
 	return nil
 }
 
-func (activities) SomeActivity2(ctx context.Context, req *simplepb.SomeActivity2Request) error {
+func (Activities) SomeActivity2(ctx context.Context, req *simplepb.SomeActivity2Request) error {
 	ActivityEvents = append(ActivityEvents, "some activity 2 with param "+req.RequestVal)
 	return nil
 }
 
-func (activities) SomeActivity3(ctx context.Context, req *simplepb.SomeActivity3Request) (*simplepb.SomeActivity3Response, error) {
+func (Activities) SomeActivity3(ctx context.Context, req *simplepb.SomeActivity3Request) (*simplepb.SomeActivity3Response, error) {
 	ActivityEvents = append(ActivityEvents, "some activity 3 with param "+req.RequestVal)
 	return &simplepb.SomeActivity3Response{ResponseVal: "some response"}, nil
 }

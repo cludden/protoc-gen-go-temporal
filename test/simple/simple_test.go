@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"github.com/cludden/protoc-gen-go-temporal/test/simple"
-	"github.com/google/uuid"
+	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
@@ -15,39 +16,55 @@ import (
 
 func TestSomeWorkflow1(t *testing.T) {
 	require := require.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	temporalClient, err := client.Dial(client.Options{})
+	// initialize docker pool
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		t.Skipf("error initializing docker pool: %v", err)
+	}
+	if err := pool.Client.Ping(); err != nil {
+		t.Skipf("error pinging docker daemon: %v", err)
+	}
+
+	// start temporalite container
+	temporalite, err := pool.Run("cludden/temporalite", "0.3.0", nil)
 	require.NoError(err)
-	defer temporalClient.Close()
+	temporalite.Expire(120)
 
-	taskQueue := uuid.NewString()
-	w := worker.New(temporalClient, taskQueue, worker.Options{})
+	// initialize temporal client
+	var c client.Client
+	require.NoError(retry.Do(func() (err error) {
+		c, err = client.Dial(client.Options{
+			HostPort: temporalite.GetHostPort("7233/tcp"),
+		})
+		return err
+	}, retry.Delay(time.Second*30), retry.MaxDelay(time.Second*30), retry.Attempts(3)))
+	defer c.Close()
+
+	// initialize worker and register workflows, activities
+	w := worker.New(c, simplepb.SimpleTaskQueue, worker.Options{})
 	simple.Register(w)
 	require.NoError(w.Start())
 	defer w.Stop()
 
-	// Start server and worker w/ workflow registered
+	// initialize simple client
+	client := simplepb.NewClient(c)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// Create the client
-	c := simplepb.NewClient(temporalClient)
-
-	// Start the workflow
-	run, err := c.ExecuteSomeWorkflow1(
-		ctx,
-		&client.StartWorkflowOptions{TaskQueue: taskQueue},
-		&simplepb.SomeWorkflow1Request{RequestVal: "some request"},
-	)
+	// start the workflow
+	run, err := client.ExecuteSomeWorkflow1(ctx, nil, &simplepb.SomeWorkflow1Request{
+		Id:         "foo",
+		RequestVal: "some request",
+	})
 	require.NoError(err)
+	require.Regexp("^some-workflow-1/foo/.{32}", run.ID())
 
-	err = run.SomeSignal1(ctx)
-	require.NoError(err)
+	// send signals
+	require.NoError(run.SomeSignal1(ctx))
+	require.NoError(run.SomeSignal2(ctx, &simplepb.SomeSignal2Request{RequestVal: "foo"}))
 
-	err = run.SomeSignal2(ctx, &simplepb.SomeSignal2Request{RequestVal: "foo"})
-	require.NoError(err)
-
-	// Query until we get the right events
+	// query until we get the right events
 	require.Eventually(func() bool {
 		resp, err := run.SomeQuery1(ctx)
 		require.NoError(err)

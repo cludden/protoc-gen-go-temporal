@@ -14,6 +14,9 @@ service Simple {
   // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
     option (temporal.v1.workflow) = {
+      default_options {
+        id: 'some-workflow-1/${!id}/${!uuid_v4()}'
+      }
       query : { ref: 'SomeQuery1' }
       query : { ref: 'SomeQuery2' }
       signal: { ref: 'SomeSignal1' }
@@ -32,8 +35,7 @@ service Simple {
   rpc SomeWorkflow3(SomeWorkflow3Request) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       default_options {
-        id_fields        : 'id,request_val'
-        id_prefix        : 'some-workflow-3'
+        id: 'some-workflow-3/${!id}/${!request_val}'
         task_queue       : 'my-task-queue-2'
         id_reuse_policy  : WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
         execution_timeout: { seconds: 3600 }
@@ -96,6 +98,22 @@ service Simple {
 message SomeWorkflow1Request {
   string request_val = 1;
   string id = 2;
+  int32 int_field = 3;
+  bool bool_field = 4;
+  bytes bytes_field = 5;
+  double double_field = 6;
+  OuterNested outer_single = 7;
+  repeated OuterNested outer_list = 8;
+
+  message OuterNested {
+    string foo = 1;
+    InnerNested inner_single = 2;
+    repeated InnerNested inner_list = 3;
+
+    message InnerNested {
+      string bar = 2;
+    }
+  }
 }
 
 message SomeWorkflow1Response {

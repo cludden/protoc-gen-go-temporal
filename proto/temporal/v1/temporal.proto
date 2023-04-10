@@ -131,14 +131,8 @@ message WorkflowOptions {
     // of a single workflow run.
     google.protobuf.Duration execution_timeout = 6;
 
-    // Delimiter used when joining id prefix and/or id fields
-    string id_delimiter = 2;
-
-    // Comma separated list of input message fields to use as workflow id
-    string id_fields = 3;
-
-    // Prefix to prepend to workflow ids
-    string id_prefix = 4;
+    // Id expression
+    string id = 12;
 
     // Whether server allow reuse of workflow ID
     IDReusePolicy id_reuse_policy = 5;
