@@ -47,7 +47,7 @@ func (wf *MutexWorkflow) Execute(ctx workflow.Context) error {
 
 		log.Info("notifying lease holder")
 		info := workflow.GetInfo(ctx)
-		if err := mutexv1.LeaseAcquiredExternal(ctx, lease.GetWorkflowId(), "", &mutexv1.LeaseAcquiredSignal{
+		if err := mutexv1.LeaseAcquiredExternal(ctx, lease.GetWorkflowId(), "", &mutexv1.LeaseAcquiredRequest{
 			WorkflowId: info.WorkflowExecution.ID,
 			RunId:      info.WorkflowExecution.RunID,
 			LeaseId:    leaseID,
@@ -117,7 +117,7 @@ func (wf *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) (resp *
 	defer func() {
 		wf.log.Info("revoking lease", "lease", lease.GetLeaseId())
 		cancelCtx, _ := workflow.NewDisconnectedContext(ctx)
-		if mutexv1.RevokeLeaseExternal(cancelCtx, lease.GetWorkflowId(), lease.GetRunId(), &mutexv1.RevokeLeaseSignal{
+		if mutexv1.RevokeLeaseExternal(cancelCtx, lease.GetWorkflowId(), lease.GetRunId(), &mutexv1.RevokeLeaseRequest{
 			LeaseId: lease.GetLeaseId(),
 		}).Get(ctx, nil); err != nil {
 			wf.log.Error("error revoking lease", "error", err, "lease", lease.GetLeaseId())
@@ -139,7 +139,7 @@ type Activites struct {
 
 // Mutex locks a shared resource and can be called from a parent workflow
 func (a *Activites) Mutex(ctx context.Context, req *mutexv1.MutexRequest) error {
-	_, err := a.Client.StartMutexWithAcquireLease(ctx, nil, req, &mutexv1.AcquireLeaseSignal{
+	_, err := a.Client.StartMutexWithAcquireLease(ctx, nil, req, &mutexv1.AcquireLeaseRequest{
 		WorkflowId: activity.GetInfo(ctx).WorkflowExecution.ID,
 		Timeout:    durationpb.New(time.Minute * 2),
 	})

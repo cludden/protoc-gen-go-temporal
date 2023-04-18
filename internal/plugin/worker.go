@@ -103,7 +103,7 @@ func (svc *Service) genWorkflowWorkerExecuteMethod(f *g.File, workflow string) {
 				}
 				for _, s := range opts.GetSignal() {
 					signal := s.GetRef()
-					fields.Id(signal).Op(":").Op("&").Id(signal).Block(
+					fields.Id(signal).Op(":").Op("&").Id(fmt.Sprintf("%sSignal", signal)).Block(
 						g.Id("Channel").Op(":").Qual(workflowPkg, "GetSignalChannel").Call(
 							g.Id("ctx"), g.Id(fmt.Sprintf("%sSignalName", signal)),
 						).Op(","),
@@ -284,7 +284,7 @@ func (svc *Service) genWorkflowInput(f *g.File, workflow string) {
 		// add workflow signals
 		for _, signalOpts := range opts.GetSignal() {
 			signal := signalOpts.GetRef()
-			fields.Id(signal).Op("*").Id(signal)
+			fields.Id(signal).Op("*").Id(fmt.Sprintf("%sSignal", signal))
 		}
 	})
 }
@@ -504,8 +504,8 @@ func (svc *Service) genWorkflowChildRunSignals(f *g.File, workflow string) {
 
 // genWorkerSignal generates a worker signal struct
 func (svc *Service) genWorkerSignal(f *g.File, signal string) {
-	f.Commentf("%s describes a %s signal", signal, signal)
-	f.Type().Id(signal).Struct(
+	f.Commentf("%sSignal describes a %s signal", signal, signal)
+	f.Type().Id(fmt.Sprintf("%sSignal", signal)).Struct(
 		g.Id("Channel").Qual(workflowPkg, "ReceiveChannel"),
 	)
 }
@@ -516,7 +516,7 @@ func (svc *Service) genWorkerSignalReceive(f *g.File, signal string) {
 	hasInput := !isEmpty(method.Input)
 	f.Commentf("Receive blocks until a %s signal is received", signal)
 	f.Func().
-		Params(g.Id("s").Op("*").Id(signal)).
+		Params(g.Id("s").Op("*").Id(fmt.Sprintf("%sSignal", signal))).
 		Id("Receive").
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
@@ -552,7 +552,7 @@ func (svc *Service) genWorkerSignalReceiveAsync(f *g.File, signal string) {
 	hasInput := !isEmpty(method.Input)
 	f.Commentf("ReceiveAsync checks for a %s signal without blocking", signal)
 	f.Func().
-		Params(g.Id("s").Op("*").Id(signal)).
+		Params(g.Id("s").Op("*").Id(fmt.Sprintf("%sSignal", signal))).
 		Id("ReceiveAsync").
 		Params().
 		ParamsFunc(func(returnVals *g.Group) {
@@ -586,7 +586,7 @@ func (svc *Service) genWorkerSignalSelect(f *g.File, signal string) {
 	hasInput := !isEmpty(method.Input)
 	f.Commentf("Select checks for a %s signal without blocking", signal)
 	f.Func().
-		Params(g.Id("s").Op("*").Id(signal)).
+		Params(g.Id("s").Op("*").Id(fmt.Sprintf("%sSignal", signal))).
 		Id("Select").
 		Params(
 			g.Id("sel").Qual(workflowPkg, "Selector"),

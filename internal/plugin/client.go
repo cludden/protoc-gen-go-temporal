@@ -99,8 +99,8 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, query := range svc.queriesOrdered {
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("%s sends a %s query to an existing workflow", query, query)
-			methods.Id(query).
+			methods.Commentf("Query%s sends a %s query to an existing workflow", query, query)
+			methods.Id(fmt.Sprintf("Query%s", query)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -119,8 +119,8 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, signal := range svc.signalsOrdered {
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("%s sends a %s signal to an existing workflow", signal, signal)
-			methods.Id(signal).
+			methods.Commentf("Signal%s sends a %s signal to an existing workflow", signal, signal)
+			methods.Id(fmt.Sprintf("Signal%s", signal)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -304,7 +304,7 @@ func (svc *Service) genClientWorkflowRunQueryMethod(f *g.File, workflow string, 
 		).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(query).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(fmt.Sprintf("Query%s", query)).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -337,7 +337,7 @@ func (svc *Service) genClientWorkflowRunSignalMethod(f *g.File, workflow string,
 		Params(g.Error()).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(signal).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(fmt.Sprintf("Signal%s", signal)).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -590,10 +590,10 @@ func (svc *Service) genClientSignalWithStart(f *g.File, workflow, signal string)
 func (svc *Service) genClientQueryMethod(f *g.File, query string) {
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
-	f.Commentf("%s sends a %s query to an existing workflow", query, query)
+	f.Commentf("Query%s sends a %s query to an existing workflow", query, query)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
-		Id(query).
+		Id(fmt.Sprintf("Query%s", query)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -639,10 +639,10 @@ func (svc *Service) genClientQueryMethod(f *g.File, query string) {
 func (svc *Service) genClientSignalMethod(f *g.File, signal string) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
-	f.Commentf("%s sends a %s signal to an existing workflow", signal, signal)
+	f.Commentf("Signal%s sends a %s signal to an existing workflow", signal, signal)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
-		Id(signal).
+		Id(fmt.Sprintf("Signal%s", signal)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
