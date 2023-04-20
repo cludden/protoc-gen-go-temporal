@@ -25,6 +25,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// MutexRequest describes the input to a Mutex workflow/activity
 type MutexRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -72,6 +73,7 @@ func (x *MutexRequest) GetResource() string {
 	return ""
 }
 
+// SampleWorkflowWithMutexRequest describes the input to a SampleWorkflowWithMutex workflow
 type SampleWorkflowWithMutexRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -135,6 +137,7 @@ func (x *SampleWorkflowWithMutexRequest) GetAmount() float64 {
 	return 0
 }
 
+// SampleWorkflowWithMutexResponse describes the output from a SampleWorkflowWithMutex workflow
 type SampleWorkflowWithMutexResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -182,6 +185,7 @@ func (x *SampleWorkflowWithMutexResponse) GetResult() string {
 	return ""
 }
 
+// AcquireLeaseRequest describes the input to a AcquireLease signal
 type AcquireLeaseRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -237,6 +241,7 @@ func (x *AcquireLeaseRequest) GetTimeout() *durationpb.Duration {
 	return nil
 }
 
+// LeaseAcquiredRequest describes the input to a LeaseAcquired signal
 type LeaseAcquiredRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -300,6 +305,7 @@ func (x *LeaseAcquiredRequest) GetLeaseId() string {
 	return ""
 }
 
+// RenewLeaseRequest describes the input to a RenewLease signal
 type RenewLeaseRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -355,6 +361,7 @@ func (x *RenewLeaseRequest) GetTimeout() *durationpb.Duration {
 	return nil
 }
 
+// RevokeLeaseRequest describes the input to a RevokeLease signal
 type RevokeLeaseRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

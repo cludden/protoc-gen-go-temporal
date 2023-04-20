@@ -108,22 +108,22 @@ service Mutex {
   // ##########################################################################
 
   // AcquireLease enqueues a lease on the given resource
-  rpc AcquireLease(AcquireLeaseSignal) returns (google.protobuf.Empty) {
+  rpc AcquireLease(AcquireLeaseRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
-  // LeaseAcquired enqueues a lease on the given resource
-  rpc LeaseAcquired(LeaseAcquiredSignal) returns (google.protobuf.Empty) {
+  // LeaseAcquired notifies the calling workflow that a lease has been required
+  rpc LeaseAcquired(LeaseAcquiredRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
-  // RenewLease enqueues a lease on the given resource
-  rpc RenewLease(RenewLeaseSignal) returns (google.protobuf.Empty) {
+  // RenewLease extends the validity of an existing lease
+  rpc RenewLease(RenewLeaseRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
-  // RevokeLease enqueues a lease on the given resource
-  rpc RevokeLease(RevokeLeaseSignal) returns (google.protobuf.Empty) {
+  // RevokeLease revokes an existing lease
+  rpc RevokeLease(RevokeLeaseRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 }
@@ -132,14 +132,19 @@ service Mutex {
 // Workflow Messages
 // ############################################################################
 
+// MutexRequest describes the input to a Mutex workflow/activity
 message MutexRequest {
   string resource = 1;
 }
 
+// SampleWorkflowWithMutexRequest describes the input to a SampleWorkflowWithMutex workflow
 message SampleWorkflowWithMutexRequest {
   string resource = 1;
+  string dest = 2;
+  double amount = 3;
 }
 
+// SampleWorkflowWithMutexResponse describes the output from a SampleWorkflowWithMutex workflow
 message SampleWorkflowWithMutexResponse {
   string result = 1;
 }
@@ -148,23 +153,27 @@ message SampleWorkflowWithMutexResponse {
 // Signal Messages
 // ############################################################################
 
-message AcquireLeaseSignal {
+// AcquireLeaseRequest describes the input to a AcquireLease signal
+message AcquireLeaseRequest {
   string workflow_id = 1;
   google.protobuf.Duration timeout = 2;
 }
 
-message LeaseAcquiredSignal {
+// LeaseAcquiredRequest describes the input to a LeaseAcquired signal
+message LeaseAcquiredRequest {
   string workflow_id = 1;
   string run_id = 2;
   string lease_id = 3;
 }
 
-message RenewLeaseSignal {
+// RenewLeaseRequest describes the input to a RenewLease signal
+message RenewLeaseRequest {
   string lease_id = 1;
   google.protobuf.Duration timeout = 2;
 }
 
-message RevokeLeaseSignal {
+// RevokeLeaseRequest describes the input to a RevokeLease signal
+message RevokeLeaseRequest {
   string lease_id = 1;
 }
 ```
@@ -176,7 +185,7 @@ buf generate
 
 8. Implement your activities, workflows, and worker, for general usage see [example](./example) for a sample inspired by [temporalio/samples-go/mutex](https://github.com/temporalio/samples-go/tree/main/mutex)
 ```go
-package mutex
+package main
 
 import (
     "context"
@@ -186,13 +195,27 @@ import (
     "github.com/cludden/protoc-gen-go-temporal/example/mutexv1"
     "github.com/google/uuid"
     "go.temporal.io/sdk/activity"
+    "go.temporal.io/sdk/client"
     "go.temporal.io/sdk/log"
     "go.temporal.io/sdk/workflow"
+    "go.temporal.io/sdk/worker"
     "google.golang.org/protobuf/types/known/durationpb"
 )
 
-// Workflows manages shared state for workflow constructors
+func main() {
+    c, _ := client.Dial(client.Options{})
+    defer c.Close()
+
+    w := worker.New(c, mutexv1.MutexTaskQueue, worker.Options{})
+    mutexv1.RegisterActivities(w, &mutex.Activites{Client: mutexv1.NewClient(c)})
+	  mutexv1.RegisterWorkflows(w, &mutex.Workflows{})
+    w.Run(worker.InterruptCh())
+}
+
+// Workflows manages shared state for workflow constructors, local activities, side effects
 type Workflows struct{}
+
+// ============================================================================
 
 // MutexWorkflow provides a mutex over a shared resource
 type MutexWorkflow struct {
@@ -267,6 +290,8 @@ func (wf *MutexWorkflow) Execute(ctx workflow.Context) error {
     }
 }
 
+// ============================================================================
+
 // SampleWorkflowWithMutexWorkflow simulates a long running workflow requiring exclusive access to a shared resource
 type SampleWorkflowWithMutexWorkflow struct {
     *mutexv1.SampleWorkflowWithMutexInput
@@ -309,6 +334,8 @@ func (wf *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) (resp *
 
     return &mutexv1.SampleWorkflowWithMutexResponse{Result: lease.GetLeaseId()}, nil
 }
+
+// ============================================================================
 
 // Activities manages shared state for activities
 type Activites struct {

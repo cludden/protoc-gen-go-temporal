@@ -53,17 +53,17 @@ service Mutex {
     option (temporal.v1.signal) = {};
   }
 
-  // LeaseAcquired enqueues a lease on the given resource
+  // LeaseAcquired notifies the calling workflow that a lease has been required
   rpc LeaseAcquired(LeaseAcquiredRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
-  // RenewLease enqueues a lease on the given resource
+  // RenewLease extends the validity of an existing lease
   rpc RenewLease(RenewLeaseRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
-  // RevokeLease enqueues a lease on the given resource
+  // RevokeLease revokes an existing lease
   rpc RevokeLease(RevokeLeaseRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
@@ -73,16 +73,19 @@ service Mutex {
 // Workflow Messages
 // ############################################################################
 
+// MutexRequest describes the input to a Mutex workflow/activity
 message MutexRequest {
   string resource = 1;
 }
 
+// SampleWorkflowWithMutexRequest describes the input to a SampleWorkflowWithMutex workflow
 message SampleWorkflowWithMutexRequest {
   string resource = 1;
   string dest = 2;
   double amount = 3;
 }
 
+// SampleWorkflowWithMutexResponse describes the output from a SampleWorkflowWithMutex workflow
 message SampleWorkflowWithMutexResponse {
   string result = 1;
 }
@@ -91,22 +94,26 @@ message SampleWorkflowWithMutexResponse {
 // Signal Messages
 // ############################################################################
 
+// AcquireLeaseRequest describes the input to a AcquireLease signal
 message AcquireLeaseRequest {
   string workflow_id = 1;
   google.protobuf.Duration timeout = 2;
 }
 
+// LeaseAcquiredRequest describes the input to a LeaseAcquired signal
 message LeaseAcquiredRequest {
   string workflow_id = 1;
   string run_id = 2;
   string lease_id = 3;
 }
 
+// RenewLeaseRequest describes the input to a RenewLease signal
 message RenewLeaseRequest {
   string lease_id = 1;
   google.protobuf.Duration timeout = 2;
 }
 
+// RevokeLeaseRequest describes the input to a RevokeLease signal
 message RevokeLeaseRequest {
   string lease_id = 1;
 }
