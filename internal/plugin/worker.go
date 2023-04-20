@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"strings"
 
 	g "github.com/dave/jennifer/jen"
 	pgs "github.com/lyft/protoc-gen-star/v2"
@@ -236,7 +237,11 @@ func (svc *Service) genWorkflowInterface(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasOutput := !isEmpty(method.Output)
 	// generate workflow interface
-	f.Commentf("%sWorkflow describes a %s workflow implementation", workflow, workflow)
+	if method.Comments.Leading.String() != "" {
+		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+	} else {
+		f.Commentf("%sWorkflow describes a %s workflow implementation", workflow, workflow)
+	}
 	f.Type().Id(fmt.Sprintf("%sWorkflow", workflow)).InterfaceFunc(func(methods *g.Group) {
 		methods.Commentf("Execute a %s workflow", workflow).Line().
 			Id("Execute").

@@ -3,6 +3,7 @@ package plugin
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
@@ -21,7 +22,11 @@ func (svc *Service) genClientInterface(f *g.File) {
 			hasOutput := !isEmpty(method.Output)
 
 			// generate <Workflow> method
-			methods.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+			if method.Comments.Leading.String() != "" {
+				methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+			} else {
+				methods.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+			}
 			methods.Id(workflow).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -411,7 +416,12 @@ func (svc *Service) genClientWorkflow(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	f.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+
+	if method.Comments.Leading.String() != "" {
+		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+	} else {
+		f.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+	}
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
 		Id(workflow).
@@ -712,9 +722,14 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 					args.Nil()
 				}
 			})
-			b.If(g.Err().Op("==").Nil().Op("&&").Id("id").Op("!=").Lit("")).Block(
-				g.Id("opts").Dot(idFieldName).Op("=").Id("id"),
-			)
+			b.If(g.Err().Op("!=").Nil()).BlockFunc(func(returnVals *g.Group) {
+				if child {
+					returnVals.Panic(g.Err())
+				} else {
+					returnVals.Return(g.Nil(), g.Err())
+				}
+			})
+			b.Id("opts").Dot(idFieldName).Op("=").Id("id")
 		})
 	}
 
