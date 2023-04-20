@@ -90,7 +90,7 @@ func MustParseExpression(input string) *Expression {
 func ParseExpression(input string) (*Expression, error) {
 	expr, err := parser.ParseString("", input)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing expression: %w", err)
+		return nil, fmt.Errorf("error parsing expression %q: %w", input, err)
 	}
 	for _, fragment := range expr.Fragments {
 		if e := fragment.Expr; e != nil {

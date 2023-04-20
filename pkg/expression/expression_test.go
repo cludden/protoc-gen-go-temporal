@@ -91,6 +91,13 @@ func TestExpression(t *testing.T) {
 			},
 			expected: "test/bar/baz",
 		},
+		{
+			expr: `test/${! ["svc", "region", "acc", "resource"].map_each(k -> id.re_find_object("arn:aws:(?P<svc>.+):(?P<region>.+):(?P<acc>.+):(?P<resource>.+)").get(k)).join("/") }`,
+			msg: &simplepb.SomeWorkflow1Request{
+				Id: "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-0e9801d129EXAMPLE",
+			},
+			expected: "test/ec2/us-east-1/123456789012/vpc/vpc-0e9801d129EXAMPLE",
+		},
 	}
 
 	for _, c := range cases {
