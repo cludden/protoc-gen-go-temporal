@@ -106,7 +106,10 @@ func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, erro
 	}
 	for _, signal := range svc.signalsOrdered {
 		handler := svc.methods[signal]
-		if !isEmpty(handler.Output) {
+		_, isActivity := svc.activities[signal]
+		_, isWorkflow := svc.workflows[signal]
+		_, isQuery := svc.queries[signal]
+		if !isActivity && !isWorkflow && !isQuery && !isEmpty(handler.Output) {
 			errs = multierror.Append(errs, fmt.Errorf("expected signal %q output to be google.protobuf.Empty, got: %s", signal, handler.Output.GoIdent.GoName))
 		}
 	}
