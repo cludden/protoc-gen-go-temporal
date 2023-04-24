@@ -308,23 +308,23 @@ func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
 		}).
-		Id(fmt.Sprintf("%sChildRun", workflow)).
+		Op("*").Id(fmt.Sprintf("%sChildRun", workflow)).
 		BlockFunc(func(fn *g.Group) {
 			// initialize child workflow options with default values
 			svc.genStartWorkflowOptions(fn, workflow, true)
 
 			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
 			fn.Return(
-				g.Id(fmt.Sprintf("%sChildRun", workflow)).Block(
+				g.Op("&").Id(fmt.Sprintf("%sChildRun", workflow)).Values(
 					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
 						args.Id("ctx")
-						args.Lit(fmt.Sprintf("%sWorkflowName", workflow))
+						args.Id(fmt.Sprintf("%sWorkflowName", workflow))
 						if hasInput {
 							args.Id("req")
 						} else {
 							args.Nil()
 						}
-					}).Op(","),
+					}),
 				),
 			)
 		})
