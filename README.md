@@ -54,7 +54,136 @@ plugins:
 ```
 
 6. Define your service  
-<small><b><i>note:</i></b> see [example](./example/) and [test](./test/) for more details on generated code and usage</small>
+<small><b><i>note:</i></b> see [advanced](#advanced), [example](./example/), and [test](./test/) for more details on generated code and usage</small>
+
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  // HelloWorld defines a workflow with a single activity of the same name
+  rpc HelloWorld(HelloWorldRequest) returns (HelloWorldResponse) {
+    option (temporal.v1.workflow) = {
+      default_options {
+        id: 'hello-world/${! uuid_v4() }'
+        execution_timeout: { seconds: 30 }
+      }
+    };
+    option (temporal.v1.activity) = {};
+  }
+}
+
+// HelloWorldRequest describes the input to a HelloWorld workflow/activity
+message HelloWorldRequest {
+  // Customize greeting
+  // @gotags: validate:"omitempty,oneof=hello hi hey hola"
+  string greeting = 1;
+}
+
+// HelloWorldResponse descibes the output from a HelloWorld workflow/activity
+message HelloWorldResponse {
+  string result = 1;
+}
+```
+
+7. Generate temporal worker and client types, methods, interfaces, and functions
+```shell
+buf generate
+```
+
+8. Implement your activities, workflows
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    examplev1 "<yourproject>/gen/v1" // import generated code
+    "github.com/google/uuid"
+    "go.temporal.io/sdk/activity"
+    "go.temporal.io/sdk/client"
+    logger "go.temporal.io/sdk/log"
+    "go.temporal.io/sdk/workflow"
+    "go.temporal.io/sdk/worker"
+    "google.golang.org/protobuf/types/known/durationpb"
+)
+
+// Define a struct to manage workflow constructors, this simplifies registration
+// with lots of workflows
+type Workflows struct{}
+
+// ============================================================================
+
+// Define a struct per workflow for managing workflow state
+type HelloWorldWorkflow struct {
+  *examplev1.HelloWorldInput
+  log logger.Logger
+}
+
+// Define a workflow constructor
+func (w *Workflows) HelloWorld(ctx workflow.Context, input *examplev1.HelloWorldInput) (examplev1.HelloWorldWorkflow, error) {
+  return &HelloWorldWorkflow(input, workflow.GetLogger(ctx))
+}
+
+// Define workflow function
+func (wf *HelloWorldWorkflow) Execute(ctx workflow.Context) (*examplev1.HelloWorldResponse, error) {
+  // call activity of the same name from our definition above
+  return examplev1.HelloWorld(ctx, nil, wf.Req)
+}
+
+// ============================================================================
+
+// Define a struct to manage activities
+type Activities struct {}
+
+func (a *Activities) HelloWorld(ctx context.Context, req *examplev1.HelloWorldRequest) (*examplev1.HelloWorldResponse{}, error) {
+  return &examplev1.HelloWorldResponse{Result: req.GetGreeting()}, nil
+}
+
+// ============================================================================
+
+func main() {
+    // initialize temporal client
+    c, _ := client.Dial(client.Options{})
+    defer c.Close()
+
+    // register workflows & activities using generated registration helpers, start worker
+    w := worker.New(c, mutexv1.MutexTaskQueue, worker.Options{})
+    mutexv1.RegisterActivities(w, &mutex.Activites{Client: mutexv1.NewClient(c)})
+	  mutexv1.RegisterWorkflows(w, &mutex.Workflows{})
+    _ := w.Start()
+    defer w.Stop()
+
+    // initialize generated client and execute workflow
+    example := examplev1.NewClient(c)
+    resp, err := example.HelloWorld(context.Background(), nil, &examplev1.HelloWorldRequest{})
+    if err != nil {
+      log.Fatalf("error executing %s workflow: %v", examplev1.HelloWorldWorkflowName, err)
+    }
+    log.Printf("hello world successful: %sv", resp)
+}
+
+
+```
+
+### Advanced
+
+Below is an excerpt from the more advanced [example](./example/) that showcases an implementation of the [mutex]((https://github.com/temporalio/samples-go/tree/main/mutex)) workflow from `github.com/temporalio/samples-go`
+
+**Schema:**
 
 ```protobuf
 syntax="proto3";
@@ -178,12 +307,8 @@ message RevokeLeaseRequest {
 }
 ```
 
-7. Generate temporal worker and client types, methods, interfaces, and functions
-```shell
-buf generate
-```
+**Implementation:**
 
-8. Implement your activities, workflows, and worker, for general usage see [example](./example) for a sample inspired by [temporalio/samples-go/mutex](https://github.com/temporalio/samples-go/tree/main/mutex)
 ```go
 package main
 
