@@ -494,8 +494,11 @@ func (svc *Service) genClientWorkflowExecute(f *g.File, workflow string) {
 					args.Id("req")
 				}
 			})
-			fn.If(g.Id("run").Op("==").Nil().Op("||").Err().Op("!=").Nil()).Block(
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Nil(), g.Err()),
+			)
+			fn.If(g.Id("run").Op("==").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("errors", "New").Call(g.Lit("execute workflow returned nil run"))),
 			)
 			fn.Return(
 				g.Op("&").Id(fmt.Sprintf("%sRun", name)).Block(
