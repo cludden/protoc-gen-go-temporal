@@ -1,12 +1,12 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
-	"github.com/hashicorp/go-multierror"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 )
@@ -84,7 +84,7 @@ func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, erro
 	sort.Strings(svc.signalsOrdered)
 	sort.Strings(svc.workflowsOrdered)
 
-	errs := multierror.Append(nil)
+	var errs error
 	for _, workflow := range svc.workflowsOrdered {
 		opts := svc.workflows[workflow]
 
@@ -92,7 +92,7 @@ func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, erro
 		for _, signalOpts := range opts.GetSignal() {
 			signal := signalOpts.GetRef()
 			if _, ok := svc.signals[signal]; !ok {
-				errs = multierror.Append(errs, fmt.Errorf("workflow  %q references undefined signal: %q", workflow, signal))
+				errs = errors.Join(errs, fmt.Errorf("workflow  %q references undefined signal: %q", workflow, signal))
 			}
 		}
 
@@ -100,7 +100,7 @@ func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, erro
 		for _, queryOpts := range opts.GetQuery() {
 			query := queryOpts.GetRef()
 			if _, ok := svc.queries[query]; !ok {
-				errs = multierror.Append(errs, fmt.Errorf("workflow  %q references undefined query: %q", workflow, query))
+				errs = errors.Join(errs, fmt.Errorf("workflow  %q references undefined query: %q", workflow, query))
 			}
 		}
 	}
@@ -110,10 +110,10 @@ func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, erro
 		_, isWorkflow := svc.workflows[signal]
 		_, isQuery := svc.queries[signal]
 		if !isActivity && !isWorkflow && !isQuery && !isEmpty(handler.Output) {
-			errs = multierror.Append(errs, fmt.Errorf("expected signal %q output to be google.protobuf.Empty, got: %s", signal, handler.Output.GoIdent.GoName))
+			errs = errors.Join(errs, fmt.Errorf("expected signal %q output to be google.protobuf.Empty, got: %s", signal, handler.Output.GoIdent.GoName))
 		}
 	}
-	return &svc, errs.ErrorOrNil()
+	return &svc, errs
 }
 
 // render writes the temporal service to the given File

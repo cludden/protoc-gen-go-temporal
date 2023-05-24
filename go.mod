@@ -1,6 +1,6 @@
 module github.com/cludden/protoc-gen-go-temporal
 
-go 1.19
+go 1.20
 
 require (
 	github.com/alecthomas/participle/v2 v2.0.0
@@ -8,7 +8,6 @@ require (
 	github.com/benthosdev/benthos/v4 v4.13.0
 	github.com/dave/jennifer v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lyft/protoc-gen-star/v2 v2.0.1
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/stretchr/testify v1.8.1
@@ -43,7 +42,6 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/matoous/go-nanoid/v2 v2.0.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.22 // indirect
