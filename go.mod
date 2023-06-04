@@ -4,13 +4,13 @@ go 1.20
 
 require (
 	github.com/alecthomas/participle/v2 v2.0.0
-	github.com/avast/retry-go/v4 v4.3.3
+	github.com/avast/retry-go/v4 v4.3.4
 	github.com/benthosdev/benthos/v4 v4.13.0
 	github.com/dave/jennifer v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/lyft/protoc-gen-star/v2 v2.0.1
 	github.com/ory/dockertest/v3 v3.8.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	go.temporal.io/api v1.18.1
 	go.temporal.io/sdk v1.21.1
 	google.golang.org/protobuf v1.28.1

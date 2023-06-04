@@ -220,21 +220,21 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 			// set default retry policy
 			if policy := opts.GetRetryPolicy(); policy != nil {
 				fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
-					g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").BlockFunc(func(fields *g.Group) {
+					g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
 						if d := policy.GetInitialInterval(); d.IsValid() {
-							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Op(",").Comment(d.AsDuration().String())
+							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 						}
 						if d := policy.GetMaxInterval(); d.IsValid() {
-							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Op(",").Comment(d.AsDuration().String())
+							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 						}
 						if n := policy.GetBackoffCoefficient(); n != 0 {
-							fields.Id("BackoffCoefficient").Op(":").Lit(n).Op(",")
+							fields.Id("BackoffCoefficient").Op(":").Lit(n)
 						}
 						if n := policy.GetMaxAttempts(); n != 0 {
-							fields.Id("MaximumAttempts").Op(":").Lit(n).Op(",")
+							fields.Id("MaximumAttempts").Op(":").Lit(n)
 						}
 						if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
-							fields.Id("NonRetryableErrorTypes").Op(":").Lit(errs).Op(",")
+							fields.Id("NonRetryableErrorTypes").Op(":").Lit(errs)
 						}
 					}),
 				)

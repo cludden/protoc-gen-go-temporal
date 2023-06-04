@@ -39,6 +39,9 @@ service Simple {
         task_queue       : 'my-task-queue-2'
         id_reuse_policy  : WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
         execution_timeout: { seconds: 3600 }
+        retry_policy {
+          max_attempts: 2
+        }
       }
 
       signal: { ref: 'SomeSignal2', start: true }

@@ -143,6 +143,9 @@ message WorkflowOptions {
     // Specifies a default parent close policy for child workflows
     ParentClosePolicy parent_close_policy = 10;
 
+    // Specifies how to retry an Workflow if an error occurs
+    RetryPolicy retry_policy = 2;
+
     // The timeout for duration of a single workflow run.
     google.protobuf.Duration run_timeout = 7;
 

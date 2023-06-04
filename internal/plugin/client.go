@@ -756,6 +756,28 @@ func (svc *Service) genStartWorkflowOptions(fn *g.Group, workflow string, child 
 			)
 	}
 
+	if policy := opts.GetDefaultOptions().GetRetryPolicy(); policy != nil {
+		fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
+			g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
+				if d := policy.GetInitialInterval(); d.IsValid() {
+					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+				}
+				if d := policy.GetMaxInterval(); d.IsValid() {
+					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+				}
+				if n := policy.GetBackoffCoefficient(); n != 0 {
+					fields.Id("BackoffCoefficient").Op(":").Lit(n)
+				}
+				if n := policy.GetMaxAttempts(); n != 0 {
+					fields.Id("MaximumAttempts").Op(":").Lit(n)
+				}
+				if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
+					fields.Id("NonRetryableErrorTypes").Op(":").Lit(errs)
+				}
+			}),
+		)
+	}
+
 	if timeout := opts.GetDefaultOptions().GetExecutionTimeout(); timeout.IsValid() {
 		fn.If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).
 			Block(
