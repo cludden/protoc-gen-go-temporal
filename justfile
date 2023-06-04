@@ -32,8 +32,4 @@ install:
 test:
     #!/usr/bin/env bash
     set -euo pipefail
-    docker-compose -f test/docker-compose.yml up -d
-    set +e
     go test -count=1 ./...
-    set -e
-    docker-compose -f test/docker-compose.yml down
