@@ -29,7 +29,7 @@ func TestSomeWorkflow1(t *testing.T) {
 	// start temporalite container
 	temporalite, err := pool.Run("cludden/temporalite", "0.3.0", nil)
 	require.NoError(err)
-	temporalite.Expire(120)
+	require.NoError(temporalite.Expire(120))
 
 	// initialize temporal client
 	var c client.Client

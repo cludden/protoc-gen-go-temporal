@@ -143,6 +143,34 @@ func (svc *Service) genWorkflowWorkerExecuteMethod(f *g.File, workflow string) {
 				)
 			}
 
+			// register update handlers
+			for _, u := range opts.GetUpdate() {
+				update := u.GetRef()
+				updateOpts := svc.updates[update]
+				updateHandlerOptionsName := fmt.Sprintf("%sOpts", pgs.Name(update).LowerCamelCase().String())
+
+				// build UpdateHandlerOptions
+				var updateHandlerOptions []g.Code
+				if updateOpts.GetValidate() {
+					updateHandlerOptions = append(updateHandlerOptions, g.Id("Validator").Op(":").Id("wf").Dot(fmt.Sprintf("Validate%s", update)))
+				}
+				fn.Id(updateHandlerOptionsName).Op(":=").Qual(workflowPkg, "UpdateHandlerOptions").Values(updateHandlerOptions...)
+
+				fn.If(
+					g.Err().Op(":=").Qual(workflowPkg, "SetUpdateHandlerWithOptions").Call(
+						g.Id("ctx"), g.Id(fmt.Sprintf("%sUpdateName", update)), g.Id("wf").Dot(update), g.Id(updateHandlerOptionsName),
+					),
+					g.Err().Op("!=").Nil(),
+				).Block(
+					g.ReturnFunc(func(returnVals *g.Group) {
+						if hasOutput {
+							returnVals.Nil()
+						}
+						returnVals.Err()
+					}),
+				)
+			}
+
 			// execute workflow
 			fn.Return(
 				g.Id("wf").Dot("Execute").Call(g.Id("ctx")),
@@ -272,6 +300,49 @@ func (svc *Service) genWorkflowInterface(f *g.File, workflow string) {
 					g.Error(),
 				)
 		}
+
+		// add workflow update methods
+		for _, updateOpts := range opts.GetUpdate() {
+			update := updateOpts.GetRef()
+			handler := svc.methods[update]
+			handlerOpts := svc.updates[update]
+			hasInput := !isEmpty(handler.Input)
+			hasOutput := !isEmpty(handler.Output)
+
+			// add Validate<Update> method if enabled
+			if handlerOpts.GetValidate() {
+				validatorName := fmt.Sprintf("Validate%s", update)
+				methods.Commentf("%s validates an %s update", validatorName, update)
+				methods.Id(validatorName).
+					ParamsFunc(func(args *g.Group) {
+						args.Qual(workflowPkg, "Context")
+						if hasInput {
+							args.Op("*").Id(handler.Input.GoIdent.GoName)
+						}
+					}).
+					Params(g.Error())
+			}
+
+			// add <Update> method
+			if handler.Comments.Leading.String() != "" {
+				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
+			} else {
+				methods.Commentf("%s updates a(n) %s workflow", workflow, workflow)
+			}
+			methods.Id(update).
+				ParamsFunc(func(args *g.Group) {
+					args.Qual(workflowPkg, "Context")
+					if hasInput {
+						args.Op("*").Id(handler.Input.GoIdent.GoName)
+					}
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				})
+		}
 	})
 }
 
@@ -311,7 +382,7 @@ func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
 		Op("*").Id(fmt.Sprintf("%sChildRun", workflow)).
 		BlockFunc(func(fn *g.Group) {
 			// initialize child workflow options with default values
-			svc.genStartWorkflowOptions(fn, workflow, true)
+			svc.genClientStartWorkflowOptions(fn, workflow, true)
 
 			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
 			fn.Return(

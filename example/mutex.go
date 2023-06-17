@@ -117,7 +117,7 @@ func (wf *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) (resp *
 	defer func() {
 		wf.log.Info("revoking lease", "lease", lease.GetLeaseId())
 		cancelCtx, _ := workflow.NewDisconnectedContext(ctx)
-		if mutexv1.RevokeLeaseExternal(cancelCtx, lease.GetWorkflowId(), lease.GetRunId(), &mutexv1.RevokeLeaseRequest{
+		if err := mutexv1.RevokeLeaseExternal(cancelCtx, lease.GetWorkflowId(), lease.GetRunId(), &mutexv1.RevokeLeaseRequest{
 			LeaseId: lease.GetLeaseId(),
 		}).Get(ctx, nil); err != nil {
 			wf.log.Error("error revoking lease", "error", err, "lease", lease.GetLeaseId())

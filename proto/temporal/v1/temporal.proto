@@ -16,6 +16,7 @@ extend google.protobuf.MethodOptions {
   optional ActivityOptions activity = 7234;
   optional QueryOptions query = 7235;
   optional SignalOptions signal = 7236;
+  optional UpdateOptions update = 7237;
 }
 
 // ActivityOptions identifies an rpc method as a Temporal activity definition, and describes
@@ -95,17 +96,35 @@ message ServiceOptions {
   string task_queue = 1;
 }
 
-// SignalOptions identifies an rpc method as a Temporal singla definition, and describes
+// SignalOptions identifies an rpc method as a Temporal singal definition, and describes
 // available signal configuration options
 message SignalOptions {}
+
+// UpdateOptions identifies an rpc method as a Temporal update definition, and describes
+// available update configuration options
+message UpdateOptions {
+  // ID expression
+  string id = 1;
+
+  // Include validation hook
+  bool validate = 2;
+
+  // Default wait policy if not specified
+  WaitPolicy wait_policy = 3;
+}
 
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
 // available workflow configuration options
 message WorkflowOptions {
   // Queries supported by this workflow
   repeated Query query = 1;
+
   // Signals supported by this workflow
   repeated Signal signal = 2;
+
+  // Updates supported by this workflow
+  repeated Update update = 3;
+  
   // Default configuration for StartWorklowOptions, ExecuteChildWorkflowOptions
   StartOptions default_options = 6;
 
@@ -122,6 +141,12 @@ message WorkflowOptions {
 
     // Include convenience method for signal with start
     bool start = 2;
+  }
+
+  // Update identifies an update supported by the workflow
+  message Update {
+    // Update name
+    string ref = 1;
   }
 
   // StartOptions describes default options for ExecuteWorkflow and ExecuteChildWorkflow
@@ -161,4 +186,13 @@ message WorkflowOptions {
     // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
     bool wait_for_cancellation = 11;
   }
+}
+
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
+// value from an UpdateWorkflow RPC
+enum WaitPolicy {
+  WAIT_POLICY_UNSPECIFIED = 0;
+  WAIT_POLICY_ADMITTED = 1;
+  WAIT_POLICY_ACCEPTED = 2;
+  WAIT_POLICY_COMPLETED = 3;
 }

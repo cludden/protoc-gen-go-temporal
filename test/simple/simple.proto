@@ -28,6 +28,7 @@ service Simple {
   rpc SomeWorkflow2(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       signal: { ref: 'SomeSignal1', start: true }
+      update: { ref: 'SomeUpdate1' }
     };
   }
 
@@ -96,6 +97,15 @@ service Simple {
   rpc SomeSignal2(SomeSignal2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = { };
   }
+
+  // SomeUpdate1 updates a SomeWorkflow2
+  rpc SomeUpdate1(SomeUpdate1Request) returns (SomeUpdate1Response) {
+    option (temporal.v1.update) = {
+      id: 'some-update/${! requestVal.not_empty().catch("default").slug() }'
+      validate: true
+      wait_policy: WAIT_POLICY_COMPLETED
+    };
+  }
 }
 
 message SomeWorkflow1Request {
@@ -154,4 +164,12 @@ message SomeQuery2Response {
 
 message SomeSignal2Request {
   string request_val = 1;
+}
+
+message SomeUpdate1Request {
+  string request_val = 1;
+}
+
+message SomeUpdate1Response {
+  string response_val = 1;
 }

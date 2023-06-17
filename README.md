@@ -9,7 +9,7 @@ inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz
   - default workflow ids that can leverage inputs via [Bloblang ID expressions](#id-expressions)
   - default timeouts, retry policies, id reuse policies
 - generates typed client and workflow helpers
-  - generates client with methods for executing workflows, queries, singals
+  - generates client with methods for executing workflows, queries, signals
   - generates methods for calling activities and local activities from workflows
   - generates methods for executing child workflows and signalling external workflows
 
