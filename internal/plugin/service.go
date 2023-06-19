@@ -269,7 +269,7 @@ func (svc *Service) render(f *g.File) {
 
 	// generate client update methods
 	for _, update := range svc.updatesOrdered {
-		svc.genClientImplUpdateExecuteMethod(f, update)
+		svc.genClientImplUpdateMethod(f, update)
 	}
 
 	// generate <Workflow>Run interfaces and implementations used by client

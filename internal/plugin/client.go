@@ -206,13 +206,13 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 		})
 }
 
-// genClientImplUpdateExecuteMethod adds an ExecuteUpdate<Update> method to a workflowClient
-func (svc *Service) genClientImplUpdateExecuteMethod(f *g.File, update string) {
+// genClientImplUpdateMethod adds an Update<Update> method to a workflowClient
+func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 	handler := svc.methods[update]
 	handleName := fmt.Sprintf("%sHandle", pgs.Name(handler.GoName).LowerCamelCase().String())
 	updateOpts := svc.updates[update]
 	hasInput := !isEmpty(handler.Input)
-	f.Commentf("ExecuteUpdate%s sends a(n) %s update to an existing workflow", update, update)
+	f.Commentf("Update%s sends a(n) %s update to an existing workflow", update, update)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
 		Id(fmt.Sprintf("Update%s", update)).
