@@ -11,11 +11,24 @@ build:
 gen:
     #!/usr/bin/env bash
     set -euo pipefail
-    rm -rf {{ justfile_directory() }}/gen/*
-    buf lint
-    buf generate
-    mv gen/example.pb.go gen/example_temporal.pb.go example/mutexv1/
+    cd proto
+    rm -rf {{ justfile_directory() }}/gen/*.pb.go
+    buf generate --template temporal/buf.gen.yaml --path temporal/
+    rm -rf {{ justfile_directory() }}/test/simple/gen/*.pb.go
+    buf generate --template test/simple/buf.gen.yaml --path test/simple/
+    rm -rf {{ justfile_directory() }}/pkg/expression/*.pb.go
+    buf generate --template test/expression/buf.gen.yaml --path test/expression/
+    rm -rf {{ justfile_directory() }}/example/mutex/gen/*.pb.go
+    buf generate --template example/buf.gen.yaml --path example/
+    cd ..
     go mod tidy
+
+# generate temporal
+gen-temporal:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf {{ justfile_directory() }}/gen/*
+    buf generate -
 
 # install local build
 install:

@@ -161,13 +161,13 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 		Id(name).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
-			args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 			if hasWorkflowInput {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
 			if hasSignalInput {
 				args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
+			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 		}).
 		Params(
 			g.Id(fmt.Sprintf("%sRun", workflow)),
@@ -308,10 +308,10 @@ func (svc *Service) genClientImplWorkflowExecuteMethod(f *g.File, workflow strin
 		Id(fmt.Sprintf("Execute%s", workflow)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
-			args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 			if hasInput {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
+			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 		}).
 		Params(
 			g.Id(fmt.Sprintf("%sRun", workflow)),
@@ -392,10 +392,10 @@ func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
 		Id(workflow).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
-			args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 			if hasInput {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
+			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -407,10 +407,10 @@ func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
 			// execute workflow
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(fmt.Sprintf("Execute%s", workflow)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
-				args.Id("opts")
 				if hasInput {
 					args.Id("req")
 				}
+				args.Id("options").Op("...")
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
@@ -441,15 +441,15 @@ func (svc *Service) genClientInterface(f *g.File) {
 			if method.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
 			} else {
-				methods.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, workflow)
+				methods.Commentf("%s executes a(n) %s workflow and blocks until error or response received", workflow, workflow)
 			}
 			methods.Id(workflow).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
-					args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 					if hasInput {
 						args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 					}
+					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
@@ -458,15 +458,15 @@ func (svc *Service) genClientInterface(f *g.File) {
 					returnVals.Error()
 				})
 
-			// generate Execute<Workflow> method
-			methods.Commentf("Execute%s executes a %s workflow", workflow, workflow)
+			// generate Start<Workflow> method
+			methods.Commentf("Start%s starts a(n) %s workflow", workflow, workflow)
 			methods.Id(fmt.Sprintf("Execute%s", workflow)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
-					args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 					if hasInput {
 						args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 					}
+					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 				}).
 				Params(
 					g.Id(fmt.Sprintf("%sRun", workflow)),
@@ -474,7 +474,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 				)
 
 			// generate Get<Workflow> method
-			methods.Commentf("Get%s retrieves a %s workflow execution", workflow, workflow)
+			methods.Commentf("Get%s retrieves a(n) %s workflow execution", workflow, workflow)
 			methods.Id(fmt.Sprintf("Get%s", workflow)).
 				Params(
 					g.Id("ctx").Qual("context", "Context"),
@@ -497,17 +497,17 @@ func (svc *Service) genClientInterface(f *g.File) {
 				hasWorkflowInput := !isEmpty(method.Input)
 				hasSignalInput := !isEmpty(handler.Input)
 
-				methods.Commentf("Start%sWith%s sends a %s signal to a %s workflow, starting it if not present", workflow, signal, signal, workflow)
+				methods.Commentf("Start%sWith%s sends a(n) %s signal to a %s workflow, starting it if not present", workflow, signal, signal, workflow)
 				methods.Id(fmt.Sprintf("Start%sWith%s", workflow, signal)).
 					ParamsFunc(func(args *g.Group) {
 						args.Id("ctx").Qual("context", "Context")
-						args.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 						if hasWorkflowInput {
 							args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 						}
 						if hasSignalInput {
 							args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
 						}
+						args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 					}).
 					Params(
 						g.Id(fmt.Sprintf("%sRun", workflow)),
@@ -584,17 +584,26 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	hasInput := !isEmpty(method.Input)
 
 	// initialize options if nil
-	fn.If(g.Id("opts").Op("==").Nil()).BlockFunc(func(bl *g.Group) {
-		if child {
-			bl.Id("childOpts").Op(":=").Qual(workflowPkg, "GetChildWorkflowOptions").Call(g.Id("ctx"))
-			bl.Id("opts").Op("=").Op("&").Id("childOpts")
-		} else {
-			bl.Id("opts").Op("=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Block()
-		}
-	})
+	if child {
+		fn.Var().Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
+		fn.If(g.Len(g.Id("options")).Op(">").Lit(0)).
+			Block(
+				g.Id("opts").Op("=").Id("options").Index(g.Lit(0)),
+			).
+			Else().
+			Block(
+				g.Id("childOpts").Op(":=").Qual(workflowPkg, "GetChildWorkflowOptions").Call(g.Id("ctx")),
+				g.Id("opts").Op("=").Op("&").Id("childOpts"),
+			)
+	} else {
+		fn.Id("opts").Op(":=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Values()
+		fn.If(g.Len(g.Id("options")).Op(">").Lit(0)).Block(
+			g.Id("opts").Op("=").Id("options").Index(g.Lit(0)),
+		)
+	}
 
 	// set task queue if unset and default available
-	taskQueue := opts.GetDefaultOptions().GetTaskQueue()
+	taskQueue := opts.GetTaskQueue()
 	if taskQueue == "" {
 		taskQueue = svc.opts.GetTaskQueue()
 	}
@@ -610,7 +619,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	}
 
 	// set workflow id if unset and  id field and/or prefix defined
-	if idExpr := opts.GetDefaultOptions().GetId(); idExpr != "" {
+	if idExpr := opts.GetId(); idExpr != "" {
 		fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
 			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
 				args.Id(fmt.Sprintf("%sIDExpression", workflow))
@@ -633,7 +642,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 
 	// set default id reuse policy
 	var idReusePolicy string
-	switch opts.GetDefaultOptions().GetIdReusePolicy() {
+	switch opts.GetIdReusePolicy() {
 	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE:
 		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
 	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY:
@@ -651,7 +660,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 			)
 	}
 
-	if policy := opts.GetDefaultOptions().GetRetryPolicy(); policy != nil {
+	if policy := opts.GetRetryPolicy(); policy != nil {
 		fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
 			g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
 				if d := policy.GetInitialInterval(); d.IsValid() {
@@ -673,21 +682,21 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 		)
 	}
 
-	if timeout := opts.GetDefaultOptions().GetExecutionTimeout(); timeout.IsValid() {
+	if timeout := opts.GetExecutionTimeout(); timeout.IsValid() {
 		fn.If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).
 			Block(
 				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 			)
 	}
 
-	if timeout := opts.GetDefaultOptions().GetRunTimeout(); timeout.IsValid() {
+	if timeout := opts.GetRunTimeout(); timeout.IsValid() {
 		fn.If(g.Id("opts").Dot("WorkflowRunTimeout").Op("==").Lit(0)).
 			Block(
 				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 			)
 	}
 
-	if timeout := opts.GetDefaultOptions().GetTaskTimeout(); timeout.IsValid() {
+	if timeout := opts.GetTaskTimeout(); timeout.IsValid() {
 		fn.If(g.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).
 			Block(
 				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
@@ -696,7 +705,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 
 	// add child workflow default options
 	if child {
-		ns := opts.GetDefaultOptions().GetNamespace()
+		ns := opts.GetNamespace()
 		if ns == "" {
 			ns = svc.opts.GetNamespace()
 		}
@@ -707,7 +716,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 		}
 
 		var parentClosePolicy string
-		switch opts.GetDefaultOptions().GetParentClosePolicy() {
+		switch opts.GetParentClosePolicy() {
 		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
 			parentClosePolicy = "PARENT_CLOSE_POLICY_ABANDON"
 		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL:
@@ -721,7 +730,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 			)
 		}
 
-		if opts.GetDefaultOptions().GetWaitForCancellation() {
+		if opts.GetWaitForCancellation() {
 			fn.Id("opts").Dot("WaitForCancellation").Op("=").Lit(true)
 		}
 	}

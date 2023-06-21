@@ -1,0 +1,9 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/cludden/protoc-gen-go-temporal/gen
+plugins:
+  - plugin: go
+    out: ../pkg/expression/gen
+    opt: paths=source_relative

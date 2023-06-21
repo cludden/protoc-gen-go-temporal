@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cludden/protoc-gen-go-temporal/example/mutexv1"
+	mutexv1 "github.com/cludden/protoc-gen-go-temporal/example/gen/example/mutex"
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
@@ -139,7 +139,7 @@ type Activites struct {
 
 // Mutex locks a shared resource and can be called from a parent workflow
 func (a *Activites) Mutex(ctx context.Context, req *mutexv1.MutexRequest) error {
-	_, err := a.Client.StartMutexWithAcquireLease(ctx, nil, req, &mutexv1.AcquireLeaseRequest{
+	_, err := a.Client.StartMutexWithAcquireLease(ctx, req, &mutexv1.AcquireLeaseRequest{
 		WorkflowId: activity.GetInfo(ctx).WorkflowExecution.ID,
 		Timeout:    durationpb.New(time.Minute * 2),
 	})

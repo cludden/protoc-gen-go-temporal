@@ -5,9 +5,5 @@ managed:
     default: github.com/cludden/protoc-gen-go-temporal/gen
 plugins:
   - plugin: go
-    out: gen
+    out: ../gen
     opt: paths=source_relative
-  - plugin: go_temporal
-    out: gen
-    opt: paths=source_relative
-    strategy: all

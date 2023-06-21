@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/test/simple/gen/test/simple/v1"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )

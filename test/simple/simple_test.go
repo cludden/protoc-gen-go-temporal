@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"github.com/cludden/protoc-gen-go-temporal/test/simple"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/test/simple/gen/test/simple/v1"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
@@ -53,7 +53,7 @@ func TestSomeWorkflow1(t *testing.T) {
 	defer cancel()
 
 	// start the workflow
-	run, err := client.ExecuteSomeWorkflow1(ctx, nil, &simplepb.SomeWorkflow1Request{
+	run, err := client.ExecuteSomeWorkflow1(ctx, &simplepb.SomeWorkflow1Request{
 		Id:         "foo",
 		RequestVal: "some request",
 	})

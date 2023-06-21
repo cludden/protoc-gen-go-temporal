@@ -1,7 +1,7 @@
 syntax="proto3";
 
 // buf:lint:ignore PACKAGE_DIRECTORY_MATCH
-package mycompany.mutex.v1;
+package mycompany.mutex;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
@@ -19,11 +19,9 @@ service Mutex {
   // Mutex provides a mutex over a shared resource
   rpc Mutex(MutexRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'mutex/${!resource}'
-        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-        execution_timeout: { seconds: 3600 }
-      }
+      id: 'mutex/${!resource}'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      execution_timeout: { seconds: 3600 }
       signal: { ref: 'AcquireLease', start: true }
       signal: { ref: 'RenewLease' }
       signal: { ref: 'RevokeLease' }
@@ -35,11 +33,9 @@ service Mutex {
   // a Mutex workflow to prevent concurrent access to a shared resource
   rpc SampleWorkflowWithMutex(SampleWorkflowWithMutexRequest) returns (SampleWorkflowWithMutexResponse) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'sample-workflow-with-mutex/${!resource}/${!uuid_v4()}'
-        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
-        execution_timeout: { seconds: 3600 }
-      }
+      id: 'sample-workflow-with-mutex/${!resource}/${!uuid_v4()}'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
+      execution_timeout: { seconds: 3600 }
       signal: { ref: 'LeaseAcquired' }
     };
   }

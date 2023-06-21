@@ -160,7 +160,7 @@ func (svc *Service) genConstants(f *g.File) {
 	workflowIdExpressions := [][]string{}
 	for _, workflow := range svc.workflowsOrdered {
 		opts := svc.workflows[workflow]
-		if expr := opts.GetDefaultOptions().GetId(); expr != "" {
+		if expr := opts.GetId(); expr != "" {
 			workflowIdExpressions = append(workflowIdExpressions, []string{workflow, expr})
 		}
 	}
@@ -308,24 +308,24 @@ func (svc *Service) render(f *g.File) {
 	}
 
 	// generate workflows interface and registration helper
-	svc.genWorkflowsInterface(f)
-	svc.genRegisterWorkflows(f)
+	svc.genWorkerWorkflowsInterface(f)
+	svc.genWorkerRegisterWorkflows(f)
 
 	// generate workflow types, methods, functions
 	for _, workflow := range svc.workflowsOrdered {
-		svc.genRegisterWorkflow(f, workflow)
-		svc.genWorkflowWorkerBuilderFunction(f, workflow)
-		svc.genWorkflowWorker(f, workflow)
-		svc.genWorkflowWorkerExecuteMethod(f, workflow)
-		svc.genWorkflowInput(f, workflow)
-		svc.genWorkflowInterface(f, workflow)
-		svc.genExecuteChildWorkflow(f, workflow)
-		svc.genWorkflowChildRun(f, workflow)
-		svc.genWorkflowChildRunGet(f, workflow)
-		svc.genWorkflowChildRunSelect(f, workflow)
-		svc.genWorkflowChildRunSelectStart(f, workflow)
-		svc.genWorkflowChildRunWaitStart(f, workflow)
-		svc.genWorkflowChildRunSignals(f, workflow)
+		svc.genWorkerRegisterWorkflow(f, workflow)
+		svc.genWorkerBuilderFunction(f, workflow)
+		svc.genWorker(f, workflow)
+		svc.genWorkerExecuteMethod(f, workflow)
+		svc.genWorkerWorkflowInput(f, workflow)
+		svc.genWorkerWorkflowInterface(f, workflow)
+		svc.genWorkerExecuteChildWorkflow(f, workflow)
+		svc.genWorkerWorkflowChildRun(f, workflow)
+		svc.genWorkerWorkflowChildRunGet(f, workflow)
+		svc.genWorkerWorkflowChildRunSelect(f, workflow)
+		svc.genWorkerWorkflowChildRunSelectStart(f, workflow)
+		svc.genWorkerWorkflowChildRunWaitStart(f, workflow)
+		svc.genWorkerWorkflowChildRunSignals(f, workflow)
 	}
 
 	// generate signal types, methods, functions

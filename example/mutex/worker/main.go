@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/signal"
 
-	mutex "github.com/cludden/protoc-gen-go-temporal/example"
-	"github.com/cludden/protoc-gen-go-temporal/example/mutexv1"
+	mutexv1 "github.com/cludden/protoc-gen-go-temporal/example/gen/example/mutex"
+	mutex "github.com/cludden/protoc-gen-go-temporal/example/mutex"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	pb "github.com/cludden/protoc-gen-go-temporal/pkg/expression/gen/test/expression/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,64 +15,64 @@ func TestExpression(t *testing.T) {
 
 	cases := []struct {
 		expr     string
-		msg      *simplepb.SomeWorkflow1Request
+		msg      *pb.Request
 		assert   func(result string, err error)
 		expected string
 		err      string
 	}{
 		{
 			expr: "test/${!id}",
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				Id: "foo",
 			},
 			expected: "test/foo",
 		},
 		{
 			expr: "test/${!id.uppercase()}",
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				Id: "foo",
 			},
 			expected: "test/FOO",
 		},
 		{
 			expr: "test/${!intField.string()}",
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				IntField: 30,
 			},
 			expected: "test/30",
 		},
 		{
 			expr:     `test/${!intField.or("unknown")}`,
-			msg:      &simplepb.SomeWorkflow1Request{},
+			msg:      &pb.Request{},
 			expected: "test/unknown",
 		},
 		{
 			expr: "test/${!bytesField}",
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				BytesField: []byte("foo"),
 			},
 			expected: fmt.Sprintf("test/%s", base64.StdEncoding.EncodeToString([]byte("foo"))),
 		},
 		{
 			expr: `test/${!bytesField.decode("base64").string()}`,
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				BytesField: []byte("foo"),
 			},
 			expected: "test/foo",
 		},
 		{
 			expr: `test/${! boolField.string() }`,
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				BoolField: true,
 			},
 			expected: "test/true",
 		},
 		{
 			expr: `test/${!outerSingle.foo}/${!outerSingle.innerSingle.bar}`,
-			msg: &simplepb.SomeWorkflow1Request{
-				OuterSingle: &simplepb.SomeWorkflow1Request_OuterNested{
+			msg: &pb.Request{
+				OuterSingle: &pb.Request_OuterNested{
 					Foo: "bar",
-					InnerSingle: &simplepb.SomeWorkflow1Request_OuterNested_InnerNested{
+					InnerSingle: &pb.Request_OuterNested_InnerNested{
 						Bar: "baz",
 					},
 				},
@@ -81,10 +81,10 @@ func TestExpression(t *testing.T) {
 		},
 		{
 			expr: `test/${!outerList.0.foo}/${!outerList.0.innerList.0.bar}`,
-			msg: &simplepb.SomeWorkflow1Request{
-				OuterList: []*simplepb.SomeWorkflow1Request_OuterNested{{
+			msg: &pb.Request{
+				OuterList: []*pb.Request_OuterNested{{
 					Foo: "bar",
-					InnerList: []*simplepb.SomeWorkflow1Request_OuterNested_InnerNested{{
+					InnerList: []*pb.Request_OuterNested_InnerNested{{
 						Bar: "baz",
 					}},
 				}},
@@ -93,7 +93,7 @@ func TestExpression(t *testing.T) {
 		},
 		{
 			expr: `test/${! ["svc", "region", "acc", "resource"].map_each(k -> id.re_find_object("arn:aws:(?P<svc>.+):(?P<region>.+):(?P<acc>.+):(?P<resource>.+)").get(k)).join("/") }`,
-			msg: &simplepb.SomeWorkflow1Request{
+			msg: &pb.Request{
 				Id: "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-0e9801d129EXAMPLE",
 			},
 			expected: "test/ec2/us-east-1/123456789012/vpc/vpc-0e9801d129EXAMPLE",

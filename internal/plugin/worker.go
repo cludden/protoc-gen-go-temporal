@@ -8,48 +8,8 @@ import (
 	pgs "github.com/lyft/protoc-gen-star/v2"
 )
 
-// genWorkflowsInterface generates a Workflows interface for a given service
-func (svc *Service) genWorkflowsInterface(f *g.File) {
-	// generate workflows interface
-	f.Commentf("Workflows provides methods for initializing new %s workflow values", svc.GoName)
-	f.Type().Id("Workflows").InterfaceFunc(func(methods *g.Group) {
-		for _, workflow := range svc.workflowsOrdered {
-			// method := svc.methods[workflow]
-			methods.Commentf("%s initializes a new %sWorkflow value", workflow, workflow).Line().
-				Id(workflow).
-				Params(
-					g.Id("ctx").Qual(workflowPkg, "Context"),
-					g.Id("input").Op("*").Id(fmt.Sprintf("%sInput", workflow)),
-				).
-				Params(
-					g.Id(fmt.Sprintf("%sWorkflow", workflow)),
-					g.Error(),
-				)
-		}
-	})
-}
-
-// genRegisterWorkflows generates a public RegisterWorkflows method for a given service
-func (svc *Service) genRegisterWorkflows(f *g.File) {
-	// generate workflow registration function for service
-	f.Commentf("RegisterWorkflows registers %s workflows with the given worker", svc.GoName)
-	f.Func().
-		Id("RegisterWorkflows").
-		Params(
-			g.Id("r").Qual(workerPkg, "Registry"),
-			g.Id("workflows").Id("Workflows"),
-		).
-		BlockFunc(func(fn *g.Group) {
-			for _, workflow := range svc.workflowsOrdered {
-				fn.Id(fmt.Sprintf("Register%sWorkflow", workflow)).Call(
-					g.Id("r"), g.Id("workflows").Dot(workflow),
-				)
-			}
-		})
-}
-
-// genWorkflowWorker generates a <Workflow>Worker struct
-func (svc *Service) genWorkflowWorker(f *g.File, workflow string) {
+// genWorker generates a <Workflow>Worker struct
+func (svc *Service) genWorker(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	privateName := pgs.Name(method.GoName).LowerCamelCase().String()
 	workerName := privateName
@@ -70,8 +30,92 @@ func (svc *Service) genWorkflowWorker(f *g.File, workflow string) {
 		)
 }
 
-// genWorkflowWorkerExecuteMethod generates a <Workflow>Worker's <Workflow> method
-func (svc *Service) genWorkflowWorkerExecuteMethod(f *g.File, workflow string) {
+// genWorkerBuilderFunction generates a build<Workflow> function that converts
+// a constructor function or method into a valid workflow function
+func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
+	privateName := pgs.Name(method.GoName).LowerCamelCase().String()
+	workerName := privateName
+	builderName := fmt.Sprintf("build%s", method.GoName)
+
+	// generate Build<Workflow> function
+	f.Commentf("%s converts a %s workflow struct into a valid workflow function", builderName, method.GoName)
+	f.Func().
+		Id(builderName).
+		Params(
+			g.Id("wf").
+				Func().
+				Params(
+					g.Qual(workflowPkg, "Context"),
+					g.Op("*").Id(fmt.Sprintf("%sInput", method.GoName)),
+				).
+				Params(
+					g.Id(fmt.Sprintf("%sWorkflow", method.GoName)),
+					g.Error(),
+				),
+		).
+		Params(
+			g.Func().
+				ParamsFunc(func(args *g.Group) {
+					args.Qual(workflowPkg, "Context")
+					if hasInput {
+						args.Op("*").Id(method.Input.GoIdent.GoName)
+					}
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				}),
+		).
+		Block(
+			g.Return(
+				g.Parens(g.Op("&").Id(workerName).Values(g.Id("wf"))).Dot(method.GoName),
+			),
+		)
+}
+
+// genWorkerExecuteChildWorkflow generates a public <Workflow>Child function
+func (svc *Service) genWorkerExecuteChildWorkflow(f *g.File, workflow string) {
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+	f.Commentf("%sChild executes a child %s workflow", workflow, workflow)
+	f.Func().
+		Id(fmt.Sprintf("%sChild", workflow)).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual(workflowPkg, "Context")
+			if hasInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+			args.Id("options").Op("...").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
+		}).
+		Op("*").Id(fmt.Sprintf("%sChildRun", workflow)).
+		BlockFunc(func(fn *g.Group) {
+			// initialize child workflow options with default values
+			svc.genClientStartWorkflowOptions(fn, workflow, true)
+
+			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
+			fn.Return(
+				g.Op("&").Id(fmt.Sprintf("%sChildRun", workflow)).Values(
+					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
+						args.Id("ctx")
+						args.Id(fmt.Sprintf("%sWorkflowName", workflow))
+						if hasInput {
+							args.Id("req")
+						} else {
+							args.Nil()
+						}
+					}),
+				),
+			)
+		})
+}
+
+// genWorkerExecuteMethod generates a <Workflow>Worker's <Workflow> method
+func (svc *Service) genWorkerExecuteMethod(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	opts := svc.workflows[workflow]
 	hasInput := !isEmpty(method.Input)
@@ -178,56 +222,8 @@ func (svc *Service) genWorkflowWorkerExecuteMethod(f *g.File, workflow string) {
 		})
 }
 
-// genWorkflowWorkerBuilderFunction generates a build<Workflow> function that converts
-// a constructor function or method into a valid workflow function
-func (svc *Service) genWorkflowWorkerBuilderFunction(f *g.File, workflow string) {
-	method := svc.methods[workflow]
-	hasInput := !isEmpty(method.Input)
-	hasOutput := !isEmpty(method.Output)
-	privateName := pgs.Name(method.GoName).LowerCamelCase().String()
-	workerName := privateName
-	builderName := fmt.Sprintf("build%s", method.GoName)
-
-	// generate Build<Workflow> function
-	f.Commentf("%s converts a %s workflow struct into a valid workflow function", builderName, method.GoName)
-	f.Func().
-		Id(builderName).
-		Params(
-			g.Id("wf").
-				Func().
-				Params(
-					g.Qual(workflowPkg, "Context"),
-					g.Op("*").Id(fmt.Sprintf("%sInput", method.GoName)),
-				).
-				Params(
-					g.Id(fmt.Sprintf("%sWorkflow", method.GoName)),
-					g.Error(),
-				),
-		).
-		Params(
-			g.Func().
-				ParamsFunc(func(args *g.Group) {
-					args.Qual(workflowPkg, "Context")
-					if hasInput {
-						args.Op("*").Id(method.Input.GoIdent.GoName)
-					}
-				}).
-				ParamsFunc(func(returnVals *g.Group) {
-					if hasOutput {
-						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
-					}
-					returnVals.Error()
-				}),
-		).
-		Block(
-			g.Return(
-				g.Parens(g.Op("&").Id(workerName).Values(g.Id("wf"))).Dot(method.GoName),
-			),
-		)
-}
-
-// genRegisterWorkflow generates a Register<Workflow> public function
-func (svc *Service) genRegisterWorkflow(f *g.File, workflow string) {
+// genWorkerRegisterWorkflow generates a Register<Workflow> public function
+func (svc *Service) genWorkerRegisterWorkflow(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	builderName := fmt.Sprintf("build%s", method.GoName)
 
@@ -259,323 +255,23 @@ func (svc *Service) genRegisterWorkflow(f *g.File, workflow string) {
 		)
 }
 
-// genWorkflowInterface generates a <Workflow> interface
-func (svc *Service) genWorkflowInterface(f *g.File, workflow string) {
-	opts := svc.workflows[workflow]
-	method := svc.methods[workflow]
-	hasOutput := !isEmpty(method.Output)
-	// generate workflow interface
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%sWorkflow describes a %s workflow implementation", workflow, workflow)
-	}
-	f.Type().Id(fmt.Sprintf("%sWorkflow", workflow)).InterfaceFunc(func(methods *g.Group) {
-		methods.Commentf("Execute a %s workflow", workflow).Line().
-			Id("Execute").
-			Params(
-				g.Id("ctx").Qual(workflowPkg, "Context"),
-			).
-			ParamsFunc(func(returnVals *g.Group) {
-				if hasOutput {
-					returnVals.Op("*").Id(method.Output.GoIdent.GoName)
-				}
-				returnVals.Error()
-			})
-
-		// add workflow query methods
-		for _, queryOpts := range opts.GetQuery() {
-			query := queryOpts.GetRef()
-			handler := svc.methods[query]
-			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("%s query handler", query)
-			methods.Id(query).
-				ParamsFunc(func(args *g.Group) {
-					if hasInput {
-						args.Op("*").Id(handler.Input.GoIdent.GoName)
-					}
-				}).
-				Params(
-					g.Op("*").Id(handler.Output.GoIdent.GoName),
-					g.Error(),
+// genWorkerRegisterWorkflows generates a public RegisterWorkflows method for a given service
+func (svc *Service) genWorkerRegisterWorkflows(f *g.File) {
+	// generate workflow registration function for service
+	f.Commentf("RegisterWorkflows registers %s workflows with the given worker", svc.GoName)
+	f.Func().
+		Id("RegisterWorkflows").
+		Params(
+			g.Id("r").Qual(workerPkg, "Registry"),
+			g.Id("workflows").Id("Workflows"),
+		).
+		BlockFunc(func(fn *g.Group) {
+			for _, workflow := range svc.workflowsOrdered {
+				fn.Id(fmt.Sprintf("Register%sWorkflow", workflow)).Call(
+					g.Id("r"), g.Id("workflows").Dot(workflow),
 				)
-		}
-
-		// add workflow update methods
-		for _, updateOpts := range opts.GetUpdate() {
-			update := updateOpts.GetRef()
-			handler := svc.methods[update]
-			handlerOpts := svc.updates[update]
-			hasInput := !isEmpty(handler.Input)
-			hasOutput := !isEmpty(handler.Output)
-
-			// add Validate<Update> method if enabled
-			if handlerOpts.GetValidate() {
-				validatorName := fmt.Sprintf("Validate%s", update)
-				methods.Commentf("%s validates an %s update", validatorName, update)
-				methods.Id(validatorName).
-					ParamsFunc(func(args *g.Group) {
-						args.Qual(workflowPkg, "Context")
-						if hasInput {
-							args.Op("*").Id(handler.Input.GoIdent.GoName)
-						}
-					}).
-					Params(g.Error())
-			}
-
-			// add <Update> method
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s updates a(n) %s workflow", workflow, workflow)
-			}
-			methods.Id(update).
-				ParamsFunc(func(args *g.Group) {
-					args.Qual(workflowPkg, "Context")
-					if hasInput {
-						args.Op("*").Id(handler.Input.GoIdent.GoName)
-					}
-				}).
-				ParamsFunc(func(returnVals *g.Group) {
-					if hasOutput {
-						returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
-					}
-					returnVals.Error()
-				})
-		}
-	})
-}
-
-// genWorkflowInput generates a <Workflow>Input struct
-func (svc *Service) genWorkflowInput(f *g.File, workflow string) {
-	opts := svc.workflows[workflow]
-	method := svc.methods[workflow]
-	hasInput := !isEmpty(method.Input)
-	f.Commentf("%sInput describes the input to a %s workflow constructor", workflow, workflow)
-	f.Type().Id(fmt.Sprintf("%sInput", workflow)).StructFunc(func(fields *g.Group) {
-		if hasInput {
-			fields.Id("Req").Op("*").Id(method.Input.GoIdent.GoName)
-		}
-
-		// add workflow signals
-		for _, signalOpts := range opts.GetSignal() {
-			signal := signalOpts.GetRef()
-			fields.Id(signal).Op("*").Id(fmt.Sprintf("%sSignal", signal))
-		}
-	})
-}
-
-// genExecuteChildWorkflow generates a public <Workflow>Child function
-func (svc *Service) genExecuteChildWorkflow(f *g.File, workflow string) {
-	method := svc.methods[workflow]
-	hasInput := !isEmpty(method.Input)
-	f.Commentf("%sChild executes a child %s workflow", workflow, workflow)
-	f.Func().
-		Id(fmt.Sprintf("%sChild", workflow)).
-		ParamsFunc(func(args *g.Group) {
-			args.Id("ctx").Qual(workflowPkg, "Context")
-			args.Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
-			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
-			}
-		}).
-		Op("*").Id(fmt.Sprintf("%sChildRun", workflow)).
-		BlockFunc(func(fn *g.Group) {
-			// initialize child workflow options with default values
-			svc.genClientStartWorkflowOptions(fn, workflow, true)
-
-			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
-			fn.Return(
-				g.Op("&").Id(fmt.Sprintf("%sChildRun", workflow)).Values(
-					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
-						args.Id("ctx")
-						args.Id(fmt.Sprintf("%sWorkflowName", workflow))
-						if hasInput {
-							args.Id("req")
-						} else {
-							args.Nil()
-						}
-					}),
-				),
-			)
-		})
-}
-
-// genWorkflowChildRun generates a <Workflow>ChildRun struct
-func (svc *Service) genWorkflowChildRun(f *g.File, workflow string) {
-	// generate child workflow run struct
-	f.Commentf("%sChildRun describes a child %s workflow run", workflow, workflow)
-	f.Type().Id(fmt.Sprintf("%sChildRun", workflow)).StructFunc(func(fields *g.Group) {
-		fields.Add(g.Id("Future").Qual(workflowPkg, "ChildWorkflowFuture"))
-	})
-}
-
-// genWorkflowChildRunGet generates a <Workflow>ChildRun Get method
-func (svc *Service) genWorkflowChildRunGet(f *g.File, workflow string) {
-	method := svc.methods[workflow]
-	hasOutput := !isEmpty(method.Output)
-	f.Comment("Get blocks until the workflow is completed, returning the response value")
-	f.Func().
-		Params(
-			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
-		).
-		Id("Get").
-		Params(
-			g.Id("ctx").Qual(workflowPkg, "Context"),
-		).
-		ParamsFunc(func(returnVals *g.Group) {
-			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
-			}
-			returnVals.Error()
-		}).
-		BlockFunc(func(fn *g.Group) {
-			if hasOutput {
-				fn.Var().Id("resp").Id(method.Output.GoIdent.GoName)
-			}
-			fn.If(
-				g.Err().Op(":=").Id("r").Dot("Future").Dot("Get").CallFunc(func(args *g.Group) {
-					args.Id("ctx")
-					if hasOutput {
-						args.Op("&").Id("resp")
-					} else {
-						args.Nil()
-					}
-				}),
-				g.Err().Op("!=").Nil(),
-			).BlockFunc(func(b *g.Group) {
-				if hasOutput {
-					b.Return(g.Nil(), g.Err())
-				} else {
-					b.Return(g.Err())
-				}
-			})
-			if hasOutput {
-				fn.Return(g.Op("&").Id("resp"), g.Nil())
-			} else {
-				fn.Return(g.Nil())
 			}
 		})
-}
-
-// genWorkflowChildRunSelect generates a <Workflow>ChildRun Select method
-func (svc *Service) genWorkflowChildRunSelect(f *g.File, workflow string) {
-	f.Comment("Select adds this completion to the selector. Callback can be nil.")
-	f.Func().
-		Params(
-			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
-		).
-		Id("Select").
-		Params(
-			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Id(fmt.Sprintf("%sChildRun", workflow))),
-		).
-		Params(
-			g.Qual(workflowPkg, "Selector"),
-		).
-		Block(
-			g.Return(
-				g.Id("sel").Dot("AddFuture").Call(
-					g.Id("r").Dot("Future"),
-					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
-						g.If(g.Id("fn").Op("!=").Nil()).Block(
-							g.Id("fn").Call(g.Op("*").Id("r")),
-						),
-					),
-				),
-			),
-		)
-}
-
-// genWorkflowChildRunSelectStart generates a <Workflow>ChildRun SelectStart method
-func (svc *Service) genWorkflowChildRunSelectStart(f *g.File, workflow string) {
-	f.Comment("SelectStart adds waiting for start to the selector. Callback can be nil.")
-	f.Func().
-		Params(
-			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
-		).
-		Id("SelectStart").
-		Params(
-			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Id(fmt.Sprintf("%sChildRun", workflow))),
-		).
-		Params(
-			g.Qual(workflowPkg, "Selector"),
-		).
-		Block(
-			g.Return(
-				g.Id("sel").Dot("AddFuture").Call(
-					g.Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call(),
-					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
-						g.If(g.Id("fn").Op("!=").Nil()).Block(
-							g.Id("fn").Call(g.Op("*").Id("r")),
-						),
-					),
-				),
-			),
-		)
-}
-
-// genWorkflowChildRunWaitStart generates a <Workflow>ChildRun WaitStart method
-func (svc *Service) genWorkflowChildRunWaitStart(f *g.File, workflow string) {
-	f.Comment("WaitStart waits for the child workflow to start")
-	f.Func().
-		Params(
-			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
-		).
-		Id("WaitStart").
-		Params(
-			g.Id("ctx").Qual(workflowPkg, "Context"),
-		).
-		Params(
-			g.Op("*").Qual(workflowPkg, "Execution"),
-			g.Error(),
-		).
-		Block(
-			g.Var().Id("exec").Qual(workflowPkg, "Execution"),
-			g.If(
-				g.Err().Op(":=").Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call().Dot("Get").Call(
-					g.Id("ctx"),
-					g.Op("&").Id("exec"),
-				),
-				g.Err().Op("!=").Nil(),
-			).Block(
-				g.Return(g.Nil(), g.Err()),
-			),
-			g.Return(g.Op("&").Id("exec"), g.Nil()),
-		)
-}
-
-// genWorkflowChildRunSignals generates <Workflow>ChildRun signal methods
-func (svc *Service) genWorkflowChildRunSignals(f *g.File, workflow string) {
-	opts := svc.workflows[workflow]
-	for _, signalOpts := range opts.GetSignal() {
-		signal := signalOpts.GetRef()
-		handler := svc.methods[signal]
-		hasInput := !isEmpty(handler.Input)
-		f.Commentf("%s sends the corresponding signal request to the child workflow", signal)
-		f.Func().
-			Params(g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow))).
-			Id(signal).
-			ParamsFunc(func(params *g.Group) {
-				params.Id("ctx").Qual(workflowPkg, "Context")
-				if hasInput {
-					params.Id("input").Op("*").Id(handler.Input.GoIdent.GoName)
-				}
-			}).
-			Params(g.Qual(workflowPkg, "Future")).
-			Block(
-				g.Return(g.Id("r").Dot("Future").Dot("SignalChildWorkflow").CallFunc(func(args *g.Group) {
-					args.Id("ctx")
-					args.Id(fmt.Sprintf("%sSignalName", signal))
-					if hasInput {
-						args.Id("input")
-					} else {
-						args.Nil()
-					}
-				})),
-			)
-	}
 }
 
 // genWorkerSignal generates a worker signal struct
@@ -584,6 +280,38 @@ func (svc *Service) genWorkerSignal(f *g.File, signal string) {
 	f.Type().Id(fmt.Sprintf("%sSignal", signal)).Struct(
 		g.Id("Channel").Qual(workflowPkg, "ReceiveChannel"),
 	)
+}
+
+// genWorkerSignalExternal generates a <Signal>External public function
+func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
+	method := svc.methods[signal]
+	hasInput := !isEmpty(method.Input)
+	f.Commentf("%sExternal sends a %s signal to an existing workflow", signal, signal)
+	f.Func().Id(fmt.Sprintf("%sExternal", signal)).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual(workflowPkg, "Context")
+			args.Id("workflowID").String()
+			args.Id("runID").String()
+			if hasInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+		}).
+		Params(g.Qual(workflowPkg, "Future")).
+		Block(
+			g.Return(
+				g.Qual(workflowPkg, "SignalExternalWorkflow").CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id("workflowID")
+					args.Id("runID")
+					args.Id(fmt.Sprintf("%sSignalName", signal))
+					if hasInput {
+						args.Id("req")
+					} else {
+						args.Nil()
+					}
+				}),
+			),
+		)
 }
 
 // genWorkerSignalReceive generates a worker signal Receive method
@@ -703,34 +431,306 @@ func (svc *Service) genWorkerSignalSelect(f *g.File, signal string) {
 		)
 }
 
-// genWorkerSignalExternal generates a <Signal>External public function
-func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
-	method := svc.methods[signal]
-	hasInput := !isEmpty(method.Input)
-	f.Commentf("%sExternal sends a %s signal to an existing workflow", signal, signal)
-	f.Func().Id(fmt.Sprintf("%sExternal", signal)).
-		ParamsFunc(func(args *g.Group) {
-			args.Id("ctx").Qual(workflowPkg, "Context")
-			args.Id("workflowID").String()
-			args.Id("runID").String()
-			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+// genWorkerWorkflowChildRun generates a <Workflow>ChildRun struct
+func (svc *Service) genWorkerWorkflowChildRun(f *g.File, workflow string) {
+	// generate child workflow run struct
+	f.Commentf("%sChildRun describes a child %s workflow run", workflow, workflow)
+	f.Type().Id(fmt.Sprintf("%sChildRun", workflow)).StructFunc(func(fields *g.Group) {
+		fields.Add(g.Id("Future").Qual(workflowPkg, "ChildWorkflowFuture"))
+	})
+}
+
+// genWorkerWorkflowChildRunGet generates a <Workflow>ChildRun Get method
+func (svc *Service) genWorkerWorkflowChildRunGet(f *g.File, workflow string) {
+	method := svc.methods[workflow]
+	hasOutput := !isEmpty(method.Output)
+	f.Comment("Get blocks until the workflow is completed, returning the response value")
+	f.Func().
+		Params(
+			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
+		).
+		Id("Get").
+		Params(
+			g.Id("ctx").Qual(workflowPkg, "Context"),
+		).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasOutput {
+				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
 			}
+			returnVals.Error()
 		}).
-		Params(g.Qual(workflowPkg, "Future")).
-		Block(
-			g.Return(
-				g.Qual(workflowPkg, "SignalExternalWorkflow").CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *g.Group) {
+			if hasOutput {
+				fn.Var().Id("resp").Id(method.Output.GoIdent.GoName)
+			}
+			fn.If(
+				g.Err().Op(":=").Id("r").Dot("Future").Dot("Get").CallFunc(func(args *g.Group) {
 					args.Id("ctx")
-					args.Id("workflowID")
-					args.Id("runID")
-					args.Id(fmt.Sprintf("%sSignalName", signal))
-					if hasInput {
-						args.Id("req")
+					if hasOutput {
+						args.Op("&").Id("resp")
 					} else {
 						args.Nil()
 					}
 				}),
+				g.Err().Op("!=").Nil(),
+			).BlockFunc(func(b *g.Group) {
+				if hasOutput {
+					b.Return(g.Nil(), g.Err())
+				} else {
+					b.Return(g.Err())
+				}
+			})
+			if hasOutput {
+				fn.Return(g.Op("&").Id("resp"), g.Nil())
+			} else {
+				fn.Return(g.Nil())
+			}
+		})
+}
+
+// genWorkerWorkflowChildRunSelect generates a <Workflow>ChildRun Select method
+func (svc *Service) genWorkerWorkflowChildRunSelect(f *g.File, workflow string) {
+	f.Comment("Select adds this completion to the selector. Callback can be nil.")
+	f.Func().
+		Params(
+			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
+		).
+		Id("Select").
+		Params(
+			g.Id("sel").Qual(workflowPkg, "Selector"),
+			g.Id("fn").Func().Params(g.Id(fmt.Sprintf("%sChildRun", workflow))),
+		).
+		Params(
+			g.Qual(workflowPkg, "Selector"),
+		).
+		Block(
+			g.Return(
+				g.Id("sel").Dot("AddFuture").Call(
+					g.Id("r").Dot("Future"),
+					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
+						g.If(g.Id("fn").Op("!=").Nil()).Block(
+							g.Id("fn").Call(g.Op("*").Id("r")),
+						),
+					),
+				),
 			),
 		)
+}
+
+// genWorkerWorkflowChildRunSelectStart generates a <Workflow>ChildRun SelectStart method
+func (svc *Service) genWorkerWorkflowChildRunSelectStart(f *g.File, workflow string) {
+	f.Comment("SelectStart adds waiting for start to the selector. Callback can be nil.")
+	f.Func().
+		Params(
+			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
+		).
+		Id("SelectStart").
+		Params(
+			g.Id("sel").Qual(workflowPkg, "Selector"),
+			g.Id("fn").Func().Params(g.Id(fmt.Sprintf("%sChildRun", workflow))),
+		).
+		Params(
+			g.Qual(workflowPkg, "Selector"),
+		).
+		Block(
+			g.Return(
+				g.Id("sel").Dot("AddFuture").Call(
+					g.Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call(),
+					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
+						g.If(g.Id("fn").Op("!=").Nil()).Block(
+							g.Id("fn").Call(g.Op("*").Id("r")),
+						),
+					),
+				),
+			),
+		)
+}
+
+// genWorkerWorkflowChildRunWaitStart generates a <Workflow>ChildRun WaitStart method
+func (svc *Service) genWorkerWorkflowChildRunWaitStart(f *g.File, workflow string) {
+	f.Comment("WaitStart waits for the child workflow to start")
+	f.Func().
+		Params(
+			g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow)),
+		).
+		Id("WaitStart").
+		Params(
+			g.Id("ctx").Qual(workflowPkg, "Context"),
+		).
+		Params(
+			g.Op("*").Qual(workflowPkg, "Execution"),
+			g.Error(),
+		).
+		Block(
+			g.Var().Id("exec").Qual(workflowPkg, "Execution"),
+			g.If(
+				g.Err().Op(":=").Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call().Dot("Get").Call(
+					g.Id("ctx"),
+					g.Op("&").Id("exec"),
+				),
+				g.Err().Op("!=").Nil(),
+			).Block(
+				g.Return(g.Nil(), g.Err()),
+			),
+			g.Return(g.Op("&").Id("exec"), g.Nil()),
+		)
+}
+
+// genWorkerWorkflowChildRunSignals generates <Workflow>ChildRun signal methods
+func (svc *Service) genWorkerWorkflowChildRunSignals(f *g.File, workflow string) {
+	opts := svc.workflows[workflow]
+	for _, signalOpts := range opts.GetSignal() {
+		signal := signalOpts.GetRef()
+		handler := svc.methods[signal]
+		hasInput := !isEmpty(handler.Input)
+		f.Commentf("%s sends the corresponding signal request to the child workflow", signal)
+		f.Func().
+			Params(g.Id("r").Op("*").Id(fmt.Sprintf("%sChildRun", workflow))).
+			Id(signal).
+			ParamsFunc(func(params *g.Group) {
+				params.Id("ctx").Qual(workflowPkg, "Context")
+				if hasInput {
+					params.Id("input").Op("*").Id(handler.Input.GoIdent.GoName)
+				}
+			}).
+			Params(g.Qual(workflowPkg, "Future")).
+			Block(
+				g.Return(g.Id("r").Dot("Future").Dot("SignalChildWorkflow").CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id(fmt.Sprintf("%sSignalName", signal))
+					if hasInput {
+						args.Id("input")
+					} else {
+						args.Nil()
+					}
+				})),
+			)
+	}
+}
+
+// genWorkerWorkflowInput generates a <Workflow>Input struct
+func (svc *Service) genWorkerWorkflowInput(f *g.File, workflow string) {
+	opts := svc.workflows[workflow]
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+	f.Commentf("%sInput describes the input to a %s workflow constructor", workflow, workflow)
+	f.Type().Id(fmt.Sprintf("%sInput", workflow)).StructFunc(func(fields *g.Group) {
+		if hasInput {
+			fields.Id("Req").Op("*").Id(method.Input.GoIdent.GoName)
+		}
+
+		// add workflow signals
+		for _, signalOpts := range opts.GetSignal() {
+			signal := signalOpts.GetRef()
+			fields.Id(signal).Op("*").Id(fmt.Sprintf("%sSignal", signal))
+		}
+	})
+}
+
+// genWorkerWorkflowInterface generates a <Workflow> interface
+func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
+	opts := svc.workflows[workflow]
+	method := svc.methods[workflow]
+	hasOutput := !isEmpty(method.Output)
+	// generate workflow interface
+	if method.Comments.Leading.String() != "" {
+		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+	} else {
+		f.Commentf("%sWorkflow describes a %s workflow implementation", workflow, workflow)
+	}
+	f.Type().Id(fmt.Sprintf("%sWorkflow", workflow)).InterfaceFunc(func(methods *g.Group) {
+		methods.Commentf("Execute a %s workflow", workflow).Line().
+			Id("Execute").
+			Params(
+				g.Id("ctx").Qual(workflowPkg, "Context"),
+			).
+			ParamsFunc(func(returnVals *g.Group) {
+				if hasOutput {
+					returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				}
+				returnVals.Error()
+			})
+
+		// add workflow query methods
+		for _, queryOpts := range opts.GetQuery() {
+			query := queryOpts.GetRef()
+			handler := svc.methods[query]
+			hasInput := !isEmpty(handler.Input)
+			methods.Commentf("%s query handler", query)
+			methods.Id(query).
+				ParamsFunc(func(args *g.Group) {
+					if hasInput {
+						args.Op("*").Id(handler.Input.GoIdent.GoName)
+					}
+				}).
+				Params(
+					g.Op("*").Id(handler.Output.GoIdent.GoName),
+					g.Error(),
+				)
+		}
+
+		// add workflow update methods
+		for _, updateOpts := range opts.GetUpdate() {
+			update := updateOpts.GetRef()
+			handler := svc.methods[update]
+			handlerOpts := svc.updates[update]
+			hasInput := !isEmpty(handler.Input)
+			hasOutput := !isEmpty(handler.Output)
+
+			// add Validate<Update> method if enabled
+			if handlerOpts.GetValidate() {
+				validatorName := fmt.Sprintf("Validate%s", update)
+				methods.Commentf("%s validates an %s update", validatorName, update)
+				methods.Id(validatorName).
+					ParamsFunc(func(args *g.Group) {
+						args.Qual(workflowPkg, "Context")
+						if hasInput {
+							args.Op("*").Id(handler.Input.GoIdent.GoName)
+						}
+					}).
+					Params(g.Error())
+			}
+
+			// add <Update> method
+			if handler.Comments.Leading.String() != "" {
+				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
+			} else {
+				methods.Commentf("%s updates a(n) %s workflow", workflow, workflow)
+			}
+			methods.Id(update).
+				ParamsFunc(func(args *g.Group) {
+					args.Qual(workflowPkg, "Context")
+					if hasInput {
+						args.Op("*").Id(handler.Input.GoIdent.GoName)
+					}
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				})
+		}
+	})
+}
+
+// genWorkerWorkflowsInterface generates a Workflows interface for a given service
+func (svc *Service) genWorkerWorkflowsInterface(f *g.File) {
+	// generate workflows interface
+	f.Commentf("Workflows provides methods for initializing new %s workflow values", svc.GoName)
+	f.Type().Id("Workflows").InterfaceFunc(func(methods *g.Group) {
+		for _, workflow := range svc.workflowsOrdered {
+			// method := svc.methods[workflow]
+			methods.Commentf("%s initializes a new %sWorkflow value", workflow, workflow).Line().
+				Id(workflow).
+				Params(
+					g.Id("ctx").Qual(workflowPkg, "Context"),
+					g.Id("input").Op("*").Id(fmt.Sprintf("%sInput", workflow)),
+				).
+				Params(
+					g.Id(fmt.Sprintf("%sWorkflow", workflow)),
+					g.Error(),
+				)
+		}
+	})
 }

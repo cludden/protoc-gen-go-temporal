@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/cludden/protoc-gen-go-temporal/example/mutexv1"
+	mutexv1 "github.com/cludden/protoc-gen-go-temporal/example/gen/example/mutex"
 	"go.temporal.io/sdk/client"
 )
 
@@ -27,7 +27,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, err := mutex.SampleWorkflowWithMutex(context.Background(), nil, &mutexv1.SampleWorkflowWithMutexRequest{
+			if _, err := mutex.SampleWorkflowWithMutex(context.Background(), &mutexv1.SampleWorkflowWithMutexRequest{
 				Resource: resource,
 			}); err != nil {
 				log.Printf("error executing sample workflow: %v\n", err)

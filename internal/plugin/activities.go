@@ -168,7 +168,7 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local bool) 
 	if local {
 		methodName = fmt.Sprintf("%sLocal", methodName)
 	}
-	opts := svc.activities[activity].GetDefaultOptions()
+	opts := svc.activities[activity]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 	f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
