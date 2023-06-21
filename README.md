@@ -1,40 +1,46 @@
 # protoc-gen-go-temporal
 
-a protoc plugin for generating temporal clients and workers in Go from protobuf schemas
+a protoc plugin for generating typed temporal clients and workers in Go from protobuf schemas
 
 inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
 
 **Features:**
-- define default `client.StartWorkflowOptions`, `workflow.ActivityOptions`, `workflow.ChildWorkflowOptions` including:
-  - default workflow ids that can leverage inputs via [Bloblang ID expressions](#id-expressions)
-  - default timeouts, retry policies, id reuse policies
-- generates typed client and workflow helpers
-  - generates client with methods for executing workflows, queries, signals
-  - generates methods for calling activities and local activities from workflows
-  - generates methods for executing child workflows and signalling external workflows
+- typed client with:
+  - methods for executing workflows, queries, signals, and updates
+  - methods for cancelling or terminating workflows
+  - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
+  - dynamic workflow and update ids via [Bloblang expressions](#id-expressions)
+  - default timeouts, id reuse policies, wait policies
+- typed worker helpers with:
+  - functions for calling activities and local activities from workflows
+  - functions for executing child workflows and signalling external workflows
+  - default `workflow.ActivityOptions`, `workflow.ChildWorkflowOptions`
+  - default timeouts, parent cose policies, retry policies
 
 ## Getting Started
 1. Install [buf](https://docs.buf.build/installation)
+  
+1. Install this plugin by downloading the latest [release](https://github.com/cludden/protoc-gen-go-temporal/releases)
 
-2. Install protoc plugins
+1. Install go protoc plugins if necessary
 ```shell
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@latest
 ```
 
-3. Initialize buf repository
+1. Initialize buf repository
 ```shell
 mkdir proto && cd proto && buf init
 ```
 
-4. Add dependency to `buf.yaml`
+1. Add dependency to `buf.yaml`
 ```yaml
 version: v1
 deps:
-  - buf.build/cludden/protoc-gen-go-temporal
+  - buf.build/cludden/protoc-gen-go-temporal:<release>
 ```
 
-5. Add plugin to `buf.gen.yaml` and exclude it from managed mode go prefix
+1. Add plugin to `buf.gen.yaml` and exclude it from managed mode go prefix
 ```yaml
 version: v1
 managed:
@@ -53,8 +59,8 @@ plugins:
     strategy: all
 ```
 
-6. Define your service  
-<small><b><i>note:</i></b> see [advanced](#advanced), [example](./example/), and [test](./test/) for more details on generated code and usage</small>
+1. Define your service  
+<small><b><i>note:</i></b> see [advanced](#advanced), [example](./example/), and [test](./test) for more details on generated code and usage</small>
 
 ```protobuf
 syntax="proto3";
@@ -73,10 +79,8 @@ service Example {
   // HelloWorld defines a workflow with a single activity of the same name
   rpc HelloWorld(HelloWorldRequest) returns (HelloWorldResponse) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'hello-world/${! uuid_v4() }'
-        execution_timeout: { seconds: 30 }
-      }
+      id: 'hello-world/${! uuid_v4() }'
+      execution_timeout: { seconds: 30 }
     };
     option (temporal.v1.activity) = {};
   }
@@ -95,12 +99,12 @@ message HelloWorldResponse {
 }
 ```
 
-7. Generate temporal worker and client types, methods, interfaces, and functions
+1. Generate temporal worker and client types, methods, interfaces, and functions
 ```shell
 buf generate
 ```
 
-8. Implement your activities, workflows
+1. Implement your activities, workflows
 
 ```go
 package main
@@ -169,14 +173,12 @@ func main() {
 
     // initialize generated client and execute workflow
     example := examplev1.NewClient(c)
-    resp, err := example.HelloWorld(context.Background(), nil, &examplev1.HelloWorldRequest{})
+    resp, err := example.HelloWorld(context.Background(), &examplev1.HelloWorldRequest{})
     if err != nil {
       log.Fatalf("error executing %s workflow: %v", examplev1.HelloWorldWorkflowName, err)
     }
     log.Printf("hello world successful: %sv", resp)
 }
-
-
 ```
 
 ### Advanced
@@ -207,11 +209,9 @@ service Mutex {
   // Mutex provides a mutex over a shared resource
   rpc Mutex(MutexRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'mutex/${!resource}'
-        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-        execution_timeout: { seconds: 3600 }
-      }
+      id: 'mutex/${!resource}'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      execution_timeout: { seconds: 3600 }
       signal: { ref: 'AcquireLease', start: true }
       signal: { ref: 'RenewLease' }
       signal: { ref: 'RevokeLease' }
@@ -223,11 +223,9 @@ service Mutex {
   // a Mutex workflow to prevent concurrent access to a shared resource
   rpc SampleWorkflowWithMutex(SampleWorkflowWithMutexRequest) returns (SampleWorkflowWithMutexResponse) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'sample-workflow-with-mutex/${!resource}/${!uuid_v4()}'
-        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
-        execution_timeout: { seconds: 3600 }
-      }
+      id: 'sample-workflow-with-mutex/${!resource}/${!uuid_v4()}'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
+      execution_timeout: { seconds: 3600 }
       signal: { ref: 'LeaseAcquired' }
     };
   }
@@ -435,7 +433,7 @@ func (wf *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) (resp *
     wf.log.Info("started")
 
     wf.log.Info("requesting lease")
-    if err := mutexv1.Mutex(ctx, nil, &mutexv1.MutexRequest{Resource: wf.Req.GetResource()}).Get(ctx); err != nil {
+    if err := mutexv1.Mutex(ctx, &mutexv1.MutexRequest{Resource: wf.Req.GetResource()}).Get(ctx); err != nil {
         return nil, fmt.Errorf("error requesting lease: %w", err)
     }
 
@@ -479,10 +477,10 @@ func (a *Activites) Mutex(ctx context.Context, req *mutexv1.MutexRequest) error 
 
 ## Options
 
-See [temporal.proto](proto/temporal/v1/temporal.proto) for Service and Method options supported by this plugin.
+See [docs](./docs/) for Service and Method options supported by this plugin.
 
 ### ID Expressions
-Workflows can specify a default workflow ID that support [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expressions. The expression is evaluated against a JSON-like input structure, allowing it to leverage fields from the Workflow's input parameter as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
+**Workflows** and **Updates** can specify a default workflow ID as a [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expression. The expression is evaluated against a JSON-like input structure, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
 
 **Example**
 
@@ -516,10 +514,10 @@ Can be used like so:
 c, _ := client.Dial(client.Options{})
 example := examplev1.NewClient(c)
 
-run, _ := example.ExecuteSayGreeting(context.Background(), nil, &examplev1.SayGreetingRequest{})
+run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{})
 require.Regexp(`^say-greeting/Hello/World/[a-f0-9-]{32}$`, run.ID())
 
-run, _ := example.ExecuteSayGreeting(context.Background(), nil, &examplev1.SayGreetingRequest{
+run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{
   Greeting: "howdy",
   Subject: "stranger",
 })

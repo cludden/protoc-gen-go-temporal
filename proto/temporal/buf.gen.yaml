@@ -4,6 +4,9 @@ managed:
   go_package_prefix:
     default: github.com/cludden/protoc-gen-go-temporal/gen
 plugins:
+  - plugin: doc
+    out: ../docs/api
+    opt: markdown,api.md,source_relative
   - plugin: go
     out: ../gen
     opt: paths=source_relative
