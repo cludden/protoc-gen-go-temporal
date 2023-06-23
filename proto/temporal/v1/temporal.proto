@@ -23,6 +23,8 @@ extend google.protobuf.MethodOptions {
 message ActivityOptions {
   // Default configuration for ActivityOptions
   StartOptions default_options = 1;
+  // Activity name
+  string name = 2;
 
   message StartOptions {
     // Override default task queue for activity
@@ -108,6 +110,8 @@ message WorkflowOptions {
   repeated Signal signal = 2;
   // Default configuration for StartWorklowOptions, ExecuteChildWorkflowOptions
   StartOptions default_options = 6;
+  // Workflow name
+  string name = 3;
 
   // Query identifies a query supported by the worklow
   message Query {

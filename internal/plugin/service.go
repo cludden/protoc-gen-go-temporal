@@ -225,7 +225,13 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, workflow := range svc.workflowsOrdered {
 				method := svc.methods[workflow]
-				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(fmt.Sprintf("%sWorkflow", string(method.Desc.FullName())))
+				opt := svc.workflows[workflow]
+				name := opt.GetName()
+				if name == "" {
+					name = fmt.Sprintf("%sWorkflow", string(method.Desc.FullName()))
+				}
+
+				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -275,7 +281,12 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, activity := range svc.activitiesOrdered {
 				method := svc.methods[activity]
-				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(fmt.Sprintf("%sActivity", string(method.Desc.FullName())))
+				opts := svc.activities[activity]
+				name := opts.GetName()
+				if name == "" {
+					name = fmt.Sprintf("%sActivity", string(method.Desc.FullName()))
+				}
+				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(name)
 			}
 		})
 	}
