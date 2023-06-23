@@ -14,6 +14,7 @@ service Simple {
   // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
     option (temporal.v1.workflow) = {
+      name: 'mycompany.simple.SomeWorkflow1'
       default_options {
         id: 'some-workflow-1/${!id}/${!uuid_v4()}'
       }
@@ -27,6 +28,7 @@ service Simple {
   // SomeWorkflow2 does some workflow thing.
   rpc SomeWorkflow2(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
+      name: 'mycompany.simple.SomeWorkflow2'
       signal: { ref: 'SomeSignal1', start: true }
     };
   }
@@ -50,7 +52,9 @@ service Simple {
 
   // SomeActivity1 does some activity thing.
   rpc SomeActivity1(google.protobuf.Empty) returns (google.protobuf.Empty) {
-    option (temporal.v1.activity) = { };
+    option (temporal.v1.activity) = {
+      name: 'mycompany.simple.SomeActivity1'
+    };
   }
 
   // SomeActivity2 does some activity thing.
@@ -58,7 +62,7 @@ service Simple {
     option (temporal.v1.activity) = {
       default_options {
         start_to_close_timeout: { seconds: 10 }
-        retry_policy {
+        retry_policy {  
           max_interval: { seconds: 30 }
         }
       }
