@@ -68,10 +68,10 @@ func (svc *Service) genClientImplConstructor(f *g.File) {
 func (svc *Service) genClientImplQueryMethod(f *g.File, query string) {
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
-	f.Commentf("Query%s sends a %s query to an existing workflow", query, query)
+	f.Commentf("%s sends a %s query to an existing workflow", query, query)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
-		Id(fmt.Sprintf("Query%s", query)).
+		Id(query).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -117,10 +117,10 @@ func (svc *Service) genClientImplQueryMethod(f *g.File, query string) {
 func (svc *Service) genClientImplSignalMethod(f *g.File, signal string) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
-	f.Commentf("Signal%s sends a %s signal to an existing workflow", signal, signal)
+	f.Commentf("%s sends a %s signal to an existing workflow", signal, signal)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
-		Id(fmt.Sprintf("Signal%s", signal)).
+		Id(signal).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -147,11 +147,11 @@ func (svc *Service) genClientImplSignalMethod(f *g.File, signal string) {
 		)
 }
 
-// genClientImplSignalWithStartMethod adds a Start<Workflow>With<Signal> client method
-func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, signal string) {
+// genClientImplSignalWithStartAsyncMethod adds a <Workflow>With<Signal>Async client method
+func (svc *Service) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow, signal string) {
 	method := svc.methods[workflow]
 	handler := svc.methods[signal]
-	name := fmt.Sprintf("Start%sWith%s", workflow, signal)
+	name := fmt.Sprintf("%sWith%sAsync", workflow, signal)
 	runName := pgs.Name(method.GoName).LowerCamelCase().String()
 	hasWorkflowInput := !isEmpty(method.Input)
 	hasSignalInput := !isEmpty(handler.Input)
@@ -206,16 +206,130 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 		})
 }
 
-// genClientImplUpdateMethod adds an Update<Update> method to a workflowClient
+// genClientImplSignalWithStartMethod adds a Start<Workflow>With<Signal> client method
+func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, signal string) {
+	method := svc.methods[workflow]
+	handler := svc.methods[signal]
+	name := fmt.Sprintf("%sWith%s", workflow, signal)
+	hasWorkflowInput := !isEmpty(method.Input)
+	hasWorkflowOutput := !isEmpty(method.Output)
+	hasSignalInput := !isEmpty(handler.Input)
+	f.Commentf("%s starts a %s workflow and sends a %s signal in a transaction", name, workflow, signal)
+	f.Func().
+		Params(g.Id("c").Op("*").Id("workflowClient")).
+		Id(name).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasWorkflowInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+			if hasSignalInput {
+				args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
+			}
+			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+		}).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasWorkflowOutput {
+				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(fn *g.Group) {
+			// signal with start workflow
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(fmt.Sprintf("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
+				args.Id("ctx")
+				if hasWorkflowInput {
+					args.Id("req")
+				}
+				if hasSignalInput {
+					args.Id("signal")
+				}
+				args.Id("options").Op("...")
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.ReturnFunc(func(returnVals *g.Group) {
+					if hasWorkflowOutput {
+						returnVals.Nil()
+					}
+					returnVals.Err()
+				}),
+			)
+			fn.Return(
+				g.Id("run").Dot("Get").Call(g.Id("ctx")),
+			)
+		})
+}
+
+// genClientImplUpdateMethod adds an <Update> method to a workflowClient
 func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
+	handler := svc.methods[update]
+	hasInput := !isEmpty(handler.Input)
+	hasOutput := !isEmpty(handler.Output)
+	f.Commentf("%s sends a(n) %s update to an existing workflow", update, update)
+	f.Func().
+		Params(g.Id("c").Op("*").Id("workflowClient")).
+		Id(update).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			args.Id("workflowID").String()
+			args.Id("runID").String()
+			if hasInput {
+				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+			}
+			args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+		}).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasOutput {
+				returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(method *g.Group) {
+			// initialize update request options
+			method.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
+			method.If(g.Len(g.Id("opts")).Op(">").Lit(0)).Block(
+				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
+			)
+
+			// override wait policy
+			method.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
+				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"),
+			)
+
+			// call async method
+			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(fmt.Sprintf("%sAsync", update)).CallFunc(func(args *g.Group) {
+				args.Id("ctx")
+				args.Id("workflowID")
+				args.Id("runID")
+				if hasInput {
+					args.Id("req")
+				}
+				args.Id("options")
+			})
+			method.If(g.Err().Op("!=").Nil()).Block(
+				g.ReturnFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Nil()
+					}
+					returnVals.Err()
+				}),
+			)
+
+			// call handle get
+			method.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx")))
+		})
+}
+
+// genClientImplUpdateMethodAsync adds an <Update>Async method to a workflowClient
+func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 	handler := svc.methods[update]
 	handleName := fmt.Sprintf("%sHandle", pgs.Name(handler.GoName).LowerCamelCase().String())
 	updateOpts := svc.updates[update]
 	hasInput := !isEmpty(handler.Input)
-	f.Commentf("Update%s sends a(n) %s update to an existing workflow", update, update)
+	f.Commentf("%sAsync sends a(n) %s update to an existing workflow", update, update)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
-		Id(fmt.Sprintf("Update%s", update)).
+		Id(fmt.Sprintf("%sAsync", update)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -297,15 +411,15 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 		})
 }
 
-// genClientImplWorkflowExecuteMethod generates an Execute<Workflow> client method
-func (svc *Service) genClientImplWorkflowExecuteMethod(f *g.File, workflow string) {
+// genClientImplWorkflowAsyncMethod generates an <Workflow>Async client method
+func (svc *Service) genClientImplWorkflowAsyncMethod(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	name := pgs.Name(method.GoName).LowerCamelCase().String()
 	hasInput := !isEmpty(method.Input)
-	f.Commentf("Execute%s starts a %s workflow", workflow, workflow)
+	f.Commentf("%sAsync starts a %s workflow", workflow, workflow)
 	f.Func().
 		Params(g.Id("c").Op("*").Id("workflowClient")).
-		Id(fmt.Sprintf("Execute%s", workflow)).
+		Id(fmt.Sprintf("%sAsync", workflow)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
@@ -405,7 +519,7 @@ func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
 		}).
 		BlockFunc(func(fn *g.Group) {
 			// execute workflow
-			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(fmt.Sprintf("Execute%s", workflow)).CallFunc(func(args *g.Group) {
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(fmt.Sprintf("%sAsync", workflow)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
@@ -458,9 +572,9 @@ func (svc *Service) genClientInterface(f *g.File) {
 					returnVals.Error()
 				})
 
-			// generate Start<Workflow> method
-			methods.Commentf("Start%s starts a(n) %s workflow", workflow, workflow)
-			methods.Id(fmt.Sprintf("Execute%s", workflow)).
+			// generate <Workflow>Async method
+			methods.Commentf("%sAsync starts a(n) %s workflow", workflow, workflow)
+			methods.Id(fmt.Sprintf("%sAsync", workflow)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
@@ -474,7 +588,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 				)
 
 			// generate Get<Workflow> method
-			methods.Commentf("Get%s retrieves a(n) %s workflow execution", workflow, workflow)
+			methods.Commentf("Get%s retrieves a(n) existing %s workflow execution", workflow, workflow)
 			methods.Id(fmt.Sprintf("Get%s", workflow)).
 				Params(
 					g.Id("ctx").Qual("context", "Context"),
@@ -486,7 +600,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					g.Error(),
 				)
 
-			// add Start<Workflow>With<Signal> method
+			// add <Workflow>With<Signal> methods
 			for _, signalOpts := range opts.GetSignal() {
 				if !signalOpts.GetStart() {
 					continue
@@ -495,10 +609,32 @@ func (svc *Service) genClientInterface(f *g.File) {
 				signal := signalOpts.GetRef()
 				handler := svc.methods[signal]
 				hasWorkflowInput := !isEmpty(method.Input)
+				hasWorkflowOutput := !isEmpty(method.Output)
 				hasSignalInput := !isEmpty(handler.Input)
 
-				methods.Commentf("Start%sWith%s sends a(n) %s signal to a %s workflow, starting it if not present", workflow, signal, signal, workflow)
-				methods.Id(fmt.Sprintf("Start%sWith%s", workflow, signal)).
+				// add synchronous favor
+				methods.Commentf("%sWith%s sends a(n) %s signal to a %s workflow, starting it if not present", workflow, signal, signal, workflow)
+				methods.Id(fmt.Sprintf("%sWith%s", workflow, signal)).
+					ParamsFunc(func(args *g.Group) {
+						args.Id("ctx").Qual("context", "Context")
+						if hasWorkflowInput {
+							args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+						}
+						if hasSignalInput {
+							args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
+						}
+						args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+					}).
+					ParamsFunc(func(returnVals *g.Group) {
+						if hasWorkflowOutput {
+							returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+						}
+						returnVals.Error()
+					})
+
+				// add async flavor
+				methods.Commentf("%sWith%sAsync sends a(n) %s signal to a %s workflow, starting it if not present", workflow, signal, signal, workflow)
+				methods.Id(fmt.Sprintf("%sWith%sAsync", workflow, signal)).
 					ParamsFunc(func(args *g.Group) {
 						args.Id("ctx").Qual("context", "Context")
 						if hasWorkflowInput {
@@ -520,8 +656,8 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, query := range svc.queriesOrdered {
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("Query%s sends a %s query to an existing workflow", query, query)
-			methods.Id(fmt.Sprintf("Query%s", query)).
+			methods.Commentf("%s sends a %s query to an existing workflow", query, query)
+			methods.Id(query).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -540,8 +676,8 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, signal := range svc.signalsOrdered {
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
-			methods.Commentf("Signal%s sends a %s signal to an existing workflow", signal, signal)
-			methods.Id(fmt.Sprintf("Signal%s", signal)).
+			methods.Commentf("%s sends a %s signal to an existing workflow", signal, signal)
+			methods.Id(signal).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -557,9 +693,30 @@ func (svc *Service) genClientInterface(f *g.File) {
 		for _, update := range svc.updatesOrdered {
 			handler := svc.methods[update]
 			hasInput := !isEmpty(handler.Input)
+			hasOutput := !isEmpty(handler.Output)
 
-			methods.Commentf("Update%s sends a(n) %s update to an existing workflow", update, update)
-			methods.Id(fmt.Sprintf("Update%s", update)).
+			// add synchronous flavor
+			methods.Commentf("%s sends a(n) %s update to an existing workflow", update, update)
+			methods.Id(update).
+				ParamsFunc(func(args *g.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					args.Id("workflowID").String()
+					args.Id("runID").String()
+					if hasInput {
+						args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+					}
+					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				})
+
+			// add async flavor
+			methods.Commentf("%sAsync sends a(n) %s update to an existing workflow", update, update)
+			methods.Id(fmt.Sprintf("%sAsync", update)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -966,7 +1123,7 @@ func (svc *Service) genClientWorkflowRunImplQueryMethod(f *g.File, workflow stri
 		).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(fmt.Sprintf("Query%s", query)).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(query).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -1015,7 +1172,7 @@ func (svc *Service) genClientWorkflowRunImplSignalMethod(f *g.File, workflow str
 		Params(g.Error()).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(fmt.Sprintf("Signal%s", signal)).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(signal).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -1027,18 +1184,18 @@ func (svc *Service) genClientWorkflowRunImplSignalMethod(f *g.File, workflow str
 		)
 }
 
-// genClientWorkflowRunImplUpdateMethod generates a <Workflow>Run's <Update> method
-func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow string, update string) {
+// genClientWorkflowRunImplUpdateAsyncMethod generates a <Workflow>Run's <Update>Async method
+func (svc *Service) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workflow string, update string) {
 	method := svc.methods[workflow]
 	name := pgs.Name(method.GoName).LowerCamelCase().String()
 	handler := svc.methods[update]
 	hasInput := !isEmpty(handler.Input)
 
 	// generate get method
-	f.Commentf("%s sends a(n) %s update to the workflow", update, update)
+	f.Commentf("%sAsync sends a(n) %s update to the workflow", update, update)
 	f.Func().
 		Params(g.Id("r").Op("*").Id(fmt.Sprintf("%sRun", name))).
-		Id(update).
+		Id(fmt.Sprintf("%sAsync", update)).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
@@ -1052,7 +1209,48 @@ func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow str
 		).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(fmt.Sprintf("Update%s", update)).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(fmt.Sprintf("%sAsync", update)).CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+					if hasInput {
+						args.Id("req")
+					}
+					args.Id("opts").Op("...")
+				}),
+			),
+		)
+}
+
+// genClientWorkflowRunImplUpdateMethod generates a <Workflow>Run's <Update> method
+func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow string, update string) {
+	method := svc.methods[workflow]
+	name := pgs.Name(method.GoName).LowerCamelCase().String()
+	handler := svc.methods[update]
+	hasInput := !isEmpty(handler.Input)
+	hasOutput := !isEmpty(handler.Output)
+
+	// generate get method
+	f.Commentf("%s sends a(n) %s update to the workflow", update, update)
+	f.Func().
+		Params(g.Id("r").Op("*").Id(fmt.Sprintf("%sRun", name))).
+		Id(update).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+			}
+			args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+		}).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasOutput {
+				returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+			}
+			returnVals.Error()
+		}).
+		Block(
+			g.Return(
+				g.Id("r").Dot("client").Dot(update).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -1125,8 +1323,28 @@ func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
 			update := updateOpts.GetRef()
 			handler := svc.methods[update]
 			hasInput := !isEmpty(handler.Input)
+			hasOutput := !isEmpty(handler.Output)
+
+			// add synchronous flavor
 			methods.Commentf("%s sends a(n) %s update to the workflow", update, update)
 			methods.Id(update).
+				ParamsFunc(func(args *g.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					if hasInput {
+						args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+					}
+					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				})
+
+			// add async flavor
+			methods.Commentf("%sAsync sends a(n) %s update to the workflow", update, update)
+			methods.Id(fmt.Sprintf("%sAsync", update)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {

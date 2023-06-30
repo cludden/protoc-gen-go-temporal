@@ -248,11 +248,12 @@ func (svc *Service) render(f *g.File) {
 	for _, workflow := range svc.workflowsOrdered {
 		opts := svc.workflows[workflow]
 		svc.genClientImplWorkflowMethod(f, workflow)
-		svc.genClientImplWorkflowExecuteMethod(f, workflow)
+		svc.genClientImplWorkflowAsyncMethod(f, workflow)
 		svc.genClientImplWorkflowGetMethod(f, workflow)
 		for _, signal := range opts.GetSignal() {
 			if signal.GetStart() {
 				svc.genClientImplSignalWithStartMethod(f, workflow, signal.GetRef())
+				svc.genClientImplSignalWithStartAsyncMethod(f, workflow, signal.GetRef())
 			}
 		}
 	}
@@ -270,6 +271,7 @@ func (svc *Service) render(f *g.File) {
 	// generate client update methods
 	for _, update := range svc.updatesOrdered {
 		svc.genClientImplUpdateMethod(f, update)
+		svc.genClientImplUpdateMethodAsync(f, update)
 	}
 
 	// generate <Workflow>Run interfaces and implementations used by client
@@ -294,6 +296,7 @@ func (svc *Service) render(f *g.File) {
 		// generate update methods
 		for _, updateOpts := range opts.GetUpdate() {
 			svc.genClientWorkflowRunImplUpdateMethod(f, workflow, updateOpts.GetRef())
+			svc.genClientWorkflowRunImplUpdateAsyncMethod(f, workflow, updateOpts.GetRef())
 		}
 	}
 

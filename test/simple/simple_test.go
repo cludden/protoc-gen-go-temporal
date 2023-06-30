@@ -53,7 +53,7 @@ func TestSomeWorkflow1(t *testing.T) {
 	defer cancel()
 
 	// start the workflow
-	run, err := client.ExecuteSomeWorkflow1(ctx, &simplepb.SomeWorkflow1Request{
+	run, err := client.SomeWorkflow1Async(ctx, &simplepb.SomeWorkflow1Request{
 		Id:         "foo",
 		RequestVal: "some request",
 	})

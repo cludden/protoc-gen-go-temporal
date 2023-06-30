@@ -51,7 +51,7 @@ func (wf *MutexWorkflow) Execute(ctx workflow.Context) error {
 			WorkflowId: info.WorkflowExecution.ID,
 			RunId:      info.WorkflowExecution.RunID,
 			LeaseId:    leaseID,
-		}).Get(ctx, nil); err != nil {
+		}); err != nil {
 			return fmt.Errorf("error signalling lock acquired: %w", err)
 		}
 
@@ -119,7 +119,7 @@ func (wf *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) (resp *
 		cancelCtx, _ := workflow.NewDisconnectedContext(ctx)
 		if err := mutexv1.RevokeLeaseExternal(cancelCtx, lease.GetWorkflowId(), lease.GetRunId(), &mutexv1.RevokeLeaseRequest{
 			LeaseId: lease.GetLeaseId(),
-		}).Get(ctx, nil); err != nil {
+		}); err != nil {
 			wf.log.Error("error revoking lease", "error", err, "lease", lease.GetLeaseId())
 		}
 	}()
@@ -139,9 +139,8 @@ type Activites struct {
 
 // Mutex locks a shared resource and can be called from a parent workflow
 func (a *Activites) Mutex(ctx context.Context, req *mutexv1.MutexRequest) error {
-	_, err := a.Client.StartMutexWithAcquireLease(ctx, req, &mutexv1.AcquireLeaseRequest{
+	return a.Client.MutexWithAcquireLease(ctx, req, &mutexv1.AcquireLeaseRequest{
 		WorkflowId: activity.GetInfo(ctx).WorkflowExecution.ID,
 		Timeout:    durationpb.New(time.Minute * 2),
 	})
-	return err
 }

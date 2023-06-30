@@ -296,7 +296,7 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
 		}).
-		Params(g.Qual(workflowPkg, "Future")).
+		Params(g.Error()).
 		Block(
 			g.Return(
 				g.Qual(workflowPkg, "SignalExternalWorkflow").CallFunc(func(args *g.Group) {
@@ -309,7 +309,7 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 					} else {
 						args.Nil()
 					}
-				}),
+				}).Dot("Get").Call(g.Id("ctx"), g.Nil()),
 			),
 		)
 }
