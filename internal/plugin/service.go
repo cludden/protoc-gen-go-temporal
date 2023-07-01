@@ -151,7 +151,7 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, workflow := range svc.workflowsOrdered {
 				method := svc.methods[workflow]
-				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(fmt.Sprintf("%sWorkflow", string(method.Desc.FullName())))
+				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(string(method.Desc.FullName()))
 			}
 		})
 	}
@@ -179,7 +179,7 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, activity := range svc.activitiesOrdered {
 				method := svc.methods[activity]
-				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(fmt.Sprintf("%sActivity", string(method.Desc.FullName())))
+				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(string(method.Desc.FullName()))
 			}
 		})
 	}
@@ -190,7 +190,7 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, query := range svc.queriesOrdered {
 				method := svc.methods[query]
-				defs.Id(fmt.Sprintf("%sQueryName", query)).Op("=").Lit(fmt.Sprintf("%sQuery", string(method.Desc.FullName())))
+				defs.Id(fmt.Sprintf("%sQueryName", query)).Op("=").Lit(string(method.Desc.FullName()))
 			}
 		})
 	}
@@ -201,7 +201,7 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, signal := range svc.signalsOrdered {
 				method := svc.methods[signal]
-				defs.Id(fmt.Sprintf("%sSignalName", signal)).Op("=").Lit(fmt.Sprintf("%sSignal", string(method.Desc.FullName())))
+				defs.Id(fmt.Sprintf("%sSignalName", signal)).Op("=").Lit(string(method.Desc.FullName()))
 			}
 		})
 	}
@@ -212,7 +212,7 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, update := range svc.updatesOrdered {
 				method := svc.methods[update]
-				defs.Id(fmt.Sprintf("%sUpdateName", update)).Op("=").Lit(fmt.Sprintf("%sUpdate", string(method.Desc.FullName())))
+				defs.Id(fmt.Sprintf("%sUpdateName", update)).Op("=").Lit(string(method.Desc.FullName()))
 			}
 		})
 	}
