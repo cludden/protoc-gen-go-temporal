@@ -21,6 +21,7 @@ gen:
     rm -rf {{ justfile_directory() }}/example/mutex/gen/*.pb.go
     buf generate --template example/buf.gen.yaml --path example/
     cd ..
+    mockery --srcpkg go.temporal.io/sdk/client --name Client --replace-type go.temporal.io/sdk/internal.StartWorkflowOptions=client:go.temporal.io/sdk/client.StartWorkflowOptions
     go mod tidy
 
 # generate temporal
