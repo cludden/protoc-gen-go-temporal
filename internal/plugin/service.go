@@ -151,7 +151,12 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, workflow := range svc.workflowsOrdered {
 				method := svc.methods[workflow]
-				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(string(method.Desc.FullName()))
+				opts := svc.workflows[workflow]
+				name := opts.GetName()
+				if name == "" {
+					name = string(method.Desc.FullName())
+				}
+				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -173,13 +178,35 @@ func (svc *Service) genConstants(f *g.File) {
 		})
 	}
 
+	// add workflow search attribute mappings
+	workflowSearchAttributes := [][]string{}
+	for _, workflow := range svc.workflowsOrdered {
+		opts := svc.workflows[workflow]
+		if mapping := opts.GetSearchAttributes(); mapping != "" {
+			workflowSearchAttributes = append(workflowSearchAttributes, []string{workflow, mapping})
+		}
+	}
+	if len(workflowSearchAttributes) > 0 {
+		f.Commentf("%s workflow search attribute mappings", svc.GoName)
+		f.Var().DefsFunc(func(defs *g.Group) {
+			for _, pair := range workflowSearchAttributes {
+				defs.Id(fmt.Sprintf("%sSearchAttributesMapping", pair[0])).Op("=").Qual(expressionPkg, "MustParseMapping").Call(g.Lit(pair[1]))
+			}
+		})
+	}
+
 	// add activity names
 	if len(svc.activities) > 0 {
 		f.Commentf("%s activity names", svc.GoName)
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, activity := range svc.activitiesOrdered {
 				method := svc.methods[activity]
-				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(string(method.Desc.FullName()))
+				opts := svc.activities[activity]
+				name := opts.GetName()
+				if name == "" {
+					name = string(method.Desc.FullName())
+				}
+				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -190,7 +217,12 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, query := range svc.queriesOrdered {
 				method := svc.methods[query]
-				defs.Id(fmt.Sprintf("%sQueryName", query)).Op("=").Lit(string(method.Desc.FullName()))
+				opts := svc.queries[query]
+				name := opts.GetName()
+				if name == "" {
+					name = string(method.Desc.FullName())
+				}
+				defs.Id(fmt.Sprintf("%sQueryName", query)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -201,7 +233,12 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, signal := range svc.signalsOrdered {
 				method := svc.methods[signal]
-				defs.Id(fmt.Sprintf("%sSignalName", signal)).Op("=").Lit(string(method.Desc.FullName()))
+				opts := svc.signals[signal]
+				name := opts.GetName()
+				if name == "" {
+					name = string(method.Desc.FullName())
+				}
+				defs.Id(fmt.Sprintf("%sSignalName", signal)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -212,7 +249,12 @@ func (svc *Service) genConstants(f *g.File) {
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, update := range svc.updatesOrdered {
 				method := svc.methods[update]
-				defs.Id(fmt.Sprintf("%sUpdateName", update)).Op("=").Lit(string(method.Desc.FullName()))
+				opts := svc.updates[update]
+				name := opts.GetName()
+				if name == "" {
+					name = string(method.Desc.FullName())
+				}
+				defs.Id(fmt.Sprintf("%sUpdateName", update)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -322,7 +364,8 @@ func (svc *Service) render(f *g.File) {
 		svc.genWorkerExecuteMethod(f, workflow)
 		svc.genWorkerWorkflowInput(f, workflow)
 		svc.genWorkerWorkflowInterface(f, workflow)
-		svc.genWorkerExecuteChildWorkflow(f, workflow)
+		svc.genWorkerChildWorkflow(f, workflow)
+		svc.genWorkerChildWorkflowAsync(f, workflow)
 		svc.genWorkerWorkflowChildRun(f, workflow)
 		svc.genWorkerWorkflowChildRunGet(f, workflow)
 		svc.genWorkerWorkflowChildRunSelect(f, workflow)

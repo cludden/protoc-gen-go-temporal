@@ -22,6 +22,9 @@ extend google.protobuf.MethodOptions {
 // ActivityOptions identifies an rpc method as a Temporal activity definition, and describes
 // available activity configuration options
 message ActivityOptions {
+  // Fully-qualified activity name
+  string name = 7;
+
   // Override default task queue for activity
   string task_queue = 1;
 
@@ -73,7 +76,10 @@ enum ParentClosePolicy {
 
 // QueryOptions identifies an rpc method as a Temporal query definition, and describes
 // available query configuration options
-message QueryOptions {}
+message QueryOptions {
+  // Fully-qualified query name
+  string name = 1;
+}
 
 // RetryPolicy describes configuration for activity or child workflow retries
 message RetryPolicy {
@@ -93,13 +99,19 @@ message ServiceOptions {
 
 // SignalOptions identifies an rpc method as a Temporal singal definition, and describes
 // available signal configuration options
-message SignalOptions {}
+message SignalOptions {
+  // Fully-qualified signal name
+  string name = 1;
+}
 
 // UpdateOptions identifies an rpc method as a Temporal update definition, and describes
 // available update configuration options
 message UpdateOptions {
   // ID expression
   string id = 1;
+
+  // Fully-qualified update name
+  string name = 4;
 
   // Include validation hook
   bool validate = 2;
@@ -111,6 +123,9 @@ message UpdateOptions {
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
 // available workflow configuration options
 message WorkflowOptions {
+  // Fully-qualified workflow name
+  string name = 14;
+
   // Queries supported by this workflow
   repeated Query query = 1;
 
@@ -142,6 +157,9 @@ message WorkflowOptions {
 
   // The timeout for duration of a single workflow run.
   google.protobuf.Duration run_timeout = 10;
+
+  // Bloblang mapping defining default workflow search attributes
+  string search_attributes = 15;
 
   // Override service task queeu
   string task_queue = 11;

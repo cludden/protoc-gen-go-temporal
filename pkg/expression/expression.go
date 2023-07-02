@@ -51,7 +51,7 @@ func EvalExpression(expr *Expression, msg protoreflect.Message) (string, error) 
 	var structured any
 	var err error
 	if msg != nil {
-		structured, err = marshalMessage(msg)
+		structured, err = ToStructured(msg)
 		if err != nil {
 			return "", fmt.Errorf("error serializing message for expression evaluation: %w", err)
 		}
@@ -88,6 +88,15 @@ func MustParseExpression(input string) *Expression {
 	return expr
 }
 
+// MustParseMapping attempts to parse a bloblang mapping and panics on error
+func MustParseMapping(input string) *bloblang.Executor {
+	m, err := bloblang.Parse(input)
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 // ParseExpression parses an Expression value from the provided string
 func ParseExpression(input string) (*Expression, error) {
 	expr, err := parser.ParseString("", input)
@@ -106,8 +115,8 @@ func ParseExpression(input string) (*Expression, error) {
 	return expr, nil
 }
 
-// marshalMessage marshals a proto message into a map[string]any value
-func marshalMessage(msg protoreflect.Message) (any, error) {
+// ToStructured marshals a proto message into a map[string]any value
+func ToStructured(msg protoreflect.Message) (any, error) {
 	structured := make(map[string]any)
 	var err error
 	msg.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
@@ -156,7 +165,7 @@ func marshalSingular(val protoreflect.Value, fd protoreflect.FieldDescriptor) (a
 			return string(fd.Enum().Values().ByNumber(val.Enum()).Name()), nil
 		}
 	case protoreflect.MessageKind, protoreflect.GroupKind:
-		return marshalMessage(val.Message())
+		return ToStructured(val.Message())
 	default:
 		return nil, fmt.Errorf("unsupported proto kind: %v", kind)
 	}

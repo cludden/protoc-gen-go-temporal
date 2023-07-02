@@ -36,6 +36,9 @@ service Mutex {
       id: 'sample-workflow-with-mutex/${!resource}/${!uuid_v4()}'
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
       execution_timeout: { seconds: 3600 }
+      search_attributes: 
+        'resource = resource.not_empty().catch("unknown")\n'
+        'foo = "bar"\n'
       signal: { ref: 'LeaseAcquired' }
     };
   }

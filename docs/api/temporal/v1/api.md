@@ -46,6 +46,7 @@ available activity configuration options
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | Fully-qualified activity name |
 | task_queue | [string](#string) |  | Override default task queue for activity |
 | schedule_to_close_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Total time that a workflow is willing to wait for Activity to complete |
 | schedule_to_start_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Time that the Activity Task can stay in the Task Queue before it is picked up by a Worker |
@@ -63,6 +64,11 @@ available activity configuration options
 ### QueryOptions
 QueryOptions identifies an rpc method as a Temporal query definition, and describes
 available query configuration options
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | Fully-qualified query name |
 
 
 
@@ -111,6 +117,11 @@ SignalOptions identifies an rpc method as a Temporal singal definition, and desc
 available signal configuration options
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | Fully-qualified signal name |
+
+
 
 
 
@@ -125,6 +136,7 @@ available update configuration options
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | ID expression |
+| name | [string](#string) |  | Fully-qualified update name |
 | validate | [bool](#bool) |  | Include validation hook |
 | wait_policy | [WaitPolicy](#temporal-v1-WaitPolicy) |  | Default wait policy if not specified |
 
@@ -142,6 +154,7 @@ available workflow configuration options
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | Fully-qualified workflow name |
 | query | [WorkflowOptions.Query](#temporal-v1-WorkflowOptions-Query) | repeated | Queries supported by this workflow |
 | signal | [WorkflowOptions.Signal](#temporal-v1-WorkflowOptions-Signal) | repeated | Signals supported by this workflow |
 | update | [WorkflowOptions.Update](#temporal-v1-WorkflowOptions-Update) | repeated | Updates supported by this workflow |
@@ -152,6 +165,7 @@ available workflow configuration options
 | parent_close_policy | [ParentClosePolicy](#temporal-v1-ParentClosePolicy) |  | Specifies a default parent close policy for child workflows |
 | retry_policy | [RetryPolicy](#temporal-v1-RetryPolicy) |  | Specifies how to retry an Workflow if an error occurs |
 | run_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for duration of a single workflow run. |
+| search_attributes | [string](#string) |  | Bloblang mapping defining default workflow search attributes |
 | task_queue | [string](#string) |  | Override service task queeu |
 | task_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for processing workflow task from the time the worker pulled this task. If a workflow task is lost, it is retried after this timeout. The resolution is seconds. |
 | wait_for_cancellation | [bool](#bool) |  | WaitForCancellation specifies whether to wait for canceled child workflow to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled) |

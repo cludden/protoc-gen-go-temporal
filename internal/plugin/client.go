@@ -860,6 +860,31 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 			)
 	}
 
+	if mapping := opts.GetSearchAttributes(); mapping != "" {
+		fn.If(g.Id("opts").Dot("SearchAttributes").Op("==").Nil()).
+			BlockFunc(func(bl *g.Group) {
+				// initalize mapping input
+				if hasInput {
+					bl.List(g.Id("structured"), g.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(g.Id("req").Dot("ProtoReflect").Call())
+					bl.If(g.Err().Op("!=").Nil()).Block(
+						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", workflow)), g.Err())),
+					)
+				} else {
+					bl.Var().Id("structured").Any()
+				}
+
+				bl.List(g.Id("result"), g.Err()).Op(":=").Id(fmt.Sprintf("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
+				bl.If(g.Err().Op("!=").Nil()).Block(
+					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", workflow)), g.Err())),
+				)
+				bl.List(g.Id("searchAttributes"), g.Id("ok")).Op(":=").Id("result").Op(".").Parens(g.Map(g.String()).Interface())
+				bl.If(g.Op("!").Id("ok")).Block(
+					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", workflow)), g.Id("result"))),
+				)
+				bl.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+			})
+	}
+
 	// add child workflow default options
 	if child {
 		ns := opts.GetNamespace()
