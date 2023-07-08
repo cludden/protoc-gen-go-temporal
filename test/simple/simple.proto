@@ -9,12 +9,16 @@ import "temporal/v1/temporal.proto";
 service Simple {
   option (temporal.v1.service) = {
     task_queue: 'my-task-queue'
+    features: {
+      workflow_update: { enabled: true }
+    }
   };
 
   // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
     option (temporal.v1.workflow) = {
       id: 'some-workflow-1/${! id }/${! uuid_v4() }'
+      name: 'mycompany.simple.SomeWorkflow1'
       query : { ref: 'SomeQuery1' }
       query : { ref: 'SomeQuery2' }
       signal: { ref: 'SomeSignal1' }
@@ -25,6 +29,7 @@ service Simple {
   // SomeWorkflow2 does some workflow thing.
   rpc SomeWorkflow2(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
+      name: 'mycompany.simple.SomeWorkflow2'
       signal: { ref: 'SomeSignal1', start: true }
       update: { ref: 'SomeUpdate1' }
     };
@@ -46,7 +51,9 @@ service Simple {
 
   // SomeActivity1 does some activity thing.
   rpc SomeActivity1(google.protobuf.Empty) returns (google.protobuf.Empty) {
-    option (temporal.v1.activity) = {};
+    option (temporal.v1.activity) = {
+      name: 'mycompany.simple.SomeActivity1'
+    };
   }
 
   // SomeActivity2 does some activity thing.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/test/simple/gen/test/simple/v1"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
@@ -32,17 +32,18 @@ func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Re
 	s.events = append(s.events, "started with param "+s.Req.RequestVal)
 
 	// Call regular activity
-	resp, err := simplepb.SomeActivity3(ctx, nil,
-		&simplepb.SomeActivity3Request{RequestVal: "some activity param"}).Get(ctx)
+	resp, err := simplepb.SomeActivity3(ctx, &simplepb.SomeActivity3Request{
+		RequestVal: "some activity param",
+	})
 	if err != nil {
 		return nil, err
 	}
 	s.events = append(s.events, "some activity 3 with response "+resp.ResponseVal)
 
 	// Call local activity
-	resp, err = simplepb.SomeActivity3Local(ctx, nil, nil, &simplepb.SomeActivity3Request{
+	resp, err = simplepb.SomeActivity3Local(ctx, nil, &simplepb.SomeActivity3Request{
 		RequestVal: "some local activity param",
-	}).Get(ctx)
+	})
 	if err != nil {
 		return nil, err
 	}

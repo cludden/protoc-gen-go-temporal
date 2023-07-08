@@ -28,6 +28,7 @@ const (
 type Service struct {
 	*protogen.Plugin
 	*protogen.Service
+	*protogen.File
 	opts              *temporalv1.ServiceOptions
 	activitiesOrdered []string
 	activities        map[string]*temporalv1.ActivityOptions
@@ -43,10 +44,11 @@ type Service struct {
 }
 
 // parseService extracts a Service from a protogen.Service value
-func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, error) {
+func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Service) (*Service, error) {
 	svc := Service{
 		Plugin:     p,
 		Service:    service,
+		File:       file,
 		activities: make(map[string]*temporalv1.ActivityOptions),
 		methods:    make(map[string]*protogen.Method),
 		queries:    make(map[string]*temporalv1.QueryOptions),
@@ -78,9 +80,11 @@ func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, erro
 			svc.signalsOrdered = append(svc.signalsOrdered, name)
 		}
 
-		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
-			svc.updates[name] = opts
-			svc.updatesOrdered = append(svc.updatesOrdered, name)
+		if svc.opts.GetFeatures().GetWorkflowUpdate().GetEnabled() {
+			if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
+				svc.updates[name] = opts
+				svc.updatesOrdered = append(svc.updatesOrdered, name)
+			}
 		}
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
@@ -391,7 +395,9 @@ func (svc *Service) render(f *g.File) {
 		svc.genActivityFuture(f, activity)
 		svc.genActivityFutureGetMethod(f, activity)
 		svc.genActivityFutureSelectMethod(f, activity)
-		svc.genActivityFunction(f, activity, false)
-		svc.genActivityFunction(f, activity, true)
+		svc.genActivityFunction(f, activity, false, false)
+		svc.genActivityFunction(f, activity, false, true)
+		svc.genActivityFunction(f, activity, true, false)
+		svc.genActivityFunction(f, activity, true, true)
 	}
 }

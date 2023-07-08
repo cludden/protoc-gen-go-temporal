@@ -5,6 +5,7 @@
 
 - [temporal/v1/temporal.proto](#temporal_v1_temporal-proto)
     - [ActivityOptions](#temporal-v1-ActivityOptions)
+<<<<<<< HEAD
     - [QueryOptions](#temporal-v1-QueryOptions)
     - [RetryPolicy](#temporal-v1-RetryPolicy)
     - [ServiceOptions](#temporal-v1-ServiceOptions)
@@ -18,13 +19,32 @@
     - [IDReusePolicy](#temporal-v1-IDReusePolicy)
     - [ParentClosePolicy](#temporal-v1-ParentClosePolicy)
     - [WaitPolicy](#temporal-v1-WaitPolicy)
+=======
+    - [ActivityOptions.StartOptions](#temporal-v1-ActivityOptions-StartOptions)
+    - [QueryOptions](#temporal-v1-QueryOptions)
+    - [RetryPolicy](#temporal-v1-RetryPolicy)
+    - [ServiceOptions](#temporal-v1-ServiceOptions)
+    - [ServiceOptions.Features](#temporal-v1-ServiceOptions-Features)
+    - [SignalOptions](#temporal-v1-SignalOptions)
+    - [WorkflowOptions](#temporal-v1-WorkflowOptions)
+    - [WorkflowOptions.Query](#temporal-v1-WorkflowOptions-Query)
+    - [WorkflowOptions.Signal](#temporal-v1-WorkflowOptions-Signal)
+    - [WorkflowOptions.StartOptions](#temporal-v1-WorkflowOptions-StartOptions)
+  
+    - [CLIFeature](#temporal-v1-CLIFeature)
+    - [IDReusePolicy](#temporal-v1-IDReusePolicy)
+    - [ParentClosePolicy](#temporal-v1-ParentClosePolicy)
+>>>>>>> cludden/cli
   
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
+<<<<<<< HEAD
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
+=======
+>>>>>>> cludden/cli
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -46,7 +66,26 @@ available activity configuration options
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+<<<<<<< HEAD
 | name | [string](#string) |  | Fully-qualified activity name |
+=======
+| default_options | [ActivityOptions.StartOptions](#temporal-v1-ActivityOptions-StartOptions) |  | Default configuration for ActivityOptions |
+| name | [string](#string) |  | Activity name |
+
+
+
+
+
+
+<a name="temporal-v1-ActivityOptions-StartOptions"></a>
+
+### ActivityOptions.StartOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+>>>>>>> cludden/cli
 | task_queue | [string](#string) |  | Override default task queue for activity |
 | schedule_to_close_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Total time that a workflow is willing to wait for Activity to complete |
 | schedule_to_start_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Time that the Activity Task can stay in the Task Queue before it is picked up by a Worker |
@@ -66,11 +105,14 @@ QueryOptions identifies an rpc method as a Temporal query definition, and descri
 available query configuration options
 
 
+<<<<<<< HEAD
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Fully-qualified query name |
 
 
+=======
+>>>>>>> cludden/cli
 
 
 
@@ -97,13 +139,38 @@ RetryPolicy describes configuration for activity or child workflow retries
 <a name="temporal-v1-ServiceOptions"></a>
 
 ### ServiceOptions
+<<<<<<< HEAD
+=======
+ServiceOptions provides options that can be used to define common configuration
+shared by all methods
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| features | [ServiceOptions.Features](#temporal-v1-ServiceOptions-Features) |  | Service-level features |
+| namespace | [string](#string) |  | Default namespace for child workflows, activities |
+| task_queue | [string](#string) |  | Default task queue for all workflows, activities |
+
+
+
+
+
+
+<a name="temporal-v1-ServiceOptions-Features"></a>
+
+### ServiceOptions.Features
+>>>>>>> cludden/cli
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+<<<<<<< HEAD
 | namespace | [string](#string) |  | Default namespace for child workflows, activities |
 | task_queue | [string](#string) |  | Default task queue for all workflows, activities |
+=======
+| cli | [CLIFeature](#temporal-v1-CLIFeature) |  | Enable experimental CLI features |
+>>>>>>> cludden/cli
 
 
 
@@ -113,6 +180,7 @@ RetryPolicy describes configuration for activity or child workflow retries
 <a name="temporal-v1-SignalOptions"></a>
 
 ### SignalOptions
+<<<<<<< HEAD
 SignalOptions identifies an rpc method as a Temporal singal definition, and describes
 available signal configuration options
 
@@ -141,6 +209,12 @@ available update configuration options
 | wait_policy | [WaitPolicy](#temporal-v1-WaitPolicy) |  | Default wait policy if not specified |
 
 
+=======
+SignalOptions identifies an rpc method as a Temporal singla definition, and describes
+available signal configuration options
+
+
+>>>>>>> cludden/cli
 
 
 
@@ -154,6 +228,7 @@ available workflow configuration options
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+<<<<<<< HEAD
 | name | [string](#string) |  | Fully-qualified workflow name |
 | query | [WorkflowOptions.Query](#temporal-v1-WorkflowOptions-Query) | repeated | Queries supported by this workflow |
 | signal | [WorkflowOptions.Signal](#temporal-v1-WorkflowOptions-Signal) | repeated | Signals supported by this workflow |
@@ -169,6 +244,12 @@ available workflow configuration options
 | task_queue | [string](#string) |  | Override service task queeu |
 | task_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for processing workflow task from the time the worker pulled this task. If a workflow task is lost, it is retried after this timeout. The resolution is seconds. |
 | wait_for_cancellation | [bool](#bool) |  | WaitForCancellation specifies whether to wait for canceled child workflow to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled) |
+=======
+| query | [WorkflowOptions.Query](#temporal-v1-WorkflowOptions-Query) | repeated | Queries supported by this workflow |
+| signal | [WorkflowOptions.Signal](#temporal-v1-WorkflowOptions-Signal) | repeated | Signals supported by this workflow |
+| default_options | [WorkflowOptions.StartOptions](#temporal-v1-WorkflowOptions-StartOptions) |  | Default configuration for StartWorklowOptions, ExecuteChildWorkflowOptions |
+| name | [string](#string) |  | Workflow name |
+>>>>>>> cludden/cli
 
 
 
@@ -206,15 +287,35 @@ Signal identifies a signal supported by the workflow
 
 
 
+<<<<<<< HEAD
 <a name="temporal-v1-WorkflowOptions-Update"></a>
 
 ### WorkflowOptions.Update
 Update identifies an update supported by the workflow
+=======
+<a name="temporal-v1-WorkflowOptions-StartOptions"></a>
+
+### WorkflowOptions.StartOptions
+StartOptions describes default options for ExecuteWorkflow and ExecuteChildWorkflow
+>>>>>>> cludden/cli
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+<<<<<<< HEAD
 | ref | [string](#string) |  | Update name |
+=======
+| execution_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for duration of workflow execution. It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time of a single workflow run. |
+| id | [string](#string) |  | Id expression |
+| id_reuse_policy | [IDReusePolicy](#temporal-v1-IDReusePolicy) |  | Whether server allow reuse of workflow ID |
+| namespace | [string](#string) |  | Specifies default namespace for child workflows |
+| parent_close_policy | [ParentClosePolicy](#temporal-v1-ParentClosePolicy) |  | Specifies a default parent close policy for child workflows |
+| retry_policy | [RetryPolicy](#temporal-v1-RetryPolicy) |  | Specifies how to retry an Workflow if an error occurs |
+| run_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for duration of a single workflow run. |
+| task_queue | [string](#string) |  | Override service task queeu |
+| task_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for processing workflow task from the time the worker pulled this task. If a workflow task is lost, it is retried after this timeout. The resolution is seconds. |
+| wait_for_cancellation | [bool](#bool) |  | WaitForCancellation specifies whether to wait for canceled child workflow to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled) |
+>>>>>>> cludden/cli
 
 
 
@@ -223,6 +324,21 @@ Update identifies an update supported by the workflow
  
 
 
+<<<<<<< HEAD
+=======
+<a name="temporal-v1-CLIFeature"></a>
+
+### CLIFeature
+CLIFeature enumerates cli feature statuses
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CLI_FEATURE_DISALBED | 0 |  |
+| CLI_FEATURE_ENABLED | 1 |  |
+
+
+
+>>>>>>> cludden/cli
 <a name="temporal-v1-IDReusePolicy"></a>
 
 ### IDReusePolicy
@@ -253,6 +369,7 @@ Defines how child workflows will react to their parent completing
 | PARENT_CLOSE_POLICY_REQUEST_CANCEL | 3 | Cancellation will be requested of the child workflow |
 
 
+<<<<<<< HEAD
 
 <a name="temporal-v1-WaitPolicy"></a>
 
@@ -268,6 +385,8 @@ value from an UpdateWorkflow RPC
 | WAIT_POLICY_COMPLETED | 3 |  |
 
 
+=======
+>>>>>>> cludden/cli
  
 
 
@@ -279,7 +398,10 @@ value from an UpdateWorkflow RPC
 | activity | ActivityOptions | .google.protobuf.MethodOptions | 7234 |  |
 | query | QueryOptions | .google.protobuf.MethodOptions | 7235 |  |
 | signal | SignalOptions | .google.protobuf.MethodOptions | 7236 |  |
+<<<<<<< HEAD
 | update | UpdateOptions | .google.protobuf.MethodOptions | 7237 |  |
+=======
+>>>>>>> cludden/cli
 | workflow | WorkflowOptions | .google.protobuf.MethodOptions | 7233 |  |
 | service | ServiceOptions | .google.protobuf.ServiceOptions | 7233 |  |
 

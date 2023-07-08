@@ -5,22 +5,16 @@ _default:
 build:
     #!/usr/bin/env bash
     set -euo pipefail
-    goreleaser build --rm-dist --snapshot
+    goreleaser build --clean --snapshot
 
 # execute code generation
 gen:
     #!/usr/bin/env bash
     set -euo pipefail
-    cd proto
     rm -rf {{ justfile_directory() }}/gen/*.pb.go
-    buf generate --template temporal/buf.gen.yaml --path temporal/
     rm -rf {{ justfile_directory() }}/test/simple/gen/*.pb.go
-    buf generate --template test/simple/buf.gen.yaml --path test/simple/
-    rm -rf {{ justfile_directory() }}/pkg/expression/*.pb.go
-    buf generate --template test/expression/buf.gen.yaml --path test/expression/
-    rm -rf {{ justfile_directory() }}/example/mutex/gen/*.pb.go
-    buf generate --template example/buf.gen.yaml --path example/
-    cd ..
+    rm -rf {{ justfile_directory() }}/example/gen/*.pb.go
+    buf generate
     go mod tidy
 
 # generate temporal
@@ -34,7 +28,7 @@ gen-temporal:
 install:
     #!/usr/bin/env bash
     set -euo pipefail
-    just build
+     goreleaser build --clean --single-target --snapshot
     if [ "{{ os() }}" = "macos" ]; then
         cp ./dist/protoc-gen-go_temporal_darwin_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
     else
