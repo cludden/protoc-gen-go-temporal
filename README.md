@@ -2,8 +2,6 @@
 
 a protoc plugin for generating typed temporal clients and workers in Go from protobuf schemas
 
-inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
-
 **Table of Contents**
 
 - [protoc-gen-go-temporal](#protoc-gen-go-temporal)
@@ -16,6 +14,8 @@ inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz
 	- [CLI](#cli)
 	- [License](#license)
 
+inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
+
 ## Features
 
 - typed client with:
@@ -23,7 +23,7 @@ inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz
   - methods for cancelling or terminating workflows
   - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
   - dynamic workflow and update ids via [Bloblang expressions](#id-expressions)
-  - default timeouts, id reuse policies, retry policies, wait policies
+  - default timeouts, id reuse policies, retry policies, search attributes, wait policies
 - typed worker helpers with:
   - functions for calling activities and local activities from workflows
   - functions for executing child workflows and signalling external workflows
@@ -411,8 +411,8 @@ GLOBAL OPTIONS:
 
 $ go run example/main.go create-foo -d --name test
 success
-workflow_id: create-foo/test
-execution_id: 44cacae1-6a13-4b4a-8db7-d29eaafd1499
+workflow id: create-foo/test
+run id: 44cacae1-6a13-4b4a-8db7-d29eaafd1499
 
 $ go run example/main.go set-foo-progress -w create-foo/test --progress 5.7
 success
@@ -420,19 +420,19 @@ success
 $ go run example/main.go get-foo-progress -w create-foo/test
 {
   "progress": 5.7,
-  "status": 2
+  "status": "FOO_STATUS_CREATING"
 }
 
 $ go run example/main.go update-foo-progress -w create-foo/test --progress 100
 {
   "progress": 100,
-  "status": 1
+  "status": "FOO_STATUS_READY"
 }
 
 $ go run example/main.go get-foo-progress -w create-foo/test
 {
   "progress": 100,
-  "status": 1
+  "status": "FOO_STATUS_READY"
 }
 ```
 

@@ -275,6 +275,22 @@ func (svc *Service) genCliOptions(f *g.File) {
 	)
 }
 
+// genCliPrintMessage serializes a proto message as json and pretty prints it
+func genCliPrintMessage(b *g.Group, varName string) {
+	b.List(g.Id("b"), g.Err()).Op(":=").Qual(protojsonPkg, "Marshal").Call(g.Id(varName))
+	b.If(g.Err().Op("!=").Nil()).Block(
+		g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error serializing response json: %w"), g.Err())),
+	)
+	b.Var().Id("out").Qual("bytes", "Buffer")
+	b.If(
+		g.Err().Op(":=").Qual("encoding/json", "Indent").Call(g.Op("&").Id("out"), g.Id("b"), g.Lit(""), g.Lit("  ")),
+		g.Err().Op("!=").Nil(),
+	).Block(
+		g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error formatting json: %w"), g.Err())),
+	)
+	b.Qual("fmt", "Println").Call(g.Id("out").Dot("String").Call())
+}
+
 // genCliQueryCommand generates a <Query> command
 func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 	method := svc.methods[query]
@@ -334,38 +350,36 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 			}
 
 			// execute query
-			exec := fn.ListFunc(func(returnVals *g.Group) {
-				if hasOutput {
-					returnVals.Id("resp")
-				}
-				returnVals.Err()
-			})
-			if hasOutput || !hasInput {
-				exec = exec.Op(":=")
-			} else {
-				exec = exec.Op("=")
-			}
-			exec.Id("client").Dot(query).CallFunc(func(args *g.Group) {
-				args.Id("cmd").Dot("Context")
-				args.Id("cmd").Dot("String").Call(g.Lit("workflow-id"))
-				args.Id("cmd").Dot("String").Call(g.Lit("run-id"))
-				if hasInput {
-					args.Id("req")
-				}
-			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Err()),
-			)
-
-			// print response
-			if hasOutput {
-				fn.List(g.Id("b"), g.Err()).Op(":=").Qual("encoding/json", "MarshalIndent").Call(g.Id("resp"), g.Lit(""), g.Lit("  "))
-				fn.If(g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error formatting response for display: %w"), g.Err())),
-				)
-				fn.Qual("fmt", "Println").Call(g.String().Call(g.Id("b")))
-			}
-			fn.Return(g.Nil())
+			fn.
+				If(
+					g.ListFunc(func(returnVals *g.Group) {
+						if hasOutput {
+							returnVals.Id("resp")
+						}
+						returnVals.Err()
+					}).Op(":=").Id("client").Dot(query).CallFunc(func(args *g.Group) {
+						args.Id("cmd").Dot("Context")
+						args.Id("cmd").Dot("String").Call(g.Lit("workflow-id"))
+						args.Id("cmd").Dot("String").Call(g.Lit("run-id"))
+						if hasInput {
+							args.Id("req")
+						}
+					}),
+					g.Err().Op("!=").Nil(),
+				).
+				Block(
+					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error executing %q query: %w"), g.Id(fmt.Sprintf("%sQueryName", query)), g.Err())),
+				).
+				Else().
+				BlockFunc(func(b *g.Group) {
+					// print response
+					if hasOutput {
+						genCliPrintMessage(b, "resp")
+					} else {
+						fn.Qual("fmt", "Println").Call(g.Lit("success"))
+					}
+					b.Return(g.Nil())
+				})
 		})
 	})
 }
@@ -438,7 +452,7 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 				}),
 				g.Err().Op("!=").Nil(),
 			).Block(
-				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error sending %q signal: %%w", method.Desc.FullName())), g.Err())),
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error sending %q signal: %w"), g.Id(fmt.Sprintf("%sSignalName", signal)), g.Err())),
 			)
 
 			// print response
@@ -522,15 +536,15 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 				}
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error updating workflow: %w"), g.Err())),
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error executing %s update: %w"), g.Id(fmt.Sprintf("%sUpdateName", update)), g.Err())),
 			)
 
 			// handle async invocation
 			fn.If(g.Id("cmd").Dot("Bool").Call(g.Lit("detach"))).Block(
 				g.Qual("fmt", "Println").Call(g.Lit("success")),
-				g.Qual("fmt", "Printf").Call(g.Lit("workflow_id: %s\n"), g.Id("handle").Dot("WorkflowID").Call()),
-				g.Qual("fmt", "Printf").Call(g.Lit("run_id: %s\n"), g.Id("handle").Dot("RunID").Call()),
-				g.Qual("fmt", "Printf").Call(g.Lit("update_id: %s\n"), g.Id("handle").Dot("UpdateID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("workflow id: %s\n"), g.Id("handle").Dot("WorkflowID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("run id: %s\n"), g.Id("handle").Dot("RunID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("update id: %s\n"), g.Id("handle").Dot("UpdateID").Call()),
 				g.Return(g.Nil()),
 			)
 
@@ -552,11 +566,7 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 				BlockFunc(func(b *g.Group) {
 					// print response
 					if hasOutput {
-						b.List(g.Id("b"), g.Err()).Op(":=").Qual("encoding/json", "MarshalIndent").Call(g.Id("resp"), g.Lit(""), g.Lit("  "))
-						b.If(g.Err().Op("!=").Nil()).Block(
-							g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error formatting response for display: %w"), g.Err())),
-						)
-						b.Qual("fmt", "Println").Call(g.String().Call(g.Id("b")))
+						genCliPrintMessage(b, "resp")
 					}
 					b.Return(g.Nil())
 				})
@@ -711,14 +721,14 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 				}
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error starting %s workflow: %%w", workflow)), g.Err())),
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow: %w"), g.Id(fmt.Sprintf("%sWorkflowName", workflow)), g.Err())),
 			)
 
 			// handle async invocation
 			fn.If(g.Id("cmd").Dot("Bool").Call(g.Lit("detach"))).Block(
 				g.Qual("fmt", "Println").Call(g.Lit("success")),
-				g.Qual("fmt", "Printf").Call(g.Lit("workflow_id: %s\n"), g.Id("run").Dot("ID").Call()),
-				g.Qual("fmt", "Printf").Call(g.Lit("execution_id: %s\n"), g.Id("run").Dot("RunID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("workflow id: %s\n"), g.Id("run").Dot("ID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("run id: %s\n"), g.Id("run").Dot("RunID").Call()),
 				g.Return(g.Nil()),
 			)
 
@@ -740,11 +750,7 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 				BlockFunc(func(b *g.Group) {
 					// print response
 					if hasOutput {
-						b.List(g.Id("b"), g.Err()).Op(":=").Qual("encoding/json", "MarshalIndent").Call(g.Id("resp"), g.Lit(""), g.Lit("  "))
-						b.If(g.Err().Op("!=").Nil()).Block(
-							g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error formatting response for display: %w"), g.Err())),
-						)
-						b.Qual("fmt", "Println").Call(g.String().Call(g.Id("b")))
+						genCliPrintMessage(b, "resp")
 					}
 					b.Return(g.Nil())
 				})
@@ -836,14 +842,14 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 				}
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error signaling %s workflow: %%w", workflow)), g.Err())),
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow with %s signal: %w"), g.Id(fmt.Sprintf("%sWorkflowName", workflow)), g.Id(fmt.Sprintf("%sSignalName", signal)), g.Err())),
 			)
 
 			// handle async invocation
 			fn.If(g.Id("cmd").Dot("Bool").Call(g.Lit("detach"))).Block(
 				g.Qual("fmt", "Println").Call(g.Lit("success")),
-				g.Qual("fmt", "Printf").Call(g.Lit("workflow_id: %s\n"), g.Id("run").Dot("ID").Call()),
-				g.Qual("fmt", "Printf").Call(g.Lit("execution_id: %s\n"), g.Id("run").Dot("RunID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("workflow id: %s\n"), g.Id("run").Dot("ID").Call()),
+				g.Qual("fmt", "Printf").Call(g.Lit("run id: %s\n"), g.Id("run").Dot("RunID").Call()),
 				g.Return(g.Nil()),
 			)
 
@@ -865,11 +871,7 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 				BlockFunc(func(b *g.Group) {
 					// print response
 					if hasOutput {
-						b.List(g.Id("b"), g.Err()).Op(":=").Qual("encoding/json", "MarshalIndent").Call(g.Id("resp"), g.Lit(""), g.Lit("  "))
-						b.If(g.Err().Op("!=").Nil()).Block(
-							g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error formatting response for display: %w"), g.Err())),
-						)
-						b.Qual("fmt", "Println").Call(g.String().Call(g.Id("b")))
+						genCliPrintMessage(b, "resp")
 					}
 					b.Return(g.Nil())
 				})
