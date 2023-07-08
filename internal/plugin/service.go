@@ -27,6 +27,7 @@ const (
 type Service struct {
 	*protogen.Plugin
 	*protogen.Service
+	*protogen.File
 	opts              *temporalv1.ServiceOptions
 	activitiesOrdered []string
 	activities        map[string]*temporalv1.ActivityOptions
@@ -40,10 +41,11 @@ type Service struct {
 }
 
 // parseService extracts a Service from a protogen.Service value
-func parseService(p *protogen.Plugin, service *protogen.Service) (*Service, error) {
+func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Service) (*Service, error) {
 	svc := Service{
 		Plugin:     p,
 		Service:    service,
+		File:       file,
 		activities: make(map[string]*temporalv1.ActivityOptions),
 		methods:    make(map[string]*protogen.Method),
 		queries:    make(map[string]*temporalv1.QueryOptions),

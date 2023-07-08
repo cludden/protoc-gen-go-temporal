@@ -1,6 +1,6 @@
 version: v1
 deps:
-  - buf.build/cludden/protoc-gen-go-temporal
+  - buf.build/cludden/protoc-gen-go-temporal-test-simple
   - buf.build/googleapis/googleapis
 breaking:
   use:

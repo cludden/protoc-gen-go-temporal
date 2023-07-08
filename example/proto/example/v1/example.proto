@@ -1,0 +1,88 @@
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+    features: { cli: CLI_FEATURE_ENABLED }
+  };
+
+  // CreateFoo creates a new foo operation
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      default_options {
+        id: 'create-foo/${!name.slug()}'
+        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+        execution_timeout: { seconds: 3600 }
+      }
+      query: { ref: 'GetFooProgress' }
+      signal: { ref: 'SetFooProgress', start: true }
+    };
+  }
+
+  // GetFooProgress returns the status of a CreateFoo operation
+  rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  // Notify sends a notification
+  rpc Notify(NotifyRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      default_options {
+        start_to_close_timeout: { seconds: 30 }
+        retry_policy: {
+          max_attempts: 3
+        }
+      }
+    };
+  }
+
+  // SetFooProgress sets the current status of a CreateFoo operation
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+// CreateFooRequest describes the input to a CreateFoo workflow
+message CreateFooRequest {
+  // unique foo name
+  string name = 1;
+}
+
+// SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow
+message CreateFooResponse {
+  Foo foo = 1; 
+}
+
+// Foo describes an illustrative foo resource
+message Foo {
+  string name = 1;
+  Status status = 2;
+
+  enum Status {
+    FOO_STATUS_UNSPECIFIED = 0;
+    FOO_STATUS_READY = 1;
+    FOO_STATUS_CREATING = 2;
+  }
+}
+
+// GetFooProgressResponse describes the output from a GetFooProgress query
+message GetFooProgressResponse {
+  float progress = 1;
+  Foo.Status status = 2;
+}
+
+// NotifyRequest describes the input to a Notify activity
+message NotifyRequest {
+  string message = 1;
+}
+
+// SetFooProgressRequest describes the input to a SetFooProgress signal
+message SetFooProgressRequest {
+  // value of current workflow progress
+  float progress = 1;
+}

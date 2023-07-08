@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
+	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/compiler/protogen"
 )
@@ -36,7 +37,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 
 		var hasContent bool
 		for _, service := range file.Services {
-			svc, err := parseService(plugin, service)
+			svc, err := parseService(plugin, file, service)
 			if err != nil {
 				return fmt.Errorf("error parsing service %s: %w", service.GoName, err)
 			}
@@ -52,6 +53,9 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 				return fmt.Errorf("only one temporal service per package is currently supported, observed violation for package: %s", pkgName)
 			}
 			svc.render(f)
+			if svc.opts.GetFeatures().GetCli() == temporalv1.CLIFeature_CLI_FEATURE_ENABLED {
+				svc.renderCLI(f)
+			}
 			hasContent = true
 			break
 		}
