@@ -1,13 +1,13 @@
-package simple_test
+package main
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
 
 	"github.com/avast/retry-go/v4"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
-	"github.com/cludden/protoc-gen-go-temporal/test/simple"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
@@ -43,12 +43,12 @@ func TestSomeWorkflow1(t *testing.T) {
 
 	// initialize worker and register workflows, activities
 	w := worker.New(c, simplepb.SimpleTaskQueue, worker.Options{})
-	simple.Register(w)
+	Register(w)
 	require.NoError(w.Start())
 	defer w.Stop()
 
 	// initialize simple client
-	client := simplepb.NewClient(c)
+	client := simplepb.NewSimpleClient(c)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -83,9 +83,40 @@ func TestSomeWorkflow1(t *testing.T) {
 	require.Equal([]string{
 		"some activity 3 with param some activity param",
 		"some activity 3 with param some local activity param",
-	}, simple.ActivityEvents)
+	}, ActivityEvents)
 
 	resp, err := run.Get(ctx)
 	require.NoError(err)
 	require.NotNil(resp)
+}
+
+func TestCli(t *testing.T) {
+	require := require.New(t)
+	app, err := newCli()
+	require.NoError(err)
+
+	cases := []struct {
+		cmd   []string
+		err   string
+		match []string
+	}{
+		{
+			cmd:   []string{"-h"},
+			match: []string{`COMMANDS:\s+simple\s+other\b`},
+		},
+	}
+
+	for _, c := range cases {
+		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+		app.Writer, app.ErrWriter = stdout, stderr
+		err := app.Run(append([]string{"test"}, c.cmd...))
+		if c.err != "" {
+			require.ErrorContains(err, c.err)
+		} else {
+			require.NoError(err)
+			for _, pattern := range c.match {
+				require.Regexp(pattern, stdout.String())
+			}
+		}
+	}
 }

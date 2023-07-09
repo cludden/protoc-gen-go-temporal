@@ -28,11 +28,16 @@ var (
 	}
 )
 
+type Cli struct {
+	services        map[string]*Service
+	servicesOrdered []string
+}
+
 // renderCLI generates cli resources
 func (svc *Service) renderCLI(f *g.File) {
-	svc.genCliOptions(f)
-	svc.genCliOption(f)
-	svc.genCliOptionWithClientForCommand(f)
+	svc.genCliOptionsImpl(f)
+	svc.genCliNew(f)
+	svc.genCliNewCommand(f)
 	svc.genCliNewCommands(f)
 
 	// cache unmarshal functions to void duplicate declarations
@@ -164,27 +169,96 @@ func (svc *Service) genCliFlagForField(flags *g.Group, field *protogen.Field, ca
 	})
 }
 
-// genCliNewCommands generates a New<Service>Commands contructor function
-func (svc *Service) genCliNewCommands(f *g.File) {
-	f.Commentf("NewCommands contains cli commands for a %s service", svc.GoName)
-	f.Func().Id("NewCommands").
+// genCliNew generates a New<Service>Cli constructor function
+func (svc *Service) genCliNew(f *g.File) {
+	functionName := toCamel("New%sCli", svc.Service.GoName)
+	optionsName := toCamel("%sCliOptions", svc.Service.GoName)
+
+	f.Commentf("%s initializes a cli for a(n) %s service", functionName, svc.Service.Desc.FullName())
+	f.Func().Id(functionName).
 		Params(
-			g.Id("options").Op("...").Id("CLIOption"),
+			g.Id("options").Op("...").Op("*").Id(optionsName),
+		).
+		Params(
+			g.Op("*").Qual(cliPkg, "App"),
+			g.Error(),
+		).
+		Block(
+			g.List(g.Id("commands"), g.Err()).Op(":=").Id(toLowerCamel("new%sCommands", svc.Service.GoName)).Call(g.Id("options").Op("...")),
+			g.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing subcommands: %w"), g.Err())),
+			),
+			g.Return(
+				g.Op("&").Qual(cliPkg, "App").CustomFunc(multiLineValues, func(fields *g.Group) {
+					fields.Id("Name").Op(":").Lit(strcase.ToKebab(svc.Service.GoName))
+					fields.Id("Commands").Op(":").Id("commands")
+				}),
+				g.Nil(),
+			),
+		)
+}
+
+// genCliNewCommand generates a New<Service>CliCommand constructor function
+func (svc *Service) genCliNewCommand(f *g.File) {
+	functionName := toCamel("New%sCliCommand", svc.Service.GoName)
+	optionsName := toCamel("%sCliOptions", svc.Service.GoName)
+
+	f.Commentf("%s initializes a cli command for a %s service with subcommands for each query, signal, update, and workflow", functionName, svc.Service.Desc.FullName())
+	f.Func().Id(functionName).
+		Params(
+			g.Id("options").Op("...").Op("*").Id(optionsName),
+		).
+		Params(
+			g.Op("*").Qual(cliPkg, "Command"),
+			g.Error(),
+		).
+		Block(
+			g.List(g.Id("subcommands"), g.Err()).Op(":=").Id(toLowerCamel("new%sCommands", svc.Service.GoName)).Call(g.Id("options").Op("...")),
+			g.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing subcommands: %w"), g.Err())),
+			),
+			g.Return(
+				g.Op("&").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(fields *g.Group) {
+					fields.Id("Name").Op(":").Lit(strcase.ToKebab(svc.Service.GoName))
+					fields.Id("Subcommands").Op(":").Id("subcommands")
+				}),
+				g.Nil(),
+			),
+		)
+}
+
+// genCliNewCommands generates a new<Service>Commands contructor function
+func (svc *Service) genCliNewCommands(f *g.File) {
+	functionName := toLowerCamel("new%sCommands", svc.Service.GoName)
+	optionsName := toCamel("%sCliOptions", svc.Service.GoName)
+
+	f.Commentf("%s initializes (sub)commands for a %s cli or command", functionName, svc.Service.Desc.FullName())
+	f.Func().Id(functionName).
+		Params(
+			g.Id("options").Op("...").Op("*").Id(optionsName),
 		).
 		Params(
 			g.Index().Op("*").Qual(cliPkg, "Command"),
 			g.Error(),
 		).
 		Block(
-			g.Id("opts").Op(":=").Op("&").Id("CLIOptions").Values(),
-			g.For(g.List(g.Id("_"), g.Id("opt")).Op(":=").Range().Id("options")).Block(
-				g.If(g.Err().Op(":=").Id("opt").Call(g.Id("opts")), g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Err()),
-				),
+			// initialize options
+			g.Id("opts").Op(":=").Op("&").Id(optionsName).Values(),
+			g.If(g.Len(g.Id("options")).Op(">").Lit(0)).Block(
+				g.Id("opts").Op("=").Id("options").Index(g.Lit(0)),
 			),
+
+			// set default client for command
 			g.If(g.Id("opts").Dot("clientForCommand").Op("==").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("missing required ClientForCommand"))),
+				g.Id("opts").Dot("clientForCommand").Op("=").Func().
+					Params(g.Op("*").Qual(cliPkg, "Context")).
+					Params(g.Qual(clientPkg, "Client"), g.Error()).
+					Block(
+						g.Return(g.Qual(clientPkg, "Dial").Call(g.Qual(clientPkg, "Options").Values())),
+					),
 			),
+
+			// initialize commands
 			g.Id("commands").Op(":=").Index().Op("*").Qual(cliPkg, "Command").CustomFunc(g.Options{
 				Close:     "}",
 				Multi:     true,
@@ -217,6 +291,14 @@ func (svc *Service) genCliNewCommands(f *g.File) {
 					}
 				}
 			}),
+
+			// append worker command if initializer provided
+			g.If(g.Id("opts").Dot("worker").Op("!=").Nil()).Block(
+				g.Id("commands").Op("=").Append(g.Id("commands"), g.Index().Op("*").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(cmds *g.Group) {
+					svc.genCliWorkerCommand(cmds)
+				}).Op("...")),
+			),
+
 			g.Qual("sort", "Slice").Call(
 				g.Id("commands"),
 				g.Func().Params(g.Id("i"), g.Id("j").Int()).Bool().Block(
@@ -227,52 +309,97 @@ func (svc *Service) genCliNewCommands(f *g.File) {
 		)
 }
 
-// genCliOption generates an CLIOption interface
-func (svc *Service) genCliOption(f *g.File) {
-	f.Commentf("Option describes a CLI option")
-	f.Type().Id("CLIOption").Func().Params(g.Op("*").Id("CLIOptions")).Error()
-}
+// genCliOptionsImpl generates a CLIOptions struct
+func (svc *Service) genCliOptionsImpl(f *g.File) {
+	typeName := toCamel("%sCliOptions", svc.Service.GoName)
 
-// genCliOptionWithClientForCommand generates a WithClientForCommand option
-func (svc *Service) genCliOptionWithClientForCommand(f *g.File) {
-	f.Commentf("WithClientForCommand injects a client factory for use by individual commands")
-	f.Func().Id("WithClientForCommand").
-		Params(
-			g.Id("ctor").Func().
-				Params(g.Op("*").Qual(cliPkg, "Context")).
-				Params(g.Qual(clientPkg, "Client"), g.Error()),
-		).
-		Id("CLIOption").
-		Block(genCliOptionReturn(func(fn *g.Group) {
-			fn.If(g.Id("ctor").Op("==").Nil()).Block(
-				g.Return(g.Qual("errors", "New").Call(g.Lit("ClientForCommand cannot be nil"))),
-			)
-			fn.Id("opts").Dot("clientForCommand").Op("=").Id("ctor")
-			fn.Return(g.Nil())
-		}))
-}
-
-// genCliOptionReturn is a helper for for generating CLIOption functions that wraps the provided
-// function body in a
-//
-//	return func(opts *CLIOptions) error {
-//		<function body>
-//	}
-func genCliOptionReturn(fn func(*g.Group)) g.Code {
-	return g.Return().Func().
-		Params(g.Id("opts").Op("*").Id("CLIOptions")).
-		Error().
-		BlockFunc(fn)
-}
-
-// genCliOptions generates a CLIOptions struct
-func (svc *Service) genCliOptions(f *g.File) {
-	f.Commentf("Define CLI options type")
-	f.Type().Id("CLIOptions").Struct(
+	// generate type definition
+	f.Commentf("%s describes runtime configuration for %s cli", typeName, svc.Service.Desc.FullName())
+	f.Type().Id(typeName).Struct(
+		g.Id("after").Func().
+			Params(g.Op("*").Qual(cliPkg, "Context")).
+			Error(),
+		g.Id("before").Func().
+			Params(g.Op("*").Qual(cliPkg, "Context")).
+			Error(),
 		g.Id("clientForCommand").Func().
 			Params(g.Op("*").Qual(cliPkg, "Context")).
 			Params(g.Qual(clientPkg, "Client"), g.Error()),
+		g.Id("worker").Func().
+			Params(g.Op("*").Qual(cliPkg, "Context"), g.Qual(clientPkg, "Client")).
+			Params(g.Qual(workerPkg, "Worker"), g.Error()),
 	)
+
+	// generate New<Service>CliOptions
+	functionName := toCamel("New%s", typeName)
+	f.Commentf("%s initializes a new %s value", functionName, typeName)
+	f.Func().Id(functionName).Params().Op("*").Id(typeName).Block(
+		g.Return(g.Op("&").Id(typeName).Values()),
+	)
+
+	// generate WithAfter method
+	f.Commentf("WithAfter injects a custom After hook to be run after any command invocation")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithAfter").
+		Params(
+			g.Id("fn").Func().
+				Params(g.Op("*").Qual(cliPkg, "Context")).
+				Error(),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("after").Op("=").Id("fn"),
+			g.Return(g.Id("opts")),
+		)
+
+	// generate WithBefore method
+	f.Commentf("WithBefore injects a custom Before hook to be run prior to any command invocation")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithBefore").
+		Params(
+			g.Id("fn").Func().
+				Params(g.Op("*").Qual(cliPkg, "Context")).
+				Error(),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("before").Op("=").Id("fn"),
+			g.Return(g.Id("opts")),
+		)
+
+	// generate WithClient method
+	f.Comment("WithClient provides a Temporal client factory for use by commands")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithClient").
+		Params(
+			g.Id("fn").Func().
+				Params(g.Op("*").Qual(cliPkg, "Context")).
+				Params(g.Qual(clientPkg, "Client"), g.Error()),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("clientForCommand").Op("=").Id("fn"),
+			g.Return(g.Id("opts")),
+		)
+
+	// generate WithWorker method
+	f.Comment("WithWorker provides an method for initializing a worker")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithWorker").
+		Params(
+			g.Id("fn").Func().
+				Params(g.Op("*").Qual(cliPkg, "Context"), g.Qual(clientPkg, "Client")).
+				Params(g.Qual(workerPkg, "Worker"), g.Error()),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("worker").Op("=").Id("fn"),
+			g.Return(g.Id("opts")),
+		)
 }
 
 // genCliPrintMessage serializes a proto message as json and pretty prints it
@@ -310,6 +437,8 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 			cmd.Id("Category").Op(":").Lit("QUERIES")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
+		cmd.Id("Before").Op(":").Id("opts").Dot("before")
+		cmd.Id("After").Op(":").Id("opts").Dot("after")
 		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *g.Group) {
 			// add workflow-id required flag
 			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
@@ -338,7 +467,7 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
 			)
 			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id("NewClient").Call(g.Id("c"))
+			fn.Id("client").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("c"))
 
 			// unmarshal input
 			if hasInput {
@@ -402,6 +531,8 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 			cmd.Id("Category").Op(":").Lit("SIGNALS")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
+		cmd.Id("Before").Op(":").Id("opts").Dot("before")
+		cmd.Id("After").Op(":").Id("opts").Dot("after")
 		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *g.Group) {
 			// add workflow-id required flag
 			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
@@ -430,7 +561,7 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
 			)
 			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id("NewClient").Call(g.Id("c"))
+			fn.Id("client").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("c"))
 
 			// unmarshal input
 			if hasInput {
@@ -481,6 +612,8 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 			cmd.Id("Category").Op(":").Lit("UPDATES")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
+		cmd.Id("Before").Op(":").Id("opts").Dot("before")
+		cmd.Id("After").Op(":").Id("opts").Dot("after")
 		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *g.Group) {
 			// add async flag
 			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
@@ -515,7 +648,7 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
 			)
 			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id("NewClient").Call(g.Id("c"))
+			fn.Id("client").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("c"))
 
 			// unmarshal input
 			if hasInput {
@@ -661,6 +794,41 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 	})
 }
 
+// genCliWorkerCommand generates a <Workflow> command
+func (svc *Service) genCliWorkerCommand(f *g.Group) {
+	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
+		cmd.Id("Name").Op(":").Lit("worker")
+		cmd.Id("Usage").Op(":").Lit(fmt.Sprintf("runs a %s worker process", svc.Service.Desc.FullName()))
+		cmd.Id("UseShortOptionHandling").Op(":").True()
+		cmd.Id("Before").Op(":").Id("opts").Dot("before")
+		cmd.Id("After").Op(":").Id("opts").Dot("after")
+		cmd.Id("Action").Op(":").Func().Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *g.Group) {
+			// initialize client
+			fn.List(g.Id("c"), g.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(g.Id("cmd"))
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
+			)
+			fn.Defer().Id("c").Dot("Close").Call()
+
+			// initialize worker
+			fn.List(g.Id("w"), g.Err()).Op(":=").Id("opts").Dot("worker").Call(g.Id("cmd"), g.Id("c"))
+			fn.If(g.Id("opts").Dot("worker").Op("!=").Nil()).Block(
+				g.If(g.Err().Op("!=").Nil()).Block(
+					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing worker: %w"), g.Err())),
+				),
+			)
+
+			// run worker
+			fn.If(g.Err().Op(":=").Id("w").Dot("Start").Call(), g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting worker: %w"), g.Err())),
+			)
+			fn.Defer().Id("w").Dot("Stop").Call()
+			fn.Op("<-").Id("cmd").Dot("Context").Dot("Done").Call()
+			fn.Return(g.Nil())
+		})
+	})
+}
+
 // genCliWorkflowCommand generates a <Workflow> command
 func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 	method := svc.methods[workflow]
@@ -680,6 +848,8 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
+		cmd.Id("Before").Op(":").Id("opts").Dot("before")
+		cmd.Id("After").Op(":").Id("opts").Dot("after")
 		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *g.Group) {
 			// add async flag
 			// generate flag
@@ -702,7 +872,7 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
 			)
 			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id("NewClient").Call(g.Id("c"))
+			fn.Id("client").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("c"))
 
 			// unmarshal input
 			if hasInput {
@@ -777,6 +947,8 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
+		cmd.Id("Before").Op(":").Id("opts").Dot("before")
+		cmd.Id("After").Op(":").Id("opts").Dot("after")
 		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *g.Group) {
 			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
 				fields.Id("Name").Op(":").Lit("detach")
@@ -811,7 +983,7 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
 			)
 			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id("NewClient").Call(g.Id("c"))
+			fn.Id("client").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("c"))
 
 			// unmarshal request
 			if hasInput {
