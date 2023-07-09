@@ -10,6 +10,7 @@ service Simple {
   option (temporal.v1.service) = {
     task_queue: 'my-task-queue'
     features: {
+      cli: { enabled: true }
       workflow_update: { enabled: true }
     }
   };
@@ -155,3 +156,56 @@ message SomeUpdate1Request {
 message SomeUpdate1Response {
   string response_val = 1;
 }
+
+service Other {
+  option (temporal.v1.service) = {
+    task_queue: 'other-task-queue'
+    features: {
+      cli: { enabled: true }
+      workflow_update: { enabled: true }
+    }
+  };
+
+  rpc OtherWorkflow(OtherWorkflowRequest) returns (OtherWorkflowResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'other-workflow/${!uuid_v4()}'
+    };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 30 }
+    };
+  }
+
+  rpc OtherQuery(google.protobuf.Empty) returns (OtherQueryResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc OtherSignal(OtherSignalRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc OtherUpdate(OtherUpdateRequest) returns (OtherUpdateResponse) {
+    option (temporal.v1.update) = {
+      id: 'other-update/${!uuid_v4()}'
+    };
+  }
+}
+
+message OtherWorkflowRequest {
+  string some_val = 1;
+}
+
+message OtherWorkflowResponse {}
+
+message OtherQueryResponse {
+  string filter = 1;
+}
+
+message OtherSignalRequest {
+  string type = 1;
+}
+
+message OtherUpdateRequest {
+  string mode = 1;
+}
+
+message OtherUpdateResponse {}

@@ -62,7 +62,7 @@ func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Ser
 	}
 
 	for _, method := range service.Methods {
-		name := method.GoName
+		name := toCamel(method.GoName)
 		svc.methods[name] = method
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Activity).(*temporalv1.ActivityOptions); ok && opts != nil {
@@ -141,17 +141,53 @@ func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Ser
 	return &svc, errs
 }
 
+func (svc *Service) fqnForActivity(activity string) string {
+	if fqn := svc.activities[activity].GetName(); fqn != "" {
+		return fqn
+	}
+	return string(svc.methods[activity].Desc.FullName())
+}
+
+func (svc *Service) fqnForQuery(query string) string {
+	if fqn := svc.activities[query].GetName(); fqn != "" {
+		return fqn
+	}
+	return string(svc.methods[query].Desc.FullName())
+}
+
+func (svc *Service) fqnForSignal(signal string) string {
+	if fqn := svc.activities[signal].GetName(); fqn != "" {
+		return fqn
+	}
+	return string(svc.methods[signal].Desc.FullName())
+}
+
+func (svc *Service) fqnForUpdate(update string) string {
+	if fqn := svc.activities[update].GetName(); fqn != "" {
+		return fqn
+	}
+	return string(svc.methods[update].Desc.FullName())
+}
+
+func (svc *Service) fqnForWorkflow(workflow string) string {
+	if fqn := svc.activities[workflow].GetName(); fqn != "" {
+		return fqn
+	}
+	return string(svc.methods[workflow].Desc.FullName())
+}
+
 // genConstants generates constants
 func (svc *Service) genConstants(f *g.File) {
 	// add task queue
 	if taskQueue := svc.opts.GetTaskQueue(); taskQueue != "" {
-		f.Commentf("%sTaskQueue is the default task-queue for a %s worker", svc.GoName, svc.GoName)
-		f.Const().Id(fmt.Sprintf("%sTaskQueue", svc.GoName)).Op("=").Lit(taskQueue)
+		name := toCamel("%sTaskQueue", svc.Service.GoName)
+		f.Commentf("%s= is the default task-queue for a %s worker", name, svc.Service.Desc.FullName())
+		f.Const().Id(name).Op("=").Lit(taskQueue)
 	}
 
 	// add workflow names
 	if len(svc.workflows) > 0 {
-		f.Commentf("%s workflow names", svc.GoName)
+		f.Commentf("%s workflow names", svc.Service.Desc.FullName())
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, workflow := range svc.workflowsOrdered {
 				method := svc.methods[workflow]
@@ -160,7 +196,7 @@ func (svc *Service) genConstants(f *g.File) {
 				if name == "" {
 					name = string(method.Desc.FullName())
 				}
-				defs.Id(fmt.Sprintf("%sWorkflowName", workflow)).Op("=").Lit(name)
+				defs.Id(toCamel("%sWorkflowName", workflow)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -174,10 +210,10 @@ func (svc *Service) genConstants(f *g.File) {
 		}
 	}
 	if len(workflowIdExpressions) > 0 {
-		f.Commentf("%s workflow id expressions", svc.GoName)
+		f.Commentf("%s workflow id expressions", svc.Service.Desc.FullName())
 		f.Var().DefsFunc(func(defs *g.Group) {
 			for _, pair := range workflowIdExpressions {
-				defs.Id(fmt.Sprintf("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
+				defs.Id(toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
 			}
 		})
 	}
@@ -191,17 +227,17 @@ func (svc *Service) genConstants(f *g.File) {
 		}
 	}
 	if len(workflowSearchAttributes) > 0 {
-		f.Commentf("%s workflow search attribute mappings", svc.GoName)
+		f.Commentf("%s workflow search attribute mappings", svc.Service.Desc.FullName())
 		f.Var().DefsFunc(func(defs *g.Group) {
 			for _, pair := range workflowSearchAttributes {
-				defs.Id(fmt.Sprintf("%sSearchAttributesMapping", pair[0])).Op("=").Qual(expressionPkg, "MustParseMapping").Call(g.Lit(pair[1]))
+				defs.Id(toCamel("%sSearchAttributesMapping", pair[0])).Op("=").Qual(expressionPkg, "MustParseMapping").Call(g.Lit(pair[1]))
 			}
 		})
 	}
 
 	// add activity names
 	if len(svc.activities) > 0 {
-		f.Commentf("%s activity names", svc.GoName)
+		f.Commentf("%s activity names", svc.Service.Desc.FullName())
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, activity := range svc.activitiesOrdered {
 				method := svc.methods[activity]
@@ -210,14 +246,14 @@ func (svc *Service) genConstants(f *g.File) {
 				if name == "" {
 					name = string(method.Desc.FullName())
 				}
-				defs.Id(fmt.Sprintf("%sActivityName", activity)).Op("=").Lit(name)
+				defs.Id(toCamel("%sActivityName", activity)).Op("=").Lit(name)
 			}
 		})
 	}
 
 	// add query names
 	if len(svc.queries) > 0 {
-		f.Commentf("%s query names", svc.GoName)
+		f.Commentf("%s query names", svc.Service.Desc.FullName())
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, query := range svc.queriesOrdered {
 				method := svc.methods[query]
@@ -226,14 +262,14 @@ func (svc *Service) genConstants(f *g.File) {
 				if name == "" {
 					name = string(method.Desc.FullName())
 				}
-				defs.Id(fmt.Sprintf("%sQueryName", query)).Op("=").Lit(name)
+				defs.Id(toCamel("%sQueryName", query)).Op("=").Lit(name)
 			}
 		})
 	}
 
 	// add signal names
 	if len(svc.signals) > 0 {
-		f.Commentf("%s signal names", svc.GoName)
+		f.Commentf("%s signal names", svc.Service.Desc.FullName())
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, signal := range svc.signalsOrdered {
 				method := svc.methods[signal]
@@ -242,14 +278,14 @@ func (svc *Service) genConstants(f *g.File) {
 				if name == "" {
 					name = string(method.Desc.FullName())
 				}
-				defs.Id(fmt.Sprintf("%sSignalName", signal)).Op("=").Lit(name)
+				defs.Id(toCamel("%sSignalName", signal)).Op("=").Lit(name)
 			}
 		})
 	}
 
 	// add update names
 	if len(svc.updates) > 0 {
-		f.Commentf("%s update names", svc.GoName)
+		f.Commentf("%s update names", svc.Service.Desc.FullName())
 		f.Const().DefsFunc(func(defs *g.Group) {
 			for _, update := range svc.updatesOrdered {
 				method := svc.methods[update]
@@ -258,7 +294,7 @@ func (svc *Service) genConstants(f *g.File) {
 				if name == "" {
 					name = string(method.Desc.FullName())
 				}
-				defs.Id(fmt.Sprintf("%sUpdateName", update)).Op("=").Lit(name)
+				defs.Id(toCamel("%sUpdateName", update)).Op("=").Lit(name)
 			}
 		})
 	}
@@ -272,10 +308,10 @@ func (svc *Service) genConstants(f *g.File) {
 		}
 	}
 	if len(updateIdExpressions) > 0 {
-		f.Commentf("%s update id expressions", svc.GoName)
+		f.Commentf("%s update id expressions", svc.Service.Desc.FullName())
 		f.Var().DefsFunc(func(defs *g.Group) {
 			for _, pair := range updateIdExpressions {
-				defs.Id(fmt.Sprintf("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
+				defs.Id(toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
 			}
 		})
 	}
@@ -364,8 +400,6 @@ func (svc *Service) render(f *g.File) {
 	for _, workflow := range svc.workflowsOrdered {
 		svc.genWorkerRegisterWorkflow(f, workflow)
 		svc.genWorkerBuilderFunction(f, workflow)
-		svc.genWorker(f, workflow)
-		svc.genWorkerExecuteMethod(f, workflow)
 		svc.genWorkerWorkflowInput(f, workflow)
 		svc.genWorkerWorkflowInterface(f, workflow)
 		svc.genWorkerChildWorkflow(f, workflow)
@@ -389,9 +423,9 @@ func (svc *Service) render(f *g.File) {
 
 	// generate activities
 	svc.genActivitiesInterface(f)
-	svc.genRegisterActivities(f)
+	svc.genActivityRegisterAllFunction(f)
 	for _, activity := range svc.activitiesOrdered {
-		svc.genRegisterActivity(f, activity)
+		svc.genActivityRegisterOneFunction(f, activity)
 		svc.genActivityFuture(f, activity)
 		svc.genActivityFutureGetMethod(f, activity)
 		svc.genActivityFutureSelectMethod(f, activity)

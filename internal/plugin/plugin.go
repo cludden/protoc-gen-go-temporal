@@ -23,7 +23,6 @@ func (p *Plugin) Param(key, value string) error {
 // Run defines the plugin entrypoint
 func (p *Plugin) Run(plugin *protogen.Plugin) error {
 	p.Plugin = plugin
-	servicesByPkg := map[string]int{}
 
 	for _, file := range p.Files {
 		if !file.Generate {
@@ -44,19 +43,11 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 				continue
 			}
 
-			if _, ok := servicesByPkg[string(file.GoPackageName)]; !ok {
-				servicesByPkg[pkgName] = 0
-			}
-			servicesByPkg[pkgName]++
-			if n := servicesByPkg[pkgName]; n > 1 {
-				return fmt.Errorf("only one temporal service per package is currently supported, observed violation for package: %s", pkgName)
-			}
 			svc.render(f)
 			if svc.opts.GetFeatures().GetCli().GetEnabled() {
 				svc.renderCLI(f)
 			}
 			hasContent = true
-			break
 		}
 
 		if !hasContent {
