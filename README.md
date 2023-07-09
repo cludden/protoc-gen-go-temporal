@@ -207,6 +207,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+	logger "go.temporal.io/server/common/log"
 )
 
 // Workflows manages shared state for workflow constructors
@@ -290,48 +291,28 @@ func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) e
 
 func main() {
 	// initialize client commands using generated constructor
-	commands, err := examplev1.NewCommands(
-		// provide a client initializer for use by commands
-		examplev1.WithClientForCommand(func(cmd *cli.Context) (client.Client, error) {
-			return client.Dial(client.Options{})
-		}),
+	app, err := examplev1.NewExampleCli(
+		examplev1.NewExampleCliOptions().
+			WithClient(func(cmd *cli.Context) (client.Client, error) {
+				return client.Dial(client.Options{
+					Logger: logger.NewSdkLogger(logger.NewCLILogger()),
+				})
+			}).
+			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+				examplev1.RegisterExampleActivities(w, &Activities{})
+				examplev1.RegisterExampleWorkflows(w, &Workflows{})
+				return w, nil
+			}),
 	)
 	if err != nil {
 		log.Fatalf("error initializing commands: %v", err)
 	}
-
-	// add worker command
-	commands = append(commands, &cli.Command{
-		Name:  "worker",
-		Usage: "run service worker",
-		Action: func(cmd *cli.Context) error {
-			// initialize temporal client
-			c, err := client.Dial(client.Options{})
-			if err != nil {
-				return fmt.Errorf("error initializing client: %w", err)
-			}
-			defer c.Close()
-
-			// register workflows & activities using generated registration helpers, start worker
-			w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-			examplev1.RegisterActivities(w, &Activities{})
-			examplev1.RegisterWorkflows(w, &Workflows{})
-			if err := w.Start(); err != nil {
-				return fmt.Errorf("error starting worker: %w", err)
-			}
-			defer w.Stop()
-
-			<-cmd.Context.Done()
-			return nil
-		},
-	})
+	app.Name = "example"
+	app.Usage = "an example temporal cli"
 
 	// run cli
-	if err := (&cli.App{
-		Name:     "Example",
-		Usage:    "an example temporal cli",
-		Commands: commands,
-	}).Run(os.Args); err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
 }

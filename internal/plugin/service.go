@@ -356,9 +356,10 @@ func (svc *Service) render(f *g.File) {
 		svc.genClientImplUpdateMethodAsync(f, update)
 	}
 
-	// generate <Workflow>Run interfaces and implementations used by client
+	// generate <Workflow>Options, <Workflow>Run interfaces and implementations used by client
 	for _, workflow := range svc.workflowsOrdered {
 		opts := svc.workflows[workflow]
+		svc.genClientWorkflowOptions(f, workflow)
 		svc.genClientWorkflowRunInterface(f, workflow)
 		svc.genClientWorkflowRunImpl(f, workflow)
 		svc.genClientWorkflowRunImplIDMethod(f, workflow)
@@ -390,6 +391,7 @@ func (svc *Service) render(f *g.File) {
 		svc.genClientUpdateHandleImplRunIDMethod(f, update)
 		svc.genClientUpdateHandleImplUpdateIDMethod(f, update)
 		svc.genClientUpdateHandleImplGetMethod(f, update)
+		svc.genClientUpdateOptions(f, update)
 	}
 
 	// generate workflows interface and registration helper
@@ -402,8 +404,9 @@ func (svc *Service) render(f *g.File) {
 		svc.genWorkerBuilderFunction(f, workflow)
 		svc.genWorkerWorkflowInput(f, workflow)
 		svc.genWorkerWorkflowInterface(f, workflow)
-		svc.genWorkerChildWorkflow(f, workflow)
-		svc.genWorkerChildWorkflowAsync(f, workflow)
+		svc.genWorkerWorkflowChild(f, workflow)
+		svc.genWorkerWorkflowChildAsync(f, workflow)
+		svc.genWorkerWorkflowChildOptions(f, workflow)
 		svc.genWorkerWorkflowChildRun(f, workflow)
 		svc.genWorkerWorkflowChildRunGet(f, workflow)
 		svc.genWorkerWorkflowChildRunSelect(f, workflow)
@@ -433,5 +436,7 @@ func (svc *Service) render(f *g.File) {
 		svc.genActivityFunction(f, activity, false, true)
 		svc.genActivityFunction(f, activity, true, false)
 		svc.genActivityFunction(f, activity, true, true)
+		svc.genActivityLocalOptions(f, activity)
+		svc.genActivityOptions(f, activity)
 	}
 }

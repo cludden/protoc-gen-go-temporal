@@ -149,91 +149,6 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 		)
 }
 
-// genWorkerChildWorkflow generates a public <Workflow>Child function
-func (svc *Service) genWorkerChildWorkflow(f *g.File, workflow string) {
-	functionName := toCamel("%sChild", workflow)
-	method := svc.methods[workflow]
-	hasInput := !isEmpty(method.Input)
-	hasOutput := !isEmpty(method.Output)
-	f.Commentf("%s executes a child %s workflow", functionName, method.Desc.FullName())
-	f.Func().
-		Id(functionName).
-		ParamsFunc(func(args *g.Group) {
-			args.Id("ctx").Qual(workflowPkg, "Context")
-			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
-			}
-			args.Id("options").Op("...").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
-		}).
-		ParamsFunc(func(returnVals *g.Group) {
-			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
-			}
-			returnVals.Error()
-		}).
-		BlockFunc(func(fn *g.Group) {
-			fn.List(g.Id("childRun"), g.Err()).Op(":=").Id(toCamel("%sChildAsync", workflow)).CallFunc(func(args *g.Group) {
-				args.Id("ctx")
-				if hasInput {
-					args.Id("req")
-				}
-				args.Id("options").Op("...")
-			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
-					if hasOutput {
-						returnVals.Nil()
-					}
-					returnVals.Err()
-				}),
-			)
-			fn.Return(
-				g.Id("childRun").Dot("Get").Call(g.Id("ctx")),
-			)
-		})
-}
-
-// genWorkerChildWorkflowAsync generates a public <Workflow>Child function
-func (svc *Service) genWorkerChildWorkflowAsync(f *g.File, workflow string) {
-	functionName := toCamel("%sChildAsync", workflow)
-	method := svc.methods[workflow]
-	hasInput := !isEmpty(method.Input)
-	f.Commentf("%s executes a child %s workflow", functionName, method.Desc.FullName())
-	f.Func().
-		Id(functionName).
-		ParamsFunc(func(args *g.Group) {
-			args.Id("ctx").Qual(workflowPkg, "Context")
-			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
-			}
-			args.Id("options").Op("...").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
-		}).
-		Params(
-			g.Op("*").Id(toCamel("%sChildRun", workflow)),
-			g.Error(),
-		).
-		BlockFunc(func(fn *g.Group) {
-			// initialize child workflow options with default values
-			svc.genClientStartWorkflowOptions(fn, workflow, true)
-
-			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
-			fn.Return(
-				g.Op("&").Id(toCamel("%sChildRun", workflow)).Values(
-					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
-						args.Id("ctx")
-						args.Id(fmt.Sprintf("%sWorkflowName", workflow))
-						if hasInput {
-							args.Id("req")
-						} else {
-							args.Nil()
-						}
-					}),
-				),
-				g.Nil(),
-			)
-		})
-}
-
 // genWorkerRegisterWorkflow generates a Register<Workflow> public function
 func (svc *Service) genWorkerRegisterWorkflow(f *g.File, workflow string) {
 	method := svc.methods[workflow]
@@ -445,6 +360,120 @@ func (svc *Service) genWorkerSignalSelect(f *g.File, signal string) {
 						}),
 				),
 			),
+		)
+}
+
+// genWorkerWorkflowChild generates a public <Workflow>Child function
+func (svc *Service) genWorkerWorkflowChild(f *g.File, workflow string) {
+	functionName := toCamel("%sChild", workflow)
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
+
+	f.Commentf("%s executes a child %s workflow", functionName, svc.fqnForWorkflow(workflow))
+	f.Func().
+		Id(functionName).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual(workflowPkg, "Context")
+			if hasInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+			args.Id("options").Op("...").Op("*").Id(toCamel("%sChildOptions", workflow))
+		}).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasOutput {
+				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(fn *g.Group) {
+			fn.List(g.Id("childRun"), g.Err()).Op(":=").Id(toCamel("%sChildAsync", workflow)).CallFunc(func(args *g.Group) {
+				args.Id("ctx")
+				if hasInput {
+					args.Id("req")
+				}
+				args.Id("options").Op("...")
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.ReturnFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Nil()
+					}
+					returnVals.Err()
+				}),
+			)
+			fn.Return(
+				g.Id("childRun").Dot("Get").Call(g.Id("ctx")),
+			)
+		})
+}
+
+// genWorkerWorkflowChildAsync generates a public <Workflow>Child function
+func (svc *Service) genWorkerWorkflowChildAsync(f *g.File, workflow string) {
+	functionName := toCamel("%sChildAsync", workflow)
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+
+	f.Commentf("%s executes a child %s workflow", functionName, svc.fqnForWorkflow(workflow))
+	f.Func().
+		Id(functionName).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual(workflowPkg, "Context")
+			if hasInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+			args.Id("options").Op("...").Op("*").Id(toCamel("%sChildOptions", workflow))
+		}).
+		Params(
+			g.Op("*").Id(toCamel("%sChildRun", workflow)),
+			g.Error(),
+		).
+		BlockFunc(func(fn *g.Group) {
+			// initialize child workflow options with default values
+			svc.genClientStartWorkflowOptions(fn, workflow, true)
+
+			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
+			fn.Return(
+				g.Op("&").Id(toCamel("%sChildRun", workflow)).Values(
+					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
+						args.Id("ctx")
+						args.Id(fmt.Sprintf("%sWorkflowName", workflow))
+						if hasInput {
+							args.Id("req")
+						} else {
+							args.Nil()
+						}
+					}),
+				),
+				g.Nil(),
+			)
+		})
+}
+
+// genWorkerWorkflowChildOptions generates a <Workflow>ChildOptions struct
+func (svc *Service) genWorkerWorkflowChildOptions(f *g.File, workflow string) {
+	typeName := toCamel("%sChildOptions", workflow)
+	constructorName := "New" + typeName
+
+	f.Commentf("%s provides configuration for a %s workflow operation", typeName, svc.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).Struct(
+		g.Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions"),
+	)
+
+	f.Commentf("%s initializes a new %s value", constructorName, typeName)
+	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
+		g.Return(g.Op("&").Id(typeName).Values()),
+	)
+
+	f.Comment("WithStartWorkflowOptions sets the initial client.StartWorkflowOptions")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithStartWorkflowOptions").
+		Params(g.Id("options").Qual(workflowPkg, "ChildWorkflowOptions")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
+			g.Return(g.Id("opts")),
 		)
 }
 
@@ -673,9 +702,9 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 	}
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
 		if method.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+			methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
 		} else {
-			f.Commentf("Execute defines the entrypoint to a(n) %s workflow", method.Desc.FullName())
+			methods.Commentf("Execute defines the entrypoint to a(n) %s workflow", method.Desc.FullName())
 		}
 		methods.
 			Id("Execute").
@@ -696,9 +725,9 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 			hasInput := !isEmpty(handler.Input)
 
 			if handler.Comments.Leading.String() != "" {
-				f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
+				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
-				f.Commentf("%s implements a(n) %s query handler", query, handler.Desc.FullName())
+				methods.Commentf("%s implements a(n) %s query handler", query, handler.Desc.FullName())
 			}
 			methods.Id(query).
 				ParamsFunc(func(args *g.Group) {
@@ -736,9 +765,9 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 
 			// add <Update> method
 			if handler.Comments.Leading.String() != "" {
-				f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
+				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
-				f.Commentf("%s implements a(n) %s update handler", update, handler.Desc.FullName())
+				methods.Commentf("%s implements a(n) %s update handler", update, handler.Desc.FullName())
 			}
 			methods.Id(update).
 				ParamsFunc(func(args *g.Group) {
