@@ -180,7 +180,7 @@ func (svc *Service) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow,
 			if hasSignalInput {
 				args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
-			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
 		Params(
 			g.Id(toCamel("%sRun", workflow)),
@@ -241,7 +241,7 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 			if hasSignalInput {
 				args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
-			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasWorkflowOutput {
@@ -293,7 +293,7 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 			if hasInput {
 				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
-			args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -303,13 +303,13 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 		}).
 		BlockFunc(func(method *g.Group) {
 			// initialize update request options
-			method.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
-			method.If(g.Len(g.Id("opts")).Op(">").Lit(0)).Block(
+			method.Id("options").Op(":=").Id(toCamel("New%sOptions", update)).Call()
+			method.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
 				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
 			)
 
 			// override wait policy
-			method.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
+			method.Id("options").Dot("opts").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
 				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"),
 			)
 
@@ -357,7 +357,7 @@ func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 			if hasInput {
 				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
-			args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
 		Params(
 			g.Id(toCamel("%sHandle", update)),
@@ -366,8 +366,8 @@ func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 		BlockFunc(func(method *g.Group) {
 			// initialize update request options
 			method.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
-			method.If(g.Len(g.Id("opts")).Op(">").Lit(0)).Block(
-				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
+			method.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
+				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)).Dot("opts"),
 			)
 
 			// add request args if update has inpute
@@ -449,7 +449,7 @@ func (svc *Service) genClientImplWorkflowAsyncMethod(f *g.File, workflow string)
 			if hasInput {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
-			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
 		Params(
 			g.Id(runInterfaceType),
@@ -531,7 +531,7 @@ func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
 			if hasInput {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
-			args.Id("options").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -589,7 +589,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 					}
-					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
@@ -607,7 +607,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 					}
-					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 				}).
 				Params(
 					g.Id(runInterfaceType),
@@ -655,7 +655,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 						if hasSignalInput {
 							args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
 						}
-						args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+						args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 					}).
 					ParamsFunc(func(returnVals *g.Group) {
 						if hasWorkflowOutput {
@@ -680,7 +680,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 						if hasSignalInput {
 							args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
 						}
-						args.Id("opts").Op("...").Op("*").Qual(clientPkg, "StartWorkflowOptions")
+						args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 					}).
 					Params(
 						g.Id(runInterfaceType),
@@ -754,7 +754,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 					}
-					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
@@ -778,7 +778,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 					}
-					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 				}).
 				Params(
 					g.Id(toCamel("%sHandle", update)),
@@ -797,9 +797,9 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	// initialize options if nil
 	if child {
 		fn.Var().Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
-		fn.If(g.Len(g.Id("options")).Op(">").Lit(0)).
+		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).
 			Block(
-				g.Id("opts").Op("=").Id("options").Index(g.Lit(0)),
+				g.Id("opts").Op("=").Id("options").Index(g.Lit(0)).Dot("opts"),
 			).
 			Else().
 			Block(
@@ -808,8 +808,8 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 			)
 	} else {
 		fn.Id("opts").Op(":=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Values()
-		fn.If(g.Len(g.Id("options")).Op(">").Lit(0)).Block(
-			g.Id("opts").Op("=").Id("options").Index(g.Lit(0)),
+		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
+			g.Id("opts").Op("=").Id("options").Index(g.Lit(0)).Dot("opts"),
 		)
 	}
 
@@ -1109,6 +1109,60 @@ func (svc *Service) genClientUpdateHandleInterface(f *g.File, update string) {
 	})
 }
 
+// genClientUpdateOptions generates a <Update>Options struct
+func (svc *Service) genClientUpdateOptions(f *g.File, update string) {
+	typeName := toCamel("%sOptions", update)
+	constructorName := "New" + typeName
+
+	f.Commentf("%s provides configuration for a %s update operation", typeName, svc.fqnForUpdate(update))
+	f.Type().Id(typeName).Struct(
+		g.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+	)
+
+	f.Commentf("%s initializes a new %s value", constructorName, typeName)
+	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
+		g.Return(g.Op("&").Id(typeName).Values()),
+	)
+
+	f.Comment("WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowWithOptionsRequest")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithUpdateWorkflowOptions").
+		Params(g.Id("options").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
+			g.Return(g.Id("opts")),
+		)
+}
+
+// genClientWorkflowOptions generates a <Workflow>Options struct
+func (svc *Service) genClientWorkflowOptions(f *g.File, workflow string) {
+	typeName := toCamel("%sOptions", workflow)
+	constructorName := "New" + typeName
+
+	f.Commentf("%s provides configuration for a %s workflow operation", typeName, svc.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).Struct(
+		g.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions"),
+	)
+
+	f.Commentf("%s initializes a new %s value", constructorName, typeName)
+	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
+		g.Return(g.Op("&").Id(typeName).Values()),
+	)
+
+	f.Comment("WithStartWorkflowOptions sets the initial client.StartWorkflowOptions")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithStartWorkflowOptions").
+		Params(g.Id("options").Qual(clientPkg, "StartWorkflowOptions")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
+			g.Return(g.Id("opts")),
+		)
+}
+
 // genClientWorkflowRunImpl generates a <Workflow>Run struct
 func (svc *Service) genClientWorkflowRunImpl(f *g.File, workflow string) {
 	clientType := toLowerCamel("%sClient", svc.Service.GoName)
@@ -1283,7 +1337,7 @@ func (svc *Service) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workflo
 			if hasInput {
 				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
-			args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
 		Params(
 			g.Id(toCamel("%sHandle", update)),
@@ -1321,7 +1375,7 @@ func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow str
 			if hasInput {
 				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 			}
-			args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -1430,7 +1484,7 @@ func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
 					if hasInput {
 						args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 					}
-					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
@@ -1447,7 +1501,7 @@ func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
 					if hasInput {
 						args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
 					}
-					args.Id("opts").Op("...").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 				}).
 				Params(
 					g.Id(toCamel("%sHandle", update)),

@@ -149,29 +149,13 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
-			if local {
-				args.Id("fn").
-					Func().
-					ParamsFunc(func(fnargs *g.Group) {
-						fnargs.Qual("context", "Context")
-						if hasInput {
-							fnargs.Op("*").Id(method.Input.GoIdent.GoName)
-						}
-					}).
-					ParamsFunc(func(fnreturn *g.Group) {
-						if hasOutput {
-							fnreturn.Op("*").Id(method.Output.GoIdent.GoName)
-						}
-						fnreturn.Error()
-					})
-			}
 			if hasInput {
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
 			if local {
-				args.Id("options").Op("...").Op("*").Qual(workflowPkg, "LocalActivityOptions")
+				args.Id("options").Op("...").Op("*").Id(toCamel("%sLocalActivityOptions", activity))
 			} else {
-				args.Id("options").Op("...").Op("*").Qual(workflowPkg, "ActivityOptions")
+				args.Id("options").Op("...").Op("*").Id(toCamel("%sActivityOptions", activity))
 			}
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
@@ -187,30 +171,43 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 		BlockFunc(func(fn *g.Group) {
 			// initialize activity options if nil
 			if local {
-				fn.Var().Id("opts").Op("*").Qual(workflowPkg, "LocalActivityOptions")
+				fn.Var().Id("opts").Op("*").Id(toCamel("%sLocalActivityOptions", activity))
 			} else {
-				fn.Var().Id("opts").Op("*").Qual(workflowPkg, "ActivityOptions")
+				fn.Var().Id("opts").Op("*").Id(toCamel("%sActivityOptions", activity))
 			}
-			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).
+
+			// initialize opts
+			fn.
+				If(
+					g.Len(g.Id("options")).Op(">").Lit(0).
+						Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil(),
+				).
 				Block(
 					g.Id("opts").Op("=").Id("options").Index(g.Lit(0)),
 				).
 				Else().
 				BlockFunc(func(bl *g.Group) {
-					optionsFn := "GetActivityOptions"
 					if local {
-						optionsFn = "GetLocalActivityOptions"
+						bl.Id("opts").Op("=").Id(toCamel("New%sLocalActivityOptions", activity)).Call()
+					} else {
+						bl.Id("opts").Op("=").Id(toCamel("New%sActivityOptions", activity)).Call()
 					}
-					bl.Id("activityOpts").Op(":=").Qual(workflowPkg, optionsFn).Call(
-						g.Id("ctx"),
-					)
-					bl.Id("opts").Op("=").Op("&").Id("activityOpts")
 				})
+
+			// initialize acitivyt options
+			fn.If(g.Id("opts").Dot("opts").Op("==").Nil()).BlockFunc(func(bl *g.Group) {
+				if local {
+					bl.Id("activityOpts").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(g.Id("ctx"))
+				} else {
+					bl.Id("activityOpts").Op(":=").Qual(workflowPkg, "GetActivityOptions").Call(g.Id("ctx"))
+				}
+				bl.Id("opts").Dot("opts").Op("=").Op("&").Id("activityOpts")
+			})
 
 			// set default retry policy
 			if policy := opts.GetRetryPolicy(); policy != nil {
-				fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
-					g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
+				fn.If(g.Id("opts").Dot("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
+					g.Id("opts").Dot("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
 						if d := policy.GetInitialInterval(); d.IsValid() {
 							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 						}
@@ -232,61 +229,61 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 
 			// set default heartbeat timeout
 			if timeout := opts.GetHeartbeatTimeout(); !local && timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("HeartbeatTimeout").Op("==").Lit(0)).Block(
-					g.Id("opts").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+				fn.If(g.Id("opts").Dot("opts").Dot("HeartbeatTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("opts").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
 
 			// set default schedule to close timeout
 			if timeout := opts.GetScheduleToCloseTimeout(); timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
-					g.Id("opts").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+				fn.If(g.Id("opts").Dot("opts").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("opts").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
 
 			// set default schedule to start timeout
 			if timeout := opts.GetScheduleToStartTimeout(); !local && timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("ScheduleToStartTimeout").Op("==").Lit(0)).Block(
-					g.Id("opts").Dot("ScheduleToStartTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+				fn.If(g.Id("opts").Dot("opts").Dot("ScheduleToStartTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("opts").Dot("ScheduleToStartTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
 
 			// set default start to close timeout
 			if timeout := opts.GetStartToCloseTimeout(); timeout.IsValid() {
-				fn.If(g.Id("opts").Dot("StartToCloseTimeout").Op("==").Lit(0)).Block(
-					g.Id("opts").Dot("StartToCloseTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+				fn.If(g.Id("opts").Dot("opts").Dot("StartToCloseTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("opts").Dot("StartToCloseTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 				)
 			}
 
 			// inject ctx with activity options
 			if local {
 				fn.Id("ctx").Op("=").Qual(workflowPkg, "WithLocalActivityOptions").Call(
-					g.Id("ctx"), g.Op("*").Id("opts"),
+					g.Id("ctx"), g.Op("*").Id("opts").Dot("opts"),
 				)
 
 			} else {
 				fn.Id("ctx").Op("=").Qual(workflowPkg, "WithActivityOptions").Call(
-					g.Id("ctx"), g.Op("*").Id("opts"),
+					g.Id("ctx"), g.Op("*").Id("opts").Dot("opts"),
 				)
 			}
 
 			// initialize activity reference
 			fn.Var().Id("activity").Any()
 			if local {
-				fn.If(g.Id("fn").Op("==").Nil()).
+				fn.If(g.Id("opts").Dot("fn").Op("!=").Nil()).
 					Block(
-						g.Id("activity").Op("=").Id(toCamel("%sActivityName", activity)),
+						g.Id("activity").Op("=").Id("opts").Dot("fn"),
 					).
 					Else().
 					Block(
-						g.Id("activity").Op("=").Id("fn"),
+						g.Id("activity").Op("=").Id(toCamel("%sActivityName", activity)),
 					)
 			} else {
-				fn.Id("activity").Op("=").Id(toCamel("%sActivityName", method.GoName))
+				fn.Id("activity").Op("=").Id(toCamel("%sActivityName", activity))
 			}
 
 			// initialize activity future
-			fn.Id("future").Op(":=").Op("&").Id(toCamel("%sFuture", method.GoName)).ValuesFunc(func(values *g.Group) {
+			fn.Id("future").Op(":=").Op("&").Id(toCamel("%sFuture", activity)).ValuesFunc(func(values *g.Group) {
 				methodName := "ExecuteActivity"
 				if local {
 					methodName = "ExecuteLocalActivity"
@@ -357,5 +354,119 @@ func (svc *Service) genActivityRegisterOneFunction(f *g.File, activity string) {
 					g.Id("Name").Op(":").Id(toCamel("%sActivityName", activity)).Op(","),
 				),
 			),
+		)
+}
+
+// genActivityLocalOptions generates an <Activity>LocalActivityOptions struct
+func (svc *Service) genActivityLocalOptions(f *g.File, activity string) {
+	typeName := toCamel("%sLocalActivityOptions", activity)
+	method := svc.methods[activity]
+	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
+
+	// generate type definition
+	f.Commentf("%s provides configuration for a local %s activity", typeName, svc.fqnForActivity(activity))
+	f.Type().Id(typeName).Struct(
+		g.Id("fn").Func().
+			ParamsFunc(func(args *g.Group) {
+				args.Qual("context", "Context")
+				if hasInput {
+					args.Op("*").Id(method.Input.GoIdent.GoName)
+				}
+			}).
+			ParamsFunc(func(returnVals *g.Group) {
+				if hasOutput {
+					returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				}
+				returnVals.Error()
+			}),
+		g.Id("opts").Op("*").Qual(workflowPkg, "LocalActivityOptions"),
+	)
+
+	// generate New<Activity>LocalActivityOptions method
+	ctorName := "New" + typeName
+	f.Commentf("%s sets default LocalActivityOptions", ctorName)
+	f.Func().
+		Id(ctorName).
+		Params().
+		Op("*").Id(typeName).
+		Block(
+			g.Return(g.Op("&").Id(typeName).Values()),
+		)
+
+	// generate Local method
+	f.Commentf("Local provides a local %s activity implementation", svc.fqnForActivity(activity))
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("Local").
+		Params(
+			g.Id("fn").Func().
+				ParamsFunc(func(args *g.Group) {
+					args.Qual("context", "Context")
+					if hasInput {
+						args.Op("*").Id(method.Input.GoIdent.GoName)
+					}
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				}),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("fn").Op("=").Id("fn"),
+			g.Return(g.Id("opts")),
+		)
+
+	// generate WithLocalActivityOptions method
+	f.Comment("WithLocalActivityOptions sets default LocalActivityOptions")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithLocalActivityOptions").
+		Params(
+			g.Id("options").Qual(workflowPkg, "LocalActivityOptions"),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
+			g.Return(g.Id("opts")),
+		)
+}
+
+// genActivityOptions generates an <Activity>ActivityOptions struct
+func (svc *Service) genActivityOptions(f *g.File, activity string) {
+	typeName := toCamel("%sActivityOptions", activity)
+
+	// generate type definition
+	f.Commentf("%s provides configuration for a(n) %s activity", typeName, svc.fqnForActivity(activity))
+	f.Type().Id(typeName).Struct(
+		g.Id("opts").Op("*").Qual(workflowPkg, "ActivityOptions"),
+	)
+
+	// generate New<Activity>ActivityOptions method
+	ctorName := "New" + typeName
+	f.Commentf("%s sets default ActivityOptions", ctorName)
+	f.Func().
+		Id(ctorName).
+		Params().
+		Op("*").Id(typeName).
+		Block(
+			g.Return(g.Op("&").Id(typeName).Values()),
+		)
+
+	// generate WithActivityOptions method
+	f.Comment("WithActivityOptions sets default ActivityOptions")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(typeName)).
+		Id("WithActivityOptions").
+		Params(
+			g.Id("options").Qual(workflowPkg, "ActivityOptions"),
+		).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
+			g.Return(g.Id("opts")),
 		)
 }

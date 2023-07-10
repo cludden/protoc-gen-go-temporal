@@ -44,7 +44,7 @@ func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Re
 	s.events = append(s.events, "some activity 3 with response "+resp.ResponseVal)
 
 	// Call local activity
-	resp, err = simplepb.SomeActivity3Local(ctx, nil, &simplepb.SomeActivity3Request{
+	resp, err = simplepb.SomeActivity3Local(ctx, &simplepb.SomeActivity3Request{
 		RequestVal: "some local activity param",
 	})
 	if err != nil {

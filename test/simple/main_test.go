@@ -47,16 +47,16 @@ func TestSomeWorkflow1(t *testing.T) {
 	require.NoError(w.Start())
 	defer w.Stop()
 
-	// initialize simple client
-	client := simplepb.NewSimpleClient(c)
+	// initialize simple simple
+	simple := simplepb.NewSimpleClient(c)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// start the workflow
-	run, err := client.SomeWorkflow1Async(ctx, &simplepb.SomeWorkflow1Request{
+	run, err := simple.SomeWorkflow1Async(ctx, &simplepb.SomeWorkflow1Request{
 		Id:         "foo",
 		RequestVal: "some request",
-	})
+	}, simplepb.NewSomeWorkflow1Options().WithStartWorkflowOptions(client.StartWorkflowOptions{}))
 	require.NoError(err)
 	require.Regexp("^some-workflow-1/foo/.{32}", run.ID())
 
