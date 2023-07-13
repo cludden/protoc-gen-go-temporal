@@ -608,11 +608,32 @@ func (svc *Service) genWorkerWorkflowChildRunSignals(f *g.File, workflow string)
 		signal := signalOpts.GetRef()
 		handler := svc.methods[signal]
 		hasInput := !isEmpty(handler.Input)
+		asyncName := toCamel("%sAsync", signal)
 
-		f.Commentf("%s sends a(n) %q signal request to the child workflow", signal, handler.Desc.FullName())
+		f.Commentf("%s sends a(n) %q signal request to the child workflow", signal, svc.fqnForSignal(signal))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(signal).
+			ParamsFunc(func(params *g.Group) {
+				params.Id("ctx").Qual(workflowPkg, "Context")
+				if hasInput {
+					params.Id("input").Op("*").Id(handler.Input.GoIdent.GoName)
+				}
+			}).
+			Params(g.Error()).
+			Block(
+				g.Return(g.Id("r").Dot(asyncName).CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					if hasInput {
+						args.Id("input")
+					}
+				})).Dot("Get").Call(g.Id("ctx"), g.Nil()),
+			)
+
+		f.Commentf("%s sends a(n) %q signal request to the child workflow", asyncName, svc.fqnForSignal(signal))
+		f.Func().
+			Params(g.Id("r").Op("*").Id(typeName)).
+			Id(asyncName).
 			ParamsFunc(func(params *g.Group) {
 				params.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
