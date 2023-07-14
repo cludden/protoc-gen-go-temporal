@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	github.com/alecthomas/participle/v2 v2.0.0
-	github.com/avast/retry-go/v4 v4.3.4
 	github.com/benthosdev/benthos/v4 v4.17.0
 	github.com/dave/jennifer v1.6.1
 	github.com/iancoleman/strcase v0.2.0
@@ -12,8 +11,8 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.11.0
 	go.temporal.io/api v1.23.0
-	go.temporal.io/sdk v1.23.0
-	go.temporal.io/server v1.21.1
+	go.temporal.io/sdk v1.23.1
+	go.temporal.io/server v1.15.2
 	google.golang.org/protobuf v1.30.0
 )
 

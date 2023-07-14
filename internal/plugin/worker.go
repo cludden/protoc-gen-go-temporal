@@ -122,9 +122,9 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 								if updateOpts.GetValidate() {
 									updateHandlerOptions = append(updateHandlerOptions, g.Id("Validator").Op(":").Id("wf").Dot(fmt.Sprintf("Validate%s", update)))
 								}
-								fn.Id("opts").Op(":=").Qual(workflowPkg, "UpdateHandlerOptions").Values(updateHandlerOptions...)
+								b.Id("opts").Op(":=").Qual(workflowPkg, "UpdateHandlerOptions").Values(updateHandlerOptions...)
 
-								fn.If(
+								b.If(
 									g.Err().Op(":=").Qual(workflowPkg, "SetUpdateHandlerWithOptions").Call(
 										g.Id("ctx"), g.Id(fmt.Sprintf("%sUpdateName", update)), g.Id("wf").Dot(update), g.Id("opts"),
 									),
@@ -153,6 +153,7 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 func (svc *Service) genWorkerRegisterWorkflow(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	builderName := fmt.Sprintf("build%s", method.GoName)
+	varName := toCamel("%sFunction", workflow)
 
 	// generate Register<Workflow> function
 	f.Commentf("Register%sWorkflow registers a %s workflow with the given worker", workflow, method.Desc.FullName())
@@ -172,8 +173,9 @@ func (svc *Service) genWorkerRegisterWorkflow(f *g.File, workflow string) {
 				),
 		).
 		Block(
+			g.Id(varName).Op("=").Id(builderName).Call(g.Id("wf")),
 			g.Id("r").Dot("RegisterWorkflowWithOptions").Call(
-				g.Id(builderName).Call(g.Id("wf")),
+				g.Id(varName),
 				g.Qual(workflowPkg, "RegisterOptions").Values(
 					g.Id("Name").Op(":").Id(toCamel("%sWorkflowName", workflow)),
 				),
@@ -666,6 +668,40 @@ func (svc *Service) genWorkerWorkflowChildRunWaitStart(f *g.File, workflow strin
 		)
 }
 
+// genWorkerWorkflowFunctionVars generates a <Workflow>Function var for each workflow that are
+// initialized on registration
+func (svc *Service) genWorkerWorkflowFunctionVars(f *g.File) {
+	f.Commentf("Reference to generated workflow functions")
+	f.Var().DefsFunc(func(defs *g.Group) {
+		for _, workflow := range svc.workflowsOrdered {
+			method := svc.methods[workflow]
+			hasInput := !isEmpty(method.Input)
+			hasOutput := !isEmpty(method.Output)
+			varName := toCamel("%sFunction", workflow)
+
+			if method.Comments.Leading.String() != "" {
+				defs.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+			} else {
+				defs.Commentf("%s implements a %q workflow", varName, toCamel("%sWorkflow", workflow))
+			}
+			defs.Id(varName).
+				Func().
+				ParamsFunc(func(args *g.Group) {
+					args.Qual(workflowPkg, "Context")
+					if hasInput {
+						args.Op("*").Id(method.Input.GoIdent.GoName)
+					}
+				}).
+				ParamsFunc(func(returnVals *g.Group) {
+					if hasOutput {
+						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+					}
+					returnVals.Error()
+				})
+		}
+	})
+}
+
 // genWorkerWorkflowInput generates a <Workflow>Input struct
 func (svc *Service) genWorkerWorkflowInput(f *g.File, workflow string) {
 	typeName := toCamel("%sInput", workflow)
@@ -795,7 +831,6 @@ func (svc *Service) genWorkerWorkflowsInterface(f *g.File) {
 		for _, workflow := range svc.workflowsOrdered {
 			handler := svc.methods[workflow]
 
-			// method := svc.methods[workflow]
 			if handler.Comments.Leading.String() != "" {
 				f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {

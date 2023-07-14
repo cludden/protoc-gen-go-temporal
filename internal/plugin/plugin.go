@@ -44,6 +44,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 			}
 
 			svc.render(f)
+			svc.renderTestClient(f)
 			if svc.opts.GetFeatures().GetCli().GetEnabled() {
 				svc.renderCLI(f)
 			}
