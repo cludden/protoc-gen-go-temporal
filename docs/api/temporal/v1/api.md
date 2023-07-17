@@ -8,6 +8,9 @@
     - [QueryOptions](#temporal-v1-QueryOptions)
     - [RetryPolicy](#temporal-v1-RetryPolicy)
     - [ServiceOptions](#temporal-v1-ServiceOptions)
+    - [ServiceOptions.Features](#temporal-v1-ServiceOptions-Features)
+    - [ServiceOptions.Features.CLI](#temporal-v1-ServiceOptions-Features-CLI)
+    - [ServiceOptions.Features.WorkflowUpdate](#temporal-v1-ServiceOptions-Features-WorkflowUpdate)
     - [SignalOptions](#temporal-v1-SignalOptions)
     - [UpdateOptions](#temporal-v1-UpdateOptions)
     - [WorkflowOptions](#temporal-v1-WorkflowOptions)
@@ -15,6 +18,7 @@
     - [WorkflowOptions.Signal](#temporal-v1-WorkflowOptions-Signal)
     - [WorkflowOptions.Update](#temporal-v1-WorkflowOptions-Update)
   
+    - [CLIFeature](#temporal-v1-CLIFeature)
     - [IDReusePolicy](#temporal-v1-IDReusePolicy)
     - [ParentClosePolicy](#temporal-v1-ParentClosePolicy)
     - [WaitPolicy](#temporal-v1-WaitPolicy)
@@ -97,13 +101,62 @@ RetryPolicy describes configuration for activity or child workflow retries
 <a name="temporal-v1-ServiceOptions"></a>
 
 ### ServiceOptions
+ServiceOptions provides options that can be used to define common configuration
+shared by all methods
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| features | [ServiceOptions.Features](#temporal-v1-ServiceOptions-Features) |  | Service-level features |
+| namespace | [string](#string) |  | Default namespace for child workflows, activities |
+| task_queue | [string](#string) |  | Default task queue for all workflows, activities |
+
+
+
+
+
+
+<a name="temporal-v1-ServiceOptions-Features"></a>
+
+### ServiceOptions.Features
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| namespace | [string](#string) |  | Default namespace for child workflows, activities |
-| task_queue | [string](#string) |  | Default task queue for all workflows, activities |
+| cli | [ServiceOptions.Features.CLI](#temporal-v1-ServiceOptions-Features-CLI) |  | Enable experimental CLI features |
+| workflow_update | [ServiceOptions.Features.WorkflowUpdate](#temporal-v1-ServiceOptions-Features-WorkflowUpdate) |  |  |
+
+
+
+
+
+
+<a name="temporal-v1-ServiceOptions-Features-CLI"></a>
+
+### ServiceOptions.Features.CLI
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enabled | [bool](#bool) |  |  |
+| categories | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="temporal-v1-ServiceOptions-Features-WorkflowUpdate"></a>
+
+### ServiceOptions.Features.WorkflowUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enabled | [bool](#bool) |  |  |
 
 
 
@@ -221,6 +274,18 @@ Update identifies an update supported by the workflow
 
 
  
+
+
+<a name="temporal-v1-CLIFeature"></a>
+
+### CLIFeature
+CLIFeature enumerates cli feature statuses
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CLI_FEATURE_DISALBED | 0 |  |
+| CLI_FEATURE_ENABLED | 1 |  |
+
 
 
 <a name="temporal-v1-IDReusePolicy"></a>

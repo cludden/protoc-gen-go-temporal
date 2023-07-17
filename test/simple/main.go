@@ -1,16 +1,19 @@
-package simple
+package main
 
 import (
 	"context"
+	"log"
+	"os"
 	"strings"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/test/simple/gen/test/simple/v1"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
 type Workflows struct {
-	simplepb.Workflows
+	simplepb.SimpleWorkflows
 }
 
 type someWorkflow1 struct {
@@ -20,8 +23,8 @@ type someWorkflow1 struct {
 }
 
 func Register(r worker.Registry) {
-	simplepb.RegisterWorkflows(r, &Workflows{})
-	simplepb.RegisterActivities(r, &Activities{})
+	simplepb.RegisterSimpleWorkflows(r, &Workflows{})
+	simplepb.RegisterSimpleActivities(r, &Activities{})
 }
 
 func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1Input) (simplepb.SomeWorkflow1Workflow, error) {
@@ -32,17 +35,18 @@ func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Re
 	s.events = append(s.events, "started with param "+s.Req.RequestVal)
 
 	// Call regular activity
-	resp, err := simplepb.SomeActivity3(ctx, nil,
-		&simplepb.SomeActivity3Request{RequestVal: "some activity param"}).Get(ctx)
+	resp, err := simplepb.SomeActivity3(ctx, &simplepb.SomeActivity3Request{
+		RequestVal: "some activity param",
+	})
 	if err != nil {
 		return nil, err
 	}
 	s.events = append(s.events, "some activity 3 with response "+resp.ResponseVal)
 
 	// Call local activity
-	resp, err = simplepb.SomeActivity3Local(ctx, nil, nil, &simplepb.SomeActivity3Request{
+	resp, err = simplepb.SomeActivity3Local(ctx, &simplepb.SomeActivity3Request{
 		RequestVal: "some local activity param",
-	}).Get(ctx)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -92,4 +96,29 @@ func (Activities) SomeActivity2(ctx context.Context, req *simplepb.SomeActivity2
 func (Activities) SomeActivity3(ctx context.Context, req *simplepb.SomeActivity3Request) (*simplepb.SomeActivity3Response, error) {
 	ActivityEvents = append(ActivityEvents, "some activity 3 with param "+req.RequestVal)
 	return &simplepb.SomeActivity3Response{ResponseVal: "some response"}, nil
+}
+
+func newCli() (*cli.App, error) {
+	simpleCmd, err := simplepb.NewSimpleCliCommand()
+	if err != nil {
+		return nil, err
+	}
+	otherCmd, err := simplepb.NewOtherCliCommand()
+	if err != nil {
+		return nil, err
+	}
+	return &cli.App{
+		Name:     "test",
+		Commands: []*cli.Command{simpleCmd, otherCmd},
+	}, nil
+}
+
+func main() {
+	app, err := newCli()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
 }
