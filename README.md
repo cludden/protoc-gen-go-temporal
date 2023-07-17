@@ -12,6 +12,7 @@ a protoc plugin for generating typed temporal clients and workers in Go from pro
 		- [Method Options](#method-options)
 		- [ID Expressions](#id-expressions)
 	- [CLI](#cli)
+	- [Test Client](#test-client)
 	- [License](#license)
 
 inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
@@ -494,7 +495,7 @@ service Example {
 ```
 
 ### ID Expressions
-**Workflows** and **Updates** can specify a default workflow ID as a [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expression. The expression is evaluated against a JSON-like input structure, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
+**Workflows** and **Updates** can specify a default workflow/update ID as a [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expression. The expression is evaluated against a JSON-like input structure, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
 
 **Example**
 
@@ -546,50 +547,43 @@ This plugin can optionally generate a configurable CLI using [github.com/urfave/
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
+	example "github.com/cludden/protoc-gen-go-temporal/example"
 	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/worker"
 )
 
 func main() {
-	// initialize commands using generated constructor
-	commands, err := examplev1.NewCommands(
-		// provide a client factory for use by commands
-		examplev1.WithClientForCommand(func(cmd *cli.Context) (client.Client, error) {
-			c, err := client.Dial(client.Options{})
-			if err != nil {
-				return nil, fmt.Errorf("error initializing client: %w", err)
-			}
-			// set a reference to the client in app metadata for use by app cleanup
-			cmd.App.Metadata["client"] = c
-			return c, nil
-		}),
+	app, err := examplev1.NewExampleCli(
+		examplev1.NewExampleCliOptions().
+			WithClient(func(cmd *cli.Context) (client.Client, error) {
+				return client.Dial(client.Options{})
+			}).
+			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+				examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
+				examplev1.RegisterExampleActivities(w, &example.Activities{})
+				return w, nil
+			}),
 	)
 	if err != nil {
-		log.Fatalf("error initializing commands: %v", err)
+		log.Fatalf("error initializing cli: %v", err)
 	}
-
-	// run cli
-	if err := (&cli.App{
-		Name:     "Example",
-		Usage:    "an example temporal cli",
-		Commands: commands,
-		// add cleanup logic to global "After" hook
-		After: func(cmd *cli.Context) error {
-			if c, ok := cmd.App.Metadata["client"]; ok {
-				c.(client.Client).Close()
-			}
-			return nil
-		},
-	}).Run(os.Args); err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
 ```
+
+## Test Client
+
+The generated code includes a resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [tests](./test/simple/main_test.go) for example usage.
+
+**_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
 
 ## License
 Licensed under the [MIT License](LICENSE.md)  
