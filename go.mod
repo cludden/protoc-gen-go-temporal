@@ -12,7 +12,7 @@ require (
 	github.com/urfave/cli/v2 v2.11.0
 	go.temporal.io/api v1.23.0
 	go.temporal.io/sdk v1.23.1
-	go.temporal.io/server v1.15.2
+	go.temporal.io/server v1.21.1
 	google.golang.org/protobuf v1.30.0
 )
 
