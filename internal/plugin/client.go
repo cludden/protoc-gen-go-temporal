@@ -342,7 +342,6 @@ func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 	clientType := toLowerCamel("%sClient", svc.Service.GoName)
 	handler := svc.methods[update]
 	handleName := toLowerCamel("%sHandle", update)
-	updateOpts := svc.updates[update]
 	hasInput := !isEmpty(handler.Input)
 	methodName := toCamel("%sAsync", update)
 
@@ -364,56 +363,7 @@ func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 			g.Error(),
 		).
 		BlockFunc(func(method *g.Group) {
-			// initialize update request options
-			method.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
-			method.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
-				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)).Dot("opts"),
-			)
-
-			// add request args if update has inpute
-			if hasInput {
-				method.Id("options").Dot("Args").Op("=").Index().Any().Values(g.Id("req"))
-			}
-			// add run id if specified
-			method.Id("options").Dot("RunID").Op("=").Id("runID")
-			method.Id("options").Dot("UpdateName").Op("=").Id(toCamel("%sUpdateName", update))
-			method.Id("options").Dot("WorkflowID").Op("=").Id("workflowID")
-
-			// add update id if specified
-			if idExpr := updateOpts.GetId(); idExpr != "" {
-				method.If(g.Id("options").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-					b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-						args.Id(toCamel("%sIDExpression", update))
-						if hasInput {
-							args.Id("req").Dot("ProtoReflect").Call()
-						} else {
-							args.Nil()
-						}
-					})
-					b.If(g.Err().Op("!=").Nil()).Block(
-						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating %s id expression: %w"), g.Id(fmt.Sprintf("%sUpdateName", update)), g.Err())),
-					)
-					b.Id("options").Dot("UpdateID").Op("=").Id("id")
-				})
-			}
-
-			// add default wait policy if specified
-			if wp := updateOpts.GetWaitPolicy(); wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
-				var stage string
-				switch wp {
-				case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
-					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED"
-				case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
-					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"
-				case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
-					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"
-				}
-				method.If(g.Id("options").Dot("WaitPolicy").Dot("GetLifecycleStage").Call().Op("==").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
-					g.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-						g.Id("LifecycleStage").Op(":").Qual(enumsPkg, stage),
-					),
-				)
-			}
+			svc.genClientUpdateWorkflowOptions(method, update)
 
 			// update workflow
 			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(g.Id("ctx"), g.Id("options"))
@@ -1121,7 +1071,9 @@ func (svc *Service) genClientUpdateOptions(f *g.File, update string) {
 
 	f.Commentf("%s initializes a new %s value", constructorName, typeName)
 	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
-		g.Return(g.Op("&").Id(typeName).Values()),
+		g.Return(g.Op("&").Id(typeName).Values(
+			g.Id("opts").Op(":").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
+		)),
 	)
 
 	f.Comment("WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowWithOptionsRequest")
@@ -1134,6 +1086,63 @@ func (svc *Service) genClientUpdateOptions(f *g.File, update string) {
 			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
 			g.Return(g.Id("opts")),
 		)
+}
+
+func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
+	updateOpts := svc.updates[update]
+	handler := svc.methods[update]
+	hasInput := !isEmpty(handler.Input)
+
+	// initialize update request options
+	fn.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
+	fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
+		g.Id("options").Op("=").Id("opts").Index(g.Lit(0)).Dot("opts"),
+	)
+
+	// add request args if update has inpute
+	if hasInput {
+		fn.Id("options").Dot("Args").Op("=").Index().Any().Values(g.Id("req"))
+	}
+	// add run id if specified
+	fn.Id("options").Dot("RunID").Op("=").Id("runID")
+	fn.Id("options").Dot("UpdateName").Op("=").Id(toCamel("%sUpdateName", update))
+	fn.Id("options").Dot("WorkflowID").Op("=").Id("workflowID")
+
+	// add update id if specified
+	if idExpr := updateOpts.GetId(); idExpr != "" {
+		fn.If(g.Id("options").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+				args.Id(toCamel("%sIDExpression", update))
+				if hasInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
+				}
+			})
+			b.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating %s id expression: %w"), g.Id(fmt.Sprintf("%sUpdateName", update)), g.Err())),
+			)
+			b.Id("options").Dot("UpdateID").Op("=").Id("id")
+		})
+	}
+
+	// add default wait policy if specified
+	if wp := updateOpts.GetWaitPolicy(); wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
+		var stage string
+		switch wp {
+		case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
+			stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED"
+		case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
+			stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"
+		case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
+			stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"
+		}
+		fn.If(g.Id("options").Dot("WaitPolicy").Dot("GetLifecycleStage").Call().Op("==").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
+			g.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
+				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, stage),
+			),
+		)
+	}
 }
 
 // genClientWorkflowOptions generates a <Workflow>Options struct

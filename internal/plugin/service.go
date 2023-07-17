@@ -24,6 +24,14 @@ const (
 	workerPkg     = "go.temporal.io/sdk/worker"
 )
 
+const (
+	modeWorkflow int = 1 << iota
+	modeActivity
+	modeQuery
+	modeSignal
+	modeUpdate
+)
+
 // Service describes a temporal protobuf service definition
 type Service struct {
 	*protogen.Plugin
@@ -65,33 +73,46 @@ func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Ser
 		name := toCamel(method.GoName)
 		svc.methods[name] = method
 
+		var mode int
+		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
+			svc.workflows[name] = opts
+			svc.workflowsOrdered = append(svc.workflowsOrdered, name)
+			mode |= modeWorkflow
+		}
+
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Activity).(*temporalv1.ActivityOptions); ok && opts != nil {
 			svc.activities[name] = opts
 			svc.activitiesOrdered = append(svc.activitiesOrdered, name)
+			mode |= modeActivity
 		}
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Query).(*temporalv1.QueryOptions); ok && opts != nil {
 			svc.queries[name] = opts
 			svc.queriesOrdered = append(svc.queriesOrdered, name)
+			mode |= modeQuery
 		}
 
 		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Signal).(*temporalv1.SignalOptions); ok && opts != nil {
 			svc.signals[name] = opts
 			svc.signalsOrdered = append(svc.signalsOrdered, name)
+			mode |= modeSignal
 		}
 
 		if svc.opts.GetFeatures().GetWorkflowUpdate().GetEnabled() {
 			if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
 				svc.updates[name] = opts
 				svc.updatesOrdered = append(svc.updatesOrdered, name)
+				mode |= modeUpdate
 			}
 		}
 
-		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
-			svc.workflows[name] = opts
-			svc.workflowsOrdered = append(svc.workflowsOrdered, name)
+		switch mode {
+		case modeWorkflow, modeActivity, modeWorkflow | modeActivity, modeQuery, modeSignal, modeUpdate:
+		default:
+			p.Error(fmt.Errorf("invalid method options for method %q", method.Desc.FullName()))
 		}
 	}
+
 	sort.Strings(svc.activitiesOrdered)
 	sort.Strings(svc.queriesOrdered)
 	sort.Strings(svc.signalsOrdered)
@@ -395,6 +416,7 @@ func (svc *Service) render(f *g.File) {
 	}
 
 	// generate workflows interface and registration helper
+	svc.genWorkerWorkflowFunctionVars(f)
 	svc.genWorkerWorkflowsInterface(f)
 	svc.genWorkerRegisterWorkflows(f)
 

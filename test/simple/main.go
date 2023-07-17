@@ -2,19 +2,21 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strings"
 
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"github.com/urfave/cli/v2"
+	logger "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
-type Workflows struct {
-	simplepb.SimpleWorkflows
-}
+type Workflows struct{}
+
+// ============================================================================
 
 type someWorkflow1 struct {
 	*simplepb.SomeWorkflow1Input
@@ -52,18 +54,26 @@ func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Re
 	}
 	s.events = append(s.events, "some local activity 3 with response "+resp.ResponseVal)
 
-	// Handle input
-	s.SomeSignal1.Select(s.sel, func() {
-		s.events = append(s.events, "some signal 1")
-	})
-	s.SomeSignal2.Select(s.sel, func(req *simplepb.SomeSignal2Request) {
-		s.events = append(s.events, "some signal 2 with param "+req.RequestVal)
-	})
+	var signal1, signal2 int
+	for {
+		workflow.NewSelector(ctx).
+			AddReceive(s.SomeSignal1.Channel, func(workflow.ReceiveChannel, bool) {
+				s.SomeSignal1.ReceiveAsync()
+				s.events = append(s.events, "some signal 1")
+				signal1++
+			}).
+			AddReceive(s.SomeSignal2.Channel, func(workflow.ReceiveChannel, bool) {
+				req := s.SomeSignal2.ReceiveAsync()
+				s.events = append(s.events, "some signal 2 with param "+req.RequestVal)
+				signal2++
+			}).
+			Select(ctx)
 
-	// Run until done
-	for s.sel.HasPending() {
-		s.sel.Select(ctx)
+		if signal1 > 0 && signal2 > 1 {
+			break
+		}
 	}
+
 	return &simplepb.SomeWorkflow1Response{ResponseVal: strings.Join(s.events, "\n")}, nil
 }
 
@@ -78,6 +88,59 @@ func (s *someWorkflow1) SomeQuery2(req *simplepb.SomeQuery2Request) (*simplepb.S
 		ResponseVal: strings.Join(s.events, "\n") + "\nsome query 2 with param " + req.RequestVal,
 	}, nil
 }
+
+// ============================================================================
+
+type someWorkflow2 struct {
+	*simplepb.SomeWorkflow2Input
+	log     logger.Logger
+	updates int
+}
+
+func (w *Workflows) SomeWorkflow2(ctx workflow.Context, input *simplepb.SomeWorkflow2Input) (simplepb.SomeWorkflow2Workflow, error) {
+	wf := &someWorkflow2{SomeWorkflow2Input: input, log: workflow.GetLogger(ctx)}
+	return wf, nil
+}
+
+func (wf *someWorkflow2) Execute(ctx workflow.Context) error {
+	return workflow.Await(ctx, func() bool {
+		fmt.Printf("updates: %d\n", wf.updates)
+		return wf.updates > 0
+	})
+}
+
+func (wf *someWorkflow2) SomeUpdate1(ctx workflow.Context, req *simplepb.SomeUpdate1Request) (*simplepb.SomeUpdate1Response, error) {
+	wf.log.Info("SomeUpdate1", "req", req.String())
+	wf.updates++
+	return &simplepb.SomeUpdate1Response{ResponseVal: strings.ToUpper(req.GetRequestVal())}, nil
+}
+
+func (wf *someWorkflow2) ValidateSomeUpdate1(ctx workflow.Context, req *simplepb.SomeUpdate1Request) error {
+	if l := len(req.GetRequestVal()); l < 3 || l > 10 {
+		return fmt.Errorf("request val length must be between 3 and 10")
+	}
+	return nil
+}
+
+// ============================================================================
+
+type someWorkflow3 struct {
+	*simplepb.SomeWorkflow3Input
+	log     logger.Logger
+	signals int
+	updates int
+}
+
+func (w *Workflows) SomeWorkflow3(ctx workflow.Context, input *simplepb.SomeWorkflow3Input) (simplepb.SomeWorkflow3Workflow, error) {
+	return &someWorkflow3{input, workflow.GetLogger(ctx), 0, 0}, nil
+}
+
+func (wf *someWorkflow3) Execute(ctx workflow.Context) error {
+	wf.SomeSignal2.Receive(ctx)
+	return nil
+}
+
+// ============================================================================
 
 type Activities struct{}
 
