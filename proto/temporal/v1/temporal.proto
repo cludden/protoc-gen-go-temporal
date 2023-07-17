@@ -16,36 +16,39 @@ extend google.protobuf.MethodOptions {
   optional ActivityOptions activity = 7234;
   optional QueryOptions query = 7235;
   optional SignalOptions signal = 7236;
+  optional UpdateOptions update = 7237;
 }
 
 // ActivityOptions identifies an rpc method as a Temporal activity definition, and describes
 // available activity configuration options
 message ActivityOptions {
-  // Default configuration for ActivityOptions
-  StartOptions default_options = 1;
-  // Activity name
-  string name = 2;
+  // Fully-qualified activity name
+  string name = 7;
 
-  message StartOptions {
-    // Override default task queue for activity
-    string task_queue = 1;
+  // Override default task queue for activity
+  string task_queue = 1;
 
-    // Total time that a workflow is willing to wait for Activity to complete
-    google.protobuf.Duration schedule_to_close_timeout = 2;
+  // Total time that a workflow is willing to wait for Activity to complete
+  google.protobuf.Duration schedule_to_close_timeout = 2;
 
-    // Time that the Activity Task can stay in the Task Queue before it is picked up by
-    // a Worker
-    google.protobuf.Duration schedule_to_start_timeout = 3;
+  // Time that the Activity Task can stay in the Task Queue before it is picked up by
+  // a Worker
+  google.protobuf.Duration schedule_to_start_timeout = 3;
 
-    // Maximum time of a single Activity execution attempt
-    google.protobuf.Duration start_to_close_timeout = 4;
+  // Maximum time of a single Activity execution attempt
+  google.protobuf.Duration start_to_close_timeout = 4;
 
-    // Heartbeat interval. Activity must call Activity.RecordHeartbeat(ctx, "my-heartbeat")
-    google.protobuf.Duration heartbeat_timeout = 5;
+  // Heartbeat interval. Activity must call Activity.RecordHeartbeat(ctx, "my-heartbeat")
+  google.protobuf.Duration heartbeat_timeout = 5;
 
-    // Specifies how to retry an Activity if an error occurs
-    RetryPolicy retry_policy = 6;
-  }
+  // Specifies how to retry an Activity if an error occurs
+  RetryPolicy retry_policy = 6;
+}
+
+// CLIFeature enumerates cli feature statuses 
+enum CLIFeature {
+  CLI_FEATURE_DISALBED = 0;
+  CLI_FEATURE_ENABLED = 1;
 }
 
 // IDReusePolicy defines how new runs of a workflow with a particular ID may or 
@@ -79,7 +82,10 @@ enum ParentClosePolicy {
 
 // QueryOptions identifies an rpc method as a Temporal query definition, and describes
 // available query configuration options
-message QueryOptions {}
+message QueryOptions {
+  // Fully-qualified query name
+  string name = 1;
+}
 
 // RetryPolicy describes configuration for activity or child workflow retries
 message RetryPolicy {
@@ -90,28 +96,107 @@ message RetryPolicy {
   repeated string non_retryable_error_types = 5;
 }
 
+// ServiceOptions provides options that can be used to define common configuration
+// shared by all methods
 message ServiceOptions {
+  // Service-level features
+  Features features = 3;
   // Default namespace for child workflows, activities
   string namespace = 2;
   // Default task queue for all workflows, activities
   string task_queue = 1;
+
+  message Features {
+    // Enable experimental CLI features
+    CLI cli = 1;
+    WorkflowUpdate workflow_update = 2;
+
+    message CLI {
+      bool enabled = 1;
+      bool categories = 2;
+    }
+
+    message WorkflowUpdate {
+      bool enabled = 1;
+    }
+  }
 }
 
-// SignalOptions identifies an rpc method as a Temporal singla definition, and describes
+// SignalOptions identifies an rpc method as a Temporal singal definition, and describes
 // available signal configuration options
-message SignalOptions {}
+message SignalOptions {
+  // Fully-qualified signal name
+  string name = 1;
+}
+
+// UpdateOptions identifies an rpc method as a Temporal update definition, and describes
+// available update configuration options
+message UpdateOptions {
+  // ID expression
+  string id = 1;
+
+  // Fully-qualified update name
+  string name = 4;
+
+  // Include validation hook
+  bool validate = 2;
+
+  // Default wait policy if not specified
+  WaitPolicy wait_policy = 3;
+}
 
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
 // available workflow configuration options
 message WorkflowOptions {
+  // Fully-qualified workflow name
+  string name = 14;
+
   // Queries supported by this workflow
   repeated Query query = 1;
+
   // Signals supported by this workflow
   repeated Signal signal = 2;
-  // Default configuration for StartWorklowOptions, ExecuteChildWorkflowOptions
-  StartOptions default_options = 6;
-  // Workflow name
-  string name = 3;
+
+  // Updates supported by this workflow
+  repeated Update update = 3;
+  
+  // The timeout for duration of workflow execution.
+  // It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
+  // of a single workflow run.
+  google.protobuf.Duration execution_timeout = 4;
+
+  // Id expression
+  string id = 5;
+
+  // Whether server allow reuse of workflow ID
+  IDReusePolicy id_reuse_policy = 6;
+
+  // Specifies default namespace for child workflows
+  string namespace = 7;
+
+  // Specifies a default parent close policy for child workflows
+  ParentClosePolicy parent_close_policy = 8;
+
+  // Specifies how to retry an Workflow if an error occurs
+  RetryPolicy retry_policy = 9;
+
+  // The timeout for duration of a single workflow run.
+  google.protobuf.Duration run_timeout = 10;
+
+  // Bloblang mapping defining default workflow search attributes
+  string search_attributes = 15;
+
+  // Override service task queeu
+  string task_queue = 11;
+
+  // The timeout for processing workflow task from the time the worker
+  // pulled this task. If a workflow task is lost, it is retried after this timeout.
+  // The resolution is seconds.
+  google.protobuf.Duration task_timeout = 12;
+
+  // WaitForCancellation specifies whether to wait for canceled child workflow to be ended
+  // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
+  bool wait_for_cancellation = 13;
 
   // Query identifies a query supported by the worklow
   message Query {
@@ -128,41 +213,18 @@ message WorkflowOptions {
     bool start = 2;
   }
 
-  // StartOptions describes default options for ExecuteWorkflow and ExecuteChildWorkflow
-  message StartOptions {
-    // The timeout for duration of workflow execution.
-    // It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
-    // of a single workflow run.
-    google.protobuf.Duration execution_timeout = 6;
-
-    // Id expression
-    string id = 12;
-
-    // Whether server allow reuse of workflow ID
-    IDReusePolicy id_reuse_policy = 5;
-
-    // Specifies default namespace for child workflows
-    string namespace = 9;
-
-    // Specifies a default parent close policy for child workflows
-    ParentClosePolicy parent_close_policy = 10;
-
-    // Specifies how to retry an Workflow if an error occurs
-    RetryPolicy retry_policy = 2;
-
-    // The timeout for duration of a single workflow run.
-    google.protobuf.Duration run_timeout = 7;
-
-    // Override service task queeu
-    string task_queue = 1;
-
-    // The timeout for processing workflow task from the time the worker
-    // pulled this task. If a workflow task is lost, it is retried after this timeout.
-    // The resolution is seconds.
-    google.protobuf.Duration task_timeout = 8;
-
-    // WaitForCancellation specifies whether to wait for canceled child workflow to be ended
-    // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
-    bool wait_for_cancellation = 11;
+  // Update identifies an update supported by the workflow
+  message Update {
+    // Update name
+    string ref = 1;
   }
+}
+
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
+// value from an UpdateWorkflow RPC
+enum WaitPolicy {
+  WAIT_POLICY_UNSPECIFIED = 0;
+  WAIT_POLICY_ADMITTED = 1;
+  WAIT_POLICY_ACCEPTED = 2;
+  WAIT_POLICY_COMPLETED = 3;
 }

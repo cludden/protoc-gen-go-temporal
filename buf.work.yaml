@@ -1,5 +1,5 @@
 version: v1
 directories:
-  - example/mutexv1
-  - test
+  - example/proto
   - proto
+  - test

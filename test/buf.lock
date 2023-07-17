@@ -2,10 +2,6 @@
 version: v1
 deps:
   - remote: buf.build
-    owner: cludden
-    repository: protoc-gen-go-temporal
-    commit: 755c4f5d871f4178bd50a3eb70d4b48f
-  - remote: buf.build
     owner: googleapis
     repository: googleapis
-    commit: 75b4300737fb4efca0831636be94e517
+    commit: cc916c31859748a68fd229a3c8d7a2e8

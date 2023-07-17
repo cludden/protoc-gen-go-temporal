@@ -9,15 +9,17 @@ import "temporal/v1/temporal.proto";
 service Simple {
   option (temporal.v1.service) = {
     task_queue: 'my-task-queue'
+    features: {
+      cli: { enabled: true }
+      workflow_update: { enabled: true }
+    }
   };
 
   // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
     option (temporal.v1.workflow) = {
+      id: 'some-workflow-1/${! id }/${! uuid_v4() }'
       name: 'mycompany.simple.SomeWorkflow1'
-      default_options {
-        id: 'some-workflow-1/${!id}/${!uuid_v4()}'
-      }
       query : { ref: 'SomeQuery1' }
       query : { ref: 'SomeQuery2' }
       signal: { ref: 'SomeSignal1' }
@@ -30,22 +32,20 @@ service Simple {
     option (temporal.v1.workflow) = {
       name: 'mycompany.simple.SomeWorkflow2'
       signal: { ref: 'SomeSignal1', start: true }
+      update: { ref: 'SomeUpdate1' }
     };
   }
 
   // SomeWorkflow3 does some workflow thing.
   rpc SomeWorkflow3(SomeWorkflow3Request) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'some-workflow-3/${!id}/${!request_val}'
-        task_queue       : 'my-task-queue-2'
-        id_reuse_policy  : WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-        execution_timeout: { seconds: 3600 }
-        retry_policy {
-          max_attempts: 2
-        }
+      id: 'some-workflow-3/${! id }/${! requestVal }'
+      task_queue       : 'my-task-queue-2'
+      id_reuse_policy  : WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      execution_timeout: { seconds: 3600 }
+      retry_policy {
+        max_attempts: 2
       }
-
       signal: { ref: 'SomeSignal2', start: true }
     };
   }
@@ -60,11 +60,9 @@ service Simple {
   // SomeActivity2 does some activity thing.
   rpc SomeActivity2(SomeActivity2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
-      default_options {
-        start_to_close_timeout: { seconds: 10 }
-        retry_policy {  
-          max_interval: { seconds: 30 }
-        }
+      start_to_close_timeout: { seconds: 10 }
+      retry_policy {
+        max_interval: { seconds: 30 }
       }
     };
   }
@@ -72,11 +70,9 @@ service Simple {
   // SomeActivity3 does some activity thing.
   rpc SomeActivity3(SomeActivity3Request) returns (SomeActivity3Response) {
     option (temporal.v1.activity) = {
-      default_options {
-        start_to_close_timeout: { seconds: 10 }
-        retry_policy {
-          max_attempts: 5
-        }
+      start_to_close_timeout: { seconds: 10 }
+      retry_policy {
+        max_attempts: 5
       }
     };
   }
@@ -100,27 +96,20 @@ service Simple {
   rpc SomeSignal2(SomeSignal2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = { };
   }
+
+  // SomeUpdate1 updates a SomeWorkflow2
+  rpc SomeUpdate1(SomeUpdate1Request) returns (SomeUpdate1Response) {
+    option (temporal.v1.update) = {
+      id: 'some-update/${! requestVal.not_empty().catch("default").slug() }'
+      validate: true
+      wait_policy: WAIT_POLICY_COMPLETED
+    };
+  }
 }
 
 message SomeWorkflow1Request {
   string request_val = 1;
   string id = 2;
-  int32 int_field = 3;
-  bool bool_field = 4;
-  bytes bytes_field = 5;
-  double double_field = 6;
-  OuterNested outer_single = 7;
-  repeated OuterNested outer_list = 8;
-
-  message OuterNested {
-    string foo = 1;
-    InnerNested inner_single = 2;
-    repeated InnerNested inner_list = 3;
-
-    message InnerNested {
-      string bar = 2;
-    }
-  }
 }
 
 message SomeWorkflow1Response {
@@ -159,3 +148,64 @@ message SomeQuery2Response {
 message SomeSignal2Request {
   string request_val = 1;
 }
+
+message SomeUpdate1Request {
+  string request_val = 1;
+}
+
+message SomeUpdate1Response {
+  string response_val = 1;
+}
+
+service Other {
+  option (temporal.v1.service) = {
+    task_queue: 'other-task-queue'
+    features: {
+      cli: { enabled: true }
+      workflow_update: { enabled: true }
+    }
+  };
+
+  rpc OtherWorkflow(OtherWorkflowRequest) returns (OtherWorkflowResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'other-workflow/${!uuid_v4()}'
+    };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 30 }
+    };
+  }
+
+  rpc OtherQuery(google.protobuf.Empty) returns (OtherQueryResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc OtherSignal(OtherSignalRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc OtherUpdate(OtherUpdateRequest) returns (OtherUpdateResponse) {
+    option (temporal.v1.update) = {
+      id: 'other-update/${!uuid_v4()}'
+    };
+  }
+}
+
+message OtherWorkflowRequest {
+  string some_val = 1;
+}
+
+message OtherWorkflowResponse {}
+
+message OtherQueryResponse {
+  string filter = 1;
+}
+
+message OtherSignalRequest {
+  string type = 1;
+}
+
+message OtherUpdateRequest {
+  string mode = 1;
+}
+
+message OtherUpdateResponse {}
