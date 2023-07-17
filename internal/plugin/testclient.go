@@ -695,7 +695,7 @@ func (svc *Service) genTestClientWorkflowRunImplGetMethod(f *g.File, workflow st
 				}),
 			)
 			// return workflow error if applicable
-			fn.If(g.Err().Op(":=").Qual(testsuitePkg, "GetWorkflowError").Call(), g.Err().Op("!=").Nil()).Block(
+			fn.If(g.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowError").Call(), g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
 					if hasOutput {
 						returnVals.Nil()
