@@ -395,6 +395,29 @@ func (svc *Service) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow str
 		})
 }
 
+// genClientImplWorkflowCancelMethod generates a Cancel<Workflow> client method
+func (svc *Service) genTestClientImplWorkflowCancelMethod(f *g.File) {
+	clientType := toCamel("Test%sClient", svc.Service.GoName)
+	methodName := "CancelWorkflow"
+
+	f.Commentf("%s requests cancellation of an existing workflow execution", methodName)
+	f.Func().
+		Params(g.Id("c").Op("*").Id(clientType)).
+		Id(methodName).
+		Params(
+			g.Id("ctx").Qual("context", "Context"),
+			g.Id("workflowID").String(),
+			g.Id("runID").String(),
+		).
+		Params(
+			g.Error(),
+		).
+		Block(
+			g.Id("c").Dot("env").Dot("CancelWorkflow").Call(),
+			g.Return(g.Nil()),
+		)
+}
+
 // genTestClientImplWorkflowGetMethod generates a TestClient's Get<workflow> method
 func (svc *Service) genTestClientImplWorkflowGetMethod(f *g.File, workflow string) {
 	f.Commentf("Get%s is a noop", workflow)
@@ -520,6 +543,36 @@ func (svc *Service) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, wo
 					}
 					args.Id("opts").Op("...")
 				}),
+			),
+		)
+}
+
+// genClientImplWorkflowTerminateMethod generates a Terminate<Workflow> client method
+func (svc *Service) genTestClientImplWorkflowTerminateMethod(f *g.File) {
+	clientType := toCamel("Test%sClient", svc.Service.GoName)
+	methodName := "TerminateWorkflow"
+
+	f.Commentf("%s terminates an existing workflow execution", methodName)
+	f.Func().
+		Params(g.Id("c").Op("*").Id(clientType)).
+		Id(methodName).
+		Params(
+			g.Id("ctx").Qual("context", "Context"),
+			g.Id("workflowID").String(),
+			g.Id("runID").String(),
+			g.Id("reason").String(),
+			g.Id("details").Op("...").Interface(),
+		).
+		Params(
+			g.Error(),
+		).
+		Block(
+			g.Return(
+				g.Id("c").Dot("CancelWorkflow").Call(
+					g.Id("ctx"),
+					g.Id("workflowID"),
+					g.Id("runID"),
+				),
 			),
 		)
 }
@@ -658,6 +711,27 @@ func (svc *Service) genTestClientWorkflowRunImpl(f *g.File, workflow string) {
 		}
 		fields.Id("workflows").Id(toCamel("%sWorkflows", svc.Service.GoName))
 	})
+}
+
+// genClientWorkflowRunImplCancelMethod generates a <Workflow>Run's Cancel method
+func (svc *Service) genTestClientWorkflowRunImplCancelMethod(f *g.File, workflow string) {
+	typeName := toLowerCamel("Test%sRun", workflow)
+
+	f.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
+	f.Func().
+		Params(g.Id("r").Op("*").Id(typeName)).
+		Id("Cancel").
+		Params(g.Id("ctx").Qual("context", "Context")).
+		Params(g.Error()).
+		Block(
+			g.Return(
+				g.Id("r").Dot("client").Dot("CancelWorkflow").CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+				}),
+			),
+		)
 }
 
 // genTestClientWorkflowRunImplGetMethod generates a test<Workflow>Run's Get method
@@ -812,6 +886,33 @@ func (svc *Service) genTestClientWorkflowRunImplSignalMethod(f *g.File, workflow
 		)
 }
 
+// genClientWorkflowRunImplTerminateMethod generates a <Workflow>Run's Terminate method
+func (svc *Service) genTestClientWorkflowRunImplTerminateMethod(f *g.File, workflow string) {
+	typeName := toLowerCamel("Test%sRun", workflow)
+
+	f.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
+	f.Func().
+		Params(g.Id("r").Op("*").Id(typeName)).
+		Id("Terminate").
+		Params(
+			g.Id("ctx").Qual("context", "Context"),
+			g.Id("reason").String(),
+			g.Id("details").Op("...").Interface(),
+		).
+		Params(g.Error()).
+		Block(
+			g.Return(
+				g.Id("r").Dot("client").Dot("TerminateWorkflow").CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+					args.Id("reason")
+					args.Id("details").Op("...")
+				}),
+			),
+		)
+}
+
 // genTestClientWorkflowRunImplQueryMethod generates a test<Workflow>Run's <Update> method
 func (svc *Service) genTestClientWorkflowRunImplUpdateMethod(f *g.File, workflow, update string) {
 	handler := svc.methods[update]
@@ -903,6 +1004,9 @@ func (svc *Service) renderTestClient(f *g.File) {
 		}
 	}
 
+	svc.genTestClientImplWorkflowCancelMethod(f)
+	svc.genTestClientImplWorkflowTerminateMethod(f)
+
 	// generate test client query methods
 	for _, query := range svc.queriesOrdered {
 		svc.genTestClientImplQueryMethod(f, query)
@@ -929,9 +1033,11 @@ func (svc *Service) renderTestClient(f *g.File) {
 	for _, workflow := range svc.workflowsOrdered {
 		opts := svc.workflows[workflow]
 		svc.genTestClientWorkflowRunImpl(f, workflow)
+		svc.genTestClientWorkflowRunImplCancelMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplGetMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplIDMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplRunIDMethod(f, workflow)
+		svc.genTestClientWorkflowRunImplTerminateMethod(f, workflow)
 
 		// generate query methods
 		for _, queryOpts := range opts.GetQuery() {

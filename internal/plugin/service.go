@@ -360,6 +360,8 @@ func (svc *Service) render(f *g.File) {
 			}
 		}
 	}
+	svc.genClientImplWorkflowCancelMethod(f)
+	svc.genClientImplWorkflowTerminateMethod(f)
 
 	// generate client query methods
 	for _, query := range svc.queriesOrdered {
@@ -385,7 +387,9 @@ func (svc *Service) render(f *g.File) {
 		svc.genClientWorkflowRunImpl(f, workflow)
 		svc.genClientWorkflowRunImplIDMethod(f, workflow)
 		svc.genClientWorkflowRunImplRunIDMethod(f, workflow)
+		svc.genClientWorkflowRunImplCancelMethod(f, workflow)
 		svc.genClientWorkflowRunImplGetMethod(f, workflow)
+		svc.genClientWorkflowRunImplTerminateMethod(f, workflow)
 
 		// generate query methods
 		for _, queryOpts := range opts.GetQuery() {
