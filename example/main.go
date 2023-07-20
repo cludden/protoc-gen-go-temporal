@@ -15,42 +15,50 @@ import (
 	logger "go.temporal.io/server/common/log"
 )
 
-// Workflows manages shared state for workflow constructors
+// Workflows manages shared state for workflow constructors and is used to
+// register workflows with a worker
 type Workflows struct{}
 
 // ============================================================================
 
-// CreateFooWorkflow creates a new Foo resource
+// CreateFooWorkflow manages workflow state for a CreateFoo workflow
 type CreateFooWorkflow struct {
+	// it embeds the generated workflow Input type that contains the workflow
+	// input and signal helpers
 	*examplev1.CreateFooInput
+
 	progress float32
 	status   examplev1.Foo_Status
-	update   workflow.Settable
-	updated  workflow.Future
 }
 
-// CreateFoo initializes a new CreateFooWorkflow
+// CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
+// that initializes a new CreateFooWorkflow for each execution
 func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooInput) (examplev1.CreateFooWorkflow, error) {
-	return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_UNSPECIFIED, nil, nil}, nil
+	return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_CREATING}, nil
 }
 
 // Execute defines the entrypoint to a CreateFooWorkflow
 func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
+	// listen for signals
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		for {
+			signal, _ := wf.SetFooProgress.Receive(ctx)
+			wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: signal.GetProgress()})
+		}
+	})
+
 	// execute Notify activity using generated helper
-	if err := examplev1.Notify(ctx, &examplev1.NotifyRequest{Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName())}); err != nil {
+	err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
+		Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName()),
+	})
+	if err != nil {
 		return nil, fmt.Errorf("error sending notification: %w", err)
 	}
 
-	// wait until signalled progress reaches 100
-	for wf.progress = float32(0); wf.progress < 100; {
-		wf.updated, wf.update = workflow.NewFuture(ctx)
-		workflow.NewSelector(ctx).
-			AddReceive(wf.SetFooProgress.Channel, func(workflow.ReceiveChannel, bool) {
-				wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: wf.SetFooProgress.ReceiveAsync().GetProgress()})
-			}).
-			AddFuture(wf.updated, func(workflow.Future) {}).
-			Select(ctx)
-	}
+	// block until progress has reached 100 via signals and/or updates
+	workflow.Await(ctx, func() bool {
+		return wf.status == examplev1.Foo_FOO_STATUS_READY
+	})
 
 	return &examplev1.CreateFooResponse{
 		Foo: &examplev1.Foo{
@@ -65,28 +73,27 @@ func (wf *CreateFooWorkflow) GetFooProgress() (*examplev1.GetFooProgressResponse
 	return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
 }
 
-// UpdateFooProgress defines the handler for a UpdateFooProgress update
+// UpdateFooProgress defines the handler for an UpdateFooProgress update
 func (wf *CreateFooWorkflow) UpdateFooProgress(ctx workflow.Context, req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
-	progress := req.GetProgress()
+	wf.progress = req.GetProgress()
 	switch {
-	case progress < 0:
-		progress, wf.status = 0, examplev1.Foo_FOO_STATUS_UNSPECIFIED
-	case progress < 100:
+	case wf.progress < 0:
+		wf.progress, wf.status = 0, examplev1.Foo_FOO_STATUS_CREATING
+	case wf.progress < 100:
 		wf.status = examplev1.Foo_FOO_STATUS_CREATING
-	case progress >= 100:
-		progress, wf.status = 100, examplev1.Foo_FOO_STATUS_READY
+	case wf.progress >= 100:
+		wf.progress, wf.status = 100, examplev1.Foo_FOO_STATUS_READY
 	}
-	wf.progress = progress
-	wf.update.SetValue(progress)
 	return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
 }
 
 // ============================================================================
 
-// Activities manages shared state for activities
+// Activities manages shared state for activities and is used to register
+// activities with a worker
 type Activities struct{}
 
-// Notify sends a notification
+// Notify defines the implementation for a Notify activity
 func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) error {
 	activity.GetLogger(ctx).Info("notification", "message", req.GetMessage())
 	return nil
@@ -95,7 +102,7 @@ func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) e
 // ============================================================================
 
 func main() {
-	// initialize client commands using generated constructor
+	// initialize the generated cli application
 	app, err := examplev1.NewExampleCli(
 		examplev1.NewExampleCliOptions().
 			WithClient(func(cmd *cli.Context) (client.Client, error) {
@@ -105,6 +112,7 @@ func main() {
 			}).
 			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
 				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+				// register activities and workflows using generated helpers
 				examplev1.RegisterExampleActivities(w, &Activities{})
 				examplev1.RegisterExampleWorkflows(w, &Workflows{})
 				return w, nil

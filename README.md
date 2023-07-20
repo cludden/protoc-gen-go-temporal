@@ -1,10 +1,13 @@
 # protoc-gen-go-temporal
 
-a protoc plugin for generating typed temporal clients and workers in Go from protobuf schemas
+A protoc plugin for generating typed Temporal clients and workers in Go from protobuf schemas. This plugin allows Workflow authors to configure sensible defaults and guardrails, simplifies the implementation and testing of Temporal workers, and streamlines integration by providing typed client SDKs and a generated CLI application. 
+
+<small>inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced) and Jacob Legrone's excellent Replay talk on [Temporal @ Datadog](https://youtu.be/LxgkAoTSI8Q)</small>
 
 **Table of Contents**
 
 - [protoc-gen-go-temporal](#protoc-gen-go-temporal)
+	- [How it works](#how-it-works)
 	- [Features](#features)
 	- [Getting Started](#getting-started)
 	- [Options](#options)
@@ -15,22 +18,31 @@ a protoc plugin for generating typed temporal clients and workers in Go from pro
 	- [Test Client](#test-client)
 	- [License](#license)
 
-inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced)
+## How it works
+
+1. Annotate your protobuf services and methods with Temporal options provided by this plugin
+2. Generate Go code that includes types, methods, and functions for implementing Temporal clients, workers, and cli applications
+3. Define implementations for the required Workflow and Activity interfaces
+4. Run your Temporal worker using the generated helpers and interact with it using the generated client and/or cli
 
 ## Features
 
-- typed client with:
+Generated **Client** with:
   - methods for executing workflows, queries, signals, and updates
   - methods for cancelling or terminating workflows
   - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
   - dynamic workflow and update ids via [Bloblang expressions](#id-expressions)
   - default timeouts, id reuse policies, retry policies, search attributes, wait policies
-- typed worker helpers with:
+
+
+Generated **Worker** resources with:
   - functions for calling activities and local activities from workflows
   - functions for executing child workflows and signalling external workflows
   - default `workflow.ActivityOptions`, `workflow.ChildWorkflowOptions`
   - default timeouts, parent cose policies, retry policies
-- configurable CLI with:
+
+
+Optional **CLI** with:
   - commands for executing workflows, synchronously or asynchronously
   - commands for starting workflows with signals, synchronously or asynchronously
   - commands for querying existing workflwos
@@ -211,42 +223,50 @@ import (
 	logger "go.temporal.io/server/common/log"
 )
 
-// Workflows manages shared state for workflow constructors
+// Workflows manages shared state for workflow constructors and is used to
+// register workflows with a worker
 type Workflows struct{}
 
 // ============================================================================
 
-// CreateFooWorkflow creates a new Foo resource
+// CreateFooWorkflow manages workflow state for a CreateFoo workflow
 type CreateFooWorkflow struct {
+	// it embeds the generated workflow Input type that contains the workflow
+	// input and signal helpers
 	*examplev1.CreateFooInput
+
 	progress float32
 	status   examplev1.Foo_Status
-	update   workflow.Settable
-	updated  workflow.Future
 }
 
-// CreateFoo initializes a new CreateFooWorkflow
+// CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
+// that initializes a new CreateFooWorkflow for each execution
 func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooInput) (examplev1.CreateFooWorkflow, error) {
-	return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_UNSPECIFIED, nil, nil}, nil
+	return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_CREATING}, nil
 }
 
 // Execute defines the entrypoint to a CreateFooWorkflow
 func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
+	// listen for signals
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		for {
+			signal, _ := wf.SetFooProgress.Receive(ctx)
+			wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: signal.GetProgress()})
+		}
+	})
+
 	// execute Notify activity using generated helper
-	if err := examplev1.Notify(ctx, &examplev1.NotifyRequest{Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName())}); err != nil {
+	err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
+		Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName()),
+	})
+	if err != nil {
 		return nil, fmt.Errorf("error sending notification: %w", err)
 	}
 
-	// wait until signalled progress reaches 100
-	for wf.progress = float32(0); wf.progress < 100; {
-		wf.updated, wf.update = workflow.NewFuture(ctx)
-		workflow.NewSelector(ctx).
-			AddReceive(wf.SetFooProgress.Channel, func(workflow.ReceiveChannel, bool) {
-				wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: wf.SetFooProgress.ReceiveAsync().GetProgress()})
-			}).
-			AddFuture(wf.updated, func(workflow.Future) {}).
-			Select(ctx)
-	}
+	// block until progress has reached 100 via signals and/or updates
+	workflow.Await(ctx, func() bool {
+		return wf.status == examplev1.Foo_FOO_STATUS_READY
+	})
 
 	return &examplev1.CreateFooResponse{
 		Foo: &examplev1.Foo{
@@ -261,28 +281,27 @@ func (wf *CreateFooWorkflow) GetFooProgress() (*examplev1.GetFooProgressResponse
 	return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
 }
 
-// UpdateFooProgress defines the handler for a UpdateFooProgress update
+// UpdateFooProgress defines the handler for an UpdateFooProgress update
 func (wf *CreateFooWorkflow) UpdateFooProgress(ctx workflow.Context, req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
-	progress := req.GetProgress()
+	wf.progress = req.GetProgress()
 	switch {
-	case progress < 0:
-		progress, wf.status = 0, examplev1.Foo_FOO_STATUS_UNSPECIFIED
-	case progress < 100:
+	case wf.progress < 0:
+		wf.progress, wf.status = 0, examplev1.Foo_FOO_STATUS_CREATING
+	case wf.progress < 100:
 		wf.status = examplev1.Foo_FOO_STATUS_CREATING
-	case progress >= 100:
-		progress, wf.status = 100, examplev1.Foo_FOO_STATUS_READY
+	case wf.progress >= 100:
+		wf.progress, wf.status = 100, examplev1.Foo_FOO_STATUS_READY
 	}
-	wf.progress = progress
-	wf.update.SetValue(progress)
 	return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
 }
 
 // ============================================================================
 
-// Activities manages shared state for activities
+// Activities manages shared state for activities and is used to register
+// activities with a worker
 type Activities struct{}
 
-// Notify sends a notification
+// Notify defines the implementation for a Notify activity
 func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) error {
 	activity.GetLogger(ctx).Info("notification", "message", req.GetMessage())
 	return nil
@@ -291,7 +310,7 @@ func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) e
 // ============================================================================
 
 func main() {
-	// initialize client commands using generated constructor
+	// initialize the generated cli application
 	app, err := examplev1.NewExampleCli(
 		examplev1.NewExampleCliOptions().
 			WithClient(func(cmd *cli.Context) (client.Client, error) {
@@ -301,6 +320,7 @@ func main() {
 			}).
 			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
 				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+				// register activities and workflows using generated helpers
 				examplev1.RegisterExampleActivities(w, &Activities{})
 				examplev1.RegisterExampleWorkflows(w, &Workflows{})
 				return w, nil
@@ -331,7 +351,7 @@ temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowE
 go run example/main.go worker
 ```
 
-11.  Execute workflows, signals, queries
+1.   Execute workflows, queries, signals, and updates
 
 *with generated client*
 ```go
@@ -495,7 +515,7 @@ service Example {
 ```
 
 ### ID Expressions
-**Workflows** and **Updates** can specify a default workflow/update ID as a [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expression. The expression is evaluated against a JSON-like input structure, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
+**Workflows** and **Updates** can specify a default workflow/update ID using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
 
 **Example**
 
