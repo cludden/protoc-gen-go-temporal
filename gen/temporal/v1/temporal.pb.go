@@ -134,7 +134,7 @@ func (IDReusePolicy) EnumDescriptor() ([]byte, []int) {
 	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{1}
 }
 
-// Defines how child workflows will react to their parent completing
+//Defines how child workflows will react to their parent completing
 type ParentClosePolicy int32
 
 const (

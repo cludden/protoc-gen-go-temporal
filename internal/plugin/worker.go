@@ -467,10 +467,10 @@ func (svc *Service) genWorkerWorkflowChildOptions(f *g.File, workflow string) {
 		g.Return(g.Op("&").Id(typeName).Values()),
 	)
 
-	f.Comment("WithStartWorkflowOptions sets the initial client.StartWorkflowOptions")
+	f.Comment("WithChildWorkflowOptions sets the initial client.StartWorkflowOptions")
 	f.Func().
 		Params(g.Id("opts").Op("*").Id(typeName)).
-		Id("WithStartWorkflowOptions").
+		Id("WithChildWorkflowOptions").
 		Params(g.Id("options").Qual(workflowPkg, "ChildWorkflowOptions")).
 		Op("*").Id(typeName).
 		Block(

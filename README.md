@@ -52,18 +52,16 @@ Optional **CLI** with:
 ## Getting Started
 1. Install [buf](https://docs.buf.build/installation)
   
-1. Install this plugin by downloading the latest [release](https://github.com/cludden/protoc-gen-go-temporal/releases)
+2. Install this plugin
 
-2. Install Go protoc plugin
+	2a. Grab a binary for your OS from [the releases page](https://github.com/cludden/protoc-gen-go-temporal/releases) and place in your $PATH
+
+	2b. `go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@<version>`
+
+3. Install Go protoc plugin
 ```shell
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 ```
-
-3. Install this plugin
-
-	3a. Grab a binary for your OS from [the releases page](https://github.com/cludden/protoc-gen-go-temporal/releases) and place in your $PATH
-
-	3b. `go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@<version>`
 
 4. Initialize buf repository
 ```shell
@@ -74,7 +72,7 @@ mkdir proto && cd proto && buf init
 ```yaml
 version: v1
 deps:
-  - buf.build/cludden/protoc-gen-go-temporal@<version>
+  - buf.build/cludden/protoc-gen-go-temporal:<version>
 ```
 
 6. Add plugin to `buf.gen.yaml` and exclude it from managed mode go prefix

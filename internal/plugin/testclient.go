@@ -52,73 +52,10 @@ func (svc *Service) genTestClientImplQueryMethod(f *g.File, query string) {
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	f.Commentf("%s executes a %s query", query, query)
+	f.Commentf("%s executes a %s query", query, svc.fqnForQuery(query))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(toCamel("Test%sClient", svc.Service.GoName))).
 		Id(query).
-		ParamsFunc(func(args *g.Group) {
-			args.Id("ctx").Qual("context", "Context")
-			args.Id("workflowID").String()
-			args.Id("runID").String()
-			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
-			}
-		}).
-		ParamsFunc(func(returnVals *g.Group) {
-			if hasOutput {
-				returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
-			}
-			returnVals.Error()
-		}).
-		BlockFunc(func(fn *g.Group) {
-			fn.List(g.Id("val"), g.Err()).Op(":=").Id("c").Dot("env").Dot("QueryWorkflow").CallFunc(func(args *g.Group) {
-				args.Id(fmt.Sprintf("%sQueryName", query))
-				if hasInput {
-					args.Id("req")
-				}
-			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
-					if hasOutput {
-						returnVals.Nil()
-					}
-					returnVals.Err()
-				}),
-			).Else().If(g.Op("!").Id("val").Dot("HasValue").Call()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
-					if hasOutput {
-						returnVals.Nil()
-					}
-					returnVals.Nil()
-				}),
-			).Else().BlockFunc(func(bl *g.Group) {
-				if !hasOutput {
-					bl.Return(g.Nil())
-				} else {
-					bl.Var().Id("result").Id(handler.Output.GoIdent.GoName)
-					bl.If(g.Err().Op(":=").Id("val").Dot("Get").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
-						g.Return(
-							g.Nil(),
-							g.Err(),
-						),
-					)
-					bl.Return(g.Op("&").Id("result"), g.Nil())
-				}
-			})
-		})
-}
-
-// genTestClientImplQueryDelayedMethod genereates a TestClient <Query>Delayed method
-func (svc *Service) genTestClientImplQueryDelayedMethod(f *g.File, query string) {
-	handler := svc.methods[query]
-	hasInput := !isEmpty(handler.Input)
-	hasOutput := !isEmpty(handler.Output)
-	methodName := toCamel("%sDelayed", query)
-
-	f.Commentf("%s executes a %s query", methodName, svc.fqnForQuery(query))
-	f.Func().
-		Params(g.Id("c").Op("*").Id(toCamel("Test%sClient", svc.Service.GoName))).
-		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
