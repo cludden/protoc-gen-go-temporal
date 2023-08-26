@@ -448,6 +448,7 @@ func (svc *Service) render(f *g.File) {
 		svc.genWorkerSignalReceiveAsync(f, signal)
 		svc.genWorkerSignalSelect(f, signal)
 		svc.genWorkerSignalExternal(f, signal)
+		svc.genWorkerSignalExternalAsync(f, signal)
 	}
 
 	// generate activities

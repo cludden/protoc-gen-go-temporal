@@ -230,6 +230,37 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 		Params(g.Error()).
 		Block(
 			g.Return(
+				g.Id(toCamel("%sAsync", functionName)).CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id("workflowID")
+					args.Id("runID")
+					if hasInput {
+						args.Id("req")
+					}
+				}).Dot("Get").Call(g.Id("ctx"), g.Nil()),
+			),
+		)
+}
+
+// genWorkerSignalExternalAsync generates a <Signal>ExternalAsync public function
+func (svc *Service) genWorkerSignalExternalAsync(f *g.File, signal string) {
+	functionName := toCamel("%sExternalAsync", signal)
+	method := svc.methods[signal]
+	hasInput := !isEmpty(method.Input)
+
+	f.Commentf("%s sends a(n) %s signal to an existing workflow", functionName, method.Desc.FullName())
+	f.Func().Id(functionName).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual(workflowPkg, "Context")
+			args.Id("workflowID").String()
+			args.Id("runID").String()
+			if hasInput {
+				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			}
+		}).
+		Params(g.Qual(workflowPkg, "Future")).
+		Block(
+			g.Return(
 				g.Qual(workflowPkg, "SignalExternalWorkflow").CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("workflowID")
@@ -240,7 +271,7 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 					} else {
 						args.Nil()
 					}
-				}).Dot("Get").Call(g.Id("ctx"), g.Nil()),
+				}),
 			),
 		)
 }
