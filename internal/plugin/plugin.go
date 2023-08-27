@@ -5,19 +5,45 @@ import (
 	"runtime"
 
 	g "github.com/dave/jennifer/jen"
+	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/compiler/protogen"
 )
+
+type Config struct {
+	CliCategories         bool
+	CliEnabled            bool
+	WorkflowUpdateEnabled bool
+}
 
 // Plugin provides a protoc plugin for generating temporal workers and clients in go
 type Plugin struct {
 	*protogen.Plugin
+
 	Commit  string
 	Version string
+	cfg     *Config
+	flags   *pflag.FlagSet
+}
+
+func New(commit, version string) *Plugin {
+	var cfg Config
+
+	flags := pflag.NewFlagSet("plugin", pflag.ExitOnError)
+	flags.BoolVar(&cfg.CliEnabled, "cli-enabled", false, "enable cli generation")
+	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
+	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
+
+	return &Plugin{
+		Commit:  commit,
+		Version: version,
+		cfg:     &cfg,
+		flags:   flags,
+	}
 }
 
 // Param provides a protogen ParamFunc handler
 func (p *Plugin) Param(key, value string) error {
-	return nil
+	return p.flags.Set(key, value)
 }
 
 // Run defines the plugin entrypoint
@@ -35,7 +61,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 
 		var hasContent bool
 		for _, service := range file.Services {
-			svc, err := parseService(plugin, file, service)
+			svc, err := parseService(plugin, p.cfg, file, service)
 			if err != nil {
 				return fmt.Errorf("error parsing service %s: %w", service.GoName, err)
 			}
@@ -45,7 +71,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 
 			svc.render(f)
 			svc.renderTestClient(f)
-			if svc.opts.GetFeatures().GetCli().GetEnabled() {
+			if svc.cfg.CliEnabled {
 				svc.renderCLI(f)
 			}
 			hasContent = true

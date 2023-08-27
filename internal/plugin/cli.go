@@ -163,7 +163,7 @@ func (svc *Service) genCliFlagForField(flags *g.Group, field *protogen.Field, ca
 	flags.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(fields *g.Group) {
 		fields.Id("Name").Op(":").Lit(flagName)
 		fields.Id("Usage").Op(":").Lit(strings.TrimSpace(usage))
-		if svc.opts.GetFeatures().GetCli().GetCategories() && category != "" {
+		if svc.cfg.CliCategories && category != "" {
 			fields.Id("Category").Op(":").Lit(category)
 		}
 	})
@@ -433,7 +433,7 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(query))
 		cmd.Id("Usage").Op(":").Lit(desc)
-		if svc.opts.GetFeatures().GetCli().GetCategories() {
+		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("QUERIES")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
@@ -527,7 +527,7 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(signal))
 		cmd.Id("Usage").Op(":").Lit(desc)
-		if svc.opts.GetFeatures().GetCli().GetCategories() {
+		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("SIGNALS")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
@@ -608,7 +608,7 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(update))
 		cmd.Id("Usage").Op(":").Lit(desc)
-		if svc.opts.GetFeatures().GetCli().GetCategories() {
+		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("UPDATES")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
@@ -844,7 +844,7 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(workflow))
 		cmd.Id("Usage").Op(":").Lit(desc)
-		if svc.opts.GetFeatures().GetCli().GetCategories() {
+		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()
@@ -943,7 +943,7 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(cmdName)
 		cmd.Id("Usage").Op(":").Lit(desc)
-		if svc.opts.GetFeatures().GetCli().GetCategories() {
+		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
 		cmd.Id("UseShortOptionHandling").Op(":").True()

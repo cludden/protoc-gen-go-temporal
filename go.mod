@@ -8,6 +8,7 @@ require (
 	github.com/dave/jennifer v1.6.1
 	github.com/iancoleman/strcase v0.2.0
 	github.com/ory/dockertest/v3 v3.9.1
+	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.11.0
 	go.temporal.io/api v1.23.0

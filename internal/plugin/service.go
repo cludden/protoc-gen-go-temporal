@@ -37,6 +37,7 @@ type Service struct {
 	*protogen.Plugin
 	*protogen.Service
 	*protogen.File
+	cfg               *Config
 	opts              *temporalv1.ServiceOptions
 	activitiesOrdered []string
 	activities        map[string]*temporalv1.ActivityOptions
@@ -52,9 +53,10 @@ type Service struct {
 }
 
 // parseService extracts a Service from a protogen.Service value
-func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Service) (*Service, error) {
+func parseService(p *protogen.Plugin, cfg *Config, file *protogen.File, service *protogen.Service) (*Service, error) {
 	svc := Service{
 		Plugin:     p,
+		cfg:        cfg,
 		Service:    service,
 		File:       file,
 		activities: make(map[string]*temporalv1.ActivityOptions),
@@ -98,12 +100,13 @@ func parseService(p *protogen.Plugin, file *protogen.File, service *protogen.Ser
 			mode |= modeSignal
 		}
 
-		if svc.opts.GetFeatures().GetWorkflowUpdate().GetEnabled() {
-			if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
-				svc.updates[name] = opts
-				svc.updatesOrdered = append(svc.updatesOrdered, name)
-				mode |= modeUpdate
+		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
+			if !svc.cfg.WorkflowUpdateEnabled {
+				return nil, fmt.Errorf("method %q includes an update configuration, but workflow updates are not enabled: enable them with \"workflow-update-enabled=true\" plugin option", name)
 			}
+			svc.updates[name] = opts
+			svc.updatesOrdered = append(svc.updatesOrdered, name)
+			mode |= modeUpdate
 		}
 
 		switch mode {

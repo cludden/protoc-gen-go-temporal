@@ -11,6 +11,7 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
 	- [Features](#features)
 	- [Getting Started](#getting-started)
 	- [Options](#options)
+		- [Plugin Options](#plugin-options)
 		- [Service Options](#service-options)
 		- [Method Options](#method-options)
 		- [ID Expressions](#id-expressions)
@@ -440,11 +441,38 @@ $ go run example/main.go get-foo-progress -w create-foo/test
 
 See [reference documentation](./docs/api/temporal/v1/api.md) for all Service and Method options supported by this plugin.
 
+### Plugin Options
+
+Plugin options are used to globally configure this plugin's behavior at runtime. They can be specified
+via:
+- protoc commaond line flags
+
+	```shell
+	--go_temporal_opt=<flag>=<value>,<flag>=<value>
+	```
+
+- buf generate options
+
+	```yaml
+	# buf.gen.yaml
+	plugins:
+	# ..
+	- plugin: go_temporal
+		out: gen
+		opt: <flag>=<value>,<flag>=<value>
+		strategy: all
+	```
+
+| flag | type | description | default |
+| :--- | :---: | :--- | :---: |
+| cli-enabled | `bool` | enables cli generation | `false` |
+| cli-categories | `bool` | enables cli categories | `true` |
+| workflow-update-enabled | `bool` | enables experimental workflow update | `false` |
+
 ### Service Options
 
 | field | type | description |
 | :--- | :---: | :--- |
-| features | [Features](./docs/api/temporal/v1/api.md#serviceoptionsfeatures) | specifies settings for optional features |
 | namespace | `string` | default namespace for child workflows, activities |
 | task_queue | `string` | default task queue for all workflows, activities |
 
@@ -559,7 +587,7 @@ require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
 
 ## CLI
 
-This plugin can optionally generate a configurable CLI using [github.com/urfave/cli/v2](https://github.com/urfave/cli/v2). To enable this functionality, use the corresponding [service option](#service-options). When enabled, this plugin will generate a CLI command for each workflow, start-workflow-with-signal, query, and signal. Each command provides typed flags for configuring the corresponding inputs and options.
+This plugin can optionally generate a configurable CLI using [github.com/urfave/cli/v2](https://github.com/urfave/cli/v2). To enable this functionality, use the corresponding [plugin option](#plugin-options). When enabled, this plugin will generate a CLI command for each workflow, start-workflow-with-signal, query, and signal. Each command provides typed flags for configuring the corresponding inputs and options.
 
 ```go
 package main

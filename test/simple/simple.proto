@@ -9,10 +9,6 @@ import "temporal/v1/temporal.proto";
 service Simple {
   option (temporal.v1.service) = {
     task_queue: 'my-task-queue'
-    features: {
-      cli: { enabled: true }
-      workflow_update: { enabled: true }
-    }
   };
 
   // SomeWorkflow1 does some workflow thing.
@@ -160,10 +156,6 @@ message SomeUpdate1Response {
 service Other {
   option (temporal.v1.service) = {
     task_queue: 'other-task-queue'
-    features: {
-      cli: { enabled: true }
-      workflow_update: { enabled: true }
-    }
   };
 
   rpc OtherWorkflow(OtherWorkflowRequest) returns (OtherWorkflowResponse) {
