@@ -313,7 +313,7 @@ func (svc *Service) genActivityRegisterAllFunction(f *g.File) {
 	f.Commentf("Register%sActivities registers activities with a worker", svc.Service.GoName)
 	f.Func().Id(fmt.Sprintf("Register%sActivities", svc.Service.GoName)).
 		Params(
-			g.Id("r").Qual(workerPkg, "Registry"),
+			g.Id("r").Qual(workerPkg, "ActivityRegistry"),
 			g.Id("activities").Id(toCamel("%sActivities", svc.Service.GoName)),
 		).
 		BlockFunc(func(fn *g.Group) {
@@ -333,7 +333,7 @@ func (svc *Service) genActivityRegisterOneFunction(f *g.File, activity string) {
 	f.Commentf("Register%sActivity registers a %s activity", activity, svc.fqnForActivity(activity))
 	f.Func().Id(fmt.Sprintf("Register%sActivity", activity)).
 		Params(
-			g.Id("r").Qual(workerPkg, "Registry"),
+			g.Id("r").Qual(workerPkg, "ActivityRegistry"),
 			g.Id("fn").Func().
 				ParamsFunc(func(args *g.Group) {
 					args.Qual("context", "Context")

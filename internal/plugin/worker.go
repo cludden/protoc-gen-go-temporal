@@ -160,7 +160,7 @@ func (svc *Service) genWorkerRegisterWorkflow(f *g.File, workflow string) {
 	f.Func().
 		Id(fmt.Sprintf("Register%sWorkflow", workflow)).
 		Params(
-			g.Id("r").Qual(workerPkg, "Registry"),
+			g.Id("r").Qual(workerPkg, "WorkflowRegistry"),
 			g.Id("wf").
 				Func().
 				Params(
@@ -189,7 +189,7 @@ func (svc *Service) genWorkerRegisterWorkflows(f *g.File) {
 	f.Func().
 		Id(toCamel("Register%sWorkflows", svc.Service.GoName)).
 		Params(
-			g.Id("r").Qual(workerPkg, "Registry"),
+			g.Id("r").Qual(workerPkg, "WorkflowRegistry"),
 			g.Id("workflows").Id(toCamel("%sWorkflows", svc.Service.GoName)),
 		).
 		BlockFunc(func(fn *g.Group) {
