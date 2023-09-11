@@ -8,9 +8,6 @@
     - [QueryOptions](#temporal-v1-QueryOptions)
     - [RetryPolicy](#temporal-v1-RetryPolicy)
     - [ServiceOptions](#temporal-v1-ServiceOptions)
-    - [ServiceOptions.Features](#temporal-v1-ServiceOptions-Features)
-    - [ServiceOptions.Features.CLI](#temporal-v1-ServiceOptions-Features-CLI)
-    - [ServiceOptions.Features.WorkflowUpdate](#temporal-v1-ServiceOptions-Features-WorkflowUpdate)
     - [SignalOptions](#temporal-v1-SignalOptions)
     - [UpdateOptions](#temporal-v1-UpdateOptions)
     - [WorkflowOptions](#temporal-v1-WorkflowOptions)
@@ -107,56 +104,8 @@ shared by all methods
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| features | [ServiceOptions.Features](#temporal-v1-ServiceOptions-Features) |  | Service-level features |
 | namespace | [string](#string) |  | Default namespace for child workflows, activities |
 | task_queue | [string](#string) |  | Default task queue for all workflows, activities |
-
-
-
-
-
-
-<a name="temporal-v1-ServiceOptions-Features"></a>
-
-### ServiceOptions.Features
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| cli | [ServiceOptions.Features.CLI](#temporal-v1-ServiceOptions-Features-CLI) |  | Enable experimental CLI features |
-| workflow_update | [ServiceOptions.Features.WorkflowUpdate](#temporal-v1-ServiceOptions-Features-WorkflowUpdate) |  |  |
-
-
-
-
-
-
-<a name="temporal-v1-ServiceOptions-Features-CLI"></a>
-
-### ServiceOptions.Features.CLI
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| enabled | [bool](#bool) |  |  |
-| categories | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="temporal-v1-ServiceOptions-Features-WorkflowUpdate"></a>
-
-### ServiceOptions.Features.WorkflowUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| enabled | [bool](#bool) |  |  |
 
 
 

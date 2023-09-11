@@ -23,10 +23,7 @@ func main() {
 		return
 	}
 
-	p := plugin.Plugin{
-		Commit:  commit,
-		Version: version,
-	}
+	p := plugin.New(commit, version)
 
 	opts := protogen.Options{
 		ParamFunc: p.Param,

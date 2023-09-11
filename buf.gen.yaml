@@ -9,7 +9,7 @@ plugins:
     opt: paths=source_relative
   - plugin: go_temporal
     out: gen
-    opt: paths=source_relative
+    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true
     strategy: all
   - plugin: doc
     out: docs/api

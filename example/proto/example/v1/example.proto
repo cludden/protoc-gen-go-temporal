@@ -8,10 +8,6 @@ import "temporal/v1/temporal.proto";
 service Example {
   option (temporal.v1.service) = {
     task_queue: "example-v1"
-    features: { 
-      cli: { enabled: true, categories: true }
-      workflow_update: { enabled: true }
-    }
   };
 
   // CreateFoo creates a new foo operation

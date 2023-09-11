@@ -29,7 +29,7 @@ gen-temporal:
 install:
     #!/usr/bin/env bash
     set -euo pipefail
-     goreleaser build --clean --single-target --snapshot
+    goreleaser build --clean --single-target --snapshot
     if [ "{{ os() }}" = "macos" ]; then
         cp ./dist/protoc-gen-go_temporal_darwin_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
     else
