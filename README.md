@@ -2,7 +2,7 @@
 
 A protoc plugin for generating typed Temporal clients and workers in Go from protobuf schemas. This plugin allows Workflow authors to configure sensible defaults and guardrails, simplifies the implementation and testing of Temporal workers, and streamlines integration by providing typed client SDKs and a generated CLI application. 
 
-<small>inspired by [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced) and Jacob Legrone's excellent Replay talk on [Temporal @ Datadog](https://youtu.be/LxgkAoTSI8Q)</small>
+<small>inspired by [Chad Retz's](https://github.com/cretz/) awesome [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced) and [Jacob LeGrone's](https://github.com/jlegrone/) excellent Replay talk on [Temporal @ Datadog](https://youtu.be/LxgkAoTSI8Q)</small>
 
 **Table of Contents**
 
@@ -46,7 +46,7 @@ Generated **Worker** resources with:
 Optional **CLI** with:
   - commands for executing workflows, synchronously or asynchronously
   - commands for starting workflows with signals, synchronously or asynchronously
-  - commands for querying existing workflwos
+  - commands for querying existing workflows
   - commands for sending signals to existing workflows
   - typed flags for conventiently specifying workflow, query, and signal inputs
 
@@ -91,7 +91,7 @@ plugins:
     opt: paths=source_relative
   - plugin: go_temporal
     out: gen
-    opt: paths=source_relative
+    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true
     strategy: all
 ```
 
@@ -109,16 +109,12 @@ import "temporal/v1/temporal.proto";
 service Example {
   option (temporal.v1.service) = {
     task_queue: "example-v1"
-    features: { 
-      cli: { enabled: true, categories: true }
-      workflow_update: { enabled: true }
-    }
   };
 
   // CreateFoo creates a new foo operation
   rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
     option (temporal.v1.workflow) = {
-      execution_timeout: { seconds: 3600 }
+      execution_timeout: { seconds: 3600 } // foos can take awhile to create
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       id: 'create-foo/${!name.slug()}'
       query: { ref: 'GetFooProgress' }
@@ -202,7 +198,7 @@ message SetFooProgressRequest {
 buf generate
 ```
 
-9. Implement your activities, workflows
+9. Implement the required Workflow and Activity interfaces
 
 ```go
 package main
@@ -350,7 +346,7 @@ temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowE
 go run example/main.go worker
 ```
 
-1.   Execute workflows, queries, signals, and updates
+11.   Execute workflows, queries, signals, and updates
 
 *with generated client*
 ```go
@@ -405,7 +401,7 @@ COMMANDS:
      update-foo-progress  UpdateFooProgress sets the current status of a CreateFoo operation
    WORKFLOWS:
      create-foo                        CreateFoo creates a new foo operation
-     create-foo-with-set-foo-progress  sends a SetFooProgress signal to a CreateFoo worklow, starting it if necessary
+     create-foo-with-set-foo-progress  sends a SetFooProgress signal to a CreateFoo workflow, starting it if necessary
 
 GLOBAL OPTIONS:
    --help, -h  show help (default: false)
@@ -627,7 +623,7 @@ func main() {
 
 ## Test Client
 
-The generated code includes a resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [tests](./test/simple/main_test.go) for example usage.
+The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [tests](./test/simple/main_test.go) for example usage.
 
 **_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
 
