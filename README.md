@@ -66,7 +66,7 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 4. Initialize buf repository
 ```shell
-mkdir proto && cd proto && buf init
+mkdir proto && cd proto && buf mod init
 ```
 
 5. Add dependency to `buf.yaml`
@@ -195,7 +195,7 @@ message SetFooProgressRequest {
 8. Generate temporal worker, client, and cli types, methods, interfaces, and functions
 
 ```shell
-buf generate
+buf mod update && buf generate
 ```
 
 9. Implement the required Workflow and Activity interfaces
@@ -343,7 +343,8 @@ temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowE
 
 *start worker*
 ```shell
-go run example/main.go worker
+go get -u github.com/cludden/protoc-gen-go-temporal@<release> && go mod tidy
+go run main.go worker
 ```
 
 11.   Execute workflows, queries, signals, and updates
@@ -383,7 +384,7 @@ func main() {
 
 *with generated cli*
 ```shell
-$ go run example/main.go -h
+$ go run main.go -h
 NAME:
    Example - an example temporal cli
 
@@ -406,27 +407,27 @@ COMMANDS:
 GLOBAL OPTIONS:
    --help, -h  show help (default: false)
 
-$ go run example/main.go create-foo -d --name test
+$ go run main.go create-foo -d --name test
 success
 workflow id: create-foo/test
 run id: 44cacae1-6a13-4b4a-8db7-d29eaafd1499
 
-$ go run example/main.go set-foo-progress -w create-foo/test --progress 5.7
+$ go run main.go set-foo-progress -w create-foo/test --progress 5.7
 success
 
-$ go run example/main.go get-foo-progress -w create-foo/test
+$ go run main.go get-foo-progress -w create-foo/test
 {
   "progress": 5.7,
   "status": "FOO_STATUS_CREATING"
 }
 
-$ go run example/main.go update-foo-progress -w create-foo/test --progress 100
+$ go run main.go update-foo-progress -w create-foo/test --progress 100
 {
   "progress": 100,
   "status": "FOO_STATUS_READY"
 }
 
-$ go run example/main.go get-foo-progress -w create-foo/test
+$ go run main.go get-foo-progress -w create-foo/test
 {
   "progress": 100,
   "status": "FOO_STATUS_READY"
