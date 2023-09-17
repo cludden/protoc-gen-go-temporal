@@ -230,6 +230,7 @@ func (svc *Service) genTestClientImplUpdateAsyncMethod(f *g.File, update string)
 			fn.Id("uc").Op(":=").Qual(testutilPkg, "NewUpdateCallbacks").Call()
 			fn.Id("c").Dot("env").Dot("UpdateWorkflow").CallFunc(func(args *g.Group) {
 				args.Id(toCamel("%sUpdateName", update))
+				args.Id("workflowID")
 				args.Id("uc")
 				if hasInput {
 					args.Id("req")
