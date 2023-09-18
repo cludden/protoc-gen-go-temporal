@@ -554,7 +554,14 @@ func (svc *Service) genTestClientUpdateHandleImplGetMethod(f *g.File, update str
 			returnVals.Error()
 		}).
 		Block(
-			g.If(g.List(g.Id("resp"), g.Err()).Op(":=").Id("h").Dot("callbacks").Dot("Get").Call(g.Id("ctx")), g.Err().Op("!=").Nil()).
+			g.If(g.ListFunc(func(ls *g.Group) {
+				if hasOutput {
+					ls.Id("resp")
+				} else {
+					ls.Id("_")
+				}
+				ls.Err()
+			}).Op(":=").Id("h").Dot("callbacks").Dot("Get").Call(g.Id("ctx")), g.Err().Op("!=").Nil()).
 				Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
 						if hasOutput {
