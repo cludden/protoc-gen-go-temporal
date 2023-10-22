@@ -7,18 +7,18 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
 **Table of Contents**
 
 - [protoc-gen-go-temporal](#protoc-gen-go-temporal)
-	- [How it works](#how-it-works)
-	- [Features](#features)
-	- [Getting Started](#getting-started)
-	- [Options](#options)
-		- [Plugin Options](#plugin-options)
-		- [Service Options](#service-options)
-		- [Method Options](#method-options)
-		- [ID Expressions](#id-expressions)
-	- [CLI](#cli)
-	- [Test Client](#test-client)
-	- [Documentation](#documentation)
-	- [License](#license)
+  - [How it works](#how-it-works)
+  - [Features](#features)
+  - [Getting Started](#getting-started)
+  - [Options](#options)
+    - [Plugin Options](#plugin-options)
+    - [Service Options](#service-options)
+    - [Method Options](#method-options)
+    - [Bloblang Expressions](#bloblang-expressions)
+  - [CLI](#cli)
+  - [Test Client](#test-client)
+  - [Documentation](#documentation)
+  - [License](#license)
 
 ## How it works
 
@@ -33,8 +33,8 @@ Generated **Client** with:
   - methods for executing workflows, queries, signals, and updates
   - methods for cancelling or terminating workflows
   - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
-  - dynamic workflow and update ids via [Bloblang expressions](#id-expressions)
-  - default timeouts, id reuse policies, retry policies, search attributes, wait policies
+  - dynamic workflow ids, update ids, and search attributes via [Bloblang expressions](#bloblang-expressions)
+  - default timeouts, id reuse policies, retry policies, wait policies
 
 
 Generated **Worker** resources with:
@@ -53,387 +53,390 @@ Optional **CLI** with:
 
 ## Getting Started
 1. Install [buf](https://docs.buf.build/installation)
-  
+   
 2. Install this plugin
-
-	2a. Grab a binary for your OS from [the releases page](https://github.com/cludden/protoc-gen-go-temporal/releases) and place in your $PATH
-
-	2b. `go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@<version>`
+   1. via `homebrew`
+    ```shell
+    brew install cludden/formula/protoc-gen-go_temporal
+    ```
+   2. manually by grabbing a binary for your OS from [the releases page](https://github.com/cludden/protoc-gen-go-temporal/releases) and placing it in your $PATH
+   3. via `go`:
+    ```shell
+    go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@<version>
+    ```
 
 3. Install Go protoc plugin
-```shell
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-```
+  ```shell
+  go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+  ```
 
 4. Initialize buf repository
-```shell
-mkdir proto && cd proto && buf mod init
-```
+  ```shell
+  mkdir proto && cd proto && buf mod init
+  ```
 
 5. Add dependency to `buf.yaml`
-```yaml
-version: v1
-deps:
-  - buf.build/cludden/protoc-gen-go-temporal:<version>
-```
+  ```yaml
+  version: v1
+  deps:
+    - buf.build/cludden/protoc-gen-go-temporal:<version>
+  ```
 
 6. Add plugin to `buf.gen.yaml` and exclude it from managed mode go prefix
-```yaml
-version: v1
-managed:
+  ```yaml
+  version: v1
+  managed:
   enabled: true
   go_package_prefix:
     default: github.com/foo/bar/gen
     except:
       - buf.build/cludden/protoc-gen-go-temporal
-plugins:
-  - plugin: go
-    out: gen
-    opt: paths=source_relative
-  - plugin: go_temporal
-    out: gen
-    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true
-    strategy: all
-```
+  plugins:
+    - plugin: go
+      out: gen
+      opt: paths=source_relative
+    - plugin: go_temporal
+      out: gen
+      opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true
+      strategy: all
+  ```
 
 7. Define your service  
-<small><b><i>note:</i></b> see [example](./example/) and [test](./test/) for more details on generated code and usage</small>
+  <small><b><i>note:</i></b> see [example](./example/) and [test](./test/) for more details on generated code and usage</small>
 
-```protobuf
-syntax="proto3";
+  ```protobuf
+  syntax="proto3";
 
-package example.v1;
+  package example.v1;
 
-import "google/protobuf/empty.proto";
-import "temporal/v1/temporal.proto";
+  import "google/protobuf/empty.proto";
+  import "temporal/v1/temporal.proto";
 
-service Example {
-  option (temporal.v1.service) = {
-    task_queue: "example-v1"
-  };
-
-  // CreateFoo creates a new foo operation
-  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
-    option (temporal.v1.workflow) = {
-      execution_timeout: { seconds: 3600 } // foos can take awhile to create
-      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-      id: 'create-foo/${!name.slug()}'
-      query: { ref: 'GetFooProgress' }
-      signal: { ref: 'SetFooProgress', start: true }
-      update: { ref: 'UpdateFooProgress' }
+  service Example {
+    option (temporal.v1.service) = {
+      task_queue: "example-v1"
     };
+
+    // CreateFoo creates a new foo operation
+    rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+      option (temporal.v1.workflow) = {
+        execution_timeout: { seconds: 3600 } // foos can take awhile to create
+        id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+        id: 'create-foo/${!name.slug()}'
+        query: { ref: 'GetFooProgress' }
+        signal: { ref: 'SetFooProgress', start: true }
+        update: { ref: 'UpdateFooProgress' }
+      };
+    }
+
+    // GetFooProgress returns the status of a CreateFoo operation
+    rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
+      option (temporal.v1.query) = {};
+    }
+
+    // Notify sends a notification
+    rpc Notify(NotifyRequest) returns (google.protobuf.Empty) {
+      option (temporal.v1.activity) = {
+        start_to_close_timeout: { seconds: 30 }
+        retry_policy: {
+          max_attempts: 3
+        }
+      };
+    }
+
+    // SetFooProgress sets the current status of a CreateFoo operation
+    rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+      option (temporal.v1.signal) = {};
+    }
+
+    // UpdateFooProgress sets the current status of a CreateFoo operation
+    rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
+      option (temporal.v1.update) = {
+        id: 'update-progress/${! progress.string() }',
+      };
+    }
   }
 
-  // GetFooProgress returns the status of a CreateFoo operation
-  rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
-    option (temporal.v1.query) = {};
+  // CreateFooRequest describes the input to a CreateFoo workflow
+  message CreateFooRequest {
+    // unique foo name
+    string name = 1;
   }
 
-  // Notify sends a notification
-  rpc Notify(NotifyRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 30 }
-      retry_policy: {
-        max_attempts: 3
-      }
-    };
+  // SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow
+  message CreateFooResponse {
+    Foo foo = 1; 
   }
 
-  // SetFooProgress sets the current status of a CreateFoo operation
-  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = {};
+  // Foo describes an illustrative foo resource
+  message Foo {
+    string name = 1;
+    Status status = 2;
+
+    enum Status {
+      FOO_STATUS_UNSPECIFIED = 0;
+      FOO_STATUS_READY = 1;
+      FOO_STATUS_CREATING = 2;
+    }
   }
 
-  // UpdateFooProgress sets the current status of a CreateFoo operation
-  rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
-    option (temporal.v1.update) = {
-      id: 'update-progress/${! progress.string() }',
-    };
+  // GetFooProgressResponse describes the output from a GetFooProgress query
+  message GetFooProgressResponse {
+    float progress = 1;
+    Foo.Status status = 2;
   }
-}
 
-// CreateFooRequest describes the input to a CreateFoo workflow
-message CreateFooRequest {
-  // unique foo name
-  string name = 1;
-}
-
-// SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow
-message CreateFooResponse {
-  Foo foo = 1; 
-}
-
-// Foo describes an illustrative foo resource
-message Foo {
-  string name = 1;
-  Status status = 2;
-
-  enum Status {
-    FOO_STATUS_UNSPECIFIED = 0;
-    FOO_STATUS_READY = 1;
-    FOO_STATUS_CREATING = 2;
+  // NotifyRequest describes the input to a Notify activity
+  message NotifyRequest {
+    string message = 1;
   }
-}
 
-// GetFooProgressResponse describes the output from a GetFooProgress query
-message GetFooProgressResponse {
-  float progress = 1;
-  Foo.Status status = 2;
-}
-
-// NotifyRequest describes the input to a Notify activity
-message NotifyRequest {
-  string message = 1;
-}
-
-// SetFooProgressRequest describes the input to a SetFooProgress signal
-message SetFooProgressRequest {
-  // value of current workflow progress
-  float progress = 1;
-}
-```
+  // SetFooProgressRequest describes the input to a SetFooProgress signal
+  message SetFooProgressRequest {
+    // value of current workflow progress
+    float progress = 1;
+  }
+  ```
 
 8. Generate temporal worker, client, and cli types, methods, interfaces, and functions
-
-```shell
-buf mod update && buf generate
-```
+  ```shell
+  buf mod update && buf generate
+  ```
 
 9. Implement the required Workflow and Activity interfaces
+  ```go
+  package main
 
-```go
-package main
+  import (
+    "context"
+    "fmt"
+    "log"
+    "os"
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"os"
+    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+    "github.com/urfave/cli/v2"
+    "go.temporal.io/sdk/activity"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/workflow"
+    logger "go.temporal.io/server/common/log"
+  )
 
-	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-	"github.com/urfave/cli/v2"
-	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/worker"
-	"go.temporal.io/sdk/workflow"
-	logger "go.temporal.io/server/common/log"
-)
+  // Workflows manages shared state for workflow constructors and is used to
+  // register workflows with a worker
+  type Workflows struct{}
 
-// Workflows manages shared state for workflow constructors and is used to
-// register workflows with a worker
-type Workflows struct{}
+  // ============================================================================
 
-// ============================================================================
+  // CreateFooWorkflow manages workflow state for a CreateFoo workflow
+  type CreateFooWorkflow struct {
+    // it embeds the generated workflow Input type that contains the workflow
+    // input and signal helpers
+    *examplev1.CreateFooInput
 
-// CreateFooWorkflow manages workflow state for a CreateFoo workflow
-type CreateFooWorkflow struct {
-	// it embeds the generated workflow Input type that contains the workflow
-	// input and signal helpers
-	*examplev1.CreateFooInput
+    progress float32
+    status   examplev1.Foo_Status
+  }
 
-	progress float32
-	status   examplev1.Foo_Status
-}
+  // CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
+  // that initializes a new CreateFooWorkflow for each execution
+  func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooInput) (examplev1.CreateFooWorkflow, error) {
+    return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_CREATING}, nil
+  }
 
-// CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
-// that initializes a new CreateFooWorkflow for each execution
-func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooInput) (examplev1.CreateFooWorkflow, error) {
-	return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_CREATING}, nil
-}
+  // Execute defines the entrypoint to a CreateFooWorkflow
+  func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
+    // listen for signals
+    workflow.Go(ctx, func(ctx workflow.Context) {
+      for {
+        signal, _ := wf.SetFooProgress.Receive(ctx)
+        wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: signal.GetProgress()})
+      }
+    })
 
-// Execute defines the entrypoint to a CreateFooWorkflow
-func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
-	// listen for signals
-	workflow.Go(ctx, func(ctx workflow.Context) {
-		for {
-			signal, _ := wf.SetFooProgress.Receive(ctx)
-			wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: signal.GetProgress()})
-		}
-	})
+    // execute Notify activity using generated helper
+    err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
+      Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName()),
+    })
+    if err != nil {
+      return nil, fmt.Errorf("error sending notification: %w", err)
+    }
 
-	// execute Notify activity using generated helper
-	err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
-		Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName()),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error sending notification: %w", err)
-	}
+    // block until progress has reached 100 via signals and/or updates
+    workflow.Await(ctx, func() bool {
+      return wf.status == examplev1.Foo_FOO_STATUS_READY
+    })
 
-	// block until progress has reached 100 via signals and/or updates
-	workflow.Await(ctx, func() bool {
-		return wf.status == examplev1.Foo_FOO_STATUS_READY
-	})
+    return &examplev1.CreateFooResponse{
+      Foo: &examplev1.Foo{
+        Name:   wf.Req.GetName(),
+        Status: wf.status,
+      },
+    }, nil
+  }
 
-	return &examplev1.CreateFooResponse{
-		Foo: &examplev1.Foo{
-			Name:   wf.Req.GetName(),
-			Status: wf.status,
-		},
-	}, nil
-}
+  // GetFooProgress defines the handler for a GetFooProgress query
+  func (wf *CreateFooWorkflow) GetFooProgress() (*examplev1.GetFooProgressResponse, error) {
+    return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
+  }
 
-// GetFooProgress defines the handler for a GetFooProgress query
-func (wf *CreateFooWorkflow) GetFooProgress() (*examplev1.GetFooProgressResponse, error) {
-	return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
-}
+  // UpdateFooProgress defines the handler for an UpdateFooProgress update
+  func (wf *CreateFooWorkflow) UpdateFooProgress(ctx workflow.Context, req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
+    wf.progress = req.GetProgress()
+    switch {
+    case wf.progress < 0:
+      wf.progress, wf.status = 0, examplev1.Foo_FOO_STATUS_CREATING
+    case wf.progress < 100:
+      wf.status = examplev1.Foo_FOO_STATUS_CREATING
+    case wf.progress >= 100:
+      wf.progress, wf.status = 100, examplev1.Foo_FOO_STATUS_READY
+    }
+    return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
+  }
 
-// UpdateFooProgress defines the handler for an UpdateFooProgress update
-func (wf *CreateFooWorkflow) UpdateFooProgress(ctx workflow.Context, req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
-	wf.progress = req.GetProgress()
-	switch {
-	case wf.progress < 0:
-		wf.progress, wf.status = 0, examplev1.Foo_FOO_STATUS_CREATING
-	case wf.progress < 100:
-		wf.status = examplev1.Foo_FOO_STATUS_CREATING
-	case wf.progress >= 100:
-		wf.progress, wf.status = 100, examplev1.Foo_FOO_STATUS_READY
-	}
-	return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
-}
+  // ============================================================================
 
-// ============================================================================
+  // Activities manages shared state for activities and is used to register
+  // activities with a worker
+  type Activities struct{}
 
-// Activities manages shared state for activities and is used to register
-// activities with a worker
-type Activities struct{}
+  // Notify defines the implementation for a Notify activity
+  func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) error {
+    activity.GetLogger(ctx).Info("notification", "message", req.GetMessage())
+    return nil
+  }
 
-// Notify defines the implementation for a Notify activity
-func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) error {
-	activity.GetLogger(ctx).Info("notification", "message", req.GetMessage())
-	return nil
-}
+  // ============================================================================
 
-// ============================================================================
+  func main() {
+    // initialize the generated cli application
+    app, err := examplev1.NewExampleCli(
+      examplev1.NewExampleCliOptions().
+        WithClient(func(cmd *cli.Context) (client.Client, error) {
+          return client.Dial(client.Options{
+            Logger: logger.NewSdkLogger(logger.NewCLILogger()),
+          })
+        }).
+        WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+          w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+          // register activities and workflows using generated helpers
+          examplev1.RegisterExampleActivities(w, &Activities{})
+          examplev1.RegisterExampleWorkflows(w, &Workflows{})
+          return w, nil
+        }),
+    )
+    if err != nil {
+      log.Fatalf("error initializing commands: %v", err)
+    }
+    app.Name = "example"
+    app.Usage = "an example temporal cli"
 
-func main() {
-	// initialize the generated cli application
-	app, err := examplev1.NewExampleCli(
-		examplev1.NewExampleCliOptions().
-			WithClient(func(cmd *cli.Context) (client.Client, error) {
-				return client.Dial(client.Options{
-					Logger: logger.NewSdkLogger(logger.NewCLILogger()),
-				})
-			}).
-			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-				// register activities and workflows using generated helpers
-				examplev1.RegisterExampleActivities(w, &Activities{})
-				examplev1.RegisterExampleWorkflows(w, &Workflows{})
-				return w, nil
-			}),
-	)
-	if err != nil {
-		log.Fatalf("error initializing commands: %v", err)
-	}
-	app.Name = "example"
-	app.Usage = "an example temporal cli"
-
-	// run cli
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
-	}
-}
-```
+    // run cli
+    if err := app.Run(os.Args); err != nil {
+      log.Fatal(err)
+    }
+  }
+  ```
 
 10. Run your worker
+    
+  *start temporal*
+  ```shell
+  temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true"
+  ```
 
-*start temporal*
-```shell
-temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true"
-```
+  *start worker*
+  ```shell
+  go get -u github.com/cludden/protoc-gen-go-temporal@<release> && go mod tidy
+  go run main.go worker
+  ```
 
-*start worker*
-```shell
-go get -u github.com/cludden/protoc-gen-go-temporal@<release> && go mod tidy
-go run main.go worker
-```
+11.  Execute workflows, queries, signals, and updates
+  
+  *with generated client*
+  ```go
+  package main
 
-11.   Execute workflows, queries, signals, and updates
+  import (
+    "context"
+    "log"
 
-*with generated client*
-```go
-package main
+    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+    "go.temporal.io/sdk/client"
+  )
 
-import (
-	"context"
-	"log"
+  func main() {
+    c, _ := client.Dial(client.Options{})
+    client, ctx := examplev1.NewClient(c), context.Background()
 
-	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-	"go.temporal.io/sdk/client"
-)
+    run, _ := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: "test"})
+    log.Printf("started workflow: workflow_id=%s, run_id=%s\n", run.ID(), run.RunID())
 
-func main() {
-	c, _ := client.Dial(client.Options{})
-	client, ctx := examplev1.NewClient(c), context.Background()
+    log.Println("signalling progress")
+    _ = run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 5.7})
 
-	run, _ := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: "test"})
-	log.Printf("started workflow: workflow_id=%s, run_id=%s\n", run.ID(), run.RunID())
+    progress, _ := run.GetFooProgress(ctx)
+    log.Printf("queried progress: %s\n", progress.String())
 
-	log.Println("signalling progress")
-	_ = run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 5.7})
+    update, _ := run.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 100})
+    log.Printf("updated progress: %s\n", update.String())
 
-	progress, _ := run.GetFooProgress(ctx)
-	log.Printf("queried progress: %s\n", progress.String())
+    resp, _ := run.Get(ctx)
+    log.Printf("workflow completed: %s\n", resp.String())
+  }
+  ```
 
-	update, _ := run.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 100})
-	log.Printf("updated progress: %s\n", update.String())
+  *with generated cli*
+  ```shell
+  $ go run main.go -h
+  NAME:
+  Example - an example temporal cli
 
-	resp, _ := run.Get(ctx)
-	log.Printf("workflow completed: %s\n", resp.String())
-}
-```
+  USAGE:
+  Example [global options] command [command options] [arguments...]
 
-*with generated cli*
-```shell
-$ go run main.go -h
-NAME:
-   Example - an example temporal cli
+  COMMANDS:
+  worker   run service worker
+  help, h  Shows a list of commands or help for one command
+  QUERIES:
+    get-foo-progress  GetFooProgress returns the status of a CreateFoo operation
+  SIGNALS:
+    set-foo-progress  SetFooProgress sets the current status of a CreateFoo operation
+  UPDATES:
+    update-foo-progress  UpdateFooProgress sets the current status of a CreateFoo operation
+  WORKFLOWS:
+    create-foo                        CreateFoo creates a new foo operation
+    create-foo-with-set-foo-progress  sends a SetFooProgress signal to a CreateFoo workflow, starting it if necessary
 
-USAGE:
-   Example [global options] command [command options] [arguments...]
+  GLOBAL OPTIONS:
+  --help, -h  show help (default: false)
 
-COMMANDS:
-   worker   run service worker
-   help, h  Shows a list of commands or help for one command
-   QUERIES:
-     get-foo-progress  GetFooProgress returns the status of a CreateFoo operation
-   SIGNALS:
-     set-foo-progress  SetFooProgress sets the current status of a CreateFoo operation
-   UPDATES:
-     update-foo-progress  UpdateFooProgress sets the current status of a CreateFoo operation
-   WORKFLOWS:
-     create-foo                        CreateFoo creates a new foo operation
-     create-foo-with-set-foo-progress  sends a SetFooProgress signal to a CreateFoo workflow, starting it if necessary
+  $ go run main.go create-foo -d --name test
+  success
+  workflow id: create-foo/test
+  run id: 44cacae1-6a13-4b4a-8db7-d29eaafd1499
 
-GLOBAL OPTIONS:
-   --help, -h  show help (default: false)
+  $ go run main.go set-foo-progress -w create-foo/test --progress 5.7
+  success
 
-$ go run main.go create-foo -d --name test
-success
-workflow id: create-foo/test
-run id: 44cacae1-6a13-4b4a-8db7-d29eaafd1499
+  $ go run main.go get-foo-progress -w create-foo/test
+  {
+    "progress": 5.7,
+    "status": "FOO_STATUS_CREATING"
+  }
 
-$ go run main.go set-foo-progress -w create-foo/test --progress 5.7
-success
+  $ go run main.go update-foo-progress -w create-foo/test --progress 100
+  {
+    "progress": 100,
+    "status": "FOO_STATUS_READY"
+  }
 
-$ go run main.go get-foo-progress -w create-foo/test
-{
-  "progress": 5.7,
-  "status": "FOO_STATUS_CREATING"
-}
-
-$ go run main.go update-foo-progress -w create-foo/test --progress 100
-{
-  "progress": 100,
-  "status": "FOO_STATUS_READY"
-}
-
-$ go run main.go get-foo-progress -w create-foo/test
-{
-  "progress": 100,
-  "status": "FOO_STATUS_READY"
-}
-```
+  $ go run main.go get-foo-progress -w create-foo/test
+  {
+    "progress": 100,
+    "status": "FOO_STATUS_READY"
+  }
+  ```
 
 ## Options
 
@@ -445,21 +448,21 @@ Plugin options are used to globally configure this plugin's behavior at runtime.
 via:
 - protoc commaond line flags
 
-	```shell
-	--go_temporal_opt=<flag>=<value>,<flag>=<value>
-	```
+  ```shell
+  --go_temporal_opt=<flag>=<value>,<flag>=<value>
+  ```
 
 - buf generate options
 
-	```yaml
-	# buf.gen.yaml
-	plugins:
-	# ..
-	- plugin: go_temporal
-		out: gen
-		opt: <flag>=<value>,<flag>=<value>
-		strategy: all
-	```
+  ```yaml
+  # buf.gen.yaml
+  plugins:
+  # ..
+    - plugin: go_temporal
+      out: gen
+      opt: <flag>=<value>,<flag>=<value>
+      strategy: all
+  ```
 
 | flag | type | description | default |
 | :--- | :---: | :--- | :---: |
@@ -471,7 +474,6 @@ via:
 
 | field | type | description |
 | :--- | :---: | :--- |
-| namespace | `string` | default namespace for child workflows, activities |
 | task_queue | `string` | default task queue for all workflows, activities |
 
 *Example*
@@ -481,10 +483,9 @@ syntax="proto3";
 import "temporal/v1/temporal.proto";
 
 service Example {
-	option(temporal.v1.service) = {
-		features: { cli: CLI_FEATURE_ENABLED }
-		task_queue: 'example-v1'
-	};
+  option (temporal.v1.service) = {
+    task_queue: 'example-v1'
+  };
 }
 ```
 
@@ -506,40 +507,48 @@ import "google/protobuf/empty.proto";
 import "temporal/v1/temporal.proto";
 
 service Example {
-	rpc MyWorkflow(MyWorkflowRequest) returns (MyWorkflowResponse) {
-		option (temporal.v1.workflow) = {
-			default_options: {
-				id: 'my-workflow/${! uuid_v4() }'
-				execution_timeout: { seconds: 3600 }
-			}
-			query: { ref: 'MyQuery' }
-			signal: { ref: 'MySignal', start: true }
-		};
-	}
+  rpc MyWorkflow(MyWorkflowRequest) returns (MyWorkflowResponse) {
+    option (temporal.v1.workflow) = {
+      default_options: {
+        id: 'my-workflow/${! uuid_v4() }'
+        execution_timeout: { seconds: 3600 }
+      }
+      query: { ref: 'MyQuery' }
+      signal: { ref: 'MySignal', start: true }
+      update: { ref: 'MyUpdate' }
+    };
+  }
 
-	rpc MyActivity(MyActivityRequest) returns (MyActivityResponse) {
-		option (temporal.v1.activity) = {
-			default_options: {
-				start_to_close_timeout: { seconds: 30 }
-				retry_policy: {
-					max_attempts: 3
-				}
-			}
-		};
-	}
+  rpc MyActivity(MyActivityRequest) returns (MyActivityResponse) {
+    option (temporal.v1.activity) = {
+      default_options: {
+        start_to_close_timeout: { seconds: 30 }
+        retry_policy: {
+          max_attempts: 3
+        }
+      }
+    };
+  }
 
-	rpc MyQuery(MyQueryRequest) returns (MyQueryResponse) {
-		option (temporal.v1.query) = {};
-	}
+  rpc MyQuery(MyQueryRequest) returns (MyQueryResponse) {
+    option (temporal.v1.query) = {};
+  }
 
-	rpc MySignal(MySignalRequest) returns (google.protobuf.Empty) {
-		option (temporal.v1.signal) = {};
-	}
+  rpc MySignal(MySignalRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc MyUpdate(MyUpdateRequest) returns (MyUpdateResponse) {
+    option (temporal.v1.update) = {
+      id: 'my-update/${!uuid_v4()}'
+      validate: true
+    };
+  }
 }
 ```
 
-### ID Expressions
-**Workflows** and **Updates** can specify a default workflow/update ID using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) ID expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
+### Bloblang Expressions
+Default workflow IDs, update IDs, and search attributes can be defined using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
 
 **Example**
 
@@ -555,9 +564,7 @@ import "temporal/v1/temporal.proto";
 service Example {
   rpc SayGreeting(SayGreetingRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
-      default_options {
-        id: 'say-greeting/${! greeting.or("hello").capitalize() }/${! subject.or("world").capitalize() }/${! uuid_v4() }'
-      }
+      id: 'say-greeting/${! greeting.or("hello").capitalize() }/${! subject.or("world").capitalize() }/${! uuid_v4() }'
     };
   }
 }
@@ -591,35 +598,35 @@ This plugin can optionally generate a configurable CLI using [github.com/urfave/
 package main
 
 import (
-	"log"
-	"os"
+  "log"
+  "os"
 
-	example "github.com/cludden/protoc-gen-go-temporal/example"
-	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-	"github.com/urfave/cli/v2"
-	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/worker"
+  example "github.com/cludden/protoc-gen-go-temporal/example"
+  examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+  "github.com/urfave/cli/v2"
+  "go.temporal.io/sdk/client"
+  "go.temporal.io/sdk/worker"
 )
 
 func main() {
-	app, err := examplev1.NewExampleCli(
-		examplev1.NewExampleCliOptions().
-			WithClient(func(cmd *cli.Context) (client.Client, error) {
-				return client.Dial(client.Options{})
-			}).
-			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-				examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
-				examplev1.RegisterExampleActivities(w, &example.Activities{})
-				return w, nil
-			}),
-	)
-	if err != nil {
-		log.Fatalf("error initializing cli: %v", err)
-	}
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
-	}
+  app, err := examplev1.NewExampleCli(
+    examplev1.NewExampleCliOptions().
+      WithClient(func(cmd *cli.Context) (client.Client, error) {
+        return client.Dial(client.Options{})
+      }).
+      WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+        w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+        examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
+        examplev1.RegisterExampleActivities(w, &example.Activities{})
+        return w, nil
+      }),
+  )
+  if err != nil {
+    log.Fatalf("error initializing cli: %v", err)
+  }
+  if err := app.Run(os.Args); err != nil {
+    log.Fatal(err)
+  }
 }
 ```
 

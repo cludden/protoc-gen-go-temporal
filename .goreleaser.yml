@@ -37,9 +37,21 @@ signs:
   - artifacts: checksum
     args:
       - "--batch"
+      - "--no-tty"
+      - "--pinentry-mode=loopback"
       - "--local-user"
       - "{{ .Env.GPG_FINGERPRINT }}" # set this environment variable for your signing key
+      - "--passphrase"
+      - "{{ .Env.GPG_PASSPHRASE }}"
       - "--output"
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
+brews:
+  - repository:
+      owner: cludden
+      name: homebrew-formula
+    homepage: https://github.com/cludden/protoc-gen-go-temporal
+    description: protoc-gen-go_temporal - a protoc plugin for generating Temporal clients, workers, and clis in go from protobuf schemas
+    folder: Formula
+    license: MIT
