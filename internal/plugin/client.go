@@ -932,7 +932,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	if timeout := opts.GetExecutionTimeout(); timeout.IsValid() {
 		fn.If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).
 			Block(
-				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+				g.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 			)
 	}
 
@@ -946,7 +946,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	if timeout := opts.GetTaskTimeout(); timeout.IsValid() {
 		fn.If(g.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).
 			Block(
-				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
+				g.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
 			)
 	}
 

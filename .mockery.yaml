@@ -1,0 +1,16 @@
+with-expecter: true
+packages:
+  go.temporal.io/sdk/internal:
+    config:
+      dir: mocks/go.temporal.io/sdk/clientutils
+      outpkg: clientutils
+      replace-type:
+        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+    interfaces:
+      WorkflowRun: {}
+  go.temporal.io/sdk/client:
+    config:
+      replace-type:
+        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+    interfaces:
+      Client: {}

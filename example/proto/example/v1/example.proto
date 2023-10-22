@@ -16,6 +16,9 @@ service Example {
       execution_timeout: { seconds: 3600 }
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       id: 'create-foo/${!name.slug()}'
+      search_attributes: 
+        'foo = name\n'
+        'created_at = now().ts_tz("UTC")\n'
       query: { ref: 'GetFooProgress' }
       signal: { ref: 'SetFooProgress', start: true }
       update: { ref: 'UpdateFooProgress' }

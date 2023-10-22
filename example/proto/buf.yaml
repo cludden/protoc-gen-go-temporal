@@ -1,8 +1,7 @@
 version: v1
 name: buf.build/cludden/protoc-gen-go-temporal-example
 deps:
-  - buf.build/cludden/protoc-gen-go-temporal:v0.8.0
-  - buf.build/googleapis/googleapis
+  - buf.build/cludden/protoc-gen-go-temporal
 breaking:
   use:
     - FILE
