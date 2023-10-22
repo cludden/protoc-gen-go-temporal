@@ -880,7 +880,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 				if child {
 					returnVals.Panic(g.Err())
 				} else {
-					returnVals.Return(g.Nil(), g.Err())
+					returnVals.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow: %%w", workflow)), g.Err()))
 				}
 			})
 			b.Id("opts").Dot(idFieldName).Op("=").Id("id")
