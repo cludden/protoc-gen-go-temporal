@@ -17,6 +17,7 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
 		- [ID Expressions](#id-expressions)
 	- [CLI](#cli)
 	- [Test Client](#test-client)
+	- [Documentation](#documentation)
 	- [License](#license)
 
 ## How it works
@@ -627,6 +628,10 @@ func main() {
 The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [tests](./test/simple/main_test.go) for example usage.
 
 **_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
+
+## Documentation
+
+- [Generated code reference](./docs/generated.md)
 
 ## License
 Licensed under the [MIT License](LICENSE.md)  

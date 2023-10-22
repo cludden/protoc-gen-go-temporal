@@ -1,0 +1,1920 @@
+# Generated Code Reference
+
+- [Generated Code Reference](#generated-code-reference)
+- [Constants \& Variables](#constants--variables)
+  - [ActivityName](#activityname)
+  - [QueryName](#queryname)
+  - [SignalName](#signalname)
+  - [TaskQueue](#taskqueue)
+  - [UpdateIDExpression](#updateidexpression)
+  - [UpdateName](#updatename)
+  - [WorkflowIDExpression](#workflowidexpression)
+  - [WorkflowName](#workflowname)
+  - [WorkflowSearchAttributesMapping](#workflowsearchattributesmapping)
+- [Client](#client)
+  - [Interface](#interface)
+    - [NewClient function](#newclient-function)
+    - [NewClientWithOptions function](#newclientwithoptions-function)
+    - [GetWorkflow method](#getworkflow-method)
+    - [Query method](#query-method)
+    - [Signal method](#signal-method)
+    - [SignalWithStartWorkflow method](#signalwithstartworkflow-method)
+    - [SignalWithStartWorkflow method (asynchronous)](#signalwithstartworkflow-method-asynchronous)
+    - [Update method](#update-method)
+    - [Update method (asynchronous)](#update-method-asynchronous)
+    - [Workflow method](#workflow-method)
+    - [Workflow method (asynchronous)](#workflow-method-asynchronous)
+  - [UpdateHandle interface](#updatehandle-interface)
+    - [Get method](#get-method)
+    - [RunID method](#runid-method)
+    - [UpdateID method](#updateid-method)
+    - [WorkflowID method](#workflowid-method)
+  - [WorkflowOptions struct](#workflowoptions-struct)
+    - [NewWorkflowOptions function](#newworkflowoptions-function)
+    - [WithStartWorkflowOptions method](#withstartworkflowoptions-method)
+  - [WorkflowRun interface](#workflowrun-interface)
+    - [Cancel method](#cancel-method)
+    - [Get method](#get-method-1)
+    - [ID method](#id-method)
+    - [Query method](#query-method-1)
+    - [RunID method](#runid-method-1)
+    - [Signal method](#signal-method-1)
+    - [Terminate method](#terminate-method)
+    - [Update method](#update-method-1)
+    - [Update method (asynchronous)](#update-method-asynchronous-1)
+- [Worker](#worker)
+  - [Activities interface](#activities-interface)
+  - [RegisterActivities function](#registeractivities-function)
+  - [RegisterActivity function](#registeractivity-function)
+  - [Activity function](#activity-function)
+  - [ActivityAsync function](#activityasync-function)
+  - [ActivityLocal function](#activitylocal-function)
+  - [ActivityLocalAsync function](#activitylocalasync-function)
+  - [ActivityFuture struct](#activityfuture-struct)
+    - [Get method](#get-method-2)
+    - [Select method](#select-method)
+  - [ActivityOptions struct](#activityoptions-struct)
+    - [NewActivityOptions function](#newactivityoptions-function)
+    - [WithActivityOptions method](#withactivityoptions-method)
+  - [LocalActivityOptions struct](#localactivityoptions-struct)
+    - [Local method](#local-method)
+    - [NewLocalActivityOptions function](#newlocalactivityoptions-function)
+    - [WithLocalActivityOptions method](#withlocalactivityoptions-method)
+  - [Signal struct](#signal-struct)
+    - [Receive method](#receive-method)
+    - [ReceiveAsync method](#receiveasync-method)
+    - [Select method](#select-method-1)
+  - [SignalExternal function](#signalexternal-function)
+  - [SignalExternalAsync function](#signalexternalasync-function)
+  - [Workflows interface](#workflows-interface)
+  - [RegisterWorkflows function](#registerworkflows-function)
+  - [RegisterWorkflow function](#registerworkflow-function)
+  - [Workflow interface](#workflow-interface)
+  - [WorkflowChild function](#workflowchild-function)
+  - [WorkflowChildAsync function](#workflowchildasync-function)
+  - [WorkflowChildOptions struct](#workflowchildoptions-struct)
+    - [NewWorkflowChildOptions function](#newworkflowchildoptions-function)
+    - [WithChildWorkflowOptions method](#withchildworkflowoptions-method)
+  - [WorkflowInput struct](#workflowinput-struct)
+  - [WorkflowChildRun struct](#workflowchildrun-struct)
+    - [Get method](#get-method-3)
+    - [Select method](#select-method-2)
+    - [SelectStart method](#selectstart-method)
+    - [Signal method](#signal-method-2)
+    - [SignalAsync method](#signalasync-method)
+    - [WaitStart method](#waitstart-method)
+
+# Constants & Variables
+
+## ActivityName
+
+```go
+const <Activity>ActivityName string
+```
+
+String constants defining the canonical name for each activity
+
+[top](#generated-code-reference)
+
+## QueryName
+
+```go
+const <Query>QueryName string
+```
+
+String constants defining the canonical name for each query
+
+[top](#generated-code-reference)
+
+## SignalName
+
+```go
+const <Signal>SignalName string
+```
+
+String constants defining the canonical name for each signal
+
+[top](#generated-code-reference)
+
+## TaskQueue
+
+```go
+const <Service>TaskQueue string
+```
+
+String constants defining the default task queue name for each service that defines the `task_queue` option
+
+[top](#generated-code-reference)
+
+## UpdateIDExpression
+
+```go
+var <Update>IDExpression *expression.Expression
+```
+
+Expression variable referencing the parsed [ID expression](../README.md#id-expressions) for each update that defines the `id` option
+
+[top](#generated-code-reference)
+
+## UpdateName
+
+```go
+const <Update>UpdateName string
+```
+
+String constants defining the canonical name for each update
+
+[top](#generated-code-reference)
+
+## WorkflowIDExpression
+
+```go
+var <Workflow>IDExpression *expression.Expression
+```
+
+Expression variable referencing the parsed [ID expression](../README.md#id-expressions) for each workflow that defines the `id` option
+
+[top](#generated-code-reference)
+
+## WorkflowName
+
+```go
+const <Workflow>WorkflowName string
+```
+
+String constant defining the canonical name for each workflow
+
+[top](#generated-code-reference)
+
+## WorkflowSearchAttributesMapping
+
+```go
+var <Workflow>SearchAttributesMapping *expression.Expression
+```
+
+Expression variable referencing the parsed search attributes expression for each workflow that defines the `search_attributes` option
+
+[top](#generated-code-reference)
+
+
+
+# Client
+
+## Interface
+
+```go
+type <Service>Client interface {}
+```
+
+Interface describing the generated client for each service. A generated client provides typed methods for executing a given service's workflows, queries, signals, and updates.
+
+**Example**
+```protobuf
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: 'example-v1'
+  };
+
+  rpc Hello(HelloRequest) returns (HelloResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'hello/${!uuid_v4()}'
+      execution_timeout: { seconds: 5 }
+    };
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  Hello(context.Context, *HelloRequest, ...*HelloOptions) (*HelloResponse, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### NewClient function
+
+```go
+func New<Service>Client(client.Client) <Service>Client
+```
+
+Constructor function that returns a new [client interface](#interface) implementation for the underlying Temporal client
+
+**Example**
+```protobuf
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: 'example-v1'
+  };
+
+  rpc Hello(HelloRequest) returns (HelloResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'hello/${!uuid_v4()}'
+      execution_timeout: { seconds: 5 }
+    };
+  }
+}
+```
+
+```go
+func main() {
+  c, _ := client.Dial(client.Options{})
+  example := examplev1.NewExampleClient(c)
+  resp, _ := example.Hello(context.Background(), &examplev1.HelloRequest{})
+  log.Printf("hello workflow response: %s", resp.String())
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### NewClientWithOptions function
+
+```go
+func New<Service>ClientWithOptions(client.Client, client.Options) (<Service>Client, error)
+```
+
+Constructor function that returns a new [client interface](#interface) implementation for the underlying Temporal client and provided client options.
+
+[top](#generated-code-reference)
+
+---
+
+### GetWorkflow method
+
+```go
+func (<Service>Client) <Workflow>With<Signal>Async(
+  ctx context.Context,
+  workflowID string,
+  runID string,
+) (<Workflow>Run, error)
+```
+
+Returns a [WorkflowRun](#workflowrun-interface) for an existing workflow execution. If an empty string (`""`) is provided for `runID`, the latest workflow execution will be used.
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (FooResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  GetFoo(ctx context.Context, workflowID, runID string) (FooRun, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Query method
+
+```go
+func (<Service>Client) <Query>(
+  ctx context.Context, 
+  workflowId string,
+  runId string,
+  [req *<Query>Request],
+) ([*<Query>Response], error)
+```
+
+Executes the corresponding query on an existing workflow execution using the configured default options. Passing an empty string as the `runID` will target the *latest* workflow execution with `workflowID`.
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (FooResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  Foo(ctx context.Context, workflowID, runID string) error
+  Bar(ctx context.Context, workflowID, runID string, req *BarRequest) (*BarResponse, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Signal method
+
+```go
+func (<Service>Client) <Signal>(
+  ctx context.Context, 
+  workflowID string,
+  runID string,
+  [req *<Signal>Request],
+) error
+```
+
+Executes the corresponding signal on an existing workflow execution using the configured default options
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  Foo(ctx context.Context, workflowID, runID string) error
+  Bar(ctx context.Context, workflowID, runID string, req *BarRequest) error
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### SignalWithStartWorkflow method
+
+```go
+func (<Service>Client) <Workflow>With<Signal>(
+  ctx context.Context,
+  [req *<Workflow>Request],
+  [signal *<Signal>Request],
+  opts ...*<Workflow>Options,
+) ([*<Workflow>Response], error)
+```
+
+Executes the corresponding signal against an existing workflow execution using the configured default options, starting it if necessary, and blocking until the workflow completes or errors
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (FooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Bar', start: true }
+    };
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  FooWithBar(
+    ctx context.Context, 
+    req *FooRequest, 
+    signal *BarRequest, 
+    opts ...*FooOptions,
+  ) (*FooResponse, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### SignalWithStartWorkflow method (asynchronous)
+
+```go
+func (<Service>Client) <Workflow>With<Signal>Async(
+  ctx context.Context,
+  [req *<Workflow>Request],
+  [signal *<Signal>Request],
+  opts ...*<Workflow>Options,
+) (<Workflow>Run, error)
+```
+
+Executes the corresponding signal against an existing workflow execution using the configured default options, starting it if necessary, and returning a [WorkflowRun](#workflowrun-interface) for the workflow execution
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (FooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Bar', start: true }
+    };
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  FooWithBarAsync(
+    ctx context.Context, 
+    req *FooRequest, 
+    signal *BarRequest, 
+    opts ...*FooOptions,
+  ) (FooRun, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Update method
+
+```go
+func (<Service>Client) <Update>(
+  ctx context.Context, 
+  workflowID string, 
+  runID string, 
+  [req *<Update>Request],
+  opts ...*<Update>Options,
+) ([*<Update>Response], error)
+```
+
+Executes the corresponding update on an existing workflow execution using the configured default options, blocking until update completes or errors
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc Baz(google.protobuf.Empty) returns (BazResponse) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc Qux(QuxRequest) returns (QuxResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  Foo(ctx context.Context, workflowID, runID string, opts ...*FooOptions) error
+  Bar(ctx context.Context, workflowID, runID string, req *BarRequest, opts ...*BarOptions) error
+  Baz(ctx context.Context, workflowID, runID string, opts ...*BazOptions) (*BazResponse, error)
+  Qux(ctx context.Context, workflowID, runID string, req *QuxRequest, opts ...*QuxOptions) (*QuxResponse, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Update method (asynchronous)
+
+```go
+func (<Service>Client) <Update>Async(
+  ctx context.Context, 
+  workflowID string, 
+  runID string, 
+  [req *<Update>Request],
+  opts ...*<Update>Options,
+) (<Update>Handle, error)
+```
+
+Executes the corresponding update on an existing workflow execution using the configured default options, returning an [UpdateHandle](#updatehandle-interface) for the update execution
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (FooResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  FooAsync(ctx context.Context, workflowID, runID string, req *FooRequest, opts ...*FooOptions) (FooHandle, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Workflow method
+
+```go
+func (<Service>Client) <Workflow>(
+  ctx context.Context, 
+  [req *<Workflow>Request],
+  opts ...*<Workflow>Options,
+) ([*<Workflow>Response], error)
+```
+
+Executes the corresponding workflow using the configured default options, blocking until workflow completes or errors
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Baz(google.protobuf.Empty) returns (BazResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Qux(QuxRequest) returns (QuxResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  Foo(ctx context.Context, opts ...*FooOptions) error
+  Bar(ctx context.Context, req *BarRequest, opts ...*BarOptions) error
+  Baz(ctx context.Context, opts ...*BazOptions) (*BazResponse, error)
+  Qux(ctx context.Context, req *QuxRequest, opts ...*QuxOptions) (*QuxResponse, error)
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Workflow method (asynchronous)
+
+```go
+func (<Service>Client) <Workflow>Async(
+  ctx context.Context, 
+  [req *<Workflow>Request],
+  opts ...*<Workflow>Options,
+) (<Workflow>Run, error)
+```
+
+Executes the corresponding workflow using the configured default options, returning a [WorkflowRun](#workflowrun-interface) for the workflow execution
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (FooResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+```go
+type ExampleClient interface {
+  FooAsync(ctx context.Context, workflowID, runID string, req *FooRequest, opts ...*FooOptions) (FooRun, error)
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## UpdateHandle interface
+
+```go
+type <Update>Handle interface {}
+```
+
+Interface describing an update execution handle returned by asynchronous update methods
+
+[top](#generated-code-reference)
+
+---
+
+### Get method
+
+```go
+func (<Update>Handle) Get(ctx context.Context) ([*<Update>Response], error)
+```
+Returns the update result, blocking until update completes or errors
+
+[top](#generated-code-reference)
+
+---
+
+### RunID method
+
+```go
+func (<Update>Handle) RunID() string
+```
+
+Returns the workflow execution ID
+
+[top](#generated-code-reference)
+
+---
+
+### UpdateID method
+
+```go
+func (<Update>Handle) UpdateID() string
+```
+
+Returns the update ID
+
+[top](#generated-code-reference)
+
+---
+
+### WorkflowID method
+
+```go
+func (<Update>Handle) WorkflowID() string
+```
+
+Returns the workflow ID
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowOptions struct
+
+```go
+type <Workflow>Options struct {}
+```
+
+Optional configuration for workfow methods
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 60 }
+    };
+  }
+}
+```
+
+```go
+func example(ctx context.Context, example examplev1.ExampleClient) error {
+  return example.Foo(ctx, examplev1.NewFooOptions().
+    WithStartWorkflowOptions(client.StartWorkflowOptions{
+      ExecutionTimeout: time.Seconds*30
+    }),
+  )
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### NewWorkflowOptions function
+
+```go
+func New<Workflow>Options() *<Workflow>Options
+```
+
+Returns a new workflow options value for the corresponding workflow
+
+[top](#generated-code-reference)
+
+---
+
+### WithStartWorkflowOptions method
+
+```go
+func (*<Workflow>Options) WithStartWorkflowOptions(client.StartWorkflowOptions) *<Workflow>Options
+```
+
+Sets dynamic workflow options for an individual workflow execution
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowRun interface
+
+```go
+type <Workflow>Run interface {}
+```
+
+Interface describing a workflow execution handle returned by asynchronous workflow methods
+
+[top](#generated-code-reference)
+
+---
+
+### Cancel method
+
+```go
+type (<Workflow>Run) Cancel(context.Context) error
+```
+
+Cancels the workflow execution
+
+[top](#generated-code-reference)
+
+---
+
+### Get method
+
+```go
+type (<Workflow>Run) Get(context.Context) ([*<Workflow>Response], error)
+```
+
+Returns the workflow result, blocking until workflow completes or errors
+
+[top](#generated-code-reference)
+
+---
+
+### ID method
+
+```go
+type (<Workflow>Run) ID() string
+```
+
+Returns the workflow ID
+
+[top](#generated-code-reference)
+
+---
+
+### Query method
+
+```go
+type (<Workflow>Run) <Query>(context.Context, [*<Query>Request]) ([*<Query>Response], error)
+```
+
+Executes the corresponding query against the workflow execution using the configured default options
+
+[top](#generated-code-reference)
+
+---
+
+### RunID method
+
+```go
+type (<Workflow>Run) RunID() string
+```
+
+Returns the workflow execution ID
+
+[top](#generated-code-reference)
+
+---
+
+### Signal method
+
+```go
+type (<Workflow>Run) <Signal>(context.Context, [*<Signal>Request]) error
+```
+
+Executes the corresponding signal against the workflow execution using the configured default options
+
+[top](#generated-code-reference)
+
+---
+
+### Terminate method
+
+```go
+type (<Workflow>Run) Terminate(
+  ctx context.Context,
+  reason string,
+  details ...any,
+) error
+```
+
+Terminates the workflow execution
+
+[top](#generated-code-reference)
+
+---
+
+### Update method
+
+```go
+type (<Workflow>Run) <Update>(
+  context.Context, 
+  [*<Update>Request],
+  ...*<Update>Options,
+) ([*<Update>Response], error)
+```
+
+Executes the corresponding update against the workflow execution using the configured default options, blocking until the update completes or errors
+
+[top](#generated-code-reference)
+
+---
+
+### Update method (asynchronous)
+
+```go
+type (<Workflow>Run) <Update>(
+  context.Context, 
+  [*<Update>Request],
+  ...*<Update>Options,
+) (<Update>Handle, error)
+```
+
+Executes the corresponding query against the workflow execution using the configured default options, returning an [UpdateHandle](#updatehandle-interface) for the update execution
+
+[top](#generated-code-reference)
+
+# Worker
+
+## Activities interface
+
+```go
+type <Service>Activities interface {}
+```
+
+Interface used to describe the required Activities struct implementation
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc Baz(google.protobuf.Empty) returns (BazResponse) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc Qux(QuxRequest) returns (QuxResponse) {
+    option (temporal.v1.activity) = {};
+  }
+}
+```
+
+```go
+type ExampleActivities interface {
+  Foo(context.Context) error
+  Bar(context.Context, *BarRequest) error
+  Baz(context.Context) (*BazResponse, error)
+  Qux(context.Context, *QuxRequest) (*QuxResponse, error)
+}
+```
+
+[top](#generated-code-reference)
+
+## RegisterActivities function
+
+```go
+func Register<Service>Activities(worker.ActivityRegistry, <Service>Activities)
+```
+
+Registers all service activities with the provided registry
+
+[top](#generated-code-reference)
+
+## RegisterActivity function
+
+```go
+func Register<Activity>Activity(
+  worker.ActivityRegistry, 
+  func(context.Context, [*<Activity>Request]) ([*<Activity>Response], error),
+)
+```
+
+Registers the activity with the provided registry
+
+[top](#generated-code-reference)
+
+## Activity function
+
+```go
+func <Activity>(
+  workflow.Context, 
+  [*<Activity>Request],
+  ...*<Activity>ActivityOptions,
+) ([*<Activity>Response], error)
+```
+
+Executes the corresponding activity, blocking until activity completes or errors
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.activity) = {};
+  }
+}
+```
+
+```go
+type (
+  Activities struct {}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (a *Activities) Bar(ctx context.Context, req *BarRequest) (*BarResponse, error) {
+  return nil, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  bar, err := examplev1.Bar(ctx, &examplev1.BarRequest{})
+  workflow.GetLogger(ctx).Info("executed bar activity", "result", bar)
+  return err
+}
+```
+
+[top](#generated-code-reference)
+
+## ActivityAsync function
+
+```go
+func <Activity>Async(
+  workflow.Context, 
+  [*<Activity>Request],
+  ... *<Activity>ActivityOptions,
+) (<Activity>Future, error)
+```
+
+Executes the corresponding activity, returning an [ActivityFuture](#activityfuture-interface) for the activity execution
+
+[top](#generated-code-reference)
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.activity) = {};
+  }
+}
+```
+
+```go
+type (
+  Activities struct {}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (a *Activities) Bar(ctx context.Context, req *BarRequest) (*BarResponse, error) {
+  return nil, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  f, err := examplev1.BarAsync(ctx, &examplev1.BarRequest{})
+  if err != nil {
+    return fmt.Errorf("error starting bar activity: %w", err)
+  }
+  bar, err := f.Get(ctx)
+  workflow.GetLogger(ctx).Info("executed bar activity", "result", bar)
+  return err
+}
+```
+
+[top](#generated-code-reference)
+
+## ActivityLocal function
+
+```go
+func <Activity>Local(
+  workflow.Context, 
+  [*<Activity>Request],
+  ... *<Activity>ActivityLocalOptions,
+) ([*<Activity>Response], error)
+```
+
+Executes the corresponding activity as a [local activity](https://docs.temporal.io/activities#local-activity), blocking until local activity completes or errors
+
+[top](#generated-code-reference)
+
+## ActivityLocalAsync function
+
+```go
+func <Activity>LocalAsync(
+  workflow.Context, 
+  [*<Activity>Request],
+  ... *<Activity>ActivityLocalOptions,
+) (<Activity>Future, error)
+```
+
+Executes the corresponding activity as a [local activity](https://docs.temporal.io/activities#local-activity), returning an [ActivityFuture](#activityfuture-interface) for the local activity execution
+
+[top](#generated-code-reference)
+
+
+
+## ActivityFuture struct
+
+```go
+type <Activity>Future struct {
+  Future workflow.Future
+}
+```
+
+Struct providing an interface execution handle returned by asynchronous activity methods
+
+[top](#generated-code-reference)
+
+---
+
+### Get method
+
+```go
+func (*<Activity>Future) Get(context.Context) ([*<Activity>Response], error)
+```
+
+Returns the activity result, blocking until activity completes or errors
+
+[top](#generated-code-reference)
+
+---
+
+### Select method
+
+```go
+func (*<Activity>Future) Select(workflow.Selector, func(<Activity>Future)) workflow.Selector
+```
+
+Registers the activity execution callback with the given selector
+
+[top](#generated-code-reference)
+
+## ActivityOptions struct
+
+```go
+type <Activity>ActivityOptions struct {}
+```
+
+Optional configuration for activity methods
+
+[top](#generated-code-reference)
+
+---
+
+### NewActivityOptions function
+
+```go
+func New<Activity>ActivityOptions() *<Activity>ActivityOptions
+```
+
+Returns a new activity options value
+
+[top](#generated-code-reference)
+
+---
+
+### WithActivityOptions method
+
+```go
+func (*<Activity>ActivityOptions) WithActivityOptions(workflow.ActivityOptions) *<Activity>ActivityOptions
+```
+
+Sets dynamic activity options for an individual activity execution
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.activity) = {};
+  }
+}
+```
+
+```go
+type (
+  Activities struct {}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (a *Activities) Bar(ctx context.Context, req *BarRequest) (*BarResponse, error) {
+  return nil, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  opts := workflow.GetActivityOptions(ctx)
+  opts.StartToCloseTimeout = time.Second*30
+  bar, err := examplev1.Bar(
+    ctx, 
+    &examplev1.BarRequest{}, 
+    examplev1.NewBarActivityOptions().
+      WithActivityOptions(opts),
+  )
+  workflow.GetLogger(ctx).Info("executed bar activity", "result", bar)
+  return err
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## LocalActivityOptions struct
+
+```go
+type <Activity>LocalActivityOptions struct {}
+```
+
+Optional configuration for local activity methods
+
+[top](#generated-code-reference)
+
+---
+
+### Local method
+
+```go
+func (*<Activity>LocalActivityOptions) Local(
+  func(context.Context, [*<Activity>Request]) ([*<Activity>Response], error)
+) *<Activity>LocalActivityOptions
+```
+
+Sets the activity definition to use for the local execution
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.activity) = {};
+  }
+}
+```
+
+```go
+type (
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  bar, err := examplev1.BarLocal(
+    ctx, 
+    &examplev1.BarRequest{}, 
+    examplev1.NewBarActivityOptions().
+      Local(func(ctx context.Context, req *BarRequest) (*BarResponse, error) {
+        return nil, nil
+      }),
+  )
+  workflow.GetLogger(ctx).Info("executed local bar activity", "result", bar)
+  return err
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### NewLocalActivityOptions function
+
+```go
+func New<Activity>LocalActivityOptions() *<Activity>LocalActivityOptions
+```
+
+Returns a new activity local options value
+
+[top](#generated-code-reference)
+
+---
+
+### WithLocalActivityOptions method
+
+```go
+func (*<Activity>LocalActivityOptions) WithLocalActivityOptions(workflow.LocalActivityOptions) *<Activity>LocalActivityOptions
+```
+
+Sets dynamic activity options for an individual local activity execution
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.activity) = {};
+  }
+}
+```
+
+```go
+type (
+  Activities struct {}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (a *Activities) Bar(ctx context.Context, req *BarRequest) (*BarResponse, error) {
+  return nil, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  opts := workflow.GetLocalActivityOptions(ctx)
+  opts.StartToCloseTimeout = time.Second*30
+  bar, err := examplev1.BarLocal(
+    ctx, 
+    &examplev1.BarRequest{}, 
+    examplev1.NewBarActivityOptions().
+      WithLocalActivityOptions(opts),
+  )
+  workflow.GetLogger(ctx).Info("executed local bar activity", "result", bar)
+  return err
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## Signal struct
+
+```go
+type <Signal>Signal struct {
+  Channel workflow.ReceiveChannel
+}
+```
+
+Struct providing types and methods to simplify interacting with the corresponding signal from a workflow definition
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Bar' }
+    };
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type (
+  Workflows struct{}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (wfs *Workflows) Foo(ctx workflow.Context, input *examplev1.FooInput) (examplev1.FooWorkflow, error) {
+  return &FooWorkflow{input}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  workflow.NewSelector(ctx).
+    AddReceive(w.Bar.Channel, func(workflow.ReceiveChannel, bool) {
+      bar := w.Bar.ReceiveAsync()
+      workflow.GetLogger(ctx).Info("received bar signal", "signal", bar)
+    }).
+    Select(ctx)
+  return nil
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Receive method
+
+```go
+func (*<Signal>Signal) Receive(workflow.Context) ([*<Signal>Request], bool)
+```
+
+Returns the next signal request and boolean indicating whether the channel is closed, blocking until the signal is received.
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Bar' }
+    };
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type (
+  Workflows struct{}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (wfs *Workflows) Foo(ctx workflow.Context, input *examplev1.FooInput) (examplev1.FooWorkflow, error) {
+  return &FooWorkflow{input}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  bar, _ := w.Bar.Receive(ctx)
+  workflow.GetLogger(ctx).Info("received bar signal", "signal", bar)
+  return nil
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### ReceiveAsync method
+
+```go
+func (*<Signal>Signal) ReceiveAsync() (*<Signal>Request | bool)
+```
+
+Returns the next signal request if available (bool if signal has no request payload), or nil otherwise.
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Bar', start: true }
+    };
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type (
+  Workflows struct{}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+)
+
+func (wfs *Workflows) Foo(ctx workflow.Context, input *examplev1.FooInput) (examplev1.FooWorkflow, error) {
+  return &FooWorkflow{input}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  bar := w.Bar.ReceiveAsync()
+  if bar != nil {
+    workflow.GetLogger(ctx).Info("workflow started with bar signal", "signal", bar)
+  }
+  return nil
+}
+```
+
+[top](#generated-code-reference)
+
+---
+
+### Select method
+
+```go
+func (*<Signal>Signal) Select(
+  workflow.Selector,
+  func([*<Signal>Request]),
+) workflow.Selector
+```
+
+Registers the provided signal callback with the provided selector
+
+[top](#generated-code-reference)
+
+
+
+## SignalExternal function
+
+```go
+func <Signal>External(
+  ctx workflow.Context, 
+  workflowID string,
+  runID string,
+  signal [*<Signal>Request],
+) error
+```
+
+Sends the corresponding signal to an existing workflow execution.
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Baz' }
+    };
+  }
+
+  rpc Baz(BazRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+```go
+type (
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+
+  BarWorkflow struct {
+    *examplev1.BarInput
+  }
+)
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  return examplev1.BazExternal(ctx, "barID", "", &examplev1.BazRequest{})
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  baz, _ := w.Baz.Receive(ctx)
+  workflow.GetLogger(ctx).Info("received baz signal", "signal", baz)
+  return nil
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## SignalExternalAsync function
+
+```go
+func <Signal>ExternalAsync(
+  ctx workflow.Context, 
+  workflowID string,
+  runID string,
+  signal [*<Signal>Request],
+) workflow.Future
+```
+
+Sends the corresponding signal to an existing workflow execution, returning a workflow future.
+
+[top](#generated-code-reference)
+
+
+
+## Workflows interface
+
+```go
+type <Service>Workflows interface {}
+```
+
+Interface used to describe the required Workflows struct implementation
+
+**Example**
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+```go
+type ExampleWorkflows interface {
+  Foo(context.Context, *examplev1.FooInput) (examplev1.FooWorkflow, error)
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## RegisterWorkflows function
+
+```go
+func Register<Service>Workflows(worker.WorkflowRegistry, examplev1.<Service>Workflows)
+```
+
+Registers all service workflows with the provided registry
+
+[top](#generated-code-reference)
+
+
+
+## RegisterWorkflow function
+
+```go
+func Register<Workflow>Workflow(
+  worker.WorkflowRegistry,
+  func(workflow.Context, *examplev1.<Workflow>Input) (examplev1.<Workflow>Workflow, error)
+)
+```
+
+Registers the workflow with the provided registry 
+
+[top](#generated-code-reference)
+
+
+
+## Workflow interface
+
+```go
+type <Workflow>Workflow {
+  Execute(workflow.Context) ([*<Workflow>Response], error)
+  <Query>([*<Query>Request]) (*<Query>Response, error)
+  <Update>([*<Update>Request]) ([*<Update>Response], error)
+  Validate<Update>([*<Update>Request]) error
+}
+```
+
+Interface used to describe a required Workflow struct implementation
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (FooResponse) {
+    option (temporal.v1.workflow) = {
+      query: { ref: 'QueryFoo' }
+      update: { ref: 'UpdateFoo' }
+    };
+  }
+
+  rpc QueryFoo(QueryFooRequest) returns (QueryFooResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc UpdateFoo(UpdateFooRequest) returns (UpdateFooResponse) {
+    option (temporal.v1.update) = {
+      validate: true
+    };
+  }
+}
+```
+
+```go
+type FooWorkflow struct {
+  *examplev1.FooInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooResponse, error) {
+  return &examplev1.FooResponse{}, nil
+}
+
+func (w *FooWorkflow) QueryFoo(req *examplev1.QueryFooRequest) (*examplev1.QueryFooResponse, error) {
+  return &examplev1.QueryFooResponse{}, nil
+}
+
+func (w *FooWorkflow) UpdateFoo(ctx workflow.Context, req *examplev1.UpdateFooRequest) (*examplev1.UpdateFooResponse, error) {
+  return &examplev1.UpdateFooResponse{}, nil
+}
+
+func (w *FooWorkflow) UpdateFoo(ctx workflow.Context, req *examplev1.UpdateFooRequest) error {
+  return nil
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowChild function
+
+```go
+func <Workflow>Child(
+  workflow.Context,
+  [*<Workflow>Request], 
+  ...*<Workflow>ChildOptions,
+) ([*<Workflow>Response], error)
+```
+
+Executes the corresponding child workflow, blocking until child workflow completes or errors
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarRequest) returns (BarResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+```go
+type (
+  FooWorkflow struct {
+    *examplev1.FooInput
+  }
+
+  BarWorkflow struct {
+    *examplev1.BarInput
+  }
+)
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  bar, err := examplev1.BarChild(ctx, &examplev1.BarRequest{})
+  workflow.GetLogger(ctx).Info("executed bar child workflow", "response", bar)
+  return err
+}
+
+func (w *BarWorkflow) Execute(ctx workflow.Context) (*examplev1.BarResponse, error) {
+  return &examplev1.BarResponse{}, nil
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowChildAsync function
+
+```go
+func <Workflow>Child(
+  workflow.Context,
+  [*<Workflow>Request], 
+  ...*<Workflow>ChildOptions,
+) ([*<Workflow>ChildRun], error)
+```
+
+Executes the corresponding child workflow, returning a [WorkflowChildRun](#workflowchildrun-struct) for the child workflow execution
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowChildOptions struct
+
+```go
+type <Workflow>ChildOptions struct {}
+```
+
+Optional configuration for child workfow functions
+
+[top](#generated-code-reference)
+
+---
+
+### NewWorkflowChildOptions function
+
+```go
+func New<Workflow>ChildOptions() *<Workflow>ChildOptions
+```
+
+Returns a new workflow child options value for the corresponding workflow
+
+[top](#generated-code-reference)
+
+---
+
+### WithChildWorkflowOptions method
+
+```go
+func (*<Workflow>Options) WithChildWorkflowOptions(workflow.ChildWorkflowOptions) *<Workflow>ChildOptions
+```
+
+Sets dynamic workflow options for an individual workflow execution
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowInput struct
+
+```go
+type <Workflow>Input struct {
+  [Req *<Workflow>Request]
+  [<Signal> *<Signal>Signal]
+}
+```
+
+Struct that contains references to workflow inputs and signals
+
+**Example**
+
+```protobuf
+service Example {
+  rpc Foo(FooRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Bar' }
+      signal: { ref: 'Baz' }
+    };
+  }
+
+  rpc Bar(BarRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Baz(BazRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+```go
+type (
+  Workflows struct {}
+
+  FooWorkflow struct {
+    *examplev1.FooInput
+    log log.Logger
+  }
+)
+
+func (w *Workflows) Foo(ctx workflow.Context, input *examplev1.FooInput) (examplev1.FooWorkflow, error) {
+  return &FooWorkflow{input, workflow.GetLogger(ctx)}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+  w.log.Info("starting foo workflow", "request", w.Req)
+  for bar, baz := 0, 0; bar + baz < 2; {
+    sel := workflow.NewSelector(ctx)
+    if bar == 0 {
+      w.Bar.Select(ctx, func(signal *examplev1.BarRequest) {
+        w.log.Info("received bar signal", "signal", signal)
+        bar++
+      })
+    }
+    if baz == 0 {
+      w.Baz.Select(ctx, func(signal *examplev1.BazRequest) {
+        w.log.Info("received baz signal", "signal", signal)
+        baz++
+      })
+    }
+    sel.Select(ctx)
+  }
+  return nil
+}
+```
+
+[top](#generated-code-reference)
+
+
+
+## WorkflowChildRun struct
+
+```go
+type <Workflow>ChildRun struct {
+  Future workflow.ChildWorkflowFuture
+}
+```
+
+Struct providing a child workflow execution handle returned by asynchronous child workflow methods
+
+[top](#generated-code-reference)
+
+---
+
+### Get method
+
+```go
+func (*<Workflow>ChildRun) Get(workflow.Context) ([*<Workflow>Response], error)
+```
+
+Returns the child workflow result, blocking until child workflow completes or errors
+
+[top](#generated-code-reference)
+
+---
+
+### Select method
+
+```go
+func (*<Workflow>ChildRun) Select(
+  workflow.Selector,
+  func(*<Workflow>ChildRun)
+) workflow.Selector
+```
+
+Registers the child workflow execution and a callback with the provided selector
+
+[top](#generated-code-reference)
+
+---
+
+### SelectStart method
+
+```go
+func (*<Workflow>ChildRun) Select(
+  workflow.Selector,
+  func(*<Workflow>ChildRun)
+) workflow.Selector
+```
+
+Registers the start of the child workflow execution and a callback with the provided selector
+
+[top](#generated-code-reference)
+
+---
+
+### Signal method
+
+```go
+func (*<Workflow>ChildRun) <Signal>(workflow.Context, [*<Signal>Request]) error
+```
+
+Sends the corresponding signal to the child workflow execution
+
+[top](#generated-code-reference)
+
+---
+
+### SignalAsync method
+
+```go
+func (*<Workflow>ChildRun) <Signal>(workflow.Context, [*<Signal>Request]) workflow.Future
+```
+
+Sends the corresponding signal to the child workflow execution
+
+[top](#generated-code-reference)
+
+---
+
+### WaitStart method
+
+```go
+func (*<Workflow>ChildRun) WaitStart(workflow.Context) (*workflow.Execution, error)
+```
+
+Blocks until the child workflow execution has started
+
+[top](#generated-code-reference)
