@@ -621,25 +621,6 @@ func (svc *Service) genTestClientUpdateHandleImplWorkflowIDMethod(f *g.File, upd
 		)
 }
 
-// genTestClientWorkflowGetMethod generates a noop TestClient Get<Workflow> method
-func (svc *Service) genTestClientWorkflowGetMethod(f *g.File, workflow string) {
-	f.Commentf("Get%s retrieves a test %sRun", workflow, workflow)
-	f.Func().
-		Params(g.Id("c").Op("*").Id(toCamel("Test%sClient", svc.Service.GoName))).
-		Params(
-			g.Qual("context", "Context"),
-			g.String(),
-			g.String(),
-		).
-		Params(
-			g.Id(fmt.Sprintf("%sRun", workflow)),
-			g.Error(),
-		).
-		Block(
-			g.Return(g.Op("&").Id(fmt.Sprintf("test%sRun", workflow)).Values(g.Id("env").Op(":").Id("c").Dot("env"))),
-		)
-}
-
 // genTestClientWorkflowRunImpl generates a test<Workflow>Run struct
 func (svc *Service) genTestClientWorkflowRunImpl(f *g.File, workflow string) {
 	method := svc.methods[workflow]

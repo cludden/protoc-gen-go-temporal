@@ -28,10 +28,7 @@ var (
 	}
 )
 
-type Cli struct {
-	services        map[string]*Service
-	servicesOrdered []string
-}
+type Cli struct{}
 
 // renderCLI generates cli resources
 func (svc *Service) renderCLI(f *g.File) {
