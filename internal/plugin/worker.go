@@ -582,7 +582,7 @@ func (svc *Service) genWorkerWorkflowChildRunSelect(f *g.File, workflow string) 
 		Id("Select").
 		Params(
 			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Id(typeName)),
+			g.Id("fn").Func().Params(g.Op("*").Id(typeName)),
 		).
 		Params(
 			g.Qual(workflowPkg, "Selector"),
@@ -593,7 +593,7 @@ func (svc *Service) genWorkerWorkflowChildRunSelect(f *g.File, workflow string) 
 					g.Id("r").Dot("Future"),
 					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
 						g.If(g.Id("fn").Op("!=").Nil()).Block(
-							g.Id("fn").Call(g.Op("*").Id("r")),
+							g.Id("fn").Call(g.Id("r")),
 						),
 					),
 				),
@@ -613,7 +613,7 @@ func (svc *Service) genWorkerWorkflowChildRunSelectStart(f *g.File, workflow str
 		Id("SelectStart").
 		Params(
 			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Id(typeName)),
+			g.Id("fn").Func().Params(g.Op("*").Id(typeName)),
 		).
 		Params(
 			g.Qual(workflowPkg, "Selector"),
@@ -624,7 +624,7 @@ func (svc *Service) genWorkerWorkflowChildRunSelectStart(f *g.File, workflow str
 					g.Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call(),
 					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
 						g.If(g.Id("fn").Op("!=").Nil()).Block(
-							g.Id("fn").Call(g.Op("*").Id("r")),
+							g.Id("fn").Call(g.Id("r")),
 						),
 					),
 				),
