@@ -43,3 +43,10 @@ signs:
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
+brews:
+  - repository:
+      owner: cludden
+      name: homebrew-formula
+    homepage: https://github.com/cludden/protoc-gen-go-temporal
+    description: protoc-gen-go_temporal - a protoc plugin for generating Temporal clients, workers, and clis in go from protobuf schemas
+    license: MIT
