@@ -161,6 +161,22 @@ func (Activities) SomeActivity3(ctx context.Context, req *simplepb.SomeActivity3
 	return &simplepb.SomeActivity3Response{ResponseVal: "some response"}, nil
 }
 
+func (Activities) SomeSignal1(ctx context.Context) error {
+	return nil
+}
+
+func (Activities) SomeSignal2(ctx context.Context, req *simplepb.SomeSignal2Request) error {
+	return nil
+}
+
+func (Activities) SomeSignal3(ctx context.Context, req *simplepb.SomeSignal3Request) (*simplepb.SomeSignal3Response, error) {
+	return &simplepb.SomeSignal3Response{ResponseVal: req.GetRequestVal()}, nil
+}
+
+func (Activities) SomeUpdate1(ctx context.Context, req *simplepb.SomeUpdate1Request) (*simplepb.SomeUpdate1Response, error) {
+	return &simplepb.SomeUpdate1Response{ResponseVal: req.GetRequestVal()}, nil
+}
+
 func newCli() (*cli.App, error) {
 	simpleCmd, err := simplepb.NewSimpleCliCommand()
 	if err != nil {

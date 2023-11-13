@@ -86,11 +86,25 @@ service Simple {
   // SomeSignal1 is a signal.
   rpc SomeSignal1(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = { };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 10 }
+    };
   }
 
   // SomeSignal2 is a signal.
   rpc SomeSignal2(SomeSignal2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = { };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 10 }
+    };
+  }
+
+  // SomeSignal3 is a signal.
+  rpc SomeSignal3(SomeSignal3Request) returns (SomeSignal3Response) {
+    option (temporal.v1.signal) = { };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 10 }
+    };
   }
 
   // SomeUpdate1 updates a SomeWorkflow2
@@ -99,6 +113,9 @@ service Simple {
       id: 'some-update/${! requestVal.not_empty().catch("default").slug() }'
       validate: true
       wait_policy: WAIT_POLICY_COMPLETED
+    };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 10 }
     };
   }
 }
@@ -143,6 +160,14 @@ message SomeQuery2Response {
 
 message SomeSignal2Request {
   string request_val = 1;
+}
+
+message SomeSignal3Request {
+  string request_val = 1;
+}
+
+message SomeSignal3Response {
+  string response_val = 1;
 }
 
 message SomeUpdate1Request {
@@ -201,3 +226,7 @@ message OtherUpdateRequest {
 }
 
 message OtherUpdateResponse {}
+
+service Nothing {
+  rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
