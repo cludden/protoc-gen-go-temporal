@@ -110,7 +110,12 @@ func parseService(p *protogen.Plugin, cfg *Config, file *protogen.File, service 
 		}
 
 		switch mode {
-		case modeWorkflow, modeActivity, modeWorkflow | modeActivity, modeQuery, modeSignal, modeUpdate:
+		case 0:
+		case modeActivity:
+		case modeQuery:
+		case modeSignal, modeSignal | modeActivity:
+		case modeUpdate, modeUpdate | modeActivity:
+		case modeWorkflow, modeWorkflow | modeActivity:
 		default:
 			p.Error(fmt.Errorf("invalid method options for method %q", method.Desc.FullName()))
 		}
