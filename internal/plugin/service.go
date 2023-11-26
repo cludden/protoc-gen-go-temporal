@@ -17,6 +17,7 @@ const (
 	clientPkg     = "go.temporal.io/sdk/client"
 	enumsPkg      = "go.temporal.io/api/enums/v1"
 	expressionPkg = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	helpersPkg    = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	temporalPkg   = "go.temporal.io/sdk/temporal"
 	updatePkg     = "go.temporal.io/api/update/v1"
 	uuidPkg       = "github.com/google/uuid"

@@ -93,6 +93,20 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 							}),
 						)
 
+						fn.If(
+							g.List(g.Id("initializable"), g.Id("ok")).Op(":=").Id("wf").Op(".").Parens(g.Qual(helpersPkg, "Initializable")),
+							g.Id("ok"),
+						).Block(
+							g.If(g.Err().Op(":=").Id("initializable").Dot("Initialize").Call(g.Id("ctx")), g.Err().Op("!=").Nil()).Block(
+								g.ReturnFunc(func(returnVals *g.Group) {
+									if hasOutput {
+										returnVals.Nil()
+									}
+									returnVals.Err()
+								}),
+							),
+						)
+
 						// register query handlers
 						for _, q := range opts.GetQuery() {
 							query := q.GetRef()
