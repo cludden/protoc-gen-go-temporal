@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
+	"path"
 	"testing"
 	"time"
 
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/worker"
@@ -197,5 +200,89 @@ func TestCli(t *testing.T) {
 				require.Regexp(pattern, stdout.String())
 			}
 		}
+	}
+}
+
+func TestUnmarshalCLIFlagsToOtherWorkflowRequest(t *testing.T) {
+	ctx, require := context.Background(), require.New(t)
+	app, err := simplepb.NewOtherCli()
+	require.NoError(err)
+	require.NotNil(app)
+	app.Setup()
+
+	dir := t.TempDir()
+	inputFile := path.Join(dir, "req.json")
+	require.NoError(os.WriteFile(inputFile, []byte(`{"someVal":"foo","baz":{"baz":"test"}}`), 0777))
+
+	var command *cli.Command
+	for _, c := range app.Commands {
+		if c.Name == "other-workflow" {
+			command = c
+			break
+		}
+	}
+	if command == nil {
+		t.FailNow()
+	}
+
+	cases := []struct {
+		args   []string
+		assert func(req *simplepb.OtherWorkflowRequest, err error)
+	}{
+		{
+			args: []string{"--some-val", "foo"},
+			assert: func(req *simplepb.OtherWorkflowRequest, err error) {
+				require.NoError(err)
+				require.NotNil(req)
+				require.Equal("foo", req.GetSomeVal())
+			},
+		},
+		{
+			args: []string{"--example-duration", "3m20s"},
+			assert: func(req *simplepb.OtherWorkflowRequest, err error) {
+				require.NoError(err)
+				require.NotNil(req)
+				require.Equal(time.Second*200, req.GetExampleDuration().AsDuration())
+			},
+		},
+		{
+			args: []string{"--example-timestamp", "2023-11-26T11:21:46.715511-07:00"},
+			assert: func(req *simplepb.OtherWorkflowRequest, err error) {
+				require.NoError(err)
+				require.NotNil(req)
+				require.Equal("2023-11-26T18:21:46.715511Z", req.GetExampleTimestamp().AsTime().Format(time.RFC3339Nano))
+			},
+		},
+		{
+			args: []string{"--example-timestamp", "2023-11-26T11:21:46.715511-07:00", "--example-duration", "3m20s"},
+			assert: func(req *simplepb.OtherWorkflowRequest, err error) {
+				require.NoError(err)
+				require.NotNil(req)
+				require.Equal("2023-11-26T18:21:46.715511Z", req.GetExampleTimestamp().AsTime().Format(time.RFC3339Nano))
+			},
+		},
+		{
+			args: []string{
+				"-f", inputFile,
+				"--qux", `{"qux":"example"}`,
+			},
+			assert: func(req *simplepb.OtherWorkflowRequest, err error) {
+				require.NoError(err)
+				require.NotNil(req)
+				require.Equal("foo", req.GetSomeVal())
+				require.Equal("test", req.GetBaz().GetBaz())
+				require.Equal("example", req.GetQux().GetQux())
+			},
+		},
+	}
+
+	for _, c := range cases {
+		command.Action = func(cmd *cli.Context) error {
+			c.assert(simplepb.UnmarshalCliFlagsToOtherWorkflowRequest(cmd))
+			return nil
+		}
+		require.NoError(app.RunContext(ctx, append([]string{
+			"simple", "other-workflow",
+		}, c.args...)))
 	}
 }

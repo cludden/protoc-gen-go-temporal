@@ -3,7 +3,9 @@ syntax = "proto3";
 // buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package mycompany.simple;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
 service Simple {
@@ -230,6 +232,9 @@ message OtherWorkflowRequest {
     sfixed64 example_sfixed64 = 18;
     bool example_bool = 19;
     string quux = 20;
+    google.protobuf.Duration example_duration = 21;
+    google.protobuf.Empty example_empty = 22;
+    google.protobuf.Timestamp example_timestamp = 23;
   }
   message Bar {
     string bar = 1;
