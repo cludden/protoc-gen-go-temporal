@@ -3,7 +3,9 @@ syntax = "proto3";
 // buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package mycompany.simple;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
 service Simple {
@@ -197,6 +199,7 @@ service Other {
   }
 
   rpc OtherSignal(OtherSignalRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.command) = { ignore: true };
     option (temporal.v1.signal) = {};
   }
 
@@ -209,6 +212,36 @@ service Other {
 
 message OtherWorkflowRequest {
   string some_val = 1;
+  Baz baz = 2;
+  Qux qux = 3;
+  oneof example_oneof {
+    Foo foo = 4;
+    Bar bar = 5;
+    bytes example_bytes = 6;
+    double example_double = 7;
+    float example_float = 8;
+    int32 example_int32 = 9;
+    int64 example_int64 = 10;
+    uint32 example_uint32 = 11;
+    uint64 example_uint64 = 12;
+    sint32 example_sint32 = 13;
+    sint64 example_sint64 = 14;
+    fixed32 example_fixed32 = 15;
+    fixed64 example_fixed64 = 16;
+    sfixed32 example_sfixed32 = 17;
+    sfixed64 example_sfixed64 = 18;
+    bool example_bool = 19;
+    string quux = 20;
+    google.protobuf.Duration example_duration = 21;
+    google.protobuf.Empty example_empty = 22;
+    google.protobuf.Timestamp example_timestamp = 23;
+  }
+  message Bar {
+    string bar = 1;
+  }
+  message Baz {
+    string baz = 1;
+  }
 }
 
 message OtherWorkflowResponse {}
@@ -227,6 +260,27 @@ message OtherUpdateRequest {
 
 message OtherUpdateResponse {}
 
+message Foo {
+  string foo = 1;
+}
+message Qux {
+  string qux = 1;
+}
+
 service Nothing {
   rpc Foo(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+service Ignored {
+  option (temporal.v1.cli) = { ignore: true };
+
+  rpc What(WhatRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'what/${!ksuid()}'
+    };
+  }
+}
+
+message WhatRequest {
+  string blah = 1;
 }

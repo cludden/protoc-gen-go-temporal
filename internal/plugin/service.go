@@ -13,15 +13,18 @@ import (
 
 // imported packages
 const (
-	activityPkg   = "go.temporal.io/sdk/activity"
-	clientPkg     = "go.temporal.io/sdk/client"
-	enumsPkg      = "go.temporal.io/api/enums/v1"
-	expressionPkg = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
-	temporalPkg   = "go.temporal.io/sdk/temporal"
-	updatePkg     = "go.temporal.io/api/update/v1"
-	uuidPkg       = "github.com/google/uuid"
-	workflowPkg   = "go.temporal.io/sdk/workflow"
-	workerPkg     = "go.temporal.io/sdk/worker"
+	activityPkg    = "go.temporal.io/sdk/activity"
+	clientPkg      = "go.temporal.io/sdk/client"
+	durationpbPkg  = "google.golang.org/protobuf/types/known/durationpb"
+	enumsPkg       = "go.temporal.io/api/enums/v1"
+	expressionPkg  = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	helpersPkg     = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	temporalPkg    = "go.temporal.io/sdk/temporal"
+	timestamppbPkg = "google.golang.org/protobuf/types/known/timestamppb"
+	updatePkg      = "go.temporal.io/api/update/v1"
+	uuidPkg        = "github.com/google/uuid"
+	workflowPkg    = "go.temporal.io/sdk/workflow"
+	workerPkg      = "go.temporal.io/sdk/worker"
 )
 
 const (
@@ -41,6 +44,7 @@ type Service struct {
 	opts              *temporalv1.ServiceOptions
 	activitiesOrdered []string
 	activities        map[string]*temporalv1.ActivityOptions
+	commands          map[string]*temporalv1.CommandOptions
 	methods           map[string]*protogen.Method
 	queriesOrdered    []string
 	queries           map[string]*temporalv1.QueryOptions
@@ -60,6 +64,7 @@ func parseService(p *protogen.Plugin, cfg *Config, file *protogen.File, service 
 		Service:    service,
 		File:       file,
 		activities: make(map[string]*temporalv1.ActivityOptions),
+		commands:   make(map[string]*temporalv1.CommandOptions),
 		methods:    make(map[string]*protogen.Method),
 		queries:    make(map[string]*temporalv1.QueryOptions),
 		signals:    make(map[string]*temporalv1.SignalOptions),
@@ -107,6 +112,10 @@ func parseService(p *protogen.Plugin, cfg *Config, file *protogen.File, service 
 			svc.updates[name] = opts
 			svc.updatesOrdered = append(svc.updatesOrdered, name)
 			mode |= modeUpdate
+		}
+
+		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Command).(*temporalv1.CommandOptions); ok && opts != nil {
+			svc.commands[name] = opts
 		}
 
 		switch mode {

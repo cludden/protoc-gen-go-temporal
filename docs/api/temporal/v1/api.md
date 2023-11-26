@@ -5,6 +5,8 @@
 
 - [temporal/v1/temporal.proto](#temporal_v1_temporal-proto)
     - [ActivityOptions](#temporal-v1-ActivityOptions)
+    - [CLIOptions](#temporal-v1-CLIOptions)
+    - [CommandOptions](#temporal-v1-CommandOptions)
     - [QueryOptions](#temporal-v1-QueryOptions)
     - [RetryPolicy](#temporal-v1-RetryPolicy)
     - [ServiceOptions](#temporal-v1-ServiceOptions)
@@ -20,6 +22,8 @@
     - [ParentClosePolicy](#temporal-v1-ParentClosePolicy)
     - [WaitPolicy](#temporal-v1-WaitPolicy)
   
+    - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
+    - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
     - [File-level Extensions](#temporal_v1_temporal-proto-extensions)
@@ -54,6 +58,36 @@ available activity configuration options
 | start_to_close_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Maximum time of a single Activity execution attempt |
 | heartbeat_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Heartbeat interval. Activity must call Activity.RecordHeartbeat(ctx, &#34;my-heartbeat&#34;) |
 | retry_policy | [RetryPolicy](#temporal-v1-RetryPolicy) |  | Specifies how to retry an Activity if an error occurs |
+
+
+
+
+
+
+<a name="temporal-v1-CLIOptions"></a>
+
+### CLIOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ignore | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="temporal-v1-CommandOptions"></a>
+
+### CommandOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ignore | [bool](#bool) |  |  |
 
 
 
@@ -291,10 +325,12 @@ value from an UpdateWorkflow RPC
 | Extension | Type | Base | Number | Description |
 | --------- | ---- | ---- | ------ | ----------- |
 | activity | ActivityOptions | .google.protobuf.MethodOptions | 7234 |  |
+| command | CommandOptions | .google.protobuf.MethodOptions | 7238 |  |
 | query | QueryOptions | .google.protobuf.MethodOptions | 7235 |  |
 | signal | SignalOptions | .google.protobuf.MethodOptions | 7236 |  |
 | update | UpdateOptions | .google.protobuf.MethodOptions | 7237 |  |
 | workflow | WorkflowOptions | .google.protobuf.MethodOptions | 7233 |  |
+| cli | CLIOptions | .google.protobuf.ServiceOptions | 7234 |  |
 | service | ServiceOptions | .google.protobuf.ServiceOptions | 7233 |  |
 
  
