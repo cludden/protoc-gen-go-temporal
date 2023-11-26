@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -32,6 +34,11 @@ type Cli struct{}
 
 // renderCLI generates cli resources
 func (svc *Service) renderCLI(f *g.File) {
+	opts := proto.GetExtension(svc.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
+	if opts != nil && opts.GetIgnore() {
+		return
+	}
+
 	svc.genCliOptionsImpl(f)
 	svc.genCliNew(f)
 	svc.genCliNewCommand(f)
@@ -42,6 +49,9 @@ func (svc *Service) renderCLI(f *g.File) {
 
 	// generate query request unmarshallers
 	for _, query := range svc.queriesOrdered {
+		if opts, ok := svc.commands[query]; ok && opts.GetIgnore() {
+			continue
+		}
 		if isEmpty(svc.methods[query].Input) {
 			continue
 		}
@@ -54,6 +64,9 @@ func (svc *Service) renderCLI(f *g.File) {
 
 	// generate signal request unmarshallers
 	for _, signal := range svc.signalsOrdered {
+		if opts, ok := svc.commands[signal]; ok && opts.GetIgnore() {
+			continue
+		}
 		if isEmpty(svc.methods[signal].Input) {
 			continue
 		}
@@ -66,6 +79,9 @@ func (svc *Service) renderCLI(f *g.File) {
 
 	// generate update request unmarshallers
 	for _, update := range svc.updatesOrdered {
+		if opts, ok := svc.commands[update]; ok && opts.GetIgnore() {
+			continue
+		}
 		if isEmpty(svc.methods[update].Input) {
 			continue
 		}
@@ -78,6 +94,9 @@ func (svc *Service) renderCLI(f *g.File) {
 
 	// generate workflow request unmarshallers
 	for _, workflow := range svc.workflowsOrdered {
+		if opts, ok := svc.commands[workflow]; ok && opts.GetIgnore() {
+			continue
+		}
 		if isEmpty(svc.methods[workflow].Input) {
 			continue
 		}
@@ -264,21 +283,33 @@ func (svc *Service) genCliNewCommands(f *g.File) {
 			}, func(cmds *g.Group) {
 				// generate client query methods
 				for _, query := range svc.queriesOrdered {
+					if opts, ok := svc.commands[query]; ok && opts.GetIgnore() {
+						continue
+					}
 					svc.genCliQueryCommand(cmds, query)
 				}
 
 				// generate client signal methods
 				for _, signal := range svc.signalsOrdered {
+					if opts, ok := svc.commands[signal]; ok && opts.GetIgnore() {
+						continue
+					}
 					svc.genCliSignalCommand(cmds, signal)
 				}
 
 				// generate client update methods
 				for _, update := range svc.updatesOrdered {
+					if opts, ok := svc.commands[update]; ok && opts.GetIgnore() {
+						continue
+					}
 					svc.genCliUpdateCommand(cmds, update)
 				}
 
 				// generate client workflow methods
 				for _, workflow := range svc.workflowsOrdered {
+					if opts, ok := svc.commands[workflow]; ok && opts.GetIgnore() {
+						continue
+					}
 					svc.genCliWorkflowCommand(cmds, workflow)
 					for _, signal := range svc.workflows[workflow].GetSignal() {
 						if !signal.GetStart() {

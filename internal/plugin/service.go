@@ -42,6 +42,7 @@ type Service struct {
 	opts              *temporalv1.ServiceOptions
 	activitiesOrdered []string
 	activities        map[string]*temporalv1.ActivityOptions
+	commands          map[string]*temporalv1.CommandOptions
 	methods           map[string]*protogen.Method
 	queriesOrdered    []string
 	queries           map[string]*temporalv1.QueryOptions
@@ -61,6 +62,7 @@ func parseService(p *protogen.Plugin, cfg *Config, file *protogen.File, service 
 		Service:    service,
 		File:       file,
 		activities: make(map[string]*temporalv1.ActivityOptions),
+		commands:   make(map[string]*temporalv1.CommandOptions),
 		methods:    make(map[string]*protogen.Method),
 		queries:    make(map[string]*temporalv1.QueryOptions),
 		signals:    make(map[string]*temporalv1.SignalOptions),
@@ -108,6 +110,10 @@ func parseService(p *protogen.Plugin, cfg *Config, file *protogen.File, service 
 			svc.updates[name] = opts
 			svc.updatesOrdered = append(svc.updatesOrdered, name)
 			mode |= modeUpdate
+		}
+
+		if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Command).(*temporalv1.CommandOptions); ok && opts != nil {
+			svc.commands[name] = opts
 		}
 
 		switch mode {
