@@ -754,6 +754,8 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 				// indicate presence of value
 				b.Id("hasValues").Op("=").True()
 
+				oneof := field.Oneof
+
 				switch {
 				case field.Desc.IsList():
 					fallthrough
@@ -774,30 +776,66 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 
 				switch field.Desc.Kind() {
 				case protoreflect.BoolKind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Bool").Call(g.Lit(flag)))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
 				case protoreflect.BytesKind:
 					b.List(g.Id("v"), g.Err()).Op(":=").Qual(base64Pkg, "StdEncoding").Dot("DecodeString").Call(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
 					b.If(g.Err().Op("!=").Nil()).Block(
 						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error base64-decoding %q flag: %%w", flag)), g.Err())),
 					)
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("v"))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id("v")
 				case protoreflect.DoubleKind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Float64").Call(g.Lit(flag)))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
 				case protoreflect.EnumKind:
 					b.List(g.Id("v"), g.Id("ok")).Op(":=").Id(fmt.Sprintf("%s_value", field.Enum.GoIdent.GoName)).Index(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
 					b.If(g.Op("!").Id("ok")).Block(
 						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("unsupported enum value for %q flag: %%q", flag)), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
 					)
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("v"))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id(field.Enum.GoIdent.GoName).Call(g.Id("v"))
 				case protoreflect.Fixed32Kind, protoreflect.Uint32Kind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag))))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
 				case protoreflect.Fixed64Kind, protoreflect.Uint64Kind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Uint64").Call(g.Lit(flag))
 				case protoreflect.FloatKind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag))))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag)))
 				case protoreflect.Int32Kind, protoreflect.Sfixed32Kind, protoreflect.Sint32Kind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag))))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag)))
 				case protoreflect.Int64Kind, protoreflect.Sfixed64Kind, protoreflect.Sint64Kind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Int64").Call(g.Lit(flag)))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Int64").Call(g.Lit(flag))
 				case protoreflect.GroupKind:
 				case protoreflect.MessageKind:
@@ -807,10 +845,18 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 						b.Var().Id("v").Id(field.Message.GoIdent.GoName)
 					}
 					b.If(g.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(g.Index().Byte().Call(g.Id("cmd").Dot("String").Call(g.Lit(flag))), g.Op("&").Id("v")), g.Err().Op("!=").Nil()).Block(
-						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarhsalling %q flag: %%w", flag)), g.Err())),
+						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarshalling %q flag: %%w", flag)), g.Err())),
 					)
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Op("&").Id("v"))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Op("&").Id("v")
 				case protoreflect.StringKind:
+					if oneof != nil {
+						b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
+						return
+					}
 					b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))
 				}
 			})
