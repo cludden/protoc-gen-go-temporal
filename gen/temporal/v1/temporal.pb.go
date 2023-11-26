@@ -349,6 +349,100 @@ func (x *ActivityOptions) GetRetryPolicy() *RetryPolicy {
 	return nil
 }
 
+type CLIOptions struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Ignore bool `protobuf:"varint,1,opt,name=ignore,proto3" json:"ignore,omitempty"`
+}
+
+func (x *CLIOptions) Reset() {
+	*x = CLIOptions{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_temporal_v1_temporal_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CLIOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CLIOptions) ProtoMessage() {}
+
+func (x *CLIOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_v1_temporal_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CLIOptions.ProtoReflect.Descriptor instead.
+func (*CLIOptions) Descriptor() ([]byte, []int) {
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CLIOptions) GetIgnore() bool {
+	if x != nil {
+		return x.Ignore
+	}
+	return false
+}
+
+type CommandOptions struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Ignore bool `protobuf:"varint,1,opt,name=ignore,proto3" json:"ignore,omitempty"`
+}
+
+func (x *CommandOptions) Reset() {
+	*x = CommandOptions{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_temporal_v1_temporal_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CommandOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommandOptions) ProtoMessage() {}
+
+func (x *CommandOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_v1_temporal_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommandOptions.ProtoReflect.Descriptor instead.
+func (*CommandOptions) Descriptor() ([]byte, []int) {
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CommandOptions) GetIgnore() bool {
+	if x != nil {
+		return x.Ignore
+	}
+	return false
+}
+
 // QueryOptions identifies an rpc method as a Temporal query definition, and describes
 // available query configuration options
 type QueryOptions struct {
@@ -363,7 +457,7 @@ type QueryOptions struct {
 func (x *QueryOptions) Reset() {
 	*x = QueryOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[1]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -376,7 +470,7 @@ func (x *QueryOptions) String() string {
 func (*QueryOptions) ProtoMessage() {}
 
 func (x *QueryOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[1]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -389,7 +483,7 @@ func (x *QueryOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryOptions.ProtoReflect.Descriptor instead.
 func (*QueryOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{1}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *QueryOptions) GetName() string {
@@ -415,7 +509,7 @@ type RetryPolicy struct {
 func (x *RetryPolicy) Reset() {
 	*x = RetryPolicy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[2]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -428,7 +522,7 @@ func (x *RetryPolicy) String() string {
 func (*RetryPolicy) ProtoMessage() {}
 
 func (x *RetryPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[2]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -441,7 +535,7 @@ func (x *RetryPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryPolicy.ProtoReflect.Descriptor instead.
 func (*RetryPolicy) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{2}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *RetryPolicy) GetInitialInterval() *durationpb.Duration {
@@ -495,7 +589,7 @@ type ServiceOptions struct {
 func (x *ServiceOptions) Reset() {
 	*x = ServiceOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[3]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -508,7 +602,7 @@ func (x *ServiceOptions) String() string {
 func (*ServiceOptions) ProtoMessage() {}
 
 func (x *ServiceOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[3]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -521,7 +615,7 @@ func (x *ServiceOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceOptions.ProtoReflect.Descriptor instead.
 func (*ServiceOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{3}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ServiceOptions) GetNamespace() string {
@@ -552,7 +646,7 @@ type SignalOptions struct {
 func (x *SignalOptions) Reset() {
 	*x = SignalOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[4]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -565,7 +659,7 @@ func (x *SignalOptions) String() string {
 func (*SignalOptions) ProtoMessage() {}
 
 func (x *SignalOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[4]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -578,7 +672,7 @@ func (x *SignalOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignalOptions.ProtoReflect.Descriptor instead.
 func (*SignalOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{4}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SignalOptions) GetName() string {
@@ -608,7 +702,7 @@ type UpdateOptions struct {
 func (x *UpdateOptions) Reset() {
 	*x = UpdateOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[5]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -621,7 +715,7 @@ func (x *UpdateOptions) String() string {
 func (*UpdateOptions) ProtoMessage() {}
 
 func (x *UpdateOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[5]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -634,7 +728,7 @@ func (x *UpdateOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOptions.ProtoReflect.Descriptor instead.
 func (*UpdateOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{5}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateOptions) GetId() string {
@@ -712,7 +806,7 @@ type WorkflowOptions struct {
 func (x *WorkflowOptions) Reset() {
 	*x = WorkflowOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[6]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -725,7 +819,7 @@ func (x *WorkflowOptions) String() string {
 func (*WorkflowOptions) ProtoMessage() {}
 
 func (x *WorkflowOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[6]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -738,7 +832,7 @@ func (x *WorkflowOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *WorkflowOptions) GetName() string {
@@ -859,7 +953,7 @@ type WorkflowOptions_Query struct {
 func (x *WorkflowOptions_Query) Reset() {
 	*x = WorkflowOptions_Query{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[7]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -872,7 +966,7 @@ func (x *WorkflowOptions_Query) String() string {
 func (*WorkflowOptions_Query) ProtoMessage() {}
 
 func (x *WorkflowOptions_Query) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[7]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -885,7 +979,7 @@ func (x *WorkflowOptions_Query) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions_Query.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions_Query) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6, 0}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8, 0}
 }
 
 func (x *WorkflowOptions_Query) GetRef() string {
@@ -910,7 +1004,7 @@ type WorkflowOptions_Signal struct {
 func (x *WorkflowOptions_Signal) Reset() {
 	*x = WorkflowOptions_Signal{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[8]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -923,7 +1017,7 @@ func (x *WorkflowOptions_Signal) String() string {
 func (*WorkflowOptions_Signal) ProtoMessage() {}
 
 func (x *WorkflowOptions_Signal) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[8]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -936,7 +1030,7 @@ func (x *WorkflowOptions_Signal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions_Signal.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions_Signal) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6, 1}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8, 1}
 }
 
 func (x *WorkflowOptions_Signal) GetRef() string {
@@ -966,7 +1060,7 @@ type WorkflowOptions_Update struct {
 func (x *WorkflowOptions_Update) Reset() {
 	*x = WorkflowOptions_Update{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_v1_temporal_proto_msgTypes[9]
+		mi := &file_temporal_v1_temporal_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -979,7 +1073,7 @@ func (x *WorkflowOptions_Update) String() string {
 func (*WorkflowOptions_Update) ProtoMessage() {}
 
 func (x *WorkflowOptions_Update) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[9]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -992,7 +1086,7 @@ func (x *WorkflowOptions_Update) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions_Update.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions_Update) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6, 2}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8, 2}
 }
 
 func (x *WorkflowOptions_Update) GetRef() string {
@@ -1012,11 +1106,11 @@ var file_temporal_v1_temporal_proto_extTypes = []protoimpl.ExtensionInfo{
 		Filename:      "temporal/v1/temporal.proto",
 	},
 	{
-		ExtendedType:  (*descriptorpb.MethodOptions)(nil),
-		ExtensionType: (*WorkflowOptions)(nil),
-		Field:         7233,
-		Name:          "temporal.v1.workflow",
-		Tag:           "bytes,7233,opt,name=workflow",
+		ExtendedType:  (*descriptorpb.ServiceOptions)(nil),
+		ExtensionType: (*CLIOptions)(nil),
+		Field:         7234,
+		Name:          "temporal.v1.cli",
+		Tag:           "bytes,7234,opt,name=cli",
 		Filename:      "temporal/v1/temporal.proto",
 	},
 	{
@@ -1025,6 +1119,14 @@ var file_temporal_v1_temporal_proto_extTypes = []protoimpl.ExtensionInfo{
 		Field:         7234,
 		Name:          "temporal.v1.activity",
 		Tag:           "bytes,7234,opt,name=activity",
+		Filename:      "temporal/v1/temporal.proto",
+	},
+	{
+		ExtendedType:  (*descriptorpb.MethodOptions)(nil),
+		ExtensionType: (*CommandOptions)(nil),
+		Field:         7238,
+		Name:          "temporal.v1.command",
+		Tag:           "bytes,7238,opt,name=command",
 		Filename:      "temporal/v1/temporal.proto",
 	},
 	{
@@ -1051,26 +1153,38 @@ var file_temporal_v1_temporal_proto_extTypes = []protoimpl.ExtensionInfo{
 		Tag:           "bytes,7237,opt,name=update",
 		Filename:      "temporal/v1/temporal.proto",
 	},
+	{
+		ExtendedType:  (*descriptorpb.MethodOptions)(nil),
+		ExtensionType: (*WorkflowOptions)(nil),
+		Field:         7233,
+		Name:          "temporal.v1.workflow",
+		Tag:           "bytes,7233,opt,name=workflow",
+		Filename:      "temporal/v1/temporal.proto",
+	},
 }
 
 // Extension fields to descriptorpb.ServiceOptions.
 var (
 	// optional temporal.v1.ServiceOptions service = 7233;
 	E_Service = &file_temporal_v1_temporal_proto_extTypes[0]
+	// optional temporal.v1.CLIOptions cli = 7234;
+	E_Cli = &file_temporal_v1_temporal_proto_extTypes[1]
 )
 
 // Extension fields to descriptorpb.MethodOptions.
 var (
-	// optional temporal.v1.WorkflowOptions workflow = 7233;
-	E_Workflow = &file_temporal_v1_temporal_proto_extTypes[1]
 	// optional temporal.v1.ActivityOptions activity = 7234;
 	E_Activity = &file_temporal_v1_temporal_proto_extTypes[2]
+	// optional temporal.v1.CommandOptions command = 7238;
+	E_Command = &file_temporal_v1_temporal_proto_extTypes[3]
 	// optional temporal.v1.QueryOptions query = 7235;
-	E_Query = &file_temporal_v1_temporal_proto_extTypes[3]
+	E_Query = &file_temporal_v1_temporal_proto_extTypes[4]
 	// optional temporal.v1.SignalOptions signal = 7236;
-	E_Signal = &file_temporal_v1_temporal_proto_extTypes[4]
+	E_Signal = &file_temporal_v1_temporal_proto_extTypes[5]
 	// optional temporal.v1.UpdateOptions update = 7237;
-	E_Update = &file_temporal_v1_temporal_proto_extTypes[5]
+	E_Update = &file_temporal_v1_temporal_proto_extTypes[6]
+	// optional temporal.v1.WorkflowOptions workflow = 7233;
+	E_Workflow = &file_temporal_v1_temporal_proto_extTypes[7]
 )
 
 var File_temporal_v1_temporal_proto protoreflect.FileDescriptor
@@ -1111,7 +1225,12 @@ var file_temporal_v1_temporal_proto_rawDesc = []byte{
 	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x74,
 	0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x74, 0x72, 0x79,
 	0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x52, 0x0b, 0x72, 0x65, 0x74, 0x72, 0x79, 0x50, 0x6f, 0x6c,
-	0x69, 0x63, 0x79, 0x22, 0x22, 0x0a, 0x0c, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4f, 0x70, 0x74, 0x69,
+	0x69, 0x63, 0x79, 0x22, 0x24, 0x0a, 0x0a, 0x43, 0x4c, 0x49, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x12, 0x16, 0x0a, 0x06, 0x69, 0x67, 0x6e, 0x6f, 0x72, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x06, 0x69, 0x67, 0x6e, 0x6f, 0x72, 0x65, 0x22, 0x28, 0x0a, 0x0e, 0x43, 0x6f, 0x6d,
+	0x6d, 0x61, 0x6e, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x69,
+	0x67, 0x6e, 0x6f, 0x72, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x69, 0x67, 0x6e,
+	0x6f, 0x72, 0x65, 0x22, 0x22, 0x0a, 0x0c, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4f, 0x70, 0x74, 0x69,
 	0x6f, 0x6e, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0xa0, 0x02, 0x0a, 0x0b, 0x52, 0x65, 0x74, 0x72,
 	0x79, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12, 0x44, 0x0a, 0x10, 0x69, 0x6e, 0x69, 0x74, 0x69,
@@ -1248,47 +1367,57 @@ var file_temporal_v1_temporal_proto_rawDesc = []byte{
 	0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc1, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x74, 0x65,
 	0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
 	0x65, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x07, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63,
-	0x65, 0x88, 0x01, 0x01, 0x3a, 0x5c, 0x0a, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77,
+	0x65, 0x88, 0x01, 0x01, 0x3a, 0x4e, 0x0a, 0x03, 0x63, 0x6c, 0x69, 0x12, 0x1f, 0x2e, 0x67, 0x6f,
+	0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc2, 0x38, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76,
+	0x31, 0x2e, 0x43, 0x4c, 0x49, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x03, 0x63, 0x6c,
+	0x69, 0x88, 0x01, 0x01, 0x3a, 0x5c, 0x0a, 0x08, 0x61, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79,
 	0x12, 0x1e, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
 	0x75, 0x66, 0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73,
-	0x18, 0xc1, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72,
-	0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x4f, 0x70,
-	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x88,
-	0x01, 0x01, 0x3a, 0x5c, 0x0a, 0x08, 0x61, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x12, 0x1e,
+	0x18, 0xc2, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72,
+	0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x4f, 0x70,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x08, 0x61, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x88,
+	0x01, 0x01, 0x3a, 0x59, 0x0a, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x1e, 0x2e,
+	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
+	0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc6, 0x38,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e,
+	0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x52, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x88, 0x01, 0x01, 0x3a, 0x53, 0x0a,
+	0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x12, 0x1e, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f,
+	0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc3, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e,
+	0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x88,
+	0x01, 0x01, 0x3a, 0x56, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x12, 0x1e, 0x2e, 0x67,
+	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x4d,
+	0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc4, 0x38, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76,
+	0x31, 0x2e, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52,
+	0x06, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x88, 0x01, 0x01, 0x3a, 0x56, 0x0a, 0x06, 0x75, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x12, 0x1e, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74,
+	0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc5, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x74, 0x65,
+	0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
+	0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x06, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x88,
+	0x01, 0x01, 0x3a, 0x5c, 0x0a, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x12, 0x1e,
 	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
-	0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc2,
+	0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc1,
 	0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c,
-	0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x4f, 0x70, 0x74, 0x69,
-	0x6f, 0x6e, 0x73, 0x52, 0x08, 0x61, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x88, 0x01, 0x01,
-	0x3a, 0x53, 0x0a, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x12, 0x1e, 0x2e, 0x67, 0x6f, 0x6f, 0x67,
-	0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x4d, 0x65, 0x74, 0x68,
-	0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc3, 0x38, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x19, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x51,
-	0x75, 0x65, 0x72, 0x79, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x05, 0x71, 0x75, 0x65,
-	0x72, 0x79, 0x88, 0x01, 0x01, 0x3a, 0x56, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x12,
-	0x1e, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
-	0x66, 0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18,
-	0xc4, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61,
-	0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x4f, 0x70, 0x74, 0x69, 0x6f,
-	0x6e, 0x73, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x88, 0x01, 0x01, 0x3a, 0x56, 0x0a,
-	0x06, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x1e, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64,
-	0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0xc5, 0x38, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a,
-	0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64,
-	0x61, 0x74, 0x65, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x06, 0x75, 0x70, 0x64, 0x61,
-	0x74, 0x65, 0x88, 0x01, 0x01, 0x42, 0xb3, 0x01, 0x0a, 0x0f, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x65,
-	0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x76, 0x31, 0x42, 0x0d, 0x54, 0x65, 0x6d, 0x70, 0x6f,
-	0x72, 0x61, 0x6c, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x75, 0x64, 0x64, 0x65, 0x6e, 0x2f, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x63, 0x2d, 0x67, 0x65, 0x6e, 0x2d, 0x67, 0x6f, 0x2d, 0x74, 0x65, 0x6d,
-	0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72,
-	0x61, 0x6c, 0x2f, 0x76, 0x31, 0x3b, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x76, 0x31,
-	0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x0b, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61,
-	0x6c, 0x2e, 0x56, 0x31, 0xca, 0x02, 0x0b, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x5c,
-	0x56, 0x31, 0xe2, 0x02, 0x17, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x5c, 0x56, 0x31,
-	0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x0c, 0x54,
-	0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x2e, 0x76, 0x31, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x4f, 0x70, 0x74, 0x69,
+	0x6f, 0x6e, 0x73, 0x52, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x88, 0x01, 0x01,
+	0x42, 0xb3, 0x01, 0x0a, 0x0f, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61,
+	0x6c, 0x2e, 0x76, 0x31, 0x42, 0x0d, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x50, 0x72,
+	0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x63, 0x6c, 0x75, 0x64, 0x64, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63,
+	0x2d, 0x67, 0x65, 0x6e, 0x2d, 0x67, 0x6f, 0x2d, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c,
+	0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2f, 0x76, 0x31,
+	0x3b, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x54, 0x58,
+	0x58, 0xaa, 0x02, 0x0b, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x56, 0x31, 0xca,
+	0x02, 0x0b, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x17,
+	0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x5c, 0x56, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d,
+	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x0c, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72,
+	0x61, 0x6c, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1304,60 +1433,66 @@ func file_temporal_v1_temporal_proto_rawDescGZIP() []byte {
 }
 
 var file_temporal_v1_temporal_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_temporal_v1_temporal_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_temporal_v1_temporal_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_temporal_v1_temporal_proto_goTypes = []interface{}{
 	(CLIFeature)(0),                     // 0: temporal.v1.CLIFeature
 	(IDReusePolicy)(0),                  // 1: temporal.v1.IDReusePolicy
 	(ParentClosePolicy)(0),              // 2: temporal.v1.ParentClosePolicy
 	(WaitPolicy)(0),                     // 3: temporal.v1.WaitPolicy
 	(*ActivityOptions)(nil),             // 4: temporal.v1.ActivityOptions
-	(*QueryOptions)(nil),                // 5: temporal.v1.QueryOptions
-	(*RetryPolicy)(nil),                 // 6: temporal.v1.RetryPolicy
-	(*ServiceOptions)(nil),              // 7: temporal.v1.ServiceOptions
-	(*SignalOptions)(nil),               // 8: temporal.v1.SignalOptions
-	(*UpdateOptions)(nil),               // 9: temporal.v1.UpdateOptions
-	(*WorkflowOptions)(nil),             // 10: temporal.v1.WorkflowOptions
-	(*WorkflowOptions_Query)(nil),       // 11: temporal.v1.WorkflowOptions.Query
-	(*WorkflowOptions_Signal)(nil),      // 12: temporal.v1.WorkflowOptions.Signal
-	(*WorkflowOptions_Update)(nil),      // 13: temporal.v1.WorkflowOptions.Update
-	(*durationpb.Duration)(nil),         // 14: google.protobuf.Duration
-	(*descriptorpb.ServiceOptions)(nil), // 15: google.protobuf.ServiceOptions
-	(*descriptorpb.MethodOptions)(nil),  // 16: google.protobuf.MethodOptions
+	(*CLIOptions)(nil),                  // 5: temporal.v1.CLIOptions
+	(*CommandOptions)(nil),              // 6: temporal.v1.CommandOptions
+	(*QueryOptions)(nil),                // 7: temporal.v1.QueryOptions
+	(*RetryPolicy)(nil),                 // 8: temporal.v1.RetryPolicy
+	(*ServiceOptions)(nil),              // 9: temporal.v1.ServiceOptions
+	(*SignalOptions)(nil),               // 10: temporal.v1.SignalOptions
+	(*UpdateOptions)(nil),               // 11: temporal.v1.UpdateOptions
+	(*WorkflowOptions)(nil),             // 12: temporal.v1.WorkflowOptions
+	(*WorkflowOptions_Query)(nil),       // 13: temporal.v1.WorkflowOptions.Query
+	(*WorkflowOptions_Signal)(nil),      // 14: temporal.v1.WorkflowOptions.Signal
+	(*WorkflowOptions_Update)(nil),      // 15: temporal.v1.WorkflowOptions.Update
+	(*durationpb.Duration)(nil),         // 16: google.protobuf.Duration
+	(*descriptorpb.ServiceOptions)(nil), // 17: google.protobuf.ServiceOptions
+	(*descriptorpb.MethodOptions)(nil),  // 18: google.protobuf.MethodOptions
 }
 var file_temporal_v1_temporal_proto_depIdxs = []int32{
-	14, // 0: temporal.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
-	14, // 1: temporal.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
-	14, // 2: temporal.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
-	14, // 3: temporal.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
-	6,  // 4: temporal.v1.ActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	14, // 5: temporal.v1.RetryPolicy.initial_interval:type_name -> google.protobuf.Duration
-	14, // 6: temporal.v1.RetryPolicy.max_interval:type_name -> google.protobuf.Duration
+	16, // 0: temporal.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
+	16, // 1: temporal.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	16, // 2: temporal.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
+	16, // 3: temporal.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
+	8,  // 4: temporal.v1.ActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	16, // 5: temporal.v1.RetryPolicy.initial_interval:type_name -> google.protobuf.Duration
+	16, // 6: temporal.v1.RetryPolicy.max_interval:type_name -> google.protobuf.Duration
 	3,  // 7: temporal.v1.UpdateOptions.wait_policy:type_name -> temporal.v1.WaitPolicy
-	11, // 8: temporal.v1.WorkflowOptions.query:type_name -> temporal.v1.WorkflowOptions.Query
-	12, // 9: temporal.v1.WorkflowOptions.signal:type_name -> temporal.v1.WorkflowOptions.Signal
-	13, // 10: temporal.v1.WorkflowOptions.update:type_name -> temporal.v1.WorkflowOptions.Update
-	14, // 11: temporal.v1.WorkflowOptions.execution_timeout:type_name -> google.protobuf.Duration
+	13, // 8: temporal.v1.WorkflowOptions.query:type_name -> temporal.v1.WorkflowOptions.Query
+	14, // 9: temporal.v1.WorkflowOptions.signal:type_name -> temporal.v1.WorkflowOptions.Signal
+	15, // 10: temporal.v1.WorkflowOptions.update:type_name -> temporal.v1.WorkflowOptions.Update
+	16, // 11: temporal.v1.WorkflowOptions.execution_timeout:type_name -> google.protobuf.Duration
 	1,  // 12: temporal.v1.WorkflowOptions.id_reuse_policy:type_name -> temporal.v1.IDReusePolicy
 	2,  // 13: temporal.v1.WorkflowOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	6,  // 14: temporal.v1.WorkflowOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	14, // 15: temporal.v1.WorkflowOptions.run_timeout:type_name -> google.protobuf.Duration
-	14, // 16: temporal.v1.WorkflowOptions.task_timeout:type_name -> google.protobuf.Duration
-	15, // 17: temporal.v1.service:extendee -> google.protobuf.ServiceOptions
-	16, // 18: temporal.v1.workflow:extendee -> google.protobuf.MethodOptions
-	16, // 19: temporal.v1.activity:extendee -> google.protobuf.MethodOptions
-	16, // 20: temporal.v1.query:extendee -> google.protobuf.MethodOptions
-	16, // 21: temporal.v1.signal:extendee -> google.protobuf.MethodOptions
-	16, // 22: temporal.v1.update:extendee -> google.protobuf.MethodOptions
-	7,  // 23: temporal.v1.service:type_name -> temporal.v1.ServiceOptions
-	10, // 24: temporal.v1.workflow:type_name -> temporal.v1.WorkflowOptions
-	4,  // 25: temporal.v1.activity:type_name -> temporal.v1.ActivityOptions
-	5,  // 26: temporal.v1.query:type_name -> temporal.v1.QueryOptions
-	8,  // 27: temporal.v1.signal:type_name -> temporal.v1.SignalOptions
-	9,  // 28: temporal.v1.update:type_name -> temporal.v1.UpdateOptions
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	23, // [23:29] is the sub-list for extension type_name
-	17, // [17:23] is the sub-list for extension extendee
+	8,  // 14: temporal.v1.WorkflowOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	16, // 15: temporal.v1.WorkflowOptions.run_timeout:type_name -> google.protobuf.Duration
+	16, // 16: temporal.v1.WorkflowOptions.task_timeout:type_name -> google.protobuf.Duration
+	17, // 17: temporal.v1.service:extendee -> google.protobuf.ServiceOptions
+	17, // 18: temporal.v1.cli:extendee -> google.protobuf.ServiceOptions
+	18, // 19: temporal.v1.activity:extendee -> google.protobuf.MethodOptions
+	18, // 20: temporal.v1.command:extendee -> google.protobuf.MethodOptions
+	18, // 21: temporal.v1.query:extendee -> google.protobuf.MethodOptions
+	18, // 22: temporal.v1.signal:extendee -> google.protobuf.MethodOptions
+	18, // 23: temporal.v1.update:extendee -> google.protobuf.MethodOptions
+	18, // 24: temporal.v1.workflow:extendee -> google.protobuf.MethodOptions
+	9,  // 25: temporal.v1.service:type_name -> temporal.v1.ServiceOptions
+	5,  // 26: temporal.v1.cli:type_name -> temporal.v1.CLIOptions
+	4,  // 27: temporal.v1.activity:type_name -> temporal.v1.ActivityOptions
+	6,  // 28: temporal.v1.command:type_name -> temporal.v1.CommandOptions
+	7,  // 29: temporal.v1.query:type_name -> temporal.v1.QueryOptions
+	10, // 30: temporal.v1.signal:type_name -> temporal.v1.SignalOptions
+	11, // 31: temporal.v1.update:type_name -> temporal.v1.UpdateOptions
+	12, // 32: temporal.v1.workflow:type_name -> temporal.v1.WorkflowOptions
+	33, // [33:33] is the sub-list for method output_type
+	33, // [33:33] is the sub-list for method input_type
+	25, // [25:33] is the sub-list for extension type_name
+	17, // [17:25] is the sub-list for extension extendee
 	0,  // [0:17] is the sub-list for field type_name
 }
 
@@ -1380,7 +1515,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryOptions); i {
+			switch v := v.(*CLIOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1392,7 +1527,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RetryPolicy); i {
+			switch v := v.(*CommandOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1404,7 +1539,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServiceOptions); i {
+			switch v := v.(*QueryOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1416,7 +1551,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SignalOptions); i {
+			switch v := v.(*RetryPolicy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1428,7 +1563,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateOptions); i {
+			switch v := v.(*ServiceOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1440,7 +1575,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkflowOptions); i {
+			switch v := v.(*SignalOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1452,7 +1587,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkflowOptions_Query); i {
+			switch v := v.(*UpdateOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1464,7 +1599,7 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkflowOptions_Signal); i {
+			switch v := v.(*WorkflowOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1476,6 +1611,30 @@ func file_temporal_v1_temporal_proto_init() {
 			}
 		}
 		file_temporal_v1_temporal_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*WorkflowOptions_Query); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_temporal_v1_temporal_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*WorkflowOptions_Signal); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_temporal_v1_temporal_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*WorkflowOptions_Update); i {
 			case 0:
 				return &v.state
@@ -1494,8 +1653,8 @@ func file_temporal_v1_temporal_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_temporal_v1_temporal_proto_rawDesc,
 			NumEnums:      4,
-			NumMessages:   10,
-			NumExtensions: 6,
+			NumMessages:   12,
+			NumExtensions: 8,
 			NumServices:   0,
 		},
 		GoTypes:           file_temporal_v1_temporal_proto_goTypes,
