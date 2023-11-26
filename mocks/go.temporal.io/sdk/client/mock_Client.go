@@ -598,6 +598,61 @@ func (_c *MockClient_GetWorkerBuildIdCompatibility_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// GetWorkerTaskReachability provides a mock function with given fields: ctx, options
+func (_m *MockClient) GetWorkerTaskReachability(ctx context.Context, options *client.GetWorkerTaskReachabilityOptions) (*client.WorkerTaskReachability, error) {
+	ret := _m.Called(ctx, options)
+
+	var r0 *client.WorkerTaskReachability
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *client.GetWorkerTaskReachabilityOptions) (*client.WorkerTaskReachability, error)); ok {
+		return rf(ctx, options)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *client.GetWorkerTaskReachabilityOptions) *client.WorkerTaskReachability); ok {
+		r0 = rf(ctx, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.WorkerTaskReachability)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *client.GetWorkerTaskReachabilityOptions) error); ok {
+		r1 = rf(ctx, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_GetWorkerTaskReachability_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkerTaskReachability'
+type MockClient_GetWorkerTaskReachability_Call struct {
+	*mock.Call
+}
+
+// GetWorkerTaskReachability is a helper method to define mock.On call
+//   - ctx context.Context
+//   - options *client.GetWorkerTaskReachabilityOptions
+func (_e *MockClient_Expecter) GetWorkerTaskReachability(ctx interface{}, options interface{}) *MockClient_GetWorkerTaskReachability_Call {
+	return &MockClient_GetWorkerTaskReachability_Call{Call: _e.mock.On("GetWorkerTaskReachability", ctx, options)}
+}
+
+func (_c *MockClient_GetWorkerTaskReachability_Call) Run(run func(ctx context.Context, options *client.GetWorkerTaskReachabilityOptions)) *MockClient_GetWorkerTaskReachability_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*client.GetWorkerTaskReachabilityOptions))
+	})
+	return _c
+}
+
+func (_c *MockClient_GetWorkerTaskReachability_Call) Return(_a0 *client.WorkerTaskReachability, _a1 error) *MockClient_GetWorkerTaskReachability_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_GetWorkerTaskReachability_Call) RunAndReturn(run func(context.Context, *client.GetWorkerTaskReachabilityOptions) (*client.WorkerTaskReachability, error)) *MockClient_GetWorkerTaskReachability_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetWorkflow provides a mock function with given fields: ctx, workflowID, runID
 func (_m *MockClient) GetWorkflow(ctx context.Context, workflowID string, runID string) client.WorkflowRun {
 	ret := _m.Called(ctx, workflowID, runID)
