@@ -110,9 +110,9 @@ func (svc *Service) renderCLI(f *g.File) {
 }
 
 // genCliFlagForField generates a cli flag for a message field
-func (svc *Service) genCliFlagForField(flags *g.Group, field *protogen.Field, category string) {
+func (svc *Service) genCliFlagForField(flags *g.Group, field *protogen.Field, category, prefix string) {
 	name := field.GoName
-	flagName := strcase.ToKebab(name)
+	flagName := prefix + strcase.ToKebab(name)
 	usage := strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(field.Comments.Leading.String(), "//"), "\n//", ""))
 	if usage == "" {
 		usage = fmt.Sprintf("set the value of the operation's %q parameter", name)
@@ -491,7 +491,7 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					svc.genCliFlagForField(flags, field, "INPUT")
+					svc.genCliFlagForField(flags, field, "INPUT", "")
 				}
 			}
 		})
@@ -591,7 +591,7 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					svc.genCliFlagForField(flags, field, "INPUT")
+					svc.genCliFlagForField(flags, field, "INPUT", "")
 				}
 			}
 		})
@@ -684,7 +684,7 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					svc.genCliFlagForField(flags, field, "INPUT")
+					svc.genCliFlagForField(flags, field, "INPUT", "")
 				}
 			}
 		})
@@ -998,7 +998,7 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					svc.genCliFlagForField(flags, field, "INPUT")
+					svc.genCliFlagForField(flags, field, "INPUT", "")
 				}
 			}
 		})
@@ -1092,6 +1092,7 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
 				fields.Id("Aliases").Op(":").Index().String().Values(g.Lit("d"))
 			})
+			fields := map[string]struct{}{}
 			if hasInput {
 				// add -f flag to read input from json file
 				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
@@ -1105,7 +1106,8 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 				}
 				// add request flags
 				for _, field := range method.Input.Fields {
-					svc.genCliFlagForField(flags, field, category)
+					fields[field.GoName] = struct{}{}
+					svc.genCliFlagForField(flags, field, category, "")
 				}
 			}
 			if hasSignalInput {
@@ -1115,7 +1117,11 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 				}
 				// add request flags
 				for _, field := range handler.Input.Fields {
-					svc.genCliFlagForField(flags, field, category)
+					var prefix string
+					if _, ok := fields[field.GoName]; ok {
+						prefix = fmt.Sprintf("%s-", strcase.ToKebab(handler.GoName))
+					}
+					svc.genCliFlagForField(flags, field, category, prefix)
 				}
 			}
 		})
