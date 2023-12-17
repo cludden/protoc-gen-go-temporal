@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	CliCategories         bool
-	CliEnabled            bool
-	WorkflowUpdateEnabled bool
+	CliCategories              bool
+	CliEnabled                 bool
+	DisableWorkflowInputRename bool
+	WorkflowUpdateEnabled      bool
 }
 
 // Plugin provides a protoc plugin for generating temporal workers and clients in go
@@ -31,6 +32,7 @@ func New(commit, version string) *Plugin {
 	flags := pflag.NewFlagSet("plugin", pflag.ExitOnError)
 	flags.BoolVar(&cfg.CliEnabled, "cli-enabled", false, "enable cli generation")
 	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
+	flags.BoolVar(&cfg.DisableWorkflowInputRename, "disable-workflow-input-rename", false, "disable renaming of \"<Workflow>WorkflowInput\"")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
 	return &Plugin{

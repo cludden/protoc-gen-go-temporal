@@ -23,10 +23,14 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 		Params(
 			g.Id("ctor").
 				Func().
-				Params(
-					g.Qual(workflowPkg, "Context"),
-					g.Op("*").Id(toCamel("%sInput", workflow)),
-				).
+				ParamsFunc(func(args *g.Group) {
+					args.Qual(workflowPkg, "Context")
+					if svc.cfg.DisableWorkflowInputRename {
+						args.Op("*").Id(toCamel("%sInput", workflow))
+					} else {
+						args.Op("*").Id(toCamel("%sWorkflowInput", workflow))
+					}
+				}).
 				Params(
 					g.Id(toCamel("%sWorkflow", workflow)),
 					g.Error(),
@@ -66,7 +70,11 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 					}).
 					BlockFunc(func(fn *g.Group) {
 						// build input struct
-						fn.Id("input").Op(":=").Op("&").Id(toCamel("%sInput", workflow)).BlockFunc(func(fields *g.Group) {
+						inputType := toCamel("%sWorkflowInput", workflow)
+						if svc.cfg.DisableWorkflowInputRename {
+							inputType = toCamel("%sInput", workflow)
+						}
+						fn.Id("input").Op(":=").Op("&").Id(inputType).BlockFunc(func(fields *g.Group) {
 							if hasInput {
 								fields.Id("Req").Op(":").Id("req").Op(",")
 							}
@@ -177,10 +185,14 @@ func (svc *Service) genWorkerRegisterWorkflow(f *g.File, workflow string) {
 			g.Id("r").Qual(workerPkg, "WorkflowRegistry"),
 			g.Id("wf").
 				Func().
-				Params(
-					g.Qual(workflowPkg, "Context"),
-					g.Op("*").Id(toCamel("%sInput", workflow)),
-				).
+				ParamsFunc(func(args *g.Group) {
+					args.Qual(workflowPkg, "Context")
+					if svc.cfg.DisableWorkflowInputRename {
+						args.Op("*").Id(toCamel("%sInput", workflow))
+					} else {
+						args.Op("*").Id(toCamel("%sWorkflowInput", workflow))
+					}
+				}).
 				Params(
 					g.Id(toCamel("%sWorkflow", workflow)),
 					g.Error(),
@@ -770,7 +782,10 @@ func (svc *Service) genWorkerWorkflowFunctionVars(f *g.File) {
 
 // genWorkerWorkflowInput generates a <Workflow>Input struct
 func (svc *Service) genWorkerWorkflowInput(f *g.File, workflow string) {
-	typeName := toCamel("%sInput", workflow)
+	typeName := toCamel("%sWorkflowInput", workflow)
+	if svc.cfg.DisableWorkflowInputRename {
+		typeName = toCamel("%sInput", workflow)
+	}
 	opts := svc.workflows[workflow]
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
@@ -904,10 +919,14 @@ func (svc *Service) genWorkerWorkflowsInterface(f *g.File) {
 			}
 			methods.
 				Id(workflow).
-				Params(
-					g.Id("ctx").Qual(workflowPkg, "Context"),
-					g.Id("input").Op("*").Id(toCamel("%sInput", workflow)),
-				).
+				ParamsFunc(func(args *g.Group) {
+					args.Id("ctx").Qual(workflowPkg, "Context")
+					if svc.cfg.DisableWorkflowInputRename {
+						args.Id("input").Op("*").Id(toCamel("%sInput", workflow))
+					} else {
+						args.Id("input").Op("*").Id(toCamel("%sWorkflowInput", workflow))
+					}
+				}).
 				Params(
 					g.Id(toCamel("%sWorkflow", workflow)),
 					g.Error(),
