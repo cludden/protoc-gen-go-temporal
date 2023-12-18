@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.0
+	github.com/alta/protopatch v0.5.3
 	github.com/benthosdev/benthos/v4 v4.24.0
 	github.com/dave/jennifer v1.7.0
 	github.com/iancoleman/strcase v0.3.0

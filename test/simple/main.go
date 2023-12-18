@@ -19,7 +19,7 @@ type Workflows struct{}
 // ============================================================================
 
 type someWorkflow1 struct {
-	*simplepb.SomeWorkflow1Input
+	*simplepb.SomeWorkflow1WorkflowInput
 	sel    workflow.Selector
 	events []string
 }
@@ -29,8 +29,8 @@ func Register(r worker.Registry) {
 	simplepb.RegisterSimpleActivities(r, &Activities{})
 }
 
-func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1Input) (simplepb.SomeWorkflow1Workflow, error) {
-	return &someWorkflow1{SomeWorkflow1Input: in, sel: workflow.NewSelector(ctx)}, nil
+func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1WorkflowInput) (simplepb.SomeWorkflow1Workflow, error) {
+	return &someWorkflow1{SomeWorkflow1WorkflowInput: in, sel: workflow.NewSelector(ctx)}, nil
 }
 
 func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Response, error) {
@@ -92,13 +92,13 @@ func (s *someWorkflow1) SomeQuery2(req *simplepb.SomeQuery2Request) (*simplepb.S
 // ============================================================================
 
 type someWorkflow2 struct {
-	*simplepb.SomeWorkflow2Input
+	*simplepb.SomeWorkflow2WorkflowInput
 	log     logger.Logger
 	updates int
 }
 
-func (w *Workflows) SomeWorkflow2(ctx workflow.Context, input *simplepb.SomeWorkflow2Input) (simplepb.SomeWorkflow2Workflow, error) {
-	wf := &someWorkflow2{SomeWorkflow2Input: input, log: workflow.GetLogger(ctx)}
+func (w *Workflows) SomeWorkflow2(ctx workflow.Context, input *simplepb.SomeWorkflow2WorkflowInput) (simplepb.SomeWorkflow2Workflow, error) {
+	wf := &someWorkflow2{SomeWorkflow2WorkflowInput: input, log: workflow.GetLogger(ctx)}
 	return wf, nil
 }
 
@@ -125,13 +125,13 @@ func (wf *someWorkflow2) ValidateSomeUpdate1(ctx workflow.Context, req *simplepb
 // ============================================================================
 
 type someWorkflow3 struct {
-	*simplepb.SomeWorkflow3Input
+	*simplepb.SomeWorkflow3WorkflowInput
 	log     logger.Logger
 	signals int
 	updates int
 }
 
-func (w *Workflows) SomeWorkflow3(ctx workflow.Context, input *simplepb.SomeWorkflow3Input) (simplepb.SomeWorkflow3Workflow, error) {
+func (w *Workflows) SomeWorkflow3(ctx workflow.Context, input *simplepb.SomeWorkflow3WorkflowInput) (simplepb.SomeWorkflow3Workflow, error) {
 	return &someWorkflow3{input, workflow.GetLogger(ctx), 0, 0}, nil
 }
 

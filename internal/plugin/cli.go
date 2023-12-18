@@ -111,7 +111,7 @@ func (svc *Service) renderCLI(f *g.File) {
 
 // genCliFlagForField generates a cli flag for a message field
 func (svc *Service) genCliFlagForField(flags *g.Group, field *protogen.Field, category, prefix string) {
-	name := field.GoName
+	name := svc.getFieldName(field)
 	flagName := prefix + strcase.ToKebab(name)
 	usage := strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(field.Comments.Leading.String(), "//"), "\n//", ""))
 	if usage == "" {
@@ -506,7 +506,8 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -606,7 +607,8 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -699,7 +701,8 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -756,8 +759,8 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 
 // genCliUnmarshalMessage generates an UnmarshalCliFlagsTo<Message> function
 func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
-	name := msg.GoIdent.GoName
-	fnName := fmt.Sprintf("UnmarshalCliFlagsTo%s", name)
+	name := svc.getMessageName(msg)
+	fnName := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(name))
 	f.Commentf("%s unmarshals a %s from command line flags", fnName, name)
 	f.Func().Id(fnName).
 		Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).
@@ -785,8 +788,11 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 				),
 				g.Id("hasValues").Op("=").True(),
 			)
+
 			for _, field := range msg.Fields {
-				flag := strcase.ToKebab(field.GoName)
+				goName := svc.getFieldName(field)
+				flag := strcase.ToKebab(goName)
+
 				fn.If(g.Id("cmd").Dot("IsSet").Call(g.Lit(flag))).BlockFunc(func(b *g.Group) {
 					// indicate presence of value
 					b.Id("hasValues").Op("=").True()
@@ -807,73 +813,73 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 						).Block(
 							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarshalling %q map flag: %%w", flag)), g.Err())),
 						)
-						b.Id("result").Dot(field.GoName).Op("=").Id("tmp").Dot(field.GoName)
+						b.Id("result").Dot(goName).Op("=").Id("tmp").Dot(goName)
 						return
 					}
 
 					switch field.Desc.Kind() {
 					case protoreflect.BoolKind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Bool").Call(g.Lit(flag)))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Bool").Call(g.Lit(flag)))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
+						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
 					case protoreflect.BytesKind:
 						b.List(g.Id("v"), g.Err()).Op(":=").Qual(base64Pkg, "StdEncoding").Dot("DecodeString").Call(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
 						b.If(g.Err().Op("!=").Nil()).Block(
 							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error base64-decoding %q flag: %%w", flag)), g.Err())),
 						)
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("v"))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("v"))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id("v")
+						b.Id("result").Dot(goName).Op("=").Id("v")
 					case protoreflect.DoubleKind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Float64").Call(g.Lit(flag)))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Float64").Call(g.Lit(flag)))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
+						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
 					case protoreflect.EnumKind:
 						b.List(g.Id("v"), g.Id("ok")).Op(":=").Id(fmt.Sprintf("%s_value", field.Enum.GoIdent.GoName)).Index(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
 						b.If(g.Op("!").Id("ok")).Block(
 							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("unsupported enum value for %q flag: %%q", flag)), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
 						)
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("v"))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("v"))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id(field.Enum.GoIdent.GoName).Call(g.Id("v"))
+						b.Id("result").Dot(goName).Op("=").Id(field.Enum.GoIdent.GoName).Call(g.Id("v"))
 					case protoreflect.Fixed32Kind, protoreflect.Uint32Kind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag))))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag))))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
+						b.Id("result").Dot(goName).Op("=").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
 					case protoreflect.Fixed64Kind, protoreflect.Uint64Kind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Uint64").Call(g.Lit(flag))
+						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Uint64").Call(g.Lit(flag))
 					case protoreflect.FloatKind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag))))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag))))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag)))
+						b.Id("result").Dot(goName).Op("=").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag)))
 					case protoreflect.Int32Kind, protoreflect.Sfixed32Kind, protoreflect.Sint32Kind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag))))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag))))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag)))
+						b.Id("result").Dot(goName).Op("=").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag)))
 					case protoreflect.Int64Kind, protoreflect.Sfixed64Kind, protoreflect.Sint64Kind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("Int64").Call(g.Lit(flag)))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Int64").Call(g.Lit(flag)))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("Int64").Call(g.Lit(flag))
+						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Int64").Call(g.Lit(flag))
 					case protoreflect.GroupKind:
 					case protoreflect.MessageKind:
 						var val *g.Statement
@@ -905,16 +911,16 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 						}
 
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Add(val))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Add(val))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Add(val)
+						b.Id("result").Dot(goName).Op("=").Add(val)
 					case protoreflect.StringKind:
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(field.GoName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
 							return
 						}
-						b.Id("result").Dot(field.GoName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))
+						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))
 					}
 				})
 			}
@@ -1013,7 +1019,8 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -1136,7 +1143,8 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 
 			// unmarshal request
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -1145,7 +1153,8 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 
 			// unmarshal signal
 			if hasSignalInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", handler.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(handler.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("signal"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling signal: %w"), g.Err())),

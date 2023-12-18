@@ -41,12 +41,12 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Id(method.Input.GoIdent.GoName)
+						args.Op("*").Id(svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+						returnVals.Op("*").Id(svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				}),
@@ -59,12 +59,12 @@ func (svc *Service) genWorkerBuilderFunction(f *g.File, workflow string) {
 					ParamsFunc(func(args *g.Group) {
 						args.Id("ctx").Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+							args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 						}
 					}).
 					ParamsFunc(func(returnVals *g.Group) {
 						if hasOutput {
-							returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+							returnVals.Op("*").Id(svc.getMessageName(method.Output))
 						}
 						returnVals.Error()
 					}).
@@ -250,7 +250,7 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 		}).
 		Params(g.Error()).
@@ -281,7 +281,7 @@ func (svc *Service) genWorkerSignalExternalAsync(f *g.File, signal string) {
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 		}).
 		Params(g.Qual(workflowPkg, "Future")).
@@ -314,13 +314,13 @@ func (svc *Service) genWorkerSignalReceive(f *g.File, signal string) {
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasInput {
-				returnVals.Op("*").Id(method.Input.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Input))
 			}
 			returnVals.Bool()
 		}).
 		BlockFunc(func(b *g.Group) {
 			if hasInput {
-				b.Var().Id("resp").Id(method.Input.GoIdent.GoName)
+				b.Var().Id("resp").Id(svc.getMessageName(method.Input))
 			}
 			b.Id("more").Op(":=").Id("s").Dot("Channel").Dot("Receive").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
@@ -351,14 +351,14 @@ func (svc *Service) genWorkerSignalReceiveAsync(f *g.File, signal string) {
 		Params().
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasInput {
-				returnVals.Op("*").Id(method.Input.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Input))
 			} else {
 				returnVals.Bool()
 			}
 		}).
 		BlockFunc(func(b *g.Group) {
 			if hasInput {
-				b.Var().Id("resp").Id(method.Input.GoIdent.GoName)
+				b.Var().Id("resp").Id(svc.getMessageName(method.Input))
 				b.If(
 					g.Id("ok").Op(":=").Id("s").Dot("Channel").Dot("ReceiveAsync").Call(
 						g.Op("&").Id("resp"),
@@ -387,7 +387,7 @@ func (svc *Service) genWorkerSignalSelect(f *g.File, signal string) {
 			g.Id("sel").Qual(workflowPkg, "Selector"),
 			g.Id("fn").Func().ParamsFunc(func(args *g.Group) {
 				if hasInput {
-					args.Op("*").Id(method.Input.GoIdent.GoName)
+					args.Op("*").Id(svc.getMessageName(method.Input))
 				}
 			}),
 		).
@@ -435,13 +435,13 @@ func (svc *Service) genWorkerWorkflowChild(f *g.File, workflow string) {
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			args.Id("options").Op("...").Op("*").Id(toCamel("%sChildOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -479,7 +479,7 @@ func (svc *Service) genWorkerWorkflowChildAsync(f *g.File, workflow string) {
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			args.Id("options").Op("...").Op("*").Id(toCamel("%sChildOptions", workflow))
 		}).
@@ -563,13 +563,13 @@ func (svc *Service) genWorkerWorkflowChildRunGet(f *g.File, workflow string) {
 		).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Id(method.Output.GoIdent.GoName)
+				fn.Var().Id("resp").Id(svc.getMessageName(method.Output))
 			}
 			fn.If(
 				g.Err().Op(":=").Id("r").Dot("Future").Dot("Get").CallFunc(func(args *g.Group) {
@@ -676,7 +676,7 @@ func (svc *Service) genWorkerWorkflowChildRunSignals(f *g.File, workflow string)
 			ParamsFunc(func(params *g.Group) {
 				params.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
-					params.Id("input").Op("*").Id(handler.Input.GoIdent.GoName)
+					params.Id("input").Op("*").Id(svc.getMessageName(handler.Input))
 				}
 			}).
 			Params(g.Error()).
@@ -696,7 +696,7 @@ func (svc *Service) genWorkerWorkflowChildRunSignals(f *g.File, workflow string)
 			ParamsFunc(func(params *g.Group) {
 				params.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
-					params.Id("input").Op("*").Id(handler.Input.GoIdent.GoName)
+					params.Id("input").Op("*").Id(svc.getMessageName(handler.Input))
 				}
 			}).
 			Params(g.Qual(workflowPkg, "Future")).
@@ -767,12 +767,12 @@ func (svc *Service) genWorkerWorkflowFunctionVars(f *g.File) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Id(method.Input.GoIdent.GoName)
+						args.Op("*").Id(svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+						returnVals.Op("*").Id(svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				})
@@ -793,7 +793,7 @@ func (svc *Service) genWorkerWorkflowInput(f *g.File, workflow string) {
 	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, method.Desc.FullName())
 	f.Type().Id(typeName).StructFunc(func(fields *g.Group) {
 		if hasInput {
-			fields.Id("Req").Op("*").Id(method.Input.GoIdent.GoName)
+			fields.Id("Req").Op("*").Id(svc.getMessageName(method.Input))
 		}
 
 		// add workflow signals
@@ -830,7 +830,7 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 			).
 			ParamsFunc(func(returnVals *g.Group) {
 				if hasOutput {
-					returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+					returnVals.Op("*").Id(svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			})
@@ -849,11 +849,11 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 			methods.Id(query).
 				ParamsFunc(func(args *g.Group) {
 					if hasInput {
-						args.Op("*").Id(handler.Input.GoIdent.GoName)
+						args.Op("*").Id(svc.getMessageName(handler.Input))
 					}
 				}).
 				Params(
-					g.Op("*").Id(handler.Output.GoIdent.GoName),
+					g.Op("*").Id(svc.getMessageName(handler.Output)),
 					g.Error(),
 				)
 		}
@@ -874,7 +874,7 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 					ParamsFunc(func(args *g.Group) {
 						args.Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Op("*").Id(handler.Input.GoIdent.GoName)
+							args.Op("*").Id(svc.getMessageName(handler.Input))
 						}
 					}).
 					Params(g.Error())
@@ -890,12 +890,12 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Id(handler.Input.GoIdent.GoName)
+						args.Op("*").Id(svc.getMessageName(handler.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+						returnVals.Op("*").Id(svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
 				})

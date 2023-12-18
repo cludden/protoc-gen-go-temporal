@@ -25,7 +25,7 @@ type Workflows struct{}
 type CreateFooWorkflow struct {
 	// it embeds the generated workflow Input type that contains the workflow
 	// input and signal helpers
-	*examplev1.CreateFooInput
+	*examplev1.CreateFooWorkflowInput
 
 	progress float32
 	status   examplev1.Foo_Status
@@ -33,7 +33,7 @@ type CreateFooWorkflow struct {
 
 // CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
 // that initializes a new CreateFooWorkflow for each execution
-func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooInput) (examplev1.CreateFooWorkflow, error) {
+func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooWorkflowInput) (examplev1.CreateFooWorkflow, error) {
 	return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_CREATING}, nil
 }
 
@@ -49,7 +49,7 @@ func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFoo
 
 	// execute Notify activity using generated helper
 	err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
-		Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName()),
+		Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetRequestName()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error sending notification: %w", err)
@@ -62,7 +62,7 @@ func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFoo
 
 	return &examplev1.CreateFooResponse{
 		Foo: &examplev1.Foo{
-			Name:   wf.Req.GetName(),
+			Name:   wf.Req.GetRequestName(),
 			Status: wf.status,
 		},
 	}, nil
