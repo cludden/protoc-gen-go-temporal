@@ -86,11 +86,11 @@ Optional **CLI** with:
   ```yaml
   version: v1
   managed:
-  enabled: true
-  go_package_prefix:
-    default: github.com/foo/bar/gen
-    except:
-      - buf.build/cludden/protoc-gen-go-temporal
+    enabled: true
+    go_package_prefix:
+      default: github.com/foo/bar/gen
+      except:
+        - buf.build/cludden/protoc-gen-go-temporal
   plugins:
     - plugin: go
       out: gen
