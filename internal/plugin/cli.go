@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alta/protopatch/lint"
-	"github.com/alta/protopatch/patch/gopb"
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
@@ -113,7 +111,7 @@ func (svc *Service) renderCLI(f *g.File) {
 
 // genCliFlagForField generates a cli flag for a message field
 func (svc *Service) genCliFlagForField(flags *g.Group, field *protogen.Field, category, prefix string) {
-	name := field.GoName
+	name := svc.getFieldName(field)
 	flagName := prefix + strcase.ToKebab(name)
 	usage := strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(field.Comments.Leading.String(), "//"), "\n//", ""))
 	if usage == "" {
@@ -508,7 +506,8 @@ func (svc *Service) genCliQueryCommand(cmds *g.Group, query string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -608,7 +607,8 @@ func (svc *Service) genCliSignalCommand(cmds *g.Group, signal string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -701,7 +701,8 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -758,8 +759,8 @@ func (svc *Service) genCliUpdateCommand(f *g.Group, update string) {
 
 // genCliUnmarshalMessage generates an UnmarshalCliFlagsTo<Message> function
 func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
-	name := msg.GoIdent.GoName
-	fnName := fmt.Sprintf("UnmarshalCliFlagsTo%s", name)
+	name := svc.getMessageName(msg)
+	fnName := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(name))
 	f.Commentf("%s unmarshals a %s from command line flags", fnName, name)
 	f.Func().Id(fnName).
 		Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).
@@ -788,24 +789,8 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 				g.Id("hasValues").Op("=").True(),
 			)
 
-			var lintOpts *gopb.LintOptions
-			if opts, ok := proto.GetExtension(msg.Desc.ParentFile().Options(), gopb.E_Lint).(*gopb.LintOptions); ok && opts != nil {
-				lintOpts = opts
-			}
-
 			for _, field := range msg.Fields {
-				var fieldOpts *gopb.Options
-				if opts, ok := proto.GetExtension(field.Desc.Options(), gopb.E_Field).(*gopb.Options); ok && opts != nil {
-					fieldOpts = opts
-				}
-
-				goName := field.GoName
-				if n := fieldOpts.GetName(); n != "" {
-					goName = n
-				}
-				if lintOpts.GetAll() || lintOpts.GetFields() {
-					goName = lint.Name(goName, lintOpts.InitialismsMap())
-				}
+				goName := svc.getFieldName(field)
 				flag := strcase.ToKebab(goName)
 
 				fn.If(g.Id("cmd").Dot("IsSet").Call(g.Lit(flag))).BlockFunc(func(b *g.Group) {
@@ -1034,7 +1019,8 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 
 			// unmarshal input
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -1157,7 +1143,8 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 
 			// unmarshal request
 			if hasInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", method.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(method.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
@@ -1166,7 +1153,8 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 
 			// unmarshal signal
 			if hasSignalInput {
-				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", handler.Input.GoIdent.GoName)
+				inputName := svc.getMessageName(handler.Input)
+				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", toCamel(inputName))
 				fn.List(g.Id("signal"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling signal: %w"), g.Err())),

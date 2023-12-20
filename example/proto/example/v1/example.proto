@@ -3,6 +3,7 @@ syntax="proto3";
 package example.v1;
 
 import "google/protobuf/empty.proto";
+import "patch/go.proto";
 import "temporal/v1/temporal.proto";
 
 service Example {
@@ -55,8 +56,12 @@ service Example {
 
 // CreateFooRequest describes the input to a CreateFoo workflow
 message CreateFooRequest {
+  option (go.message).name = 'CreateFooInput';
+
   // unique foo name
-  string name = 1;
+  string name = 1 [
+    (go.field).name = 'RequestName'
+  ];
 }
 
 // SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow

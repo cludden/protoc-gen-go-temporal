@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/alta/protopatch/lint"
+	"github.com/alta/protopatch/patch/gopb"
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -353,6 +355,54 @@ func (svc *Service) genConstants(f *g.File) {
 			}
 		})
 	}
+}
+
+// getFieldName returns the name of the go field associated with the field
+func (svc *Service) getFieldName(field *protogen.Field) string {
+	var lintOpts *gopb.LintOptions
+	if opts, ok := proto.GetExtension(field.Desc.ParentFile().Options(), gopb.E_Lint).(*gopb.LintOptions); ok && opts != nil {
+		lintOpts = opts
+	}
+
+	var fieldOpts *gopb.Options
+	if opts, ok := proto.GetExtension(field.Desc.Options(), gopb.E_Field).(*gopb.Options); ok && opts != nil {
+		fieldOpts = opts
+	}
+
+	goName := field.GoName
+	if svc.cfg.EnablePatchSupport {
+		if n := fieldOpts.GetName(); n != "" {
+			goName = n
+		}
+		if lintOpts.GetAll() || lintOpts.GetFields() {
+			goName = lint.Name(goName, lintOpts.InitialismsMap())
+		}
+	}
+	return goName
+}
+
+// getMessageName returns the name of the go type associated with the message
+func (svc *Service) getMessageName(msg *protogen.Message) string {
+	var lintOpts *gopb.LintOptions
+	if opts, ok := proto.GetExtension(msg.Desc.ParentFile().Options(), gopb.E_Lint).(*gopb.LintOptions); ok && opts != nil {
+		lintOpts = opts
+	}
+
+	var msgOpts *gopb.Options
+	if opts, ok := proto.GetExtension(msg.Desc.Options(), gopb.E_Message).(*gopb.Options); ok && opts != nil {
+		msgOpts = opts
+	}
+
+	name := msg.GoIdent.GoName
+	if svc.cfg.EnablePatchSupport {
+		if n := msgOpts.GetName(); n != "" {
+			name = n
+		}
+		if lintOpts.GetAll() || lintOpts.GetMessages() {
+			name = lint.Name(name, lintOpts.InitialismsMap())
+		}
+	}
+	return name
 }
 
 // render writes the temporal service to the given File

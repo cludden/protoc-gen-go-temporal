@@ -51,6 +51,6 @@ func TestCreateFooStartWorkflowOptions(t *testing.T) {
 		},
 	)
 	example := examplev1.NewExampleClient(c)
-	_, err := example.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: "bar"})
+	_, err := example.CreateFooAsync(ctx, &examplev1.CreateFooInput{RequestName: "bar"})
 	require.NoError(err)
 }
