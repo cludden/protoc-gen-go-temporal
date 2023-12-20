@@ -466,8 +466,10 @@ via:
 
 | flag | type | description | default |
 | :--- | :---: | :--- | :---: |
-| cli-enabled | `bool` | enables cli generation | `false` |
 | cli-categories | `bool` | enables cli categories | `true` |
+| cli-enabled | `bool` | enables cli generation | `false` |
+| disable-workflow-input-rename | `bool` | disables renamed workflow input suffix | `false` |
+| enable-patch-support | `bool` | enables experimental support for [protoc-gen-go-patch](https://github.com/alta/protopatch) | `false` |
 | workflow-update-enabled | `bool` | enables experimental workflow update | `false` |
 
 ### Service Options
