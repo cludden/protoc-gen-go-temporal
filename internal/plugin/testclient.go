@@ -61,12 +61,12 @@ func (svc *Service) genTestClientImplQueryMethod(f *g.File, query string) {
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).
@@ -95,7 +95,7 @@ func (svc *Service) genTestClientImplQueryMethod(f *g.File, query string) {
 				if !hasOutput {
 					bl.Return(g.Nil())
 				} else {
-					bl.Var().Id("result").Id(handler.Output.GoIdent.GoName)
+					bl.Var().Id("result").Id(svc.getMessageName(handler.Output))
 					bl.If(g.Err().Op(":=").Id("val").Dot("Get").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
 						g.Return(
 							g.Nil(),
@@ -122,7 +122,7 @@ func (svc *Service) genTestClientImplSignalMethod(f *g.File, signal string) {
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 		}).
 		Params(
@@ -157,13 +157,13 @@ func (svc *Service) genTestClientImplUpdateMethod(f *g.File, update string) {
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -214,7 +214,7 @@ func (svc *Service) genTestClientImplUpdateAsyncMethod(f *g.File, update string)
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
@@ -266,13 +266,13 @@ func (svc *Service) genTestClientImplWorkflowMethod(f *g.File, workflow string) 
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -308,7 +308,7 @@ func (svc *Service) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow str
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
@@ -395,16 +395,16 @@ func (svc *Service) genTestClientImplWorkflowWithSignalMethod(f *g.File, workflo
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -448,10 +448,10 @@ func (svc *Service) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, wo
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
 		}).
@@ -531,7 +531,7 @@ func (svc *Service) genTestClientUpdateHandleImpl(f *g.File, update string) {
 			fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
 			fields.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
 			if hasInput {
-				fields.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				fields.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 			fields.Id("runID").String()
 			fields.Id("workflowID").String()
@@ -549,7 +549,7 @@ func (svc *Service) genTestClientUpdateHandleImplGetMethod(f *g.File, update str
 		Params(g.Id("ctx").Qual("context", "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -574,7 +574,7 @@ func (svc *Service) genTestClientUpdateHandleImplGetMethod(f *g.File, update str
 				Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
 						if hasOutput {
-							returnVals.Id("resp").Op(".").Parens(g.Op("*").Id(method.Output.GoIdent.GoName))
+							returnVals.Id("resp").Op(".").Parens(g.Op("*").Id(svc.getMessageName(method.Output)))
 						}
 						returnVals.Nil()
 					}),
@@ -633,7 +633,7 @@ func (svc *Service) genTestClientWorkflowRunImpl(f *g.File, workflow string) {
 		fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
 		fields.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 		if hasInput {
-			fields.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+			fields.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 		}
 		fields.Id("workflows").Id(toCamel("%sWorkflows", svc.Service.GoName))
 	})
@@ -673,7 +673,7 @@ func (svc *Service) genTestClientWorkflowRunImplGetMethod(f *g.File, workflow st
 		Params(g.Qual("context", "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -705,7 +705,7 @@ func (svc *Service) genTestClientWorkflowRunImplGetMethod(f *g.File, workflow st
 			)
 			// return workflow result
 			if hasOutput {
-				fn.Var().Id("result").Id(method.Output.GoIdent.GoName)
+				fn.Var().Id("result").Id(svc.getMessageName(method.Output))
 				fn.If(g.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowResult").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Nil(), g.Err()),
 				)
@@ -745,12 +745,12 @@ func (svc *Service) genTestClientWorkflowRunImplQueryMethod(f *g.File, workflow,
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).Block(
@@ -792,7 +792,7 @@ func (svc *Service) genTestClientWorkflowRunImplSignalMethod(f *g.File, workflow
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 		}).
 		Params(
@@ -852,13 +852,13 @@ func (svc *Service) genTestClientWorkflowRunImplUpdateMethod(f *g.File, workflow
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(handler.Output.GoIdent.GoName)
+				returnVals.Op("*").Id(svc.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).
@@ -890,7 +890,7 @@ func (svc *Service) genTestClientWorkflowRunImplUpdateAsyncMethod(f *g.File, wor
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(handler.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
 		}).
