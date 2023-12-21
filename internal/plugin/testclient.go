@@ -767,6 +767,19 @@ func (svc *Service) genTestClientWorkflowRunImplQueryMethod(f *g.File, workflow,
 	)
 }
 
+// genTestClientWorkflowRunImplRunMethod generates a test<Workflow>Run's Run method
+func (svc *Service) genTestClientWorkflowRunImplRunMethod(f *g.File, workflow string) {
+	f.Comment("Run noop implementation")
+	f.Func().
+		Params(g.Id("r").Op("*").Id(fmt.Sprintf("test%sRun", workflow))).
+		Id("Run").
+		Params().
+		Qual(clientPkg, "WorkflowRun").
+		Block(
+			g.Return(g.Nil()),
+		)
+}
+
 // genTestClientWorkflowRunImplRunIDMethod generates a test<Workflow>Run's RunID method
 func (svc *Service) genTestClientWorkflowRunImplRunIDMethod(f *g.File, workflow string) {
 	f.Comment("RunID noop implementation")
@@ -962,6 +975,7 @@ func (svc *Service) renderTestClient(f *g.File) {
 		svc.genTestClientWorkflowRunImplCancelMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplGetMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplIDMethod(f, workflow)
+		svc.genTestClientWorkflowRunImplRunMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplRunIDMethod(f, workflow)
 		svc.genTestClientWorkflowRunImplTerminateMethod(f, workflow)
 
