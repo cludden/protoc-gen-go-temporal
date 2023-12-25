@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"fmt"
+	"path"
+	"path/filepath"
 	"runtime"
 
 	g "github.com/dave/jennifer/jen"
@@ -14,6 +16,7 @@ type Config struct {
 	CliEnabled                 bool
 	DisableWorkflowInputRename bool
 	EnablePatchSupport         bool
+	EnableXNS                  bool
 	WorkflowUpdateEnabled      bool
 }
 
@@ -35,6 +38,7 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
 	flags.BoolVar(&cfg.DisableWorkflowInputRename, "disable-workflow-input-rename", false, "disable renaming of \"<Workflow>WorkflowInput\"")
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
+	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
 	return &Plugin{
@@ -63,6 +67,22 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 		f := g.NewFile(string(pkgName))
 		genCodeGenerationHeader(p, f, file)
 
+		var xns *g.File
+		var xnsGoPackageName, xnsFilePath string
+		var hasXNS bool
+		if p.cfg.EnableXNS {
+			xnsGoPackageName = fmt.Sprintf("%sxns", file.GoPackageName)
+			xns = g.NewFile(xnsGoPackageName)
+			genCodeGenerationHeader(p, xns, file)
+
+			prefixToSlash := filepath.ToSlash(file.GeneratedFilenamePrefix)
+			xnsFilePath = path.Join(
+				path.Dir(prefixToSlash),
+				xnsGoPackageName,
+				path.Base(prefixToSlash),
+			)
+		}
+
 		var hasContent bool
 		for _, service := range file.Services {
 			svc, err := parseService(plugin, p.cfg, file, service)
@@ -78,6 +98,10 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 			if svc.cfg.CliEnabled {
 				svc.renderCLI(f)
 			}
+			if svc.cfg.EnableXNS {
+				svc.renderXNS(xns)
+				hasXNS = true
+			}
 			hasContent = true
 		}
 
@@ -87,6 +111,17 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 
 		if err := f.Render(p.NewGeneratedFile(fmt.Sprintf("%s_temporal.pb.go", file.GeneratedFilenamePrefix), file.GoImportPath)); err != nil {
 			return fmt.Errorf("error rendering file: %w", err)
+		}
+		if hasXNS {
+			if err := xns.Render(p.NewGeneratedFile(
+				fmt.Sprintf("%s_xns_temporal.pb.go", xnsFilePath),
+				protogen.GoImportPath(path.Join(
+					string(file.GoImportPath),
+					xnsGoPackageName,
+				)),
+			)); err != nil {
+				return fmt.Errorf("error rendering file: %w", err)
+			}
 		}
 	}
 	return nil

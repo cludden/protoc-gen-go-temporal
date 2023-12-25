@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/cludden/protoc-gen-go-temporal/example/external"
 	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+	"github.com/cludden/protoc-gen-go-temporal/gen/example/v1/examplev1xns"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
@@ -119,13 +121,46 @@ func main() {
 			}),
 	)
 	if err != nil {
-		log.Fatalf("error initializing commands: %v", err)
+		log.Fatalf("error initializing example cli: %v", err)
 	}
 	app.Name = "example"
 	app.Usage = "an example temporal cli"
+
+	external, err := examplev1.NewExternalCliCommand(
+		examplev1.NewExternalCliOptions().
+			WithClient(func(cmd *cli.Context) (client.Client, error) {
+				return client.Dial(client.Options{
+					Logger:    logger.NewSdkLogger(logger.NewCLILogger()),
+					Namespace: "external",
+				})
+			}).
+			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+				example, err := examplev1.NewExampleClientWithOptions(c, client.Options{
+					Namespace: "default",
+				})
+				if err != nil {
+					return nil, err
+				}
+				w := worker.New(c, examplev1.ExternalTaskQueue, worker.Options{})
+
+				// register example activities
+				examplev1xns.RegisterExampleActivities(w, example)
+
+				// register activities and workflows using generated helpers
+				examplev1.RegisterExternalActivities(w, &external.Activities{})
+				examplev1.RegisterExternalWorkflows(w, &external.Workflows{})
+				return w, nil
+			}),
+	)
+	if err != nil {
+		log.Fatalf("error initializing external cli: %v", err)
+	}
+	app.Commands = append(app.Commands, external)
 
 	// run cli
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
+
+// ============================================================================

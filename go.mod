@@ -7,6 +7,7 @@ require (
 	github.com/alta/protopatch v0.5.3
 	github.com/benthosdev/benthos/v4 v4.24.0
 	github.com/dave/jennifer v1.7.0
+	github.com/google/uuid v1.4.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/pflag v1.0.5
@@ -14,7 +15,7 @@ require (
 	github.com/urfave/cli/v2 v2.25.7
 	go.temporal.io/api v1.26.0
 	go.temporal.io/sdk v1.25.1
-	go.temporal.io/server v1.22.2
+	go.temporal.io/server v1.22.3
 	google.golang.org/protobuf v1.31.0
 )
 
@@ -52,7 +53,6 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.4.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -114,7 +114,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
+	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.15.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/net v0.18.0 // indirect
