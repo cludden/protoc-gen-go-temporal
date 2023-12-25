@@ -194,7 +194,7 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 					}
 				})
 
-			// initialize acitivyt options
+			// initialize activity options
 			fn.If(g.Id("opts").Dot("opts").Op("==").Nil()).BlockFunc(func(bl *g.Group) {
 				if local {
 					bl.Id("activityOpts").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(g.Id("ctx"))
