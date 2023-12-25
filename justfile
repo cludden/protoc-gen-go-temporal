@@ -11,12 +11,13 @@ build:
 gen:
     #!/usr/bin/env bash
     set -euo pipefail
-    rm -rf {{ justfile_directory() }}/gen/*.pb.go
+    rm -rf {{ justfile_directory() }}/gen/*
     rm -rf {{ justfile_directory() }}/test/simple/gen/*.pb.go
     rm -rf {{ justfile_directory() }}/example/gen/*.pb.go
     buf generate
     go mod tidy
     rm -rf docs/api/example docs/api/simple docs/api/test
+    mockery --quiet
 
 # generate temporal
 gen-temporal:

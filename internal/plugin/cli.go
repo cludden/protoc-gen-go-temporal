@@ -23,6 +23,13 @@ const (
 )
 
 var (
+	multiLineArgs = g.Options{
+		Close:     ")",
+		Multi:     true,
+		Open:      "(",
+		Separator: ",",
+	}
+
 	multiLineValues = g.Options{
 		Close:     "}",
 		Multi:     true,

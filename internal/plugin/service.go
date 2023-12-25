@@ -444,6 +444,7 @@ func (svc *Service) render(f *g.File) {
 	for _, update := range svc.updatesOrdered {
 		svc.genClientImplUpdateMethod(f, update)
 		svc.genClientImplUpdateMethodAsync(f, update)
+		svc.genClientImplUpdateGetMethod(f, update)
 	}
 
 	// generate <Workflow>Options, <Workflow>Run interfaces and implementations used by client

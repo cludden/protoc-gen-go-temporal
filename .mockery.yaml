@@ -1,5 +1,13 @@
 with-expecter: true
 packages:
+  github.com/cludden/protoc-gen-go-temporal/gen/example/v1:
+    config:
+      replace-type:
+        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+    interfaces:
+      CreateFooRun: {}
+      ExampleClient: {}
+      UpdateFooProgressHandle: {}
   go.temporal.io/sdk/internal:
     config:
       dir: mocks/go.temporal.io/sdk/clientutils

@@ -16,10 +16,10 @@ service Example {
     option (temporal.v1.workflow) = {
       execution_timeout: { seconds: 3600 }
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-      id: 'create-foo/${!name.slug()}'
-      search_attributes: 
-        'foo = name\n'
-        'created_at = now().ts_tz("UTC")\n'
+      id: 'create-foo/${! name.slug() }'
+      // search_attributes: 
+      //   'foo = name\n'
+      //   'created_at = now().ts_tz("UTC")\n'
       query: { ref: 'GetFooProgress' }
       signal: { ref: 'SetFooProgress', start: true }
       update: { ref: 'UpdateFooProgress' }
@@ -50,6 +50,18 @@ service Example {
   rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
     option (temporal.v1.update) = {
       id: 'update-progress/${! progress.string() }',
+    };
+  }
+}
+
+service External {
+  option (temporal.v1.service) = {
+    task_queue: "external-v1"
+  };
+
+  rpc ProvisionFoo(ProvisionFooRequest) returns (ProvisionFooResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'provision-foo/${! name.slug() }'
     };
   }
 }
@@ -90,6 +102,21 @@ message GetFooProgressResponse {
 // NotifyRequest describes the input to a Notify activity
 message NotifyRequest {
   string message = 1;
+}
+
+// ProvisionFooRequest describes the input to a ProvisionFoo workflow
+message ProvisionFooRequest {
+  option (go.message).name = 'ProvisionFooInput';
+
+  // unique foo name
+  string name = 1 [
+    (go.field).name = 'RequestName'
+  ];
+}
+
+// SampleWorkflowWithMutexResponse describes the output from a ProvisionFoo workflow
+message ProvisionFooResponse {
+  Foo foo = 1; 
 }
 
 // SetFooProgressRequest describes the input to a SetFooProgress signal

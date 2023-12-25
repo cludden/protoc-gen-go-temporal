@@ -17,6 +17,7 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
     - [Bloblang Expressions](#bloblang-expressions)
   - [CLI](#cli)
   - [Test Client](#test-client)
+  - [Cross-Namespace (XNS)](#cross-namespace-xns)
   - [Documentation](#documentation)
   - [License](#license)
 
@@ -470,6 +471,7 @@ via:
 | cli-enabled | `bool` | enables cli generation | `false` |
 | disable-workflow-input-rename | `bool` | disables renamed workflow input suffix | `false` |
 | enable-patch-support | `bool` | enables experimental support for [protoc-gen-go-patch](https://github.com/alta/protopatch) | `false` |
+| enable-xns | `bool` | enables [experimental cross-namespace support](#cross-namespace-xns) | `false` |
 | workflow-update-enabled | `bool` | enables experimental workflow update | `false` |
 
 ### Service Options
@@ -637,6 +639,12 @@ func main() {
 The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [tests](./test/simple/main_test.go) for example usage.
 
 **_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
+
+## Cross-Namespace (XNS)
+
+*__Experimental__*
+
+This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. For an example of xns integration, see the [example/external](./example/external/external.go) package.
 
 ## Documentation
 

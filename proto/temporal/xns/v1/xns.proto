@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package temporal.xns.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1";
+
+enum IDReusePolicy {
+  WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED = 0;
+  // Allow starting a workflow execution using the same workflow id.
+  WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE = 1;
+  // Allow starting a workflow execution using the same workflow id, only when the last
+    // execution's final state is one of [terminated, cancelled, timed out, failed].
+  WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY = 2;
+  // Do not permit re-use of the workflow id for this workflow. Future start workflow requests
+    // could potentially change the policy, allowing re-use of the workflow id.
+  WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE = 3;
+  // If a workflow is running using the same workflow ID, terminate it and start a new one.
+    // If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
+  WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
+}
+
+//Defines how child workflows will react to their parent completing 
+enum ParentClosePolicy {
+  PARENT_CLOSE_POLICY_UNSPECIFIED = 0;
+  // The child workflow will also terminate
+  PARENT_CLOSE_POLICY_TERMINATE = 1;
+  // The child workflow will do nothing
+  PARENT_CLOSE_POLICY_ABANDON = 2;
+  // Cancellation will be requested of the child workflow
+  PARENT_CLOSE_POLICY_REQUEST_CANCEL = 3;
+}
+
+// QueryRequest can be used to configure xns query activities
+message QueryRequest {
+  string run_id = 1;
+  string workflow_id = 2;
+  google.protobuf.Any request = 3;
+}
+
+// RetryPolicy describes configuration for activity or child workflow retries
+message RetryPolicy {
+  google.protobuf.Duration initial_interval = 1;
+  double backoff_coefficient = 2;
+  google.protobuf.Duration max_interval = 3;
+  int32 max_attempts = 4;
+  repeated string non_retryable_error_types = 5;
+}
+
+// SignalRequest can be used to configure xns signal activities
+message SignalRequest {
+  string run_id = 1;
+  string workflow_id = 2;
+  google.protobuf.Any request = 3;
+}
+
+message StartWorkflowOptions {
+  string id = 1;
+  string task_queue = 2;
+  google.protobuf.Duration execution_timeout = 3;
+  google.protobuf.Duration run_timeout = 4;
+  google.protobuf.Duration task_timeout = 5;
+  IDReusePolicy id_reuse_policy = 6;
+  bool error_when_already_started = 7;
+  RetryPolicy retry_policy = 8;
+  google.protobuf.Struct memo = 9;
+  google.protobuf.Struct search_attirbutes = 10;
+  bool enable_eager_start = 11;
+  google.protobuf.Duration start_delay = 12;
+}
+
+// UpdateRequest can be used to configure xns update activities
+message UpdateRequest {
+  google.protobuf.Duration heartbeat_interval = 1;
+  UpdateWorkflowWithOptionsRequest update_workflow_options = 2;
+  google.protobuf.Any request = 3;
+}
+
+message UpdateWorkflowWithOptionsRequest {
+  string update_id = 1;
+  string workflow_id = 2;
+  string run_id = 3;
+  string first_execution_run_id = 4;
+  WaitPolicy wait_policy = 5;
+}
+
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
+// value from an UpdateWorkflow RPC
+enum WaitPolicy {
+  WAIT_POLICY_UNSPECIFIED = 0;
+  WAIT_POLICY_ADMITTED = 1;
+  WAIT_POLICY_ACCEPTED = 2;
+  WAIT_POLICY_COMPLETED = 3;
+}
+
+// WorkflowRequest can be used to configure xns workflow activities
+message WorkflowRequest {
+  google.protobuf.Duration heartbeat_interval = 1;
+  StartWorkflowOptions start_workflow_options = 2;
+  google.protobuf.Any request = 3;
+  bool detached = 4;
+  google.protobuf.Any signal = 5;
+}
