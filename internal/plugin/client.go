@@ -275,6 +275,36 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 		})
 }
 
+func (svc *Service) genClientImplUpdateGetMethod(f *g.File, update string) {
+	methodName := toCamel("Get%s", update)
+	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+
+	f.Commentf("%s retrieves a handle to an existing %s update", methodName, svc.fqnForUpdate(update))
+	f.Func().
+		Params(g.Id("c").Op("*").Id(clientType)).
+		Id(methodName).
+		Params(
+			g.Id("ctx").Qual("context", "Context"),
+			g.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions"),
+		).
+		Params(
+			g.Id(toCamel("%sHandle", update)),
+			g.Error(),
+		).
+		Block(
+			g.Return(
+				g.Op("&").Id(toLowerCamel("%sHandle", update)).Custom(
+					multiLineValues,
+					g.Id("client").Op(":").Id("c"),
+					g.Id("handle").Op(":").Id("c").Dot("client").Dot("GetWorkflowUpdateHandle").Call(
+						g.Id("req"),
+					),
+				),
+				g.Nil(),
+			),
+		)
+}
+
 // genClientImplUpdateMethod adds an <Update> method to a workflowClient
 func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 	clientType := toLowerCamel("%sClient", svc.Service.GoName)
@@ -651,11 +681,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 
 				// add synchronous flavor
 				methodName := toCamel("%sWith%s", workflow, signal)
-				if desc := handler.Comments.Leading.String(); desc != "" {
-					methods.Comment(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
-				} else {
-					methods.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and blocks until workflow completion", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
-				}
+				methods.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and blocks until workflow completion", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 				methods.Id(methodName).
 					ParamsFunc(func(args *g.Group) {
 						args.Id("ctx").Qual("context", "Context")
@@ -676,11 +702,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 
 				// add async flavor
 				methodName += "Async"
-				if desc := handler.Comments.Leading.String(); desc != "" {
-					methods.Comment(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
-				} else {
-					methods.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the workflow execution", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
-				}
+				methods.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the workflow execution", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 				methods.Id(methodName).
 					ParamsFunc(func(args *g.Group) {
 						args.Id("ctx").Qual("context", "Context")
@@ -818,6 +840,19 @@ func (svc *Service) genClientInterface(f *g.File) {
 					g.Id(toCamel("%sHandle", update)),
 					g.Error(),
 				)
+
+			// add async flavor
+			methodName = toCamel("Get%s", update)
+			methods.Commentf("%s retrieves a handle to an existing %s update", update, svc.fqnForUpdate(update))
+			methods.Id(methodName).
+				ParamsFunc(func(args *g.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
+				}).
+				Params(
+					g.Id(toCamel("%sHandle", update)),
+					g.Error(),
+				)
 		}
 	})
 }
@@ -911,10 +946,10 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 		fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
 			g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
 				if d := policy.GetInitialInterval(); d.IsValid() {
-					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(d.AsDuration().String())
 				}
 				if d := policy.GetMaxInterval(); d.IsValid() {
-					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(d.AsDuration().String())
 				}
 				if n := policy.GetBackoffCoefficient(); n != 0 {
 					fields.Id("BackoffCoefficient").Op(":").Lit(n)

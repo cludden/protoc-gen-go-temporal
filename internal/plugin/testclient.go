@@ -253,6 +253,29 @@ func (svc *Service) genTestClientImplUpdateAsyncMethod(f *g.File, update string)
 		})
 }
 
+func (svc *Service) genTestClientImplUpdateGetMethod(f *g.File, update string) {
+	methodName := toCamel("Get%s", update)
+
+	f.Commentf("%s retrieves a handle to an existing %s update", methodName, svc.fqnForUpdate(update))
+	f.Func().
+		Params(g.Id("c").Op("*").Id(toCamel("Test%sClient", svc.Service.GoName))).
+		Id(methodName).
+		ParamsFunc(func(args *g.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
+		}).
+		Params(
+			g.Id(toCamel("%sHandle", update)),
+			g.Error(),
+		).
+		Block(
+			g.Return(
+				g.Nil(),
+				g.Qual("errors", "New").Call(g.Lit("unimplemented")),
+			),
+		)
+}
+
 // genTestClientImplWorkflowMethod generates a TestClient <Workflow> method
 func (svc *Service) genTestClientImplWorkflowMethod(f *g.File, workflow string) {
 	method := svc.methods[workflow]
@@ -947,6 +970,7 @@ func (svc *Service) renderTestClient(f *g.File) {
 	for _, update := range svc.updatesOrdered {
 		svc.genTestClientImplUpdateMethod(f, update)
 		svc.genTestClientImplUpdateAsyncMethod(f, update)
+		svc.genTestClientImplUpdateGetMethod(f, update)
 
 		svc.genTestClientUpdateHandleImpl(f, update)
 		svc.genTestClientUpdateHandleImplGetMethod(f, update)
