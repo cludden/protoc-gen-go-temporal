@@ -454,6 +454,7 @@ func (svc *Service) render(f *g.File) {
 		svc.genClientWorkflowRunInterface(f, workflow)
 		svc.genClientWorkflowRunImpl(f, workflow)
 		svc.genClientWorkflowRunImplIDMethod(f, workflow)
+		svc.genClientWorkflowRunImplRunMethod(f, workflow)
 		svc.genClientWorkflowRunImplRunIDMethod(f, workflow)
 		svc.genClientWorkflowRunImplCancelMethod(f, workflow)
 		svc.genClientWorkflowRunImplGetMethod(f, workflow)

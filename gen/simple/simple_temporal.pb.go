@@ -500,6 +500,8 @@ type SomeWorkflow1Run interface {
 	ID() string
 	// RunID returns the workflow instance ID
 	RunID() string
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
 	// Get blocks until the workflow is complete and returns the result
 	Get(ctx context.Context) (*SomeWorkflow1Response, error)
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
@@ -533,6 +535,11 @@ type someWorkflow1Run struct {
 // ID returns the workflow ID
 func (r *someWorkflow1Run) ID() string {
 	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *someWorkflow1Run) Run() client.WorkflowRun {
+	return r.run
 }
 
 // RunID returns the execution ID
@@ -601,6 +608,8 @@ type SomeWorkflow2Run interface {
 	ID() string
 	// RunID returns the workflow instance ID
 	RunID() string
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
 	// Get blocks until the workflow is complete and returns the result
 	Get(ctx context.Context) error
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
@@ -628,6 +637,11 @@ type someWorkflow2Run struct {
 // ID returns the workflow ID
 func (r *someWorkflow2Run) ID() string {
 	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *someWorkflow2Run) Run() client.WorkflowRun {
+	return r.run
 }
 
 // RunID returns the execution ID
@@ -687,6 +701,8 @@ type SomeWorkflow3Run interface {
 	ID() string
 	// RunID returns the workflow instance ID
 	RunID() string
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
 	// Get blocks until the workflow is complete and returns the result
 	Get(ctx context.Context) error
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
@@ -708,6 +724,11 @@ type someWorkflow3Run struct {
 // ID returns the workflow ID
 func (r *someWorkflow3Run) ID() string {
 	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *someWorkflow3Run) Run() client.WorkflowRun {
+	return r.run
 }
 
 // RunID returns the execution ID
@@ -2908,6 +2929,11 @@ func (r *testSomeWorkflow1Run) ID() string {
 	return ""
 }
 
+// Run noop implementation
+func (r *testSomeWorkflow1Run) Run() client.WorkflowRun {
+	return nil
+}
+
 // RunID noop implementation
 func (r *testSomeWorkflow1Run) RunID() string {
 	return ""
@@ -2973,6 +2999,11 @@ func (r *testSomeWorkflow2Run) ID() string {
 	return ""
 }
 
+// Run noop implementation
+func (r *testSomeWorkflow2Run) Run() client.WorkflowRun {
+	return nil
+}
+
 // RunID noop implementation
 func (r *testSomeWorkflow2Run) RunID() string {
 	return ""
@@ -3032,6 +3063,11 @@ func (r *testSomeWorkflow3Run) ID() string {
 		return r.opts.ID
 	}
 	return ""
+}
+
+// Run noop implementation
+func (r *testSomeWorkflow3Run) Run() client.WorkflowRun {
+	return nil
 }
 
 // RunID noop implementation
@@ -4136,6 +4172,8 @@ type OtherWorkflowRun interface {
 	ID() string
 	// RunID returns the workflow instance ID
 	RunID() string
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
 	// Get blocks until the workflow is complete and returns the result
 	Get(ctx context.Context) (*OtherWorkflowResponse, error)
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
@@ -4153,6 +4191,11 @@ type otherWorkflowRun struct {
 // ID returns the workflow ID
 func (r *otherWorkflowRun) ID() string {
 	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *otherWorkflowRun) Run() client.WorkflowRun {
+	return r.run
 }
 
 // RunID returns the execution ID
@@ -4803,6 +4846,11 @@ func (r *testOtherWorkflowRun) ID() string {
 		return r.opts.ID
 	}
 	return ""
+}
+
+// Run noop implementation
+func (r *testOtherWorkflowRun) Run() client.WorkflowRun {
+	return nil
 }
 
 // RunID noop implementation
@@ -5505,6 +5553,8 @@ type WhatRun interface {
 	ID() string
 	// RunID returns the workflow instance ID
 	RunID() string
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
 	// Get blocks until the workflow is complete and returns the result
 	Get(ctx context.Context) error
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
@@ -5522,6 +5572,11 @@ type whatRun struct {
 // ID returns the workflow ID
 func (r *whatRun) ID() string {
 	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *whatRun) Run() client.WorkflowRun {
+	return r.run
 }
 
 // RunID returns the execution ID
@@ -5780,6 +5835,11 @@ func (r *testWhatRun) ID() string {
 		return r.opts.ID
 	}
 	return ""
+}
+
+// Run noop implementation
+func (r *testWhatRun) Run() client.WorkflowRun {
+	return nil
 }
 
 // RunID noop implementation

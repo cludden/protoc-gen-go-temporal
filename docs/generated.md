@@ -37,6 +37,7 @@
     - [Get method](#get-method-1)
     - [ID method](#id-method)
     - [Query method](#query-method-1)
+    - [Run method](#run-method)
     - [RunID method](#runid-method-1)
     - [Signal method](#signal-method-1)
     - [Terminate method](#terminate-method)
@@ -783,6 +784,18 @@ type (<Workflow>Run) <Query>(context.Context, [*<Query>Request]) ([*<Query>Respo
 ```
 
 Executes the corresponding query against the workflow execution using the configured default options
+
+[top](#generated-code-reference)
+
+---
+
+### Run method
+
+```go
+type (<Workflow>Run) Run() client.WorkflowRun
+```
+
+Returns the inner [client.WorkflowRun](https://pkg.go.dev/go.temporal.io/sdk/client#WorkflowRun)
 
 [top](#generated-code-reference)
 

@@ -1422,6 +1422,21 @@ func (svc *Service) genClientWorkflowRunImplQueryMethod(f *g.File, workflow stri
 		)
 }
 
+// genClientWorkflowRunImplRunMethod generates a <Workflow>Run's Run method
+func (svc *Service) genClientWorkflowRunImplRunMethod(f *g.File, workflow string) {
+	typeName := toLowerCamel("%sRun", workflow)
+
+	f.Comment("Run returns the inner client.WorkflowRun")
+	f.Func().
+		Params(g.Id("r").Op("*").Id(typeName)).
+		Id("Run").
+		Params().
+		Qual(clientPkg, "WorkflowRun").
+		Block(
+			g.Return(g.Id("r").Dot("run")),
+		)
+}
+
 // genClientWorkflowRunImplRunIDMethod generates a <Workflow>Run's RunID method
 func (svc *Service) genClientWorkflowRunImplRunIDMethod(f *g.File, workflow string) {
 	typeName := toLowerCamel("%sRun", workflow)
@@ -1588,6 +1603,9 @@ func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
 
 		methods.Comment("RunID returns the workflow instance ID")
 		methods.Id("RunID").Params().String()
+
+		methods.Comment("Run returns the inner client.WorkflowRun")
+		methods.Id("Run").Params().Qual(clientPkg, "WorkflowRun")
 
 		methods.Comment("Get blocks until the workflow is complete and returns the result")
 		methods.Id("Get").

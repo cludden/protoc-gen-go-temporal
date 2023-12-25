@@ -313,6 +313,8 @@ type CreateFooRun interface {
 	ID() string
 	// RunID returns the workflow instance ID
 	RunID() string
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
 	// Get blocks until the workflow is complete and returns the result
 	Get(ctx context.Context) (*CreateFooResponse, error)
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
@@ -344,6 +346,11 @@ type createFooRun struct {
 // ID returns the workflow ID
 func (r *createFooRun) ID() string {
 	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *createFooRun) Run() client.WorkflowRun {
+	return r.run
 }
 
 // RunID returns the execution ID
@@ -1078,6 +1085,11 @@ func (r *testCreateFooRun) ID() string {
 		return r.opts.ID
 	}
 	return ""
+}
+
+// Run noop implementation
+func (r *testCreateFooRun) Run() client.WorkflowRun {
+	return nil
 }
 
 // RunID noop implementation
