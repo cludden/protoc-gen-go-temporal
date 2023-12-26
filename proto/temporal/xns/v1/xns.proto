@@ -40,6 +40,7 @@ message QueryRequest {
   string run_id = 1;
   string workflow_id = 2;
   google.protobuf.Any request = 3;
+  google.protobuf.Duration heartbeat_interval = 4;
 }
 
 // RetryPolicy describes configuration for activity or child workflow retries
@@ -56,6 +57,7 @@ message SignalRequest {
   string run_id = 1;
   string workflow_id = 2;
   google.protobuf.Any request = 3;
+  google.protobuf.Duration heartbeat_interval = 4;
 }
 
 message StartWorkflowOptions {

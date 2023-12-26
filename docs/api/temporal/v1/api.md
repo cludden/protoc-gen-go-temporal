@@ -16,6 +16,7 @@
     - [WorkflowOptions.Query](#temporal-v1-WorkflowOptions-Query)
     - [WorkflowOptions.Signal](#temporal-v1-WorkflowOptions-Signal)
     - [WorkflowOptions.Update](#temporal-v1-WorkflowOptions-Update)
+    - [XNSActivityOptions](#temporal-v1-XNSActivityOptions)
   
     - [CLIFeature](#temporal-v1-CLIFeature)
     - [IDReusePolicy](#temporal-v1-IDReusePolicy)
@@ -104,6 +105,7 @@ available query configuration options
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Fully-qualified query name |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
 
 
 
@@ -156,6 +158,7 @@ available signal configuration options
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Fully-qualified signal name |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
 
 
 
@@ -175,6 +178,7 @@ available update configuration options
 | name | [string](#string) |  | Fully-qualified update name |
 | validate | [bool](#bool) |  | Include validation hook |
 | wait_policy | [WaitPolicy](#temporal-v1-WaitPolicy) |  | Default wait policy if not specified |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
 
 
 
@@ -205,6 +209,7 @@ available workflow configuration options
 | task_queue | [string](#string) |  | Override service task queeu |
 | task_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | The timeout for processing workflow task from the time the worker pulled this task. If a workflow task is lost, it is retried after this timeout. The resolution is seconds. |
 | wait_for_cancellation | [bool](#bool) |  | WaitForCancellation specifies whether to wait for canceled child workflow to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled) |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
 
 
 
@@ -220,6 +225,7 @@ Query identifies a query supported by the worklow
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ref | [string](#string) |  | Query name |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
 
 
 
@@ -236,6 +242,7 @@ Signal identifies a signal supported by the workflow
 | ----- | ---- | ----- | ----------- |
 | ref | [string](#string) |  | Signal name |
 | start | [bool](#bool) |  | Include convenience method for signal with start |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
 
 
 
@@ -251,6 +258,29 @@ Update identifies an update supported by the workflow
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ref | [string](#string) |  | Update name |
+| xns | [XNSActivityOptions](#temporal-v1-XNSActivityOptions) |  | XNS can be used to configure default activity options for xns workflow executions |
+
+
+
+
+
+
+<a name="temporal-v1-XNSActivityOptions"></a>
+
+### XNSActivityOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | Fully-qualified xns activity name |
+| task_queue | [string](#string) |  | Override default task queue for activity |
+| schedule_to_close_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Total time that a workflow is willing to wait for Activity to complete |
+| schedule_to_start_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Time that the Activity Task can stay in the Task Queue before it is picked up by a Worker |
+| start_to_close_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Maximum time of a single Activity execution attempt |
+| heartbeat_interval | [google.protobuf.Duration](#google-protobuf-Duration) |  | HeartbeatInterval configures the default heartbeat interval |
+| heartbeat_timeout | [google.protobuf.Duration](#google-protobuf-Duration) |  | Heartbeat timeout. Activity must call Activity.RecordHeartbeat(ctx, &#34;my-heartbeat&#34;) |
+| retry_policy | [RetryPolicy](#temporal-v1-RetryPolicy) |  | Specifies how to retry an Activity if an error occurs |
 
 
 

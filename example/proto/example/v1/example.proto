@@ -17,9 +17,14 @@ service Example {
       execution_timeout: { seconds: 3600 }
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       id: 'create-foo/${! name.slug() }'
-      // search_attributes: 
-      //   'foo = name\n'
-      //   'created_at = now().ts_tz("UTC")\n'
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 20 }
+        start_to_close_timeout: { seconds: 3630 }
+      }
+      search_attributes: 
+        'foo = name\n'
+        'created_at = now().ts_tz("UTC")\n'
       query: { ref: 'GetFooProgress' }
       signal: { ref: 'SetFooProgress', start: true }
       update: { ref: 'UpdateFooProgress' }
@@ -28,7 +33,13 @@ service Example {
 
   // GetFooProgress returns the status of a CreateFoo operation
   rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
-    option (temporal.v1.query) = {};
+    option (temporal.v1.query) = {
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 20 }
+        start_to_close_timeout: { seconds: 60 }
+      }
+    };
   }
 
   // Notify sends a notification
@@ -43,13 +54,24 @@ service Example {
 
   // SetFooProgress sets the current status of a CreateFoo operation
   rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = {};
+    option (temporal.v1.signal) = {
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 20 }
+        start_to_close_timeout: { seconds: 60 }
+      }
+    };
   }
 
   // UpdateFooProgress sets the current status of a CreateFoo operation
   rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
     option (temporal.v1.update) = {
       id: 'update-progress/${! progress.string() }',
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 20 }
+        start_to_close_timeout: { seconds: 60 }
+      }
     };
   }
 }

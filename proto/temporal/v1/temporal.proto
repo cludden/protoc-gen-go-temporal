@@ -95,6 +95,9 @@ enum ParentClosePolicy {
 message QueryOptions {
   // Fully-qualified query name
   string name = 1;
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 2;
 }
 
 // RetryPolicy describes configuration for activity or child workflow retries
@@ -120,6 +123,9 @@ message ServiceOptions {
 message SignalOptions {
   // Fully-qualified signal name
   string name = 1;
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 2;
 }
 
 // UpdateOptions identifies an rpc method as a Temporal update definition, and describes
@@ -136,6 +142,9 @@ message UpdateOptions {
 
   // Default wait policy if not specified
   WaitPolicy wait_policy = 3;
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 5;
 }
 
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
@@ -191,10 +200,16 @@ message WorkflowOptions {
   // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
   bool wait_for_cancellation = 13;
 
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 16;
+
   // Query identifies a query supported by the worklow
   message Query {
     // Query name
     string ref = 1;
+
+    // XNS can be used to configure default activity options for xns workflow executions
+    XNSActivityOptions xns = 2;
   }
 
   // Signal identifies a signal supported by the workflow
@@ -204,12 +219,18 @@ message WorkflowOptions {
 
     // Include convenience method for signal with start
     bool start = 2;
+
+    // XNS can be used to configure default activity options for xns workflow executions
+    XNSActivityOptions xns = 3;
   }
 
   // Update identifies an update supported by the workflow
   message Update {
     // Update name
     string ref = 1;
+
+    // XNS can be used to configure default activity options for xns workflow executions
+    XNSActivityOptions xns = 2;
   }
 }
 
@@ -220,4 +241,31 @@ enum WaitPolicy {
   WAIT_POLICY_ADMITTED = 1;
   WAIT_POLICY_ACCEPTED = 2;
   WAIT_POLICY_COMPLETED = 3;
+}
+
+message XNSActivityOptions {
+  // Fully-qualified xns activity name
+  string name = 7;
+
+  // Override default task queue for activity
+  string task_queue = 1;
+
+  // Total time that a workflow is willing to wait for Activity to complete
+  google.protobuf.Duration schedule_to_close_timeout = 2;
+
+  // Time that the Activity Task can stay in the Task Queue before it is picked up by
+  // a Worker
+  google.protobuf.Duration schedule_to_start_timeout = 3;
+
+  // Maximum time of a single Activity execution attempt
+  google.protobuf.Duration start_to_close_timeout = 4;
+
+  // HeartbeatInterval configures the default heartbeat interval
+  google.protobuf.Duration heartbeat_interval = 8;
+
+  // Heartbeat timeout. Activity must call Activity.RecordHeartbeat(ctx, "my-heartbeat")
+  google.protobuf.Duration heartbeat_timeout = 5;
+
+  // Specifies how to retry an Activity if an error occurs
+  RetryPolicy retry_policy = 6;
 }

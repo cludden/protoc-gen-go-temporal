@@ -38,6 +38,7 @@ QueryRequest can be used to configure xns query activities
 | run_id | [string](#string) |  |  |
 | workflow_id | [string](#string) |  |  |
 | request | [google.protobuf.Any](#google-protobuf-Any) |  |  |
+| heartbeat_interval | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
 
 
 
@@ -74,6 +75,7 @@ SignalRequest can be used to configure xns signal activities
 | run_id | [string](#string) |  |  |
 | workflow_id | [string](#string) |  |  |
 | request | [google.protobuf.Any](#google-protobuf-Any) |  |  |
+| heartbeat_interval | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
 
 
 
