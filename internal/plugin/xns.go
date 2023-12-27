@@ -762,6 +762,19 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 		).
 		Qual(workflowPkg, "Future").
 		Block(
+			g.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName())),
+			),
+			g.If(g.Id("activityName").Op("==").Lit("")).Block(
+				g.List(g.Id("f"), g.Id("s")).Op(":=").Qual(workflowPkg, "NewFuture").Call(g.Id("ctx")),
+				g.Id("s").Dot("SetError").Call(g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+					multiLineArgs,
+					g.Lit(fmt.Sprintf("no activity registered for %s.CancelWorkflow", svc.Service.Desc.FullName())),
+					g.Lit("Unimplemented"),
+					g.Nil(),
+				)),
+				g.Return(g.Id("f")),
+			),
 			g.Id("ao").Op(":=").Qual(workflowPkg, "GetActivityOptions").Call(g.Id("ctx")),
 			g.If(g.Id("ao").Dot("StartToCloseTimeout").Op("==").Lit(0).Op("&&").Id("ao").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
 				g.Id("ao").Dot("StartToCloseTimeout").Op("=").Qual("time", "Minute"),
@@ -770,7 +783,7 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 			g.Return(
 				g.Qual(workflowPkg, "ExecuteActivity").Call(
 					g.Id("ctx"),
-					g.Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName())),
+					g.Id("activityName"),
 					g.Id("workflowID"),
 					g.Id("runID"),
 				),
@@ -779,6 +792,32 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 }
 
 func (svc *Service) genXNSRegisterActivities(f *g.File) {
+	f.Commentf("%s is used to configure %s xns activity registration", toCamel("%sOptions", svc.GoName), string(svc.Service.Desc.FullName()))
+	f.Type().Id(toCamel("%sOptions", svc.GoName)).Struct(
+		g.Comment("Filter is used to filter xns activity registrations. It receives as"),
+		g.Comment("input the original activity name, and should return one of the following:"),
+		g.Comment("1. the original activity name, for no changes"),
+		g.Comment("2. a modified activity name, to override the original activity name"),
+		g.Comment("3. an empty string, to skip registration"),
+		g.Id("Filter").Func().Params(g.String()).String(),
+	)
+
+	f.Comment("filter is used to filter xns activity registrations")
+	f.Func().
+		Params(g.Id("opts").Op("*").Id(toCamel("%sOptions", svc.GoName))).
+		Id("filter").
+		Params(g.Id("name").String()).
+		String().
+		Block(
+			g.If(g.Id("opts").Op("==").Nil().Op("||").Id("opts").Dot("Filter").Op("==").Nil()).Block(
+				g.Return(g.Id("name")),
+			),
+			g.Return(g.Id("opts").Dot("Filter").Call(g.Id("name"))),
+		)
+
+	f.Commentf("%s is a reference to the %s initialized at registration", toLowerCamel("%sOptions", svc.GoName), toCamel("%sOptions", svc.GoName))
+	f.Var().Id(toLowerCamel("%sOptions", svc.GoName)).Op("*").Id(toCamel("%sOptions", svc.GoName))
+
 	funcName := toCamel("Register%sActivities", svc.GoName)
 	f.Commentf("%s registers %s cross-namespace activities", funcName, string(svc.Service.Desc.FullName()))
 	f.Func().
@@ -786,57 +825,94 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 		Params(
 			g.Id("r").Qual(workerPkg, "ActivityRegistry"),
 			g.Id("c").Qual(string(svc.File.GoImportPath), toCamel("%sClient", svc.GoName)),
+			g.Id("opts").Op("...").Id(toCamel("%sOptions", svc.GoName)),
 		).
 		BlockFunc(func(fn *g.Group) {
+			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0)).Block(
+				g.Id(toLowerCamel("%sOptions", svc.GoName)).Op("=").Op("&").Id("opts").Index(g.Lit(0)),
+			)
 			fn.Id("a").Op(":=").Op("&").Id(toLowerCamel("%sActivities", svc.GoName)).Values(
 				g.Id("c"),
 			)
-			fn.Id("r").Dot("RegisterActivityWithOptions").Call(
-				g.Id("a").Dot("CancelWorkflow"),
-				g.Qual(activityPkg, "RegisterOptions").Values(
-					g.Id("Name").Op(":").Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName())),
+
+			// register CancelWorkflow
+			fn.If(
+				g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName()))),
+				g.Id("name").Op("!=").Lit(""),
+			).Block(
+				g.Id("r").Dot("RegisterActivityWithOptions").Call(
+					g.Id("a").Dot("CancelWorkflow"),
+					g.Qual(activityPkg, "RegisterOptions").Values(
+						g.Id("Name").Op(":").Id("name"),
+					),
 				),
 			)
+
 			for _, workflow := range svc.workflowsOrdered {
-				fn.Id("r").Dot("RegisterActivityWithOptions").Call(
-					g.Id("a").Dot(toCamel(workflow)),
-					g.Qual(activityPkg, "RegisterOptions").Values(
-						g.Id("Name").Op(":").Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)),
+				fn.If(
+					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow))),
+					g.Id("name").Op("!=").Lit(""),
+				).Block(
+					g.Id("r").Dot("RegisterActivityWithOptions").Call(
+						g.Id("a").Dot(toCamel(workflow)),
+						g.Qual(activityPkg, "RegisterOptions").Values(
+							g.Id("Name").Op(":").Id("name"),
+						),
 					),
 				)
 				for _, signal := range svc.workflows[workflow].GetSignal() {
 					if !signal.GetStart() {
 						continue
 					}
-					fn.Id("r").Dot("RegisterActivityWithOptions").Call(
-						g.Id("a").Dot(toCamel("%sWith%s", workflow, signal.GetRef())),
-						g.Qual(activityPkg, "RegisterOptions").Values(
-							g.Id("Name").Op(":").Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal.GetRef()))),
+					fn.If(
+						g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal.GetRef())))),
+						g.Id("name").Op("!=").Lit(""),
+					).Block(
+						g.Id("r").Dot("RegisterActivityWithOptions").Call(
+							g.Id("a").Dot(toCamel("%sWith%s", workflow, signal.GetRef())),
+							g.Qual(activityPkg, "RegisterOptions").Values(
+								g.Id("Name").Op(":").Id("name"),
+							),
 						),
 					)
 				}
 			}
 			for _, query := range svc.queriesOrdered {
-				fn.Id("r").Dot("RegisterActivityWithOptions").Call(
-					g.Id("a").Dot(toCamel(query)),
-					g.Qual(activityPkg, "RegisterOptions").Values(
-						g.Id("Name").Op(":").Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query)),
+				fn.If(
+					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query))),
+					g.Id("name").Op("!=").Lit(""),
+				).Block(
+					g.Id("r").Dot("RegisterActivityWithOptions").Call(
+						g.Id("a").Dot(toCamel(query)),
+						g.Qual(activityPkg, "RegisterOptions").Values(
+							g.Id("Name").Op(":").Id("name"),
+						),
 					),
 				)
 			}
 			for _, signal := range svc.signalsOrdered {
-				fn.Id("r").Dot("RegisterActivityWithOptions").Call(
-					g.Id("a").Dot(toCamel(signal)),
-					g.Qual(activityPkg, "RegisterOptions").Values(
-						g.Id("Name").Op(":").Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)),
+				fn.If(
+					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal))),
+					g.Id("name").Op("!=").Lit(""),
+				).Block(
+					g.Id("r").Dot("RegisterActivityWithOptions").Call(
+						g.Id("a").Dot(toCamel(signal)),
+						g.Qual(activityPkg, "RegisterOptions").Values(
+							g.Id("Name").Op(":").Id("name"),
+						),
 					),
 				)
 			}
 			for _, update := range svc.updatesOrdered {
-				fn.Id("r").Dot("RegisterActivityWithOptions").Call(
-					g.Id("a").Dot(toCamel(update)),
-					g.Qual(activityPkg, "RegisterOptions").Values(
-						g.Id("Name").Op(":").Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update)),
+				fn.If(
+					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update))),
+					g.Id("name").Op("!=").Lit(""),
+				).Block(
+					g.Id("r").Dot("RegisterActivityWithOptions").Call(
+						g.Id("a").Dot(toCamel(update)),
+						g.Qual(activityPkg, "RegisterOptions").Values(
+							g.Id("Name").Op(":").Id("name"),
+						),
 					),
 				)
 			}
@@ -922,6 +998,22 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query)),
+			)
+			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
+				g.Return(
+					g.Nil(),
+					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+						multiLineArgs,
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query))),
+						g.Lit("Unimplemented"),
+						g.Nil(),
+					),
+				),
+			)
+			fn.Line()
+
 			// extract workflow options
 			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sQueryOptions", query)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
@@ -940,17 +1032,14 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 				fn.Line()
 			}
 
-			fn.Comment("create cancellable context")
-			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
-			fn.Line()
-
 			// return run with execute activity future
+			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
 				g.Op("&").Id(toLowerCamel("%sQueryHandle", query)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
-						g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query)),
+						g.Id("activityName"),
 						g.Op("&").Qual(xnsv1Pkg, "QueryRequest").CustomFunc(multiLineValues, func(fields *g.Group) {
 							fields.Id("HeartbeatInterval").Op(":").Qual(durationpbPkg, "New").Call(g.Id("opt").Dot("HeartbeatInterval"))
 							fields.Id("WorkflowId").Op(":").Id("workflowID")
@@ -1199,6 +1288,22 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)),
+			)
+			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
+				g.Return(
+					g.Nil(),
+					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+						multiLineArgs,
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal))),
+						g.Lit("Unimplemented"),
+						g.Nil(),
+					),
+				),
+			)
+			fn.Line()
+
 			// extract workflow options
 			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sSignalOptions", signal)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
@@ -1217,17 +1322,14 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 				fn.Line()
 			}
 
-			fn.Comment("create cancellable context")
-			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
-			fn.Line()
-
 			// return run with execute activity future
+			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
 				g.Op("&").Id(toLowerCamel("%sSignalHandle", signal)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
-						g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)),
+						g.Id("activityName"),
 						g.Op("&").Qual(xnsv1Pkg, "SignalRequest").CustomFunc(multiLineValues, func(fields *g.Group) {
 							fields.Id("HeartbeatInterval").Op(":").Qual(durationpbPkg, "New").Call(g.Id("opt").Dot("HeartbeatInterval"))
 							fields.Id("WorkflowId").Op(":").Id("workflowID")
@@ -1439,6 +1541,22 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update)),
+			)
+			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
+				g.Return(
+					g.Nil(),
+					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+						multiLineArgs,
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update))),
+						g.Lit("Unimplemented"),
+						g.Nil(),
+					),
+				),
+			)
+			fn.Line()
+
 			// extract workflow options
 			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sUpdateOptions", update)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
@@ -1500,18 +1618,15 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 				fn.Line()
 			}
 
-			// create cancellable context
-			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
-			fn.Line()
-
 			// return run with execute activity future
+			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
 				g.Op("&").Id(toLowerCamel("%sHandle", update)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("id").Op(":").Id("uo").Dot("UpdateID"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
-						g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update)),
+						g.Id("activityName"),
 						g.Op("&").Qual(xnsv1Pkg, "UpdateRequest").CustomFunc(multiLineValues, func(fields *g.Group) {
 							fields.Id("HeartbeatInterval").Op(":").Qual(durationpbPkg, "New").Call(g.Id("opt").Dot("HeartbeatInterval"))
 							if hasInput {
@@ -1795,7 +1910,22 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Comment("configure xns options")
+			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)),
+			)
+			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
+				g.Return(
+					g.Nil(),
+					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+						multiLineArgs,
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow))),
+						g.Lit("Unimplemented"),
+						g.Nil(),
+					),
+				),
+			)
+			fn.Line()
+
 			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sWorkflowOptions", workflow)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
@@ -1813,18 +1943,15 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 				fn.Line()
 			}
 
-			fn.Comment("create cancellable context")
-			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
-			fn.Line()
-
 			// return run with execute activity future
+			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
 				g.Op("&").Id(toLowerCamel("%sRun", workflow)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("id").Op(":").Id("wo").Dot("ID"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
-						g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)),
+						g.Id("activityName"),
 						g.Op("&").Qual(xnsv1Pkg, "WorkflowRequest").CustomFunc(multiLineValues, func(fields *g.Group) {
 							fields.Id("Detached").Op(":").Id("opt").Dot("Detached")
 							fields.Id("HeartbeatInterval").Op(":").Qual(durationpbPkg, "New").Call(g.Id("opt").Dot("HeartbeatInterval"))
@@ -2567,6 +2694,22 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal))),
+			)
+			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
+				g.Return(
+					g.Nil(),
+					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+						multiLineArgs,
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal)))),
+						g.Lit("Unimplemented"),
+						g.Nil(),
+					),
+				),
+			)
+			fn.Line()
+
 			// extract workflow options
 			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sWorkflowOptions", workflow)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
@@ -2641,18 +2784,15 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 				fn.Line()
 			}
 
-			fn.Comment("create cancellable context")
-			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
-			fn.Line()
-
 			// return run with execute activity future
+			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
 				g.Op("&").Id(toLowerCamel("%sRun", workflow)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("id").Op(":").Id("wo").Dot("ID"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
-						g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal))),
+						g.Id("activityName"),
 						g.Op("&").Qual(xnsv1Pkg, "WorkflowRequest").CustomFunc(multiLineValues, func(fields *g.Group) {
 							fields.Id("Detached").Op(":").Id("opt").Dot("Detached")
 							fields.Id("HeartbeatInterval").Op(":").Qual(durationpbPkg, "New").Call(g.Id("opt").Dot("HeartbeatInterval"))
