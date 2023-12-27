@@ -36,6 +36,7 @@ Generated **Client** with:
   - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
   - dynamic workflow ids, update ids, and search attributes via [Bloblang expressions](#bloblang-expressions)
   - default timeouts, id reuse policies, retry policies, wait policies
+  - experimental [cross-namespace (xns)](#cross-namespace-xns) support
 
 
 Generated **Worker** resources with:
@@ -51,6 +52,7 @@ Optional **CLI** with:
   - commands for querying existing workflows
   - commands for sending signals to existing workflows
   - typed flags for conventiently specifying workflow, query, and signal inputs
+
 
 ## Getting Started
 1. Install [buf](https://docs.buf.build/installation)
@@ -233,7 +235,7 @@ Optional **CLI** with:
   type CreateFooWorkflow struct {
     // it embeds the generated workflow Input type that contains the workflow
     // input and signal helpers
-    *examplev1.CreateFooInput
+    *examplev1.CreateFooWorkflowInput
 
     progress float32
     status   examplev1.Foo_Status
@@ -644,7 +646,7 @@ The generated code includes resources that are compatible with the Temporal Go S
 
 *__Experimental__*
 
-This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. For an example of xns integration, see the [example/external](./example/external) package.
+This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. For an example of xns integration, see the [example/external](./example/external/external.go) package.
 
 ## Documentation
 
