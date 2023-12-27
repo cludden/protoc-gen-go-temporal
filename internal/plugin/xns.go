@@ -18,6 +18,7 @@ const (
 )
 
 func (svc *Service) renderXNS(f *g.File) {
+	svc.genXNSRegisterActivities(f)
 	for _, workflow := range svc.workflowsOrdered {
 		svc.genXNSWorkflowOptions(f, workflow)
 		svc.genXNSWorkflowRunInterface(f, workflow)
@@ -57,7 +58,6 @@ func (svc *Service) renderXNS(f *g.File) {
 	svc.genXNSCancelWorkflowFunction(f)
 
 	svc.genXNSActivities(f)
-	svc.genXNSRegisterActivities(f)
 	for _, workflow := range svc.workflowsOrdered {
 		svc.genXNSActivitiesWorkflowMethod(f, workflow)
 		for _, signal := range svc.workflows[workflow].GetSignal() {
@@ -2709,13 +2709,13 @@ func initializeXNSOptions(fn *g.Group, opts *temporalv1.XNSActivityOptions, defa
 					fields.Id("BackoffCoefficient").Op(":").Lit(d)
 				}
 				if d := v.GetInitialInterval(); d.IsValid() {
-					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(d.AsDuration()).String())
+					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 				}
 				if d := v.GetMaxAttempts(); d != 0 {
 					fields.Id("MaximumAttempts").Op(":").Lit(d)
 				}
 				if d := v.GetMaxInterval(); d.IsValid() {
-					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(d.AsDuration()).String())
+					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 				}
 				if d := v.GetNonRetryableErrorTypes(); len(d) > 0 {
 					fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *g.Group) {
