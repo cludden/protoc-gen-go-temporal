@@ -32,8 +32,8 @@ github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA
 github.com/clbanning/mxj/v2 v2.7.0 h1:WA/La7UGCanFe5NpHF0Q3DNtnCsVoxbPKuyBNHWRyME=
 github.com/clbanning/mxj/v2 v2.7.0/go.mod h1:hNiWqW14h+kc+MdF9C6/YoRfjEJoR3ou6tn/Qo+ve2s=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
-github.com/cludden/benthos/v4 v4.24.0-no-otel.1 h1:jNoPFSedKWYgcDpF8dWkSeRd2pBvK6Vc0c1qVJc6Iwc=
-github.com/cludden/benthos/v4 v4.24.0-no-otel.1/go.mod h1:Adm82x2Ag/A39CZH9pyJvpIOtZokW+dyX4PWAw+2iUI=
+github.com/cludden/benthos/v4 v4.24.0-no-otel.2 h1:u8BWE6O1xfWSITx4nGhexmsl8d3tLuLDBz0Dy+7YEv8=
+github.com/cludden/benthos/v4 v4.24.0-no-otel.2/go.mod h1:lbr412TPhtS9tNecnWPNLhmaW7QamZ1MuLS6ulWQ2nU=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/cpuguy83/go-md2man/v2 v2.0.3 h1:qMCsGGgs+MAzDFyp9LpAe1Lqy/fY/qCovCm0qnXZOBM=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=

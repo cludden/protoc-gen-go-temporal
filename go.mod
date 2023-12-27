@@ -2,12 +2,10 @@ module github.com/cludden/protoc-gen-go-temporal
 
 go 1.21.5
 
-replace github.com/benthosdev/benthos/v4 v4.24.0 => github.com/cludden/benthos/v4 v4.24.0-no-otel.1
-
 require (
 	github.com/alecthomas/participle/v2 v2.1.0
 	github.com/alta/protopatch v0.5.3
-	github.com/benthosdev/benthos/v4 v4.24.0
+	github.com/cludden/benthos/v4 v4.24.0-no-otel.2
 	github.com/dave/jennifer v1.7.0
 	github.com/google/uuid v1.4.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b

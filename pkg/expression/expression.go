@@ -7,9 +7,9 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"github.com/benthosdev/benthos/v4/public/bloblang"
-	_ "github.com/benthosdev/benthos/v4/public/components/pure"
-	_ "github.com/benthosdev/benthos/v4/public/components/pure/extended"
+	"github.com/cludden/benthos/v4/public/bloblang"
+	_ "github.com/cludden/benthos/v4/public/components/pure"
+	_ "github.com/cludden/benthos/v4/public/components/pure/extended"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
