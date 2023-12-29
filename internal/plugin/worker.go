@@ -374,6 +374,59 @@ func (svc *Service) genWorkerSignalReceiveAsync(f *g.File, signal string) {
 		})
 }
 
+// genWorkerSignalReceiveWithTimeout generates a worker signal ReceiveWithTimeout method
+func (svc *Service) genWorkerSignalReceiveWithTimeout(f *g.File, signal string) {
+	method := svc.methods[signal]
+	hasInput := !isEmpty(method.Input)
+
+	f.Commentf("ReceiveWithTimeout blocks until a(n) %s signal is received or timeout expires.", method.Desc.FullName())
+	f.Comment("Returns more value of false when Channel is closed.")
+	f.Comment("Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.")
+	if hasInput {
+		f.Comment("resp will be nil if ok is false.")
+	}
+	f.Func().
+		Params(g.Id("s").Op("*").Id(toCamel("%sSignal", signal))).
+		Id("ReceiveWithTimeout").
+		Params(
+			g.Id("ctx").Qual(workflowPkg, "Context"),
+			g.Id("timeout").Qual("time", "Duration"),
+		).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasInput {
+				returnVals.Id("resp").Op("*").Id(svc.getMessageName(method.Input))
+			}
+			returnVals.Id("ok").Bool()
+			returnVals.Id("more").Bool()
+		}).
+		BlockFunc(func(b *g.Group) {
+			if hasInput {
+				b.Id("resp").Op("=").Op("&").Id(svc.getMessageName(method.Input)).Values()
+			}
+			b.If(
+				b.List(g.Id("ok"), g.Id("more")).Op("=").Id("s").Dot("Channel").Dot("ReceiveWithTimeout").CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					args.Id("timeout")
+					if hasInput {
+						args.Op("&").Id("resp")
+					} else {
+						args.Nil()
+					}
+				}),
+				g.Op("!").Id("ok"),
+			).Block(
+				g.ReturnFunc(func(returnVals *g.Group) {
+					if hasInput {
+						returnVals.Nil()
+					}
+					returnVals.False()
+					returnVals.Id("more")
+				}),
+			)
+			b.Return()
+		})
+}
+
 // genWorkerSignalSelect generates a worker signal Select method
 func (svc *Service) genWorkerSignalSelect(f *g.File, signal string) {
 	method := svc.methods[signal]

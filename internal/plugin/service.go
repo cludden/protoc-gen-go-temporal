@@ -515,6 +515,7 @@ func (svc *Service) render(f *g.File) {
 		svc.genWorkerSignal(f, signal)
 		svc.genWorkerSignalReceive(f, signal)
 		svc.genWorkerSignalReceiveAsync(f, signal)
+		svc.genWorkerSignalReceiveWithTimeout(f, signal)
 		svc.genWorkerSignalSelect(f, signal)
 		svc.genWorkerSignalExternal(f, signal)
 		svc.genWorkerSignalExternalAsync(f, signal)
