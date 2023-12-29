@@ -11,7 +11,7 @@ import (
 
 // genActivitiesInterface generates an <Service>Activities interface
 func (svc *Service) genActivitiesInterface(f *g.File) {
-	f.Commentf("%sActivities describes available worker activites", svc.Service.GoName)
+	f.Commentf("%sActivities describes available worker activities", svc.Service.GoName)
 	f.Type().Id(fmt.Sprintf("%sActivities", svc.Service.GoName)).InterfaceFunc(func(methods *g.Group) {
 		for _, activity := range svc.activitiesOrdered {
 			method := svc.methods[activity]

@@ -251,7 +251,7 @@ func (svc *Service) genCliNewCommand(f *g.File) {
 		)
 }
 
-// genCliNewCommands generates a new<Service>Commands contructor function
+// genCliNewCommands generates a new<Service>Commands constructor function
 func (svc *Service) genCliNewCommands(f *g.File) {
 	functionName := toLowerCamel("new%sCommands", svc.Service.GoName)
 	optionsName := toCamel("%sCliOptions", svc.Service.GoName)
@@ -1088,7 +1088,7 @@ func (svc *Service) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, sig
 	hasSignalInput := !isEmpty(handler.Input)
 
 	cmdName := strcase.ToKebab(strings.Join([]string{workflow, "with", signal}, "-"))
-	desc := fmt.Sprintf("sends a %s signal to a %s worklow, starting it if necessary", signal, workflow)
+	desc := fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, workflow)
 
 	cmds.Comment(desc)
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
