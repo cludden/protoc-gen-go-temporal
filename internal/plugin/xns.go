@@ -1576,29 +1576,64 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			)
 			fn.Id("uo").Dot("WorkflowID").Op("=").Id("workflowID")
 			fn.Id("uo").Dot("RunID").Op("=").Id("runID")
-			// set workflow id if unset and  id field and/or prefix defined
+
+			// set update id if unset and  id field and/or prefix defined
 			if idExpr := opts.GetId(); idExpr != "" {
 				fn.If(g.Id("uo").Dot("UpdateID").Op("==").Lit("")).Block(
-					g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-						args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", update))
-						if hasInput {
-							args.Id("req").Dot("ProtoReflect").Call()
-						} else {
-							args.Nil()
-						}
-					}),
-					g.If(g.Err().Op("!=").Nil()).Block(
-						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q update: %%w", update)), g.Err())),
+					g.If(
+						g.Err().Op(":=").Qual(workflowPkg, "SideEffect").Call(g.Id("ctx"), g.Func().Params(g.Id("ctx").Qual(workflowPkg, "Context")).Any().Block(
+							g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+								args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", update))
+								if hasInput {
+									args.Id("req").Dot("ProtoReflect").Call()
+								} else {
+									args.Nil()
+								}
+							}),
+							g.If(g.Err().Op("!=").Nil()).Block(
+								g.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Error").Call(
+									g.Lit(fmt.Sprintf("error evaluating id expression for %q update", update)),
+									g.Lit("error"),
+									g.Err(),
+								),
+								g.Return(g.Nil()),
+							),
+							g.Return(g.Id("id")),
+						)).Dot("Get").Call(g.Op("&").Id("uo").Dot("UpdateID")),
+						g.Err().Op("!=").Nil(),
+					).Block(
+						g.Return(g.Nil(), g.Err()),
 					),
-					g.Id("uo").Dot("UpdateID").Op("=").Id("id"),
 				)
 			}
 			fn.If(g.Id("uo").Dot("UpdateID").Op("==").Lit("")).Block(
-				g.List(g.Id("id"), g.Err()).Op(":=").Qual(uuidPkg, "NewRandom").Call(),
-				g.If(g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error generating update id: %w"), g.Err())),
+				g.If(
+					g.Err().Op(":=").Qual(workflowPkg, "SideEffect").Call(g.Id("ctx"), g.Func().Params(g.Id("ctx").Qual(workflowPkg, "Context")).Any().Block(
+						g.List(g.Id("id"), g.Err()).Op(":=").Qual(uuidPkg, "NewRandom").Call(),
+						g.If(g.Err().Op("!=").Nil()).Block(
+							g.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Error").Call(
+								g.Lit("error generating update id"),
+								g.Lit("error"),
+								g.Err(),
+							),
+							g.Return(g.Nil()),
+						),
+						g.Return(g.Id("id")),
+					)).Dot("Get").Call(g.Op("&").Id("uo").Dot("UpdateID")),
+					g.Err().Op("!=").Nil(),
+				).Block(
+					g.Return(g.Nil(), g.Err()),
 				),
-				g.Id("uo").Dot("UpdateID").Op("=").Id("id").Dot("String").Call(),
+			)
+			fn.If(g.Id("uo").Dot("UpdateID").Op("==").Lit("")).Block(
+				g.Return(
+					g.Nil(),
+					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Call(
+						g.Lit("update id is required"),
+						g.Lit("InvalidArgument"),
+						g.Nil(),
+					),
+				),
 			)
 			fn.Line()
 
@@ -2729,42 +2764,7 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 			initializeXNSOptions(fn, xnsOpts, opts.GetExecutionTimeout().AsDuration())
 
 			// build start workflow options
-			fn.Id("wo").Op(":=").Qual(clientPkg, "StartWorkflowOptions").Values()
-			fn.If(g.Id("opt").Dot("StartWorkflowOptions").Op("!=").Nil()).Block(
-				g.Id("wo").Op("=").Op("*").Id("opt").Dot("StartWorkflowOptions"),
-			)
-			// set workflow id if unset and  id field and/or prefix defined
-			if idExpr := opts.GetId(); idExpr != "" {
-				fn.If(g.Id("wo").Dot("ID").Op("==").Lit("")).Block(
-					g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-						args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", workflow))
-						if hasInput {
-							args.Id("req").Dot("ProtoReflect").Call()
-						} else {
-							args.Nil()
-						}
-					}),
-					g.If(g.Err().Op("!=").Nil()).Block(
-						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow: %%w", workflow)), g.Err())),
-					),
-					g.Id("wo").Dot("ID").Op("=").Id("id"),
-				)
-			}
-			fn.If(g.Id("wo").Dot("ID").Op("==").Lit("")).Block(
-				g.List(g.Id("id"), g.Err()).Op(":=").Qual(uuidPkg, "NewRandom").Call(),
-				g.If(g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error generating workflow id: %w"), g.Err())),
-				),
-				g.Id("wo").Dot("ID").Op("=").Id("id").Dot("String").Call(),
-			)
-			fn.Line()
-
-			// marshal start workflow options
-			fn.List(g.Id("swo"), g.Err()).Op(":=").Qual(xnsPkg, "MarshalStartWorkflowOptions").Call(g.Id("wo"))
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error marshalling start workflow options: %w"), g.Err())),
-			)
-			fn.Line()
+			svc.initializeXNSStartWorkflowOptions(fn, workflow)
 
 			if hasInput {
 				fn.Comment("marshal workflow request protobuf message")
@@ -2917,26 +2917,60 @@ func (svc *Service) initializeXNSStartWorkflowOptions(fn *g.Group, workflow stri
 	// set workflow id if unset and  id field and/or prefix defined
 	if idExpr := opts.GetId(); idExpr != "" {
 		fn.If(g.Id("wo").Dot("ID").Op("==").Lit("")).Block(
-			g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-				args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", workflow))
-				if hasInput {
-					args.Id("req").Dot("ProtoReflect").Call()
-				} else {
-					args.Nil()
-				}
-			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow: %%w", workflow)), g.Err())),
+			g.If(
+				g.Err().Op(":=").Qual(workflowPkg, "SideEffect").Call(g.Id("ctx"), g.Func().Params(g.Id("ctx").Qual(workflowPkg, "Context")).Any().Block(
+					g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+						args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", workflow))
+						if hasInput {
+							args.Id("req").Dot("ProtoReflect").Call()
+						} else {
+							args.Nil()
+						}
+					}),
+					g.If(g.Err().Op("!=").Nil()).Block(
+						g.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Error").Call(
+							g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow", workflow)),
+							g.Lit("error"),
+							g.Err(),
+						),
+						g.Return(g.Nil()),
+					),
+					g.Return(g.Id("id")),
+				)).Dot("Get").Call(g.Op("&").Id("wo").Dot("ID")),
+				g.Err().Op("!=").Nil(),
+			).Block(
+				g.Return(g.Nil(), g.Err()),
 			),
-			g.Id("wo").Dot("ID").Op("=").Id("id"),
 		)
 	}
 	fn.If(g.Id("wo").Dot("ID").Op("==").Lit("")).Block(
-		g.List(g.Id("id"), g.Err()).Op(":=").Qual(uuidPkg, "NewRandom").Call(),
-		g.If(g.Err().Op("!=").Nil()).Block(
-			g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error generating workflow id: %w"), g.Err())),
+		g.If(
+			g.Err().Op(":=").Qual(workflowPkg, "SideEffect").Call(g.Id("ctx"), g.Func().Params(g.Id("ctx").Qual(workflowPkg, "Context")).Any().Block(
+				g.List(g.Id("id"), g.Err()).Op(":=").Qual(uuidPkg, "NewRandom").Call(),
+				g.If(g.Err().Op("!=").Nil()).Block(
+					g.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Error").Call(
+						g.Lit("error generating workflow id"),
+						g.Lit("error"),
+						g.Err(),
+					),
+					g.Return(g.Nil()),
+				),
+				g.Return(g.Id("id")),
+			)).Dot("Get").Call(g.Op("&").Id("wo").Dot("ID")),
+			g.Err().Op("!=").Nil(),
+		).Block(
+			g.Return(g.Nil(), g.Err()),
 		),
-		g.Id("wo").Dot("ID").Op("=").Id("id").Dot("String").Call(),
+	)
+	fn.If(g.Id("wo").Dot("ID").Op("==").Lit("")).Block(
+		g.Return(
+			g.Nil(),
+			g.Qual(temporalPkg, "NewNonRetryableApplicationError").Call(
+				g.Lit("workflow id is required"),
+				g.Lit("InvalidArgument"),
+				g.Nil(),
+			),
+		),
 	)
 	fn.Line()
 
