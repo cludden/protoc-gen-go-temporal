@@ -853,7 +853,7 @@ func (svc *Service) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("unsupported enum value for %q flag: %%q", flag)), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
 						)
 						if oneof != nil {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("v"))
+							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Id(field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id(field.Enum.GoIdent.GoName).Call(g.Id("v")))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id(field.Enum.GoIdent.GoName).Call(g.Id("v"))

@@ -2,16 +2,23 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/cludden/protoc-gen-go-temporal/example/external"
 	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
 	"github.com/cludden/protoc-gen-go-temporal/gen/example/v1/examplev1xns"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/codec"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 	logger "go.temporal.io/server/common/log"
@@ -156,6 +163,41 @@ func main() {
 		log.Fatalf("error initializing external cli: %v", err)
 	}
 	app.Commands = append(app.Commands, external)
+
+	app.Commands = append(app.Commands, &cli.Command{
+		Name:  "codec",
+		Usage: "run remote codec server",
+		Action: func(cmd *cli.Context) error {
+			handler := converter.NewPayloadCodecHTTPHandler(
+				codec.NewProtoJSONCodec(
+					scheme.New(
+						examplev1.WithExampleSchemeTypes(),
+						examplev1.WithExternalSchemeTypes(),
+					),
+				),
+			)
+
+			srv := &http.Server{
+				Addr:    "0.0.0.0:8080",
+				Handler: handler,
+			}
+
+			go func() {
+				sigChan := make(chan os.Signal, 1)
+				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+				<-sigChan
+
+				if err := srv.Shutdown(context.Background()); err != nil {
+					log.Fatalf("error shutting down server: %v", err)
+				}
+			}()
+
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("server error: %v", err)
+			}
+			return nil
+		},
+	})
 
 	// run cli
 	if err := app.Run(os.Args); err != nil {
