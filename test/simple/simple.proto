@@ -235,6 +235,7 @@ message OtherWorkflowRequest {
     google.protobuf.Duration example_duration = 21;
     google.protobuf.Empty example_empty = 22;
     google.protobuf.Timestamp example_timestamp = 23;
+    OtherEnum example_enum = 24;
   }
   message Bar {
     string bar = 1;
@@ -259,6 +260,12 @@ message OtherUpdateRequest {
 }
 
 message OtherUpdateResponse {}
+
+enum OtherEnum {
+  OTHER_UNSPECIFIED = 0;
+  OTHER_FOO = 1;
+  OTHER_BAR = 2;
+}
 
 message Foo {
   string foo = 1;

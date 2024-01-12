@@ -18,6 +18,7 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
   - [CLI](#cli)
   - [Test Client](#test-client)
   - [Cross-Namespace (XNS)](#cross-namespace-xns)
+  - [Codec](#codec)
   - [Documentation](#documentation)
   - [License](#license)
 
@@ -36,7 +37,6 @@ Generated **Client** with:
   - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
   - dynamic workflow ids, update ids, and search attributes via [Bloblang expressions](#bloblang-expressions)
   - default timeouts, id reuse policies, retry policies, wait policies
-  - experimental [cross-namespace (xns)](#cross-namespace-xns) support
 
 
 Generated **Worker** resources with:
@@ -52,6 +52,12 @@ Optional **CLI** with:
   - commands for querying existing workflows
   - commands for sending signals to existing workflows
   - typed flags for conventiently specifying workflow, query, and signal inputs
+
+
+Generated [Cross-Namespace (XNS)](#cross-namespace-xns) helpers: **[Experimental]**
+  - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace
+
+Generated [Remote Codec Server](#codec) helpers **[Experimental]**
 
 
 ## Getting Started
@@ -472,6 +478,7 @@ via:
 | cli-categories | `bool` | enables cli categories | `true` |
 | cli-enabled | `bool` | enables cli generation | `false` |
 | disable-workflow-input-rename | `bool` | disables renamed workflow input suffix | `false` |
+| enable-codec | `bool` | enables [experimental codec-server support](#codec) | `false` |
 | enable-patch-support | `bool` | enables experimental support for [protoc-gen-go-patch](https://github.com/alta/protopatch) | `false` |
 | enable-xns | `bool` | enables [experimental cross-namespace support](#cross-namespace-xns) | `false` |
 | workflow-update-enabled | `bool` | enables experimental workflow update | `false` |
@@ -647,6 +654,98 @@ The generated code includes resources that are compatible with the Temporal Go S
 *__Experimental__*
 
 This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. For an example of xns integration, see the [example/external](./example/external/external.go) package.
+
+## Codec
+
+*__Experimental__*
+
+Temporal's [default data converter](https://pkg.go.dev/go.temporal.io/sdk/converter#GetDefaultDataConverter) will serialize protobuf types using the `json/protobuf` encoding provided by the [ProtoJSONPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoJSONPayloadConverter), which allows the Temporal UI to automatically decode the underlying payload and render it as JSON. If you'd prefer to take advantage of protobuf's binary format for smaller payloads, you can provide an alternative data converter to the Temporal client at initialization that prioritizes the [ProtoPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoPayloadConverter) ahead of the `ProtoJSONPayloadConverter`. See below for an example.
+
+If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. This plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
+
+**Example:** *custom data converter that uses `binary/protobuf` for encoding, but supports all of `binary/protobuf`, `json/protobuf`, and `json/plain` for decoding.*
+
+```go
+package main
+
+import (
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/converter"
+)
+func main() {
+    client, _ := client.Dial(client.Options{
+        DataConverter: converter.NewCompositeDataConverter(
+            // Order is important here, as the first match (ProtoPayload in this case) will always 
+            // be used for serialization, and both ProtoJsonPayload and ProtoPayload converters 
+            // check for the same proto.Message interface. 
+            // Deserialization is controlled by metadata, therefore both converters can deserialize 
+            // corresponding data format (JSON or binary proto).
+            converter.NewNilPayloadConverter(),
+            converter.NewByteSlicePayloadConverter(),
+            converter.NewProtoPayloadConverter(),
+            converter.NewProtoJSONPayloadConverterWithOptions(converter.ProtoJSONPayloadConverterOptions{
+              AllowUnknownFields: true, // Prevent errors when the underlying protobuf payload has added fields
+            }),
+            converter.NewJSONPayloadConverter(),
+        ),
+    })
+}
+```
+
+**Example:** *basic Remote Codec Server implementation*
+
+```go
+package main
+
+import (
+    "context"
+    "errors"
+    "log"
+    "net/http"
+    "os"
+    "os/signal"
+    "syscall"
+
+    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+    "github.com/cludden/protoc-gen-go-temporal/pkg/codec"
+    "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
+    "go.temporal.io/sdk/converter"
+)
+
+func main() {
+    // initialize codec handler using this plugin's `pkg/codec` and `pkg/scheme` packages
+    // along with the generated scheme helpers
+    handler := converter.NewPayloadCodecHTTPHandler(
+        codec.NewProtoJSONCodec(
+            scheme.New(
+                examplev1.WithExampleSchemeTypes(),
+            ),
+        ),
+    )
+
+    // initialize http server with codec handler
+    srv := &http.Server{
+        Addr:    "0.0.0.0:8080",
+        Handler: handler,
+    }
+
+    // handle graceful shutdown
+    go func() {
+        shutdownCh := make(chan os.Signal, 1)
+        signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
+        <-shutdownCh
+
+        if err := srv.Shutdown(context.Background()); err != nil {
+            log.Fatalf("error shutting down server: %v", err)
+        }
+    }()
+
+    // start remote codec server
+    if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+        log.Fatalf("server error: %v", err)
+    }
+}
+```
 
 ## Documentation
 
