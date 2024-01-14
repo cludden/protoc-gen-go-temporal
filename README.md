@@ -20,6 +20,7 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
   - [Cross-Namespace (XNS)](#cross-namespace-xns)
   - [Codec](#codec)
   - [Documentation](#documentation)
+  - [Reference](#reference)
   - [License](#license)
 
 ## How it works
@@ -58,6 +59,8 @@ Generated [Cross-Namespace (XNS)](#cross-namespace-xns) helpers: **[Experimental
   - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace
 
 Generated [Remote Codec Server](#codec) helpers **[Experimental]**
+
+Generated [Markdown Documentation](#documentation) **[Experimental]**
 
 
 ## Getting Started
@@ -478,6 +481,8 @@ via:
 | cli-categories | `bool` | enables cli categories | `true` |
 | cli-enabled | `bool` | enables cli generation | `false` |
 | disable-workflow-input-rename | `bool` | disables renamed workflow input suffix | `false` |
+| docs-out | `string` | path to output documentation, leave empty to disable doc generation | |
+| docs-template | `string` | built-in template name or path to custom template file | `basic` |
 | enable-codec | `bool` | enables [experimental codec-server support](#codec) | `false` |
 | enable-patch-support | `bool` | enables experimental support for [protoc-gen-go-patch](https://github.com/alta/protopatch) | `false` |
 | enable-xns | `bool` | enables [experimental cross-namespace support](#cross-namespace-xns) | `false` |
@@ -748,6 +753,10 @@ func main() {
 ```
 
 ## Documentation
+
+This plugin has experimental support for generating documentation via Go templates. You can enable it by setting the [docs-out](#plugin-options) plugin option. By default, it uses the embedded `basic` template (see [example](./docs/basic.md)). A custom template can be specified using the [docs-template](#plugin-options) plugin option. Templates receive a [Data](./internal/plugin/docs/docs.go) struct value as input, and have access to various Template functions, including the functions included via [text/template](https://pkg.go.dev/text/template#hdr-Functions), as well as the third-party [sprig](https://masterminds.github.io/sprig/) template functions.
+
+## Reference
 
 - [Generated code reference](./docs/generated.md)
 

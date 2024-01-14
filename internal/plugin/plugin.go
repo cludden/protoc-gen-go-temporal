@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -15,6 +16,8 @@ type Config struct {
 	CliCategories              bool
 	CliEnabled                 bool
 	DisableWorkflowInputRename bool
+	DocsOut                    string
+	DocsTemplate               string
 	EnableCodec                bool
 	EnablePatchSupport         bool
 	EnableXNS                  bool
@@ -38,6 +41,8 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.CliEnabled, "cli-enabled", false, "enable cli generation")
 	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
 	flags.BoolVar(&cfg.DisableWorkflowInputRename, "disable-workflow-input-rename", false, "disable renaming of \"<Workflow>WorkflowInput\"")
+	flags.StringVar(&cfg.DocsOut, "docs-out", "", "docs output path")
+	flags.StringVar(&cfg.DocsTemplate, "docs-template", "basic", "built-in template name or path to custom template file")
 	flags.BoolVar(&cfg.EnableCodec, "enable-codec", false, "enables experimental codec support")
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
@@ -127,6 +132,12 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 			)); err != nil {
 				return fmt.Errorf("error rendering file: %w", err)
 			}
+		}
+	}
+
+	if p.cfg.DocsOut != "" {
+		if err := renderDocs(p.Plugin, p.cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "error rendering docs: %v", err)
 		}
 	}
 	return nil
