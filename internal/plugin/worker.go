@@ -404,7 +404,7 @@ func (svc *Service) genWorkerSignalReceiveWithTimeout(f *g.File, signal string) 
 				b.Id("resp").Op("=").Op("&").Id(svc.getMessageName(method.Input)).Values()
 			}
 			b.If(
-				b.List(g.Id("ok"), g.Id("more")).Op("=").Id("s").Dot("Channel").Dot("ReceiveWithTimeout").CallFunc(func(args *g.Group) {
+				g.List(g.Id("ok"), g.Id("more")).Op("=").Id("s").Dot("Channel").Dot("ReceiveWithTimeout").CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("timeout")
 					if hasInput {
