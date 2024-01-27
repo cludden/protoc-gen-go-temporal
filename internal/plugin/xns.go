@@ -1562,9 +1562,6 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 			)
-			fn.If(g.Id("opt").Dot("HeartbeatInterval").Op("==").Lit(0)).Block(
-				g.Id("opt").Dot("HeartbeatInterval").Op("=").Qual("time", "Second").Op("*").Lit(30),
-			)
 			fn.Line()
 
 			initializeXNSOptions(fn, opts.GetXns(), time.Minute*5)
