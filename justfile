@@ -7,6 +7,15 @@ build:
     set -euo pipefail
     goreleaser build --clean --snapshot
 
+# configure local temporal for example
+example:
+    #!/usr/bin/env bash
+    temporal operator search-attribute create --name foo --type Text
+    temporal operator search-attribute create --name created_at --type Datetime
+    temporal operator namespace create external
+    temporal operator search-attribute create --namespace external --name foo --type Text
+    temporal operator search-attribute create --namespace external --name created_at --type Datetime 
+
 # execute code generation
 gen:
     #!/usr/bin/env bash
@@ -40,7 +49,14 @@ install:
     else
         cp ./dist/protoc-gen-go_temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
     fi
-    
+
+# launch local temporal server
+temporal:
+    #!/usr/bin/env bash
+    temporal server start-dev \
+        --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true" \
+        --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true"
+
 # run tests
 test:
     #!/usr/bin/env bash

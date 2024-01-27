@@ -15,18 +15,19 @@ import (
 
 // imported packages
 const (
-	activityPkg    = "go.temporal.io/sdk/activity"
-	clientPkg      = "go.temporal.io/sdk/client"
-	durationpbPkg  = "google.golang.org/protobuf/types/known/durationpb"
-	enumsPkg       = "go.temporal.io/api/enums/v1"
-	expressionPkg  = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
-	helpersPkg     = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
-	temporalPkg    = "go.temporal.io/sdk/temporal"
-	timestamppbPkg = "google.golang.org/protobuf/types/known/timestamppb"
-	updatePkg      = "go.temporal.io/api/update/v1"
-	uuidPkg        = "github.com/google/uuid"
-	workflowPkg    = "go.temporal.io/sdk/workflow"
-	workerPkg      = "go.temporal.io/sdk/worker"
+	activityPkg     = "go.temporal.io/sdk/activity"
+	clientPkg       = "go.temporal.io/sdk/client"
+	durationpbPkg   = "google.golang.org/protobuf/types/known/durationpb"
+	enumsPkg        = "go.temporal.io/api/enums/v1"
+	expressionPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	helpersPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	serviceerrorPkg = "go.temporal.io/api/serviceerror"
+	temporalPkg     = "go.temporal.io/sdk/temporal"
+	timestamppbPkg  = "google.golang.org/protobuf/types/known/timestamppb"
+	updatePkg       = "go.temporal.io/api/update/v1"
+	uuidPkg         = "github.com/google/uuid"
+	workflowPkg     = "go.temporal.io/sdk/workflow"
+	workerPkg       = "go.temporal.io/sdk/worker"
 )
 
 const (

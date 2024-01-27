@@ -12,7 +12,11 @@ import (
 	"github.com/cludden/protoc-gen-go-temporal/mocks/go.temporal.io/sdk/clientutils"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/operatorservice/v1"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/worker"
 )
 
 func TestCreateFooStartWorkflowOptions(t *testing.T) {
@@ -53,4 +57,68 @@ func TestCreateFooStartWorkflowOptions(t *testing.T) {
 	example := examplev1.NewExampleClient(c)
 	_, err := example.CreateFooAsync(ctx, &examplev1.CreateFooInput{RequestName: "bar"})
 	require.NoError(err)
+}
+
+func TestUpdate(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	require, ctx := require.New(t), context.Background()
+
+	srv, err := testsuite.StartDevServer(ctx, testsuite.DevServerOptions{
+		LogLevel: "fatal",
+		ExtraArgs: []string{
+			"--dynamic-config-value", "frontend.enableUpdateWorkflowExecution=true",
+			"--dynamic-config-value", "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true",
+		},
+	})
+	require.NoError(err)
+	defer srv.Stop()
+
+	c := srv.Client()
+	example := examplev1.NewExampleClient(c)
+
+	_, err = c.OperatorService().AddSearchAttributes(ctx, &operatorservice.AddSearchAttributesRequest{
+		Namespace: "default",
+		SearchAttributes: map[string]enums.IndexedValueType{
+			"foo":        enums.INDEXED_VALUE_TYPE_TEXT,
+			"created_at": enums.INDEXED_VALUE_TYPE_DATETIME,
+		},
+	})
+	require.NoError(err)
+
+	w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+	examplev1.RegisterExampleActivities(w, &Activities{})
+	examplev1.RegisterExampleWorkflows(w, &Workflows{})
+	require.NoError(w.Start())
+	defer w.Stop()
+	defer c.Close()
+
+	run, err := example.CreateFooAsync(ctx, &examplev1.CreateFooInput{RequestName: "test"})
+	require.NoError(err)
+
+	require.NoError(run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 5.7}))
+
+	query, err := run.GetFooProgress(ctx)
+	require.NoError(err)
+	require.Equal(float32(5.7), query.GetProgress())
+	require.Equal(examplev1.Foo_FOO_STATUS_CREATING.String(), query.GetStatus().String())
+
+	handle, err := run.UpdateFooProgressAsync(ctx, &examplev1.SetFooProgressRequest{Progress: 100})
+	require.NoError(err)
+
+	update, err := handle.Get(ctx)
+	require.NoError(err)
+	require.Equal(float32(100), update.GetProgress())
+	require.Equal(examplev1.Foo_FOO_STATUS_READY.String(), update.GetStatus().String())
+
+	// update, err := run.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 100})
+	// require.NoError(err)
+	// require.Equal(float32(100), update.GetProgress())
+	// require.Equal(examplev1.Foo_FOO_STATUS_READY.String(), update.GetStatus().String())
+
+	resp, err := run.Get(ctx)
+	require.NoError(err)
+	require.Equal(examplev1.Foo_FOO_STATUS_READY.String(), resp.GetFoo().GetStatus().String())
 }

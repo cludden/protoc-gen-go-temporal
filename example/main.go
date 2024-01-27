@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/cludden/protoc-gen-go-temporal/example/external"
 	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
@@ -52,7 +53,7 @@ func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFoo
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		for {
 			signal, _ := wf.SetFooProgress.Receive(ctx)
-			wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: signal.GetProgress()})
+			wf.setProgress(signal)
 		}
 	})
 
@@ -84,6 +85,13 @@ func (wf *CreateFooWorkflow) GetFooProgress() (*examplev1.GetFooProgressResponse
 
 // UpdateFooProgress defines the handler for an UpdateFooProgress update
 func (wf *CreateFooWorkflow) UpdateFooProgress(ctx workflow.Context, req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
+	if err := workflow.Sleep(ctx, time.Second*45); err != nil {
+		return nil, err
+	}
+	return wf.setProgress(req)
+}
+
+func (wf *CreateFooWorkflow) setProgress(req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
 	wf.progress = req.GetProgress()
 	switch {
 	case wf.progress < 0:

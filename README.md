@@ -15,6 +15,7 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
     - [Service Options](#service-options)
     - [Method Options](#method-options)
     - [Bloblang Expressions](#bloblang-expressions)
+  - [Workflow Update](#workflow-update)
   - [CLI](#cli)
   - [Test Client](#test-client)
   - [Cross-Namespace (XNS)](#cross-namespace-xns)
@@ -608,6 +609,13 @@ run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetin
 require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
 ```
 
+## Workflow Update
+
+This plugin has experimental support for Temporal's experimental [Workflow Update](https://docs.temporal.io/workflows#update) capability. Note that this requires cluster support enabled with both of the following dynamic config values set to `true`
+
+- `frontend.enableUpdateWorkflowExecution`
+- `frontend.enableUpdateWorkflowExecutionAsyncAccepted`
+  
 ## CLI
 
 This plugin can optionally generate a configurable CLI using [github.com/urfave/cli/v2](https://github.com/urfave/cli/v2). To enable this functionality, use the corresponding [plugin option](#plugin-options). When enabled, this plugin will generate a CLI command for each workflow, start-workflow-with-signal, query, and signal. Each command provides typed flags for configuring the corresponding inputs and options.
