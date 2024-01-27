@@ -3,7 +3,9 @@
 In an initial terminal:
 1. Start temporal
     ```shell
-    temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true"
+    temporal server start-dev \
+        --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true" \
+        --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true"
     ```
 
 In a second terminal:

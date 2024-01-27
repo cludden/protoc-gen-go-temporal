@@ -338,11 +338,6 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
 			)
 
-			// override wait policy
-			method.Id("options").Dot("opts").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"),
-			)
-
 			// call async method
 			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(fmt.Sprintf("%sAsync", update)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
@@ -1079,28 +1074,57 @@ func (svc *Service) genClientUpdateHandleImplGetMethod(f *g.File, update string)
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
 				fn.Var().Id("resp").Id(svc.getMessageName(method.Output))
-				fn.If(
-					g.Err().Op(":=").Id("h").Dot("handle").Dot("Get").Call(
-						g.Id("ctx"),
-						g.Op("&").Id("resp"),
-					),
-					g.Err().Op("!=").Nil(),
-				).Block(
-					g.Return(
-						g.Nil(), g.Err(),
-					),
-				)
-				fn.Return(
-					g.Op("&").Id("resp"), g.Nil(),
-				)
-			} else {
-				fn.Return(
-					g.Id("h").Dot("handle").Dot("Get").Call(
-						g.Id("ctx"),
-						g.Nil(),
-					),
-				)
 			}
+			fn.Var().Err().Error()
+			fn.Id("doneCh").Op(":=").Make(g.Chan().Struct())
+			fn.List(g.Id("gctx"), g.Id("cancel")).Op(":=").Qual("context", "WithCancel").Call(g.Qual("context", "Background").Call())
+			fn.Defer().Id("cancel").Call()
+			fn.Line()
+
+			fn.Go().Func().Params().Block(
+				g.For().Block(
+					g.If(
+						g.Err().Op("=").Id("h").Dot("handle").Dot("Get").CallFunc(func(args *g.Group) {
+							args.Id("gctx")
+							if hasOutput {
+								args.Op("&").Id("resp")
+							} else {
+								args.Nil()
+							}
+						}),
+						g.Err().Op("!=").Nil().Op("&&").Qual("strings", "Contains").Call(
+							g.Err().Dot("Error").Call(),
+							g.Qual("context", "DeadlineExceeded").Dot("Error").Call(),
+						),
+					).Block(
+						g.Continue(),
+					),
+					g.Break(),
+				),
+				g.Close(g.Id("doneCh")),
+			).Call()
+			fn.Line()
+
+			fn.Select().Block(
+				g.Case(g.Op("<-").Id("ctx").Dot("Done").Call()).Block(
+					g.ReturnFunc(func(returnVals *g.Group) {
+						if hasOutput {
+							returnVals.Nil()
+						}
+						returnVals.Id("ctx").Dot("Err").Call()
+					}),
+				),
+				g.Case(g.Op("<-").Id("doneCh")).BlockFunc(func(bl *g.Group) {
+					if hasOutput {
+						bl.If(g.Err().Op("!=").Nil()).Block(
+							g.Return(g.Nil(), g.Err()),
+						)
+						bl.Return(g.Op("&").Id("resp"), g.Nil())
+					} else {
+						bl.Return(g.Err())
+					}
+				}),
+			)
 		})
 }
 
@@ -1222,10 +1246,12 @@ func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
 	if hasInput {
 		fn.Id("options").Dot("Args").Op("=").Index().Any().Values(g.Id("req"))
 	}
-	// add run id if specified
 	fn.Id("options").Dot("RunID").Op("=").Id("runID")
 	fn.Id("options").Dot("UpdateName").Op("=").Id(toCamel("%sUpdateName", update))
 	fn.Id("options").Dot("WorkflowID").Op("=").Id("workflowID")
+	fn.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Custom(multiLineValues,
+		g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"),
+	)
 
 	// add update id if specified
 	if idExpr := updateOpts.GetId(); idExpr != "" {
