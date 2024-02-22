@@ -420,6 +420,14 @@ go_name: Foo</pre></td>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>id</td><td><pre><code>provision-foo/${! name.slug() }</code></pre></td></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#example-v1-external-example-v1-example-setfooprogress-signal">example.v1.External.example.v1.Example.SetFooProgress</a></td><td>false</td></tr>
+<tr><td><a href="#example-v1-external-mycompany-simple-simple-somesignal3-signal">example.v1.External.mycompany.simple.Simple.SomeSignal3</a></td><td>false</td></tr>
 </table>     
 
 <a name="example-v1-messages"></a>
