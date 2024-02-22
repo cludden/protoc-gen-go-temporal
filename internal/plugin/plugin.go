@@ -2,9 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"os"
-	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -70,83 +67,11 @@ func (p *Plugin) Param(key, value string) error {
 // Run defines the plugin entrypoint
 func (p *Plugin) Run(plugin *protogen.Plugin) error {
 	p.Plugin = plugin
-
-	for _, file := range p.Files {
-		if !file.Generate {
-			continue
-		}
-
-		pkgName := string(file.GoPackageName)
-		f := g.NewFile(string(pkgName))
-		genCodeGenerationHeader(p, f, file)
-
-		var xns *g.File
-		var xnsGoPackageName, xnsFilePath string
-		var hasXNS bool
-		if p.cfg.EnableXNS {
-			xnsGoPackageName = fmt.Sprintf("%sxns", file.GoPackageName)
-			xns = g.NewFile(xnsGoPackageName)
-			genCodeGenerationHeader(p, xns, file)
-
-			prefixToSlash := filepath.ToSlash(file.GeneratedFilenamePrefix)
-			xnsFilePath = path.Join(
-				path.Dir(prefixToSlash),
-				xnsGoPackageName,
-				path.Base(prefixToSlash),
-			)
-		}
-
-		var hasContent bool
-		for _, service := range file.Services {
-			svc, err := parseService(plugin, p.cfg, file, service)
-			if err != nil {
-				return fmt.Errorf("error parsing service %s: %w", service.GoName, err)
-			}
-			if len(svc.activities) == 0 && len(svc.workflows) == 0 && len(svc.signals) == 0 && len(svc.queries) == 0 {
-				continue
-			}
-
-			svc.render(f)
-			svc.renderTestClient(f)
-			if svc.cfg.CliEnabled {
-				svc.renderCLI(f)
-			}
-			if svc.cfg.EnableXNS {
-				svc.renderXNS(xns)
-				hasXNS = true
-			}
-			if svc.cfg.EnableCodec {
-				svc.renderCodec(f)
-			}
-			hasContent = true
-		}
-
-		if !hasContent {
-			continue
-		}
-
-		if err := f.Render(p.NewGeneratedFile(fmt.Sprintf("%s_temporal.pb.go", file.GeneratedFilenamePrefix), file.GoImportPath)); err != nil {
-			return fmt.Errorf("error rendering file: %w", err)
-		}
-		if hasXNS {
-			if err := xns.Render(p.NewGeneratedFile(
-				fmt.Sprintf("%s_xns_temporal.pb.go", xnsFilePath),
-				protogen.GoImportPath(path.Join(
-					string(file.GoImportPath),
-					xnsGoPackageName,
-				)),
-			)); err != nil {
-				return fmt.Errorf("error rendering file: %w", err)
-			}
-		}
+	services, err := parse(p)
+	if err != nil {
+		return err
 	}
-
-	if p.cfg.DocsOut != "" {
-		if err := renderDocs(p.Plugin, p.cfg); err != nil {
-			fmt.Fprintf(os.Stderr, "error rendering docs: %v", err)
-		}
-	}
-	return nil
+	return services.render()
 }
 
 func commentf[T any, PT interface {

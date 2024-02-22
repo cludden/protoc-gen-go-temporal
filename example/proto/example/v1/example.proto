@@ -84,6 +84,8 @@ service External {
   rpc ProvisionFoo(ProvisionFooRequest) returns (ProvisionFooResponse) {
     option (temporal.v1.workflow) = {
       id: 'provision-foo/${! name.slug() }'
+      signal: { ref: 'example.v1.Example.SetFooProgress' }
+      signal: { ref: 'mycompany.simple.Simple.SomeSignal3' }
     };
   }
 }

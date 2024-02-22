@@ -7,18 +7,22 @@ import (
 	"strings"
 
 	g "github.com/dave/jennifer/jen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // genActivitiesInterface generates an <Service>Activities interface
-func (svc *Service) genActivitiesInterface(f *g.File) {
+func (svc *Manifest) genActivitiesInterface(f *g.File) {
 	f.Commentf("%sActivities describes available worker activities", svc.Service.GoName)
 	f.Type().Id(fmt.Sprintf("%sActivities", svc.Service.GoName)).InterfaceFunc(func(methods *g.Group) {
 		for _, activity := range svc.activitiesOrdered {
+			if svc.methods[activity].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
 			method := svc.methods[activity]
 			hasInput := !isEmpty(method.Input)
 			hasOutput := !isEmpty(method.Output)
 			commentf(methods, methodSet(method), "%s implements a(n) %s activity definition", activity, svc.fqnForActivity(activity))
-			methods.Id(activity).
+			methods.Id(svc.methods[activity].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
@@ -37,20 +41,20 @@ func (svc *Service) genActivitiesInterface(f *g.File) {
 }
 
 // genActivityFunction generates a public <Activity>[Local] function
-func (svc *Service) genActivityFunction(f *g.File, activity string, local, async bool) {
+func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullName, local, async bool) {
 	method := svc.methods[activity]
 	opts := svc.activities[activity]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	methodName := activity
+	methodName := svc.methods[activity].GoName
 	var annotations []string
 	if local {
-		methodName = toCamel("%sLocal", methodName)
+		methodName = svc.toCamel("%sLocal", methodName)
 		annotations = append(annotations, "locally")
 	}
 	if async {
-		methodName = toCamel("%sAsync", methodName)
+		methodName = svc.toCamel("%sAsync", methodName)
 		annotations = append(annotations, "asynchronously")
 	}
 	sort.Slice(annotations, func(i, j int) bool {
@@ -76,9 +80,9 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
 			}
 			if local {
-				args.Id("options").Op("...").Op("*").Id(toCamel("%sLocalActivityOptions", activity))
+				args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sLocalActivityOptions", activity))
 			} else {
-				args.Id("options").Op("...").Op("*").Id(toCamel("%sActivityOptions", activity))
+				args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sActivityOptions", activity))
 			}
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
@@ -93,13 +97,13 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if isDeprecated(method) {
-				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated activity detected"), g.Lit("activity"), g.Id(toCamel("%sActivityName", activity))).Line()
+				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated activity detected"), g.Lit("activity"), g.Id(svc.toCamel("%sActivityName", activity))).Line()
 			}
 			// initialize activity options if nil
 			if local {
-				fn.Var().Id("opts").Op("*").Id(toCamel("%sLocalActivityOptions", activity))
+				fn.Var().Id("opts").Op("*").Id(svc.toCamel("%sLocalActivityOptions", activity))
 			} else {
-				fn.Var().Id("opts").Op("*").Id(toCamel("%sActivityOptions", activity))
+				fn.Var().Id("opts").Op("*").Id(svc.toCamel("%sActivityOptions", activity))
 			}
 
 			// initialize opts
@@ -114,9 +118,9 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 				Else().
 				BlockFunc(func(bl *g.Group) {
 					if local {
-						bl.Id("opts").Op("=").Id(toCamel("New%sLocalActivityOptions", activity)).Call()
+						bl.Id("opts").Op("=").Id(svc.toCamel("New%sLocalActivityOptions", activity)).Call()
 					} else {
-						bl.Id("opts").Op("=").Id(toCamel("New%sActivityOptions", activity)).Call()
+						bl.Id("opts").Op("=").Id(svc.toCamel("New%sActivityOptions", activity)).Call()
 					}
 				})
 
@@ -209,14 +213,14 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 					).
 					Else().
 					Block(
-						g.Id("activity").Op("=").Id(toCamel("%sActivityName", activity)),
+						g.Id("activity").Op("=").Id(svc.toCamel("%sActivityName", activity)),
 					)
 			} else {
-				fn.Id("activity").Op("=").Id(toCamel("%sActivityName", activity))
+				fn.Id("activity").Op("=").Id(svc.toCamel("%sActivityName", activity))
 			}
 
 			// initialize activity future
-			fn.Id("future").Op(":=").Op("&").Id(toCamel("%sFuture", activity)).ValuesFunc(func(values *g.Group) {
+			fn.Id("future").Op(":=").Op("&").Id(svc.toCamel("%sFuture", activity)).ValuesFunc(func(values *g.Group) {
 				methodName := "ExecuteActivity"
 				if local {
 					methodName = "ExecuteLocalActivity"
@@ -242,8 +246,8 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 }
 
 // genActivityFuture generates a <Activity>Future struct
-func (svc *Service) genActivityFuture(f *g.File, activity string) {
-	future := toCamel("%sFuture", activity)
+func (svc *Manifest) genActivityFuture(f *g.File, activity protoreflect.FullName) {
+	future := svc.toCamel("%sFuture", activity)
 
 	f.Commentf("%s describes a(n) %s activity execution", future, svc.fqnForActivity(activity))
 	f.Type().Id(future).Struct(
@@ -252,10 +256,10 @@ func (svc *Service) genActivityFuture(f *g.File, activity string) {
 }
 
 // genActivityFutureGetMethod generates a <Workflow>Future's Get method
-func (svc *Service) genActivityFutureGetMethod(f *g.File, activity string) {
+func (svc *Manifest) genActivityFutureGetMethod(f *g.File, activity protoreflect.FullName) {
 	method := svc.methods[activity]
 	hasOutput := !isEmpty(method.Output)
-	future := toCamel("%sFuture", activity)
+	future := svc.toCamel("%sFuture", activity)
 
 	f.Comment("Get blocks on the activity's completion, returning the response")
 	f.Func().
@@ -289,8 +293,8 @@ func (svc *Service) genActivityFutureGetMethod(f *g.File, activity string) {
 }
 
 // genActivityFutureSelectMethod generates a <Workflow>Future's Select method
-func (svc *Service) genActivityFutureSelectMethod(f *g.File, activity string) {
-	future := toCamel("%sFuture", activity)
+func (svc *Manifest) genActivityFutureSelectMethod(f *g.File, activity protoreflect.FullName) {
+	future := svc.toCamel("%sFuture", activity)
 
 	f.Comment("Select adds the activity's completion to the selector, callback can be nil")
 	f.Func().
@@ -320,29 +324,32 @@ func (svc *Service) genActivityFutureSelectMethod(f *g.File, activity string) {
 }
 
 // genActivityRegisterAllFunction generates a Register<Service>Activities public function
-func (svc *Service) genActivityRegisterAllFunction(f *g.File) {
+func (svc *Manifest) genActivityRegisterAllFunction(f *g.File) {
 	f.Commentf("Register%sActivities registers activities with a worker", svc.Service.GoName)
 	f.Func().Id(fmt.Sprintf("Register%sActivities", svc.Service.GoName)).
 		Params(
 			g.Id("r").Qual(workerPkg, "ActivityRegistry"),
-			g.Id("activities").Id(toCamel("%sActivities", svc.Service.GoName)),
+			g.Id("activities").Id(svc.toCamel("%sActivities", svc.Service.GoName)),
 		).
 		BlockFunc(func(fn *g.Group) {
 			for _, activity := range svc.activitiesOrdered {
-				fn.Id(fmt.Sprintf("Register%sActivity", activity)).Call(
-					g.Id("r"), g.Id("activities").Dot(activity),
+				if svc.methods[activity].Desc.Parent() != svc.Service.Desc {
+					continue
+				}
+				fn.Id(fmt.Sprintf("Register%sActivity", svc.methods[activity].GoName)).Call(
+					g.Id("r"), g.Id("activities").Dot(svc.methods[activity].GoName),
 				)
 			}
 		})
 }
 
 // genActivityRegisterOneFunction generates a Register<Activity> public function
-func (svc *Service) genActivityRegisterOneFunction(f *g.File, activity string) {
+func (svc *Manifest) genActivityRegisterOneFunction(f *g.File, activity protoreflect.FullName) {
 	method := svc.methods[activity]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	f.Commentf("Register%sActivity registers a %s activity", activity, svc.fqnForActivity(activity))
-	f.Func().Id(fmt.Sprintf("Register%sActivity", activity)).
+	f.Commentf("Register%sActivity registers a %s activity", svc.methods[activity].GoName, svc.fqnForActivity(activity))
+	f.Func().Id(fmt.Sprintf("Register%sActivity", svc.methods[activity].GoName)).
 		Params(
 			g.Id("r").Qual(workerPkg, "ActivityRegistry"),
 			g.Id("fn").Func().
@@ -362,15 +369,15 @@ func (svc *Service) genActivityRegisterOneFunction(f *g.File, activity string) {
 		Block(
 			g.Id("r").Dot("RegisterActivityWithOptions").Call(
 				g.Id("fn"), g.Qual(activityPkg, "RegisterOptions").Block(
-					g.Id("Name").Op(":").Id(toCamel("%sActivityName", activity)).Op(","),
+					g.Id("Name").Op(":").Id(svc.toCamel("%sActivityName", activity)).Op(","),
 				),
 			),
 		)
 }
 
 // genActivityLocalOptions generates an <Activity>LocalActivityOptions struct
-func (svc *Service) genActivityLocalOptions(f *g.File, activity string) {
-	typeName := toCamel("%sLocalActivityOptions", activity)
+func (svc *Manifest) genActivityLocalOptions(f *g.File, activity protoreflect.FullName) {
+	typeName := svc.toCamel("%sLocalActivityOptions", activity)
 	method := svc.methods[activity]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -447,8 +454,8 @@ func (svc *Service) genActivityLocalOptions(f *g.File, activity string) {
 }
 
 // genActivityOptions generates an <Activity>ActivityOptions struct
-func (svc *Service) genActivityOptions(f *g.File, activity string) {
-	typeName := toCamel("%sActivityOptions", activity)
+func (svc *Manifest) genActivityOptions(f *g.File, activity protoreflect.FullName) {
+	typeName := svc.toCamel("%sActivityOptions", activity)
 
 	// generate type definition
 	f.Commentf("%s provides configuration for a(n) %s activity", typeName, svc.fqnForActivity(activity))
