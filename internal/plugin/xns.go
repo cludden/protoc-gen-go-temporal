@@ -9,6 +9,7 @@ import (
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"github.com/hako/durafmt"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const (
@@ -17,9 +18,12 @@ const (
 	xnsPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/xns"
 )
 
-func (svc *Service) renderXNS(f *g.File) {
+func (svc *Manifest) renderXNS(f *g.File) {
 	svc.genXNSRegisterActivities(f)
 	for _, workflow := range svc.workflowsOrdered {
+		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSWorkflowOptions(f, workflow)
 		svc.genXNSWorkflowRunInterface(f, workflow)
 		svc.genXNSWorkflowRunImpl(f, workflow)
@@ -30,11 +34,14 @@ func (svc *Service) renderXNS(f *g.File) {
 			if !signal.GetStart() {
 				continue
 			}
-			svc.genXNSWorkflowWithStartFunction(f, workflow, signal.GetRef())
-			svc.genXNSWorkflowWithStartFunctionAsync(f, workflow, signal.GetRef())
+			svc.genXNSWorkflowWithStartFunction(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+			svc.genXNSWorkflowWithStartFunctionAsync(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
 		}
 	}
 	for _, query := range svc.queriesOrdered {
+		if svc.methods[query].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSQueryOptions(f, query)
 		svc.genXNSQueryHandleInterface(f, query)
 		svc.genXNSQueryHandleImpl(f, query)
@@ -42,6 +49,9 @@ func (svc *Service) renderXNS(f *g.File) {
 		svc.genXNSQueryFunctionAsync(f, query)
 	}
 	for _, signal := range svc.signalsOrdered {
+		if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSSignalOptions(f, signal)
 		svc.genXNSSignalHandleInterface(f, signal)
 		svc.genXNSSignalHandleImpl(f, signal)
@@ -49,6 +59,9 @@ func (svc *Service) renderXNS(f *g.File) {
 		svc.genXNSSignalFunctionAsync(f, signal)
 	}
 	for _, update := range svc.updatesOrdered {
+		if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSUpdateOptions(f, update)
 		svc.genXNSUpdateHandleInterface(f, update)
 		svc.genXNSUpdateHandleImpl(f, update)
@@ -59,31 +72,43 @@ func (svc *Service) renderXNS(f *g.File) {
 
 	svc.genXNSActivities(f)
 	for _, workflow := range svc.workflowsOrdered {
+		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSActivitiesWorkflowMethod(f, workflow)
 		for _, signal := range svc.workflows[workflow].GetSignal() {
 			if !signal.GetStart() {
 				continue
 			}
-			svc.genXNSActivitiesWorkflowWithStartMethod(f, workflow, signal.GetRef())
+			svc.genXNSActivitiesWorkflowWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
 		}
 	}
 	for _, query := range svc.queriesOrdered {
+		if svc.methods[query].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSActivitiesQueryMethod(f, query)
 	}
 	for _, signal := range svc.signalsOrdered {
+		if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSActivitiesSignalMethod(f, signal)
 	}
 	for _, update := range svc.updatesOrdered {
+		if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
 		svc.genXNSActivitiesUpdateMethod(f, update)
 	}
 }
 
-func (svc *Service) genXNSActivities(f *g.File) {
-	typeName := toLowerCamel("%sActivities", svc.GoName)
+func (svc *Manifest) genXNSActivities(f *g.File) {
+	typeName := svc.toLowerCamel("%sActivities", svc.GoName)
 
 	f.Commentf("%s provides activities that can be used to interact with a(n) %s service's workflow, queries, signals, and updates across namespaces", typeName, svc.GoName)
 	f.Type().Id(typeName).Struct(
-		g.Id("client").Qual(string(svc.File.GoImportPath), toCamel("%sClient", svc.GoName)),
+		g.Id("client").Qual(string(svc.File.GoImportPath), svc.toCamel("%sClient", svc.GoName)),
 	)
 
 	f.Comment("CancelWorkflow cancels an existing workflow execution")
@@ -105,8 +130,8 @@ func (svc *Service) genXNSActivities(f *g.File) {
 		)
 }
 
-func (svc *Service) genXNSActivitiesQueryMethod(f *g.File, query string) {
-	methodName := toCamel(query)
+func (svc *Manifest) genXNSActivitiesQueryMethod(f *g.File, query protoreflect.FullName) {
+	methodName := svc.methods[query].GoName
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -114,7 +139,7 @@ func (svc *Service) genXNSActivitiesQueryMethod(f *g.File, query string) {
 	f.Commentf("%s executes a(n) %s query via an activity", methodName, svc.fqnForQuery(query))
 	f.Func().
 		Params(
-			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
+			g.Id("a").Op("*").Id(svc.toLowerCamel("%sActivities", svc.GoName)),
 		).
 		Id(methodName).
 		Params(
@@ -202,15 +227,15 @@ func (svc *Service) genXNSActivitiesQueryMethod(f *g.File, query string) {
 		})
 }
 
-func (svc *Service) genXNSActivitiesSignalMethod(f *g.File, signal string) {
-	methodName := toCamel(signal)
+func (svc *Manifest) genXNSActivitiesSignalMethod(f *g.File, signal protoreflect.FullName) {
+	methodName := svc.methods[signal].GoName
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
 	f.Commentf("%s executes a(n) %s signal via an activity", methodName, svc.fqnForSignal(signal))
 	f.Func().
 		Params(
-			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
+			g.Id("a").Op("*").Id(svc.toLowerCamel("%sActivities", svc.GoName)),
 		).
 		Id(methodName).
 		Params(
@@ -275,8 +300,8 @@ func (svc *Service) genXNSActivitiesSignalMethod(f *g.File, signal string) {
 		})
 }
 
-func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
-	methodName := toCamel(update)
+func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect.FullName) {
+	methodName := svc.methods[update].GoName
 	method := svc.methods[update]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -284,7 +309,7 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 	f.Commentf("%s executes a(n) %s update via an activity", methodName, svc.fqnForUpdate(update))
 	f.Func().
 		Params(
-			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
+			g.Id("a").Op("*").Id(svc.toLowerCamel("%sActivities", svc.GoName)),
 		).
 		Id(methodName).
 		Params(
@@ -298,7 +323,7 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 			returnVals.Err().Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
-			fn.Var().Id("update").Qual(string(svc.File.GoImportPath), toCamel("%sHandle", update))
+			fn.Var().Id("update").Qual(string(svc.File.GoImportPath), svc.toCamel("%sHandle", update))
 			fn.If(g.Qual(activityPkg, "HasHeartbeatDetails").Call(g.Id("ctx"))).Block(
 				g.Comment("extract update id from heartbeat details"),
 				g.Var().Id("updateID").String(),
@@ -315,7 +340,7 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 				),
 				g.Line(),
 				g.Comment("retrieve handle for existing update"),
-				g.List(g.Id("update"), g.Err()).Op("=").Id("a").Dot("client").Dot(toCamel("Get%s", update)).Call(
+				g.List(g.Id("update"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("Get%s", update)).Call(
 					g.Id("ctx"),
 					g.Qual(clientPkg, "GetWorkflowUpdateHandleOptions").Custom(
 						multiLineValues,
@@ -356,14 +381,14 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 				}
 
 				bl.Comment("initialize update execution")
-				bl.List(g.Id("update"), g.Err()).Op("=").Id("a").Dot("client").Dot(toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(args *g.Group) {
+				bl.List(g.Id("update"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetWorkflowId").Call()
 					args.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetRunId").Call()
 					if hasInput {
 						args.Op("&").Id("req")
 					}
-					args.Qual(string(svc.File.GoImportPath), toCamel("New%sOptions", update)).
+					args.Qual(string(svc.File.GoImportPath), svc.toCamel("New%sOptions", update)).
 						Call().
 						Dot("WithUpdateWorkflowOptions").
 						Custom(multiLineArgs, g.Qual(xnsPkg, "UnmarshalUpdateWorkflowOptions").Call(
@@ -428,8 +453,8 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 		})
 }
 
-func (svc *Service) genXNSActivitiesWorkflowMethod(f *g.File, workflow string) {
-	methodName := toCamel(workflow)
+func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow protoreflect.FullName) {
+	methodName := svc.methods[workflow].GoName
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -437,7 +462,7 @@ func (svc *Service) genXNSActivitiesWorkflowMethod(f *g.File, workflow string) {
 	f.Commentf("%s executes a(n) %s workflow via an activity", methodName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(
-			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
+			g.Id("a").Op("*").Id(svc.toLowerCamel("%sActivities", svc.GoName)),
 		).
 		Id(methodName).
 		Params(
@@ -474,13 +499,13 @@ func (svc *Service) genXNSActivitiesWorkflowMethod(f *g.File, workflow string) {
 			}
 
 			fn.Comment("initialize workflow execution")
-			fn.Var().Id("run").Qual(string(svc.File.GoImportPath), toCamel("%sRun", workflow))
-			fn.List(g.Id("run"), g.Err()).Op("=").Id("a").Dot("client").Dot(toCamel("%sAsync", methodName)).CallFunc(func(args *g.Group) {
+			fn.Var().Id("run").Qual(string(svc.File.GoImportPath), svc.toCamel("%sRun", workflow))
+			fn.List(g.Id("run"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("%sAsync", methodName)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Op("&").Id("req")
 				}
-				args.Qual(string(svc.File.GoImportPath), toCamel("New%sOptions", workflow)).
+				args.Qual(string(svc.File.GoImportPath), svc.toCamel("New%sOptions", workflow)).
 					Call().
 					Dot("WithStartWorkflowOptions").
 					Custom(multiLineArgs, g.Qual(xnsPkg, "UnmarshalStartWorkflowOptions").Call(g.Id("input").Dot("GetStartWorkflowOptions").Call()))
@@ -563,8 +588,8 @@ func (svc *Service) genXNSActivitiesWorkflowMethod(f *g.File, workflow string) {
 		})
 }
 
-func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow, signal string) {
-	methodName := toCamel("%sWith%s", workflow, signal)
+func (svc *Manifest) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow, signal protoreflect.FullName) {
+	methodName := svc.toCamel("%sWith%s", workflow, signal)
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -574,7 +599,7 @@ func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow,
 	f.Commentf("%s sends a(n) %s signal to a(n) %s workflow via an activity", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(
-			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
+			g.Id("a").Op("*").Id(svc.toLowerCamel("%sActivities", svc.GoName)),
 		).
 		Id(methodName).
 		Params(
@@ -632,8 +657,8 @@ func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow,
 			}
 
 			fn.Comment("initialize workflow execution")
-			fn.Var().Id("run").Qual(string(svc.File.GoImportPath), toCamel("%sRun", workflow))
-			fn.List(g.Id("run"), g.Err()).Op("=").Id("a").Dot("client").Dot(toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
+			fn.Var().Id("run").Qual(string(svc.File.GoImportPath), svc.toCamel("%sRun", workflow))
+			fn.List(g.Id("run"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Op("&").Id("req")
@@ -641,7 +666,7 @@ func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow,
 				if handlerInput {
 					args.Op("&").Id("signal")
 				}
-				args.Qual(string(svc.File.GoImportPath), toCamel("New%sOptions", workflow)).
+				args.Qual(string(svc.File.GoImportPath), svc.toCamel("New%sOptions", workflow)).
 					Call().
 					Dot("WithStartWorkflowOptions").
 					Custom(multiLineArgs, g.Qual(xnsPkg, "UnmarshalStartWorkflowOptions").Call(g.Id("input").Dot("GetStartWorkflowOptions").Call()))
@@ -724,8 +749,8 @@ func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow,
 		})
 }
 
-func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
-	funcName := toCamel("Cancel%sWorkflow", svc.GoName)
+func (svc *Manifest) genXNSCancelWorkflowFunction(f *g.File) {
+	funcName := svc.toCamel("Cancel%sWorkflow", svc.GoName)
 	f.Commentf("%s cancels an existing workflow", funcName)
 	f.Func().
 		Id(funcName).
@@ -737,7 +762,7 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 		Error().
 		Block(
 			g.Return(
-				g.Id(toCamel("%sAsync", funcName)).
+				g.Id(svc.toCamel("%sAsync", funcName)).
 					Call(
 						g.Id("ctx"),
 						g.Id("workflowID"),
@@ -751,7 +776,7 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 			),
 		)
 
-	funcName = toCamel("%sAsync", funcName)
+	funcName = svc.toCamel("%sAsync", funcName)
 	f.Commentf("%s cancels an existing workflow", funcName)
 	f.Func().
 		Id(funcName).
@@ -762,7 +787,7 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 		).
 		Qual(workflowPkg, "Future").
 		Block(
-			g.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+			g.Id("activityName").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
 				g.Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName())),
 			),
 			g.If(g.Id("activityName").Op("==").Lit("")).Block(
@@ -791,9 +816,9 @@ func (svc *Service) genXNSCancelWorkflowFunction(f *g.File) {
 		)
 }
 
-func (svc *Service) genXNSRegisterActivities(f *g.File) {
-	f.Commentf("%s is used to configure %s xns activity registration", toCamel("%sOptions", svc.GoName), string(svc.Service.Desc.FullName()))
-	f.Type().Id(toCamel("%sOptions", svc.GoName)).Struct(
+func (svc *Manifest) genXNSRegisterActivities(f *g.File) {
+	f.Commentf("%s is used to configure %s xns activity registration", svc.toCamel("%sOptions", svc.GoName), string(svc.Service.Desc.FullName()))
+	f.Type().Id(svc.toCamel("%sOptions", svc.GoName)).Struct(
 		g.Comment("Filter is used to filter xns activity registrations. It receives as"),
 		g.Comment("input the original activity name, and should return one of the following:"),
 		g.Comment("1. the original activity name, for no changes"),
@@ -804,7 +829,7 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 
 	f.Comment("filter is used to filter xns activity registrations")
 	f.Func().
-		Params(g.Id("opts").Op("*").Id(toCamel("%sOptions", svc.GoName))).
+		Params(g.Id("opts").Op("*").Id(svc.toCamel("%sOptions", svc.GoName))).
 		Id("filter").
 		Params(g.Id("name").String()).
 		String().
@@ -815,29 +840,29 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 			g.Return(g.Id("opts").Dot("Filter").Call(g.Id("name"))),
 		)
 
-	f.Commentf("%s is a reference to the %s initialized at registration", toLowerCamel("%sOptions", svc.GoName), toCamel("%sOptions", svc.GoName))
-	f.Var().Id(toLowerCamel("%sOptions", svc.GoName)).Op("*").Id(toCamel("%sOptions", svc.GoName))
+	f.Commentf("%s is a reference to the %s initialized at registration", svc.toLowerCamel("%sOptions", svc.GoName), svc.toCamel("%sOptions", svc.GoName))
+	f.Var().Id(svc.toLowerCamel("%sOptions", svc.GoName)).Op("*").Id(svc.toCamel("%sOptions", svc.GoName))
 
-	funcName := toCamel("Register%sActivities", svc.GoName)
+	funcName := svc.toCamel("Register%sActivities", svc.GoName)
 	f.Commentf("%s registers %s cross-namespace activities", funcName, string(svc.Service.Desc.FullName()))
 	f.Func().
 		Id(funcName).
 		Params(
 			g.Id("r").Qual(workerPkg, "ActivityRegistry"),
-			g.Id("c").Qual(string(svc.File.GoImportPath), toCamel("%sClient", svc.GoName)),
-			g.Id("opts").Op("...").Id(toCamel("%sOptions", svc.GoName)),
+			g.Id("c").Qual(string(svc.File.GoImportPath), svc.toCamel("%sClient", svc.GoName)),
+			g.Id("opts").Op("...").Id(svc.toCamel("%sOptions", svc.GoName)),
 		).
 		BlockFunc(func(fn *g.Group) {
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0)).Block(
-				g.Id(toLowerCamel("%sOptions", svc.GoName)).Op("=").Op("&").Id("opts").Index(g.Lit(0)),
+				g.Id(svc.toLowerCamel("%sOptions", svc.GoName)).Op("=").Op("&").Id("opts").Index(g.Lit(0)),
 			)
-			fn.Id("a").Op(":=").Op("&").Id(toLowerCamel("%sActivities", svc.GoName)).Values(
+			fn.Id("a").Op(":=").Op("&").Id(svc.toLowerCamel("%sActivities", svc.GoName)).Values(
 				g.Id("c"),
 			)
 
 			// register CancelWorkflow
 			fn.If(
-				g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName()))),
+				g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Lit(fmt.Sprintf("%s.CancelWorkflow", svc.Service.Desc.FullName()))),
 				g.Id("name").Op("!=").Lit(""),
 			).Block(
 				g.Id("r").Dot("RegisterActivityWithOptions").Call(
@@ -849,12 +874,15 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 			)
 
 			for _, workflow := range svc.workflowsOrdered {
+				if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+					continue
+				}
 				fn.If(
-					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow))),
+					g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sWorkflowName", workflow))),
 					g.Id("name").Op("!=").Lit(""),
 				).Block(
 					g.Id("r").Dot("RegisterActivityWithOptions").Call(
-						g.Id("a").Dot(toCamel(workflow)),
+						g.Id("a").Dot(svc.methods[workflow].GoName),
 						g.Qual(activityPkg, "RegisterOptions").Values(
 							g.Id("Name").Op(":").Id("name"),
 						),
@@ -865,11 +893,11 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 						continue
 					}
 					fn.If(
-						g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal.GetRef())))),
+						g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), svc.toCamel("%sWith%s", workflow, signal.GetRef())))),
 						g.Id("name").Op("!=").Lit(""),
 					).Block(
 						g.Id("r").Dot("RegisterActivityWithOptions").Call(
-							g.Id("a").Dot(toCamel("%sWith%s", workflow, signal.GetRef())),
+							g.Id("a").Dot(svc.toCamel("%sWith%s", workflow, signal.GetRef())),
 							g.Qual(activityPkg, "RegisterOptions").Values(
 								g.Id("Name").Op(":").Id("name"),
 							),
@@ -878,12 +906,15 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 				}
 			}
 			for _, query := range svc.queriesOrdered {
+				if svc.methods[query].Desc.Parent() != svc.Service.Desc {
+					continue
+				}
 				fn.If(
-					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query))),
+					g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sQueryName", query))),
 					g.Id("name").Op("!=").Lit(""),
 				).Block(
 					g.Id("r").Dot("RegisterActivityWithOptions").Call(
-						g.Id("a").Dot(toCamel(query)),
+						g.Id("a").Dot(svc.methods[query].GoName),
 						g.Qual(activityPkg, "RegisterOptions").Values(
 							g.Id("Name").Op(":").Id("name"),
 						),
@@ -891,12 +922,15 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 				)
 			}
 			for _, signal := range svc.signalsOrdered {
+				if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
+					continue
+				}
 				fn.If(
-					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal))),
+					g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sSignalName", signal))),
 					g.Id("name").Op("!=").Lit(""),
 				).Block(
 					g.Id("r").Dot("RegisterActivityWithOptions").Call(
-						g.Id("a").Dot(toCamel(signal)),
+						g.Id("a").Dot(svc.methods[signal].GoName),
 						g.Qual(activityPkg, "RegisterOptions").Values(
 							g.Id("Name").Op(":").Id("name"),
 						),
@@ -904,12 +938,15 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 				)
 			}
 			for _, update := range svc.updatesOrdered {
+				if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+					continue
+				}
 				fn.If(
-					g.Id("name").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update))),
+					g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sUpdateName", update))),
 					g.Id("name").Op("!=").Lit(""),
 				).Block(
 					g.Id("r").Dot("RegisterActivityWithOptions").Call(
-						g.Id("a").Dot(toCamel(update)),
+						g.Id("a").Dot(svc.methods[update].GoName),
 						g.Qual(activityPkg, "RegisterOptions").Values(
 							g.Id("Name").Op(":").Id("name"),
 						),
@@ -919,8 +956,8 @@ func (svc *Service) genXNSRegisterActivities(f *g.File) {
 		})
 }
 
-func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
-	methodName := toCamel(query)
+func (svc *Manifest) genXNSQueryFunction(f *g.File, query protoreflect.FullName) {
+	methodName := svc.methods[query].GoName
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -940,7 +977,7 @@ func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sQueryOptions", query))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sQueryOptions", query))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -949,7 +986,7 @@ func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
 			returnVals.Error()
 		}).
 		Block(
-			g.List(g.Id("handle"), g.Err()).Op(":=").Id(toCamel("%sAsync", query)).CallFunc(func(args *g.Group) {
+			g.List(g.Id("handle"), g.Err()).Op(":=").Id(svc.toCamel("%sAsync", query)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -970,8 +1007,8 @@ func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
 		)
 }
 
-func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
-	methodName := toCamel("%sAsync", query)
+func (svc *Manifest) genXNSQueryFunctionAsync(f *g.File, query protoreflect.FullName) {
+	methodName := svc.toCamel("%sAsync", query)
 	method := svc.methods[query]
 	opts := svc.queries[query]
 	hasInput := !isEmpty(method.Input)
@@ -991,22 +1028,22 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sQueryOptions", query))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sQueryOptions", query))
 		}).
 		Params(
-			g.Id(toCamel("%sQueryHandle", query)),
+			g.Id(svc.toCamel("%sQueryHandle", query)),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
-				g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query)),
+			fn.Id("activityName").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sQueryName", query)),
 			)
 			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
 				g.Return(
 					g.Nil(),
 					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 						multiLineArgs,
-						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query))),
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sQueryName", query))),
 						g.Lit("Unimplemented"),
 						g.Nil(),
 					),
@@ -1015,7 +1052,7 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 			fn.Line()
 
 			// extract workflow options
-			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sQueryOptions", query)).Values()
+			fn.Id("opt").Op(":=").Op("&").Id(svc.toCamel("%sQueryOptions", query)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 			)
@@ -1035,7 +1072,7 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 			// return run with execute activity future
 			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
-				g.Op("&").Id(toLowerCamel("%sQueryHandle", query)).Custom(multiLineValues,
+				g.Op("&").Id(svc.toLowerCamel("%sQueryHandle", query)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
@@ -1055,13 +1092,13 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 		})
 }
 
-func (svc *Service) genXNSQueryHandleImpl(f *g.File, query string) {
-	typeName := toLowerCamel("%sQueryHandle", query)
+func (svc *Manifest) genXNSQueryHandleImpl(f *g.File, query protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sQueryHandle", query)
 	method := svc.methods[query]
 	// opts := svc.workflows[workflow]
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s provides a(n) %s implementation", typeName, toCamel("%sQueryHandle", query))
+	f.Commentf("%s provides a(n) %s implementation", typeName, svc.toCamel("%sQueryHandle", query))
 	f.Type().Id(typeName).Struct(
 		g.Id("cancel").Func().Params(),
 		g.Id("future").Qual(workflowPkg, "Future"),
@@ -1141,8 +1178,8 @@ func (svc *Service) genXNSQueryHandleImpl(f *g.File, query string) {
 		})
 }
 
-func (svc *Service) genXNSQueryHandleInterface(f *g.File, query string) {
-	typeName := toCamel("%sQueryHandle", query)
+func (svc *Manifest) genXNSQueryHandleInterface(f *g.File, query protoreflect.FullName) {
+	typeName := svc.toCamel("%sQueryHandle", query)
 	method := svc.methods[query]
 	// opts := svc.workflows[workflow]
 	hasOutput := !isEmpty(method.Output)
@@ -1169,8 +1206,8 @@ func (svc *Service) genXNSQueryHandleInterface(f *g.File, query string) {
 	})
 }
 
-func (svc *Service) genXNSQueryOptions(f *g.File, query string) {
-	typeName := toCamel("%sQueryOptions", query)
+func (svc *Manifest) genXNSQueryOptions(f *g.File, query protoreflect.FullName) {
+	typeName := svc.toCamel("%sQueryOptions", query)
 
 	f.Commentf("%s are used to configure a(n) %s query execution", typeName, svc.fqnForQuery(query))
 	f.Type().Id(typeName).Struct(
@@ -1180,7 +1217,7 @@ func (svc *Service) genXNSQueryOptions(f *g.File, query string) {
 
 	f.Commentf("New%s initializes a new %s value", typeName, typeName)
 	f.Func().
-		Id(toCamel("New%s", typeName)).
+		Id(svc.toCamel("New%s", typeName)).
 		Params().
 		Op("*").Id(typeName).
 		Block(
@@ -1220,8 +1257,8 @@ func (svc *Service) genXNSQueryOptions(f *g.File, query string) {
 		)
 }
 
-func (svc *Service) genXNSSignalFunction(f *g.File, signal string) {
-	methodName := toCamel(signal)
+func (svc *Manifest) genXNSSignalFunction(f *g.File, signal protoreflect.FullName) {
+	methodName := svc.methods[signal].GoName
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
@@ -1240,11 +1277,11 @@ func (svc *Service) genXNSSignalFunction(f *g.File, signal string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sSignalOptions", signal))
 		}).
 		Error().
 		Block(
-			g.List(g.Id("handle"), g.Err()).Op(":=").Id(toCamel("%sAsync", signal)).CallFunc(func(args *g.Group) {
+			g.List(g.Id("handle"), g.Err()).Op(":=").Id(svc.toCamel("%sAsync", signal)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -1260,8 +1297,8 @@ func (svc *Service) genXNSSignalFunction(f *g.File, signal string) {
 		)
 }
 
-func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
-	methodName := toCamel("%sAsync", signal)
+func (svc *Manifest) genXNSSignalFunctionAsync(f *g.File, signal protoreflect.FullName) {
+	methodName := svc.toCamel("%sAsync", signal)
 	method := svc.methods[signal]
 	opts := svc.signals[signal]
 	hasInput := !isEmpty(method.Input)
@@ -1281,22 +1318,22 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sSignalOptions", signal))
 		}).
 		Params(
-			g.Id(toCamel("%sSignalHandle", signal)),
+			g.Id(svc.toCamel("%sSignalHandle", signal)),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
-				g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)),
+			fn.Id("activityName").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sSignalName", signal)),
 			)
 			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
 				g.Return(
 					g.Nil(),
 					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 						multiLineArgs,
-						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal))),
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sSignalName", signal))),
 						g.Lit("Unimplemented"),
 						g.Nil(),
 					),
@@ -1305,7 +1342,7 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 			fn.Line()
 
 			// extract workflow options
-			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sSignalOptions", signal)).Values()
+			fn.Id("opt").Op(":=").Op("&").Id(svc.toCamel("%sSignalOptions", signal)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 			)
@@ -1325,7 +1362,7 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 			// return run with execute activity future
 			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
-				g.Op("&").Id(toLowerCamel("%sSignalHandle", signal)).Custom(multiLineValues,
+				g.Op("&").Id(svc.toLowerCamel("%sSignalHandle", signal)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						g.Id("ctx"),
@@ -1345,9 +1382,9 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 		})
 }
 
-func (svc *Service) genXNSSignalHandleImpl(f *g.File, signal string) {
-	typeName := toLowerCamel("%sSignalHandle", signal)
-	f.Commentf("%s provides a(n) %s implementation", typeName, toCamel("%sQueryHandle", signal))
+func (svc *Manifest) genXNSSignalHandleImpl(f *g.File, signal protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sSignalHandle", signal)
+	f.Commentf("%s provides a(n) %s implementation", typeName, svc.toCamel("%sQueryHandle", signal))
 	f.Type().Id(typeName).Struct(
 		g.Id("cancel").Func().Params(),
 		g.Id("future").Qual(workflowPkg, "Future"),
@@ -1391,8 +1428,8 @@ func (svc *Service) genXNSSignalHandleImpl(f *g.File, signal string) {
 		)
 }
 
-func (svc *Service) genXNSSignalHandleInterface(f *g.File, signal string) {
-	typeName := toCamel("%sSignalHandle", signal)
+func (svc *Manifest) genXNSSignalHandleInterface(f *g.File, signal protoreflect.FullName) {
+	typeName := svc.toCamel("%sSignalHandle", signal)
 
 	f.Commentf("%s provides a handle for a %s signal activity", typeName, signal)
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
@@ -1411,8 +1448,8 @@ func (svc *Service) genXNSSignalHandleInterface(f *g.File, signal string) {
 	})
 }
 
-func (svc *Service) genXNSSignalOptions(f *g.File, signal string) {
-	typeName := toCamel("%sSignalOptions", signal)
+func (svc *Manifest) genXNSSignalOptions(f *g.File, signal protoreflect.FullName) {
+	typeName := svc.toCamel("%sSignalOptions", signal)
 
 	f.Commentf("%s are used to configure a(n) %s signal execution", typeName, svc.fqnForSignal(signal))
 	f.Type().Id(typeName).Struct(
@@ -1422,7 +1459,7 @@ func (svc *Service) genXNSSignalOptions(f *g.File, signal string) {
 
 	f.Commentf("New%s initializes a new %s value", typeName, typeName)
 	f.Func().
-		Id(toCamel("New%s", typeName)).
+		Id(svc.toCamel("New%s", typeName)).
 		Params().
 		Op("*").Id(typeName).
 		Block(
@@ -1462,8 +1499,8 @@ func (svc *Service) genXNSSignalOptions(f *g.File, signal string) {
 		)
 }
 
-func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
-	methodName := update
+func (svc *Manifest) genXNSUpdateFunction(f *g.File, update protoreflect.FullName) {
+	methodName := svc.methods[update].GoName
 	method := svc.methods[update]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -1483,7 +1520,7 @@ func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sUpdateOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sUpdateOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -1492,7 +1529,7 @@ func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
 			returnVals.Error()
 		}).
 		Block(
-			g.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
+			g.List(g.Id("run"), g.Err()).Op(":=").Id(svc.toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -1513,8 +1550,8 @@ func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
 		)
 }
 
-func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
-	methodName := toCamel("%sAsync", update)
+func (svc *Manifest) genXNSUpdateFunctionAsync(f *g.File, update protoreflect.FullName) {
+	methodName := svc.toCamel("%sAsync", update)
 	method := svc.methods[update]
 	hasInput := !isEmpty(method.Input)
 	opts := svc.updates[update]
@@ -1534,22 +1571,22 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sUpdateOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sUpdateOptions", update))
 		}).
 		Params(
-			g.Id(toCamel("%sHandle", update)),
+			g.Id(svc.toCamel("%sHandle", update)),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
-				g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update)),
+			fn.Id("activityName").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sUpdateName", update)),
 			)
 			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
 				g.Return(
 					g.Nil(),
 					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 						multiLineArgs,
-						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update))),
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sUpdateName", update))),
 						g.Lit("Unimplemented"),
 						g.Nil(),
 					),
@@ -1558,7 +1595,7 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			fn.Line()
 
 			// extract workflow options
-			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sUpdateOptions", update)).Values()
+			fn.Id("opt").Op(":=").Op("&").Id(svc.toCamel("%sUpdateOptions", update)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 			)
@@ -1580,7 +1617,7 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 					g.If(
 						g.Err().Op(":=").Qual(workflowPkg, "SideEffect").Call(g.Id("ctx"), g.Func().Params(g.Id("ctx").Qual(workflowPkg, "Context")).Any().Block(
 							g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-								args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", update))
+								args.Qual(string(svc.File.GoImportPath), svc.toCamel("%sIDExpression", update))
 								if hasInput {
 									args.Id("req").Dot("ProtoReflect").Call()
 								} else {
@@ -1653,7 +1690,7 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			// return run with execute activity future
 			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
-				g.Op("&").Id(toLowerCamel("%sHandle", update)).Custom(multiLineValues,
+				g.Op("&").Id(svc.toLowerCamel("%sHandle", update)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("id").Op(":").Id("uo").Dot("UpdateID"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
@@ -1673,8 +1710,8 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 		})
 }
 
-func (svc *Service) genXNSUpdateOptions(f *g.File, update string) {
-	typeName := toCamel("%sUpdateOptions", update)
+func (svc *Manifest) genXNSUpdateOptions(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toCamel("%sUpdateOptions", update)
 
 	f.Commentf("%s are used to configure a(n) %s update execution", typeName, update)
 	f.Type().Id(typeName).Struct(
@@ -1685,7 +1722,7 @@ func (svc *Service) genXNSUpdateOptions(f *g.File, update string) {
 
 	f.Commentf("New%s initializes a new %s value", typeName, typeName)
 	f.Func().
-		Id(toCamel("New%s", typeName)).
+		Id(svc.toCamel("New%s", typeName)).
 		Params().
 		Op("*").Id(typeName).
 		Block(
@@ -1740,12 +1777,12 @@ func (svc *Service) genXNSUpdateOptions(f *g.File, update string) {
 		)
 }
 
-func (svc *Service) genXNSUpdateHandleImpl(f *g.File, update string) {
-	typeName := toLowerCamel("%sHandle", update)
+func (svc *Manifest) genXNSUpdateHandleImpl(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
 	method := svc.methods[update]
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s provides a(n) %s implementation", typeName, toCamel("%sHandle", update))
+	f.Commentf("%s provides a(n) %s implementation", typeName, svc.toCamel("%sHandle", update))
 	f.Type().Id(typeName).Struct(
 		g.Id("cancel").Func().Params(),
 		g.Id("future").Qual(workflowPkg, "Future"),
@@ -1836,8 +1873,8 @@ func (svc *Service) genXNSUpdateHandleImpl(f *g.File, update string) {
 		)
 }
 
-func (svc *Service) genXNSUpdateHandleInterface(f *g.File, update string) {
-	typeName := toCamel("%sHandle", update)
+func (svc *Manifest) genXNSUpdateHandleInterface(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toCamel("%sHandle", update)
 	method := svc.methods[update]
 	hasOutput := !isEmpty(method.Output)
 
@@ -1868,8 +1905,8 @@ func (svc *Service) genXNSUpdateHandleInterface(f *g.File, update string) {
 	})
 }
 
-func (svc *Service) genXNSWorkflowFunction(f *g.File, workflow string) {
-	methodName := workflow
+func (svc *Manifest) genXNSWorkflowFunction(f *g.File, workflow protoreflect.FullName) {
+	methodName := svc.methods[workflow].GoName
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -1887,7 +1924,7 @@ func (svc *Service) genXNSWorkflowFunction(f *g.File, workflow string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sWorkflowOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sWorkflowOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -1896,7 +1933,7 @@ func (svc *Service) genXNSWorkflowFunction(f *g.File, workflow string) {
 			returnVals.Error()
 		}).
 		Block(
-			g.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
+			g.List(g.Id("run"), g.Err()).Op(":=").Id(svc.toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
@@ -1915,8 +1952,8 @@ func (svc *Service) genXNSWorkflowFunction(f *g.File, workflow string) {
 		)
 }
 
-func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
-	methodName := toCamel("%sAsync", workflow)
+func (svc *Manifest) genXNSWorkflowFunctionAsync(f *g.File, workflow protoreflect.FullName) {
+	methodName := svc.toCamel("%sAsync", workflow)
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	// hasOutput := !isEmpty(method.Output)
@@ -1935,22 +1972,22 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 			if hasInput {
 				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sWorkflowOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sWorkflowOptions", workflow))
 		}).
 		Params(
-			g.Id(toCamel("%sRun", workflow)),
+			g.Id(svc.toCamel("%sRun", workflow)),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
-				g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)),
+			fn.Id("activityName").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sWorkflowName", workflow)),
 			)
 			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
 				g.Return(
 					g.Nil(),
 					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 						multiLineArgs,
-						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow))),
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sWorkflowName", workflow))),
 						g.Lit("Unimplemented"),
 						g.Nil(),
 					),
@@ -1958,7 +1995,7 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 			)
 			fn.Line()
 
-			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sWorkflowOptions", workflow)).Values()
+			fn.Id("opt").Op(":=").Op("&").Id(svc.toCamel("%sWorkflowOptions", workflow)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 			)
@@ -1978,7 +2015,7 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 			// return run with execute activity future
 			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
-				g.Op("&").Id(toLowerCamel("%sRun", workflow)).Custom(multiLineValues,
+				g.Op("&").Id(svc.toLowerCamel("%sRun", workflow)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("id").Op(":").Id("wo").Dot("ID"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
@@ -1999,8 +2036,8 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 		})
 }
 
-func (svc *Service) genXNSWorkflowOptions(f *g.File, workflow string) {
-	typeName := toCamel("%sWorkflowOptions", workflow)
+func (svc *Manifest) genXNSWorkflowOptions(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toCamel("%sWorkflowOptions", workflow)
 
 	f.Commentf("%s are used to configure a(n) %s workflow execution", typeName, workflow)
 	f.Type().Id(typeName).Struct(
@@ -2012,7 +2049,7 @@ func (svc *Service) genXNSWorkflowOptions(f *g.File, workflow string) {
 
 	f.Commentf("New%s initializes a new %s value", typeName, typeName)
 	f.Func().
-		Id(toCamel("New%s", typeName)).
+		Id(svc.toCamel("New%s", typeName)).
 		Params().
 		Op("*").Id(typeName).
 		Block(
@@ -2082,13 +2119,13 @@ func (svc *Service) genXNSWorkflowOptions(f *g.File, workflow string) {
 		)
 }
 
-func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 	method := svc.methods[workflow]
 	opts := svc.workflows[workflow]
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s provides a(n) %s implementation", typeName, toCamel("%sRun", workflow))
+	f.Commentf("%s provides a(n) %s implementation", typeName, svc.toCamel("%sRun", workflow))
 	f.Type().Id(typeName).Struct(
 		g.Id("cancel").Func().Params(),
 		g.Id("future").Qual(workflowPkg, "Future"),
@@ -2117,7 +2154,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 				),
 				g.Return(g.Nil()),
 			),
-			g.Return(g.Id(toCamel("Cancel%sWorkflow", svc.GoName)).Call(g.Id("ctx"), g.Id("r").Dot("id"), g.Lit(""))),
+			g.Return(g.Id(svc.toCamel("Cancel%sWorkflow", svc.GoName)).Call(g.Id("ctx"), g.Id("r").Dot("id"), g.Lit(""))),
 		)
 
 	f.Comment("Future returns the underlying activity future")
@@ -2182,12 +2219,12 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 		)
 
 	for i := range opts.GetQuery() {
-		query := opts.GetQuery()[i].GetRef()
+		query := getFullyQualifiedRef(workflow, opts.GetQuery()[i].GetRef())
 		handler := svc.methods[query]
 		handlerInput := !isEmpty(handler.Input)
 		handlerOutput := !isEmpty(handler.Output)
 
-		methodName := toCamel(query)
+		methodName := svc.methods[query].GoName
 		if handler.Comments.Leading.String() != "" {
 			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 		} else {
@@ -2199,20 +2236,20 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if handlerInput {
-					args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+					args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				}
-				args.Id("opts").Op("...").Op("*").Id(toCamel("%sQueryOptions", query))
+				args.Id("opts").Op("...").Op("*").Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryOptions", query))
 			}).
 			ParamsFunc(func(returnVals *g.Group) {
 				if handlerOutput {
-					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Output))
+					returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 				}
 				returnVals.Error()
 			}).
 			BlockFunc(func(fn *g.Group) {
 				if xns := opts.GetQuery()[i].GetXns(); xns != nil {
 					fn.Comment("configure activity options if unset")
-					fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sQueryOptions", query)).Values()
+					fn.Id("opt").Op(":=").Op("&").Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryOptions", query)).Values()
 					fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 						g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 					)
@@ -2222,7 +2259,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 						bl.Id("opts").Index(g.Lit(0)).Op("=").Id("opt")
 					})
 				}
-				fn.Return(g.Id(methodName).CallFunc(func(args *g.Group) {
+				fn.Return(g.Qual(svc.methodXNSPackage(query), methodName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -2233,7 +2270,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 				}))
 			})
 
-		methodName = toCamel("%sAsync", query)
+		methodName = svc.toCamel("%sAsync", query)
 		if handler.Comments.Leading.String() != "" {
 			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 		} else {
@@ -2245,18 +2282,18 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if handlerInput {
-					args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+					args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				}
-				args.Id("opts").Op("...").Op("*").Id(toCamel("%sQueryOptions", query))
+				args.Id("opts").Op("...").Op("*").Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryOptions", query))
 			}).
 			Params(
-				g.Id(toCamel("%sQueryHandle", query)),
+				g.Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryHandle", query)),
 				g.Error(),
 			).
 			BlockFunc(func(fn *g.Group) {
 				if xns := opts.GetQuery()[i].GetXns(); xns != nil {
 					fn.Comment("configure activity options if unset")
-					fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sQueryOptions", query)).Values()
+					fn.Id("opt").Op(":=").Op("&").Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryOptions", query)).Values()
 					fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 						g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 					)
@@ -2266,7 +2303,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 						bl.Id("opts").Index(g.Lit(0)).Op("=").Id("opt")
 					})
 				}
-				fn.Return(g.Id(methodName).CallFunc(func(args *g.Group) {
+				fn.Return(g.Qual(svc.methodXNSPackage(query), methodName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -2279,11 +2316,11 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 	}
 
 	for i := range opts.GetSignal() {
-		signal := opts.GetSignal()[i].GetRef()
+		signal := getFullyQualifiedRef(workflow, opts.GetSignal()[i].GetRef())
 		handler := svc.methods[signal]
 		handlerInput := !isEmpty(handler.Input)
 
-		methodName := toCamel(signal)
+		methodName := svc.methods[signal].GoName
 		if handler.Comments.Leading.String() != "" {
 			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 		} else {
@@ -2295,15 +2332,15 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if handlerInput {
-					args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+					args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				}
-				args.Id("opts").Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
+				args.Id("opts").Op("...").Op("*").Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalOptions", signal))
 			}).
 			Error().
 			BlockFunc(func(fn *g.Group) {
 				if xns := opts.GetSignal()[i].GetXns(); xns != nil {
 					fn.Comment("configure activity options if unset")
-					fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sSignalOptions", signal)).Values()
+					fn.Id("opt").Op(":=").Op("&").Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalOptions", signal)).Values()
 					fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 						g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 					)
@@ -2313,7 +2350,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 						bl.Id("opts").Index(g.Lit(0)).Op("=").Id("opt")
 					})
 				}
-				fn.Return(g.Id(methodName).CallFunc(func(args *g.Group) {
+				fn.Return(g.Qual(svc.methodXNSPackage(signal), methodName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -2324,7 +2361,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 				}))
 			})
 
-		methodName = toCamel("%sAsync", signal)
+		methodName = svc.toCamel("%sAsync", signal)
 		if handler.Comments.Leading.String() != "" {
 			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 		} else {
@@ -2336,18 +2373,18 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if handlerInput {
-					args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+					args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				}
-				args.Id("opts").Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
+				args.Id("opts").Op("...").Op("*").Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalOptions", signal))
 			}).
 			Params(
-				g.Id(toCamel("%sSignalHandle", signal)),
+				g.Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalHandle", signal)),
 				g.Error(),
 			).
 			BlockFunc(func(fn *g.Group) {
 				if xns := opts.GetSignal()[i].GetXns(); xns != nil {
 					fn.Comment("configure activity options if unset")
-					fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sSignalOptions", signal)).Values()
+					fn.Id("opt").Op(":=").Op("&").Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalOptions", signal)).Values()
 					fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 						g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 					)
@@ -2357,7 +2394,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 						bl.Id("opts").Index(g.Lit(0)).Op("=").Id("opt")
 					})
 				}
-				fn.Return(g.Id(methodName).CallFunc(func(args *g.Group) {
+				fn.Return(g.Qual(svc.methodXNSPackage(signal), methodName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -2370,12 +2407,12 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 	}
 
 	for i := range opts.GetUpdate() {
-		update := opts.GetUpdate()[i].GetRef()
+		update := getFullyQualifiedRef(workflow, opts.GetUpdate()[i].GetRef())
 		handler := svc.methods[update]
 		handlerInput := !isEmpty(handler.Input)
 		handlerOutput := !isEmpty(handler.Output)
 
-		methodName := toCamel(update)
+		methodName := svc.methods[update].GoName
 		if handler.Comments.Leading.String() != "" {
 			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 		} else {
@@ -2387,20 +2424,20 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if handlerInput {
-					args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+					args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				}
-				args.Id("opts").Op("...").Op("*").Id(toCamel("%sUpdateOptions", update))
+				args.Id("opts").Op("...").Op("*").Qual(svc.methodXNSPackage(update), svc.toCamel("%sUpdateOptions", update))
 			}).
 			ParamsFunc(func(returnVals *g.Group) {
 				if handlerOutput {
-					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Output))
+					returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 				}
 				returnVals.Error()
 			}).
 			BlockFunc(func(fn *g.Group) {
 				if xns := opts.GetUpdate()[i].GetXns(); xns != nil {
 					fn.Comment("configure activity options if unset")
-					fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sUpdateOptions", update)).Values()
+					fn.Id("opt").Op(":=").Op("&").Qual(svc.methodXNSPackage(update), svc.toCamel("%sUpdateOptions", update)).Values()
 					fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 						g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 					)
@@ -2410,7 +2447,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 						bl.Id("opts").Index(g.Lit(0)).Op("=").Id("opt")
 					})
 				}
-				fn.Return(g.Id(methodName).CallFunc(func(args *g.Group) {
+				fn.Return(g.Qual(svc.methodXNSPackage(update), methodName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -2421,7 +2458,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 				}))
 			})
 
-		methodName = toCamel("%sAsync", update)
+		methodName = svc.toCamel("%sAsync", update)
 		if handler.Comments.Leading.String() != "" {
 			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 		} else {
@@ -2433,18 +2470,18 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if handlerInput {
-					args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+					args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				}
-				args.Id("opts").Op("...").Op("*").Id(toCamel("%sUpdateOptions", update))
+				args.Id("opts").Op("...").Op("*").Qual(svc.methodXNSPackage(update), svc.toCamel("%sUpdateOptions", update))
 			}).
 			Params(
-				g.Id(toCamel("%sHandle", update)),
+				g.Qual(svc.methodXNSPackage(update), svc.toCamel("%sHandle", update)),
 				g.Error(),
 			).
 			BlockFunc(func(fn *g.Group) {
 				if xns := opts.GetUpdate()[i].GetXns(); xns != nil {
 					fn.Comment("configure activity options if unset")
-					fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sUpdateOptions", update)).Values()
+					fn.Id("opt").Op(":=").Op("&").Qual(svc.methodXNSPackage(update), svc.toCamel("%sUpdateOptions", update)).Values()
 					fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 						g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 					)
@@ -2454,7 +2491,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 						bl.Id("opts").Index(g.Lit(0)).Op("=").Id("opt")
 					})
 				}
-				fn.Return(g.Id(methodName).CallFunc(func(args *g.Group) {
+				fn.Return(g.Qual(svc.methodXNSPackage(update), methodName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -2467,8 +2504,8 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 	}
 }
 
-func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
-	typeName := toCamel("%sRun", workflow)
+func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toCamel("%sRun", workflow)
 	method := svc.methods[workflow]
 	opts := svc.workflows[workflow]
 	hasOutput := !isEmpty(method.Output)
@@ -2499,13 +2536,13 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 			String()
 
 		for i := range opts.GetQuery() {
-			query := opts.GetQuery()[i].GetRef()
+			query := getFullyQualifiedRef(workflow, opts.GetQuery()[i].GetRef())
 			handler := svc.methods[query]
 			handlerInput := !isEmpty(handler.Input)
 			handlerOutput := !isEmpty(handler.Output)
 
 			// synchronous
-			methodName := toCamel(query)
+			methodName := svc.methods[query].GoName
 			if handler.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
@@ -2515,19 +2552,19 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if handlerInput {
-						args.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Op("...").Op("*").Id(toCamel("%sQueryOptions", query))
+					args.Op("...").Op("*").Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryOptions", query))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if handlerOutput {
-						returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Output))
+						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
 				})
 
 			// async
-			methodName = toCamel("%sAsync", query)
+			methodName = svc.toCamel("%sAsync", query)
 			if handler.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
@@ -2537,23 +2574,23 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if handlerInput {
-						args.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Op("...").Op("*").Id(toCamel("%sQueryOptions", query))
+					args.Op("...").Op("*").Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryOptions", query))
 				}).
 				Params(
-					g.Id(toCamel("%sQueryHandle", query)),
+					g.Qual(svc.methodXNSPackage(query), svc.toCamel("%sQueryHandle", query)),
 					g.Error(),
 				)
 		}
 
 		for i := range opts.GetSignal() {
-			signal := opts.GetSignal()[i].GetRef()
+			signal := getFullyQualifiedRef(workflow, opts.GetSignal()[i].GetRef())
 			handler := svc.methods[signal]
 			handlerInput := !isEmpty(handler.Input)
 
 			// synchronnous
-			methodName := toCamel(signal)
+			methodName := svc.methods[signal].GoName
 			if handler.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
@@ -2563,14 +2600,14 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if handlerInput {
-						args.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
+					args.Op("...").Op("*").Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalOptions", signal))
 				}).
 				Error()
 
 			// async
-			methodName = toCamel("%sAsync", signal)
+			methodName = svc.toCamel("%sAsync", signal)
 			if handler.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
@@ -2580,24 +2617,24 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if handlerInput {
-						args.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
+					args.Op("...").Op("*").Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalOptions", signal))
 				}).
 				Params(
-					g.Id(toCamel("%sSignalHandle", signal)),
+					g.Qual(svc.methodXNSPackage(signal), svc.toCamel("%sSignalHandle", signal)),
 					g.Error(),
 				)
 		}
 
 		for i := range opts.GetUpdate() {
-			update := opts.GetUpdate()[i].GetRef()
+			update := getFullyQualifiedRef(workflow, opts.GetUpdate()[i].GetRef())
 			handler := svc.methods[update]
 			handlerInput := !isEmpty(handler.Input)
 			handlerOutput := !isEmpty(handler.Output)
 
 			// synchronous
-			methodName := toCamel(update)
+			methodName := svc.methods[update].GoName
 			if handler.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
@@ -2607,19 +2644,19 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if handlerInput {
-						args.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Op("...").Op("*").Id(toCamel("%sUpdateOptions", update))
+					args.Op("...").Op("*").Qual(svc.methodXNSPackage(update), svc.toCamel("%sUpdateOptions", update))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if handlerOutput {
-						returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Output))
+						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
 				})
 
 			// async
-			methodName = toCamel("%sAsync", update)
+			methodName = svc.toCamel("%sAsync", update)
 			if handler.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
 			} else {
@@ -2629,20 +2666,20 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if handlerInput {
-						args.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Op("...").Op("*").Id(toCamel("%sUpdateOptions", update))
+					args.Op("...").Op("*").Qual(svc.methodXNSPackage(update), svc.toCamel("%sUpdateOptions", update))
 				}).
 				Params(
-					g.Id(toCamel("%sHandle", update)),
+					g.Qual(svc.methodXNSPackage(update), svc.toCamel("%sHandle", update)),
 					g.Error(),
 				)
 		}
 	})
 }
 
-func (svc *Service) genXNSWorkflowWithStartFunction(f *g.File, workflow, signal string) {
-	methodName := toCamel("%sWith%s", workflow, signal)
+func (svc *Manifest) genXNSWorkflowWithStartFunction(f *g.File, workflow, signal protoreflect.FullName) {
+	methodName := svc.toCamel("%sWith%s", workflow, signal)
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -2665,7 +2702,7 @@ func (svc *Service) genXNSWorkflowWithStartFunction(f *g.File, workflow, signal 
 			if handlerInput {
 				args.Id("signal").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sWorkflowOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sWorkflowOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -2674,7 +2711,7 @@ func (svc *Service) genXNSWorkflowWithStartFunction(f *g.File, workflow, signal 
 			returnVals.Error()
 		}).
 		Block(
-			g.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
+			g.List(g.Id("run"), g.Err()).Op(":=").Id(svc.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
@@ -2696,8 +2733,8 @@ func (svc *Service) genXNSWorkflowWithStartFunction(f *g.File, workflow, signal 
 		)
 }
 
-func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, signal string) {
-	methodName := toCamel("%sWith%sAsync", workflow, signal)
+func (svc *Manifest) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, signal protoreflect.FullName) {
+	methodName := svc.toCamel("%sWith%sAsync", workflow, signal)
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	handler := svc.methods[signal]
@@ -2719,22 +2756,22 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 			if handlerInput {
 				args.Id("signal").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sWorkflowOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sWorkflowOptions", workflow))
 		}).
 		Params(
-			g.Id(toCamel("%sRun", workflow)),
+			g.Id(svc.toCamel("%sRun", workflow)),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
-				g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal))),
+			fn.Id("activityName").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
+				g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), svc.toCamel("%sWith%s", workflow, signal))),
 			)
 			fn.If(g.Id("activityName").Op("==").Lit("")).Block(
 				g.Return(
 					g.Nil(),
 					g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 						multiLineArgs,
-						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal)))),
+						g.Qual("fmt", "Sprintf").Call(g.Lit("no activity registered for %s"), g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), svc.toCamel("%sWith%s", workflow, signal)))),
 						g.Lit("Unimplemented"),
 						g.Nil(),
 					),
@@ -2743,14 +2780,14 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 			fn.Line()
 
 			// extract workflow options
-			fn.Id("opt").Op(":=").Op("&").Id(toCamel("%sWorkflowOptions", workflow)).Values()
+			fn.Id("opt").Op(":=").Op("&").Id(svc.toCamel("%sWorkflowOptions", workflow)).Values()
 			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
 				g.Id("opt").Op("=").Id("opts").Index(g.Lit(0)),
 			)
 
 			xnsOpts := opts.GetXns()
 			for _, s := range opts.GetSignal() {
-				if s.GetRef() != signal {
+				if sig := getFullyQualifiedRef(workflow, s.GetRef()); sig != signal {
 					continue
 				}
 				if s.GetXns() != nil {
@@ -2784,7 +2821,7 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 			// return run with execute activity future
 			fn.List(g.Id("ctx"), g.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(g.Id("ctx"))
 			fn.Return(
-				g.Op("&").Id(toLowerCamel("%sRun", workflow)).Custom(multiLineValues,
+				g.Op("&").Id(svc.toLowerCamel("%sRun", workflow)).Custom(multiLineValues,
 					g.Id("cancel").Op(":").Id("cancel"),
 					g.Id("id").Op(":").Id("wo").Dot("ID"),
 					g.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
@@ -2901,7 +2938,7 @@ func initializeXNSOptions(fn *g.Group, opts *temporalv1.XNSActivityOptions, defa
 }
 
 // initializes a `swo` variable that contains a non-nil *temporalv1.StartWorkflowOptions value
-func (svc *Service) initializeXNSStartWorkflowOptions(fn *g.Group, workflow string) {
+func (svc *Manifest) initializeXNSStartWorkflowOptions(fn *g.Group, workflow protoreflect.FullName) {
 	method := svc.methods[workflow]
 	opts := svc.workflows[workflow]
 	hasInput := !isEmpty(method.Input)
@@ -2917,7 +2954,7 @@ func (svc *Service) initializeXNSStartWorkflowOptions(fn *g.Group, workflow stri
 			g.If(
 				g.Err().Op(":=").Qual(workflowPkg, "SideEffect").Call(g.Id("ctx"), g.Func().Params(g.Id("ctx").Qual(workflowPkg, "Context")).Any().Block(
 					g.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-						args.Qual(string(svc.File.GoImportPath), toCamel("%sIDExpression", workflow))
+						args.Qual(string(svc.File.GoImportPath), svc.toCamel("%sIDExpression", workflow))
 						if hasInput {
 							args.Id("req").Dot("ProtoReflect").Call()
 						} else {

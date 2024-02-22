@@ -4,12 +4,23 @@ import (
 	"fmt"
 
 	"github.com/iancoleman/strcase"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func toCamel(format string, a ...any) string {
-	return strcase.ToCamel(fmt.Sprintf(format, a...))
+func (svc *Manifest) toCamel(format string, args ...any) string {
+	for i, arg := range args {
+		if fn, ok := arg.(protoreflect.FullName); ok {
+			args[i] = svc.methods[fn].GoName
+		}
+	}
+	return strcase.ToCamel(fmt.Sprintf(format, args...))
 }
 
-func toLowerCamel(format string, a ...any) string {
-	return strcase.ToLowerCamel(fmt.Sprintf(format, a...))
+func (svc *Manifest) toLowerCamel(format string, args ...any) string {
+	for i, arg := range args {
+		if fn, ok := arg.(protoreflect.FullName); ok {
+			args[i] = svc.methods[fn].GoName
+		}
+	}
+	return strcase.ToLowerCamel(fmt.Sprintf(format, args...))
 }

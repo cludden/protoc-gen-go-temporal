@@ -7,11 +7,12 @@ import (
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // genClientImpl generates a <service>Client implementation
-func (svc *Service) genClientImpl(f *g.File) {
-	typeName := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImpl(f *g.File) {
+	typeName := svc.toLowerCamel("%sClient", svc.Service.GoName)
 
 	f.Commentf("%s implements a temporal client for a %s service", typeName, svc.Service.Desc.FullName())
 	f.Type().
@@ -22,10 +23,10 @@ func (svc *Service) genClientImpl(f *g.File) {
 }
 
 // genClientImplConstructor generates a New<Service>Client function
-func (svc *Service) genClientImplConstructor(f *g.File) {
-	methodName := toCamel("New%sClient", svc.Service.GoName)
-	implName := toLowerCamel("%sClient", svc.Service.GoName)
-	interfaceName := toCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplConstructor(f *g.File) {
+	methodName := svc.toCamel("New%sClient", svc.Service.GoName)
+	implName := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	interfaceName := svc.toCamel("%sClient", svc.Service.GoName)
 
 	f.Commentf("%s initializes a new %s client", methodName, svc.Service.Desc.FullName())
 	f.Func().
@@ -72,15 +73,15 @@ func (svc *Service) genClientImplConstructor(f *g.File) {
 }
 
 // genClientImplQueryMethod adds a <Query> method to a workflowClient
-func (svc *Service) genClientImplQueryMethod(f *g.File, query string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplQueryMethod(f *g.File, query protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s sends a(n) %s query to an existing workflow", query, svc.fqnForQuery(query))
+	f.Commentf("%s sends a(n) %s query to an existing workflow", svc.methods[query].GoName, svc.fqnForQuery(query))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
-		Id(query).
+		Id(svc.methods[query].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -100,7 +101,7 @@ func (svc *Service) genClientImplQueryMethod(f *g.File, query string) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
-					args.Id(fmt.Sprintf("%sQueryName", query))
+					args.Id(svc.toCamel("%sQueryName", query))
 					if hasInput {
 						args.Id("query")
 					}
@@ -123,15 +124,15 @@ func (svc *Service) genClientImplQueryMethod(f *g.File, query string) {
 }
 
 // genClientImplSignalMethod adds a <Signal> method to a workflowClient
-func (svc *Service) genClientImplSignalMethod(f *g.File, signal string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplSignalMethod(f *g.File, signal protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s sends a(n) %s signal to an existing workflow", signal, svc.fqnForSignal(signal))
+	f.Commentf("%s sends a(n) %s signal to an existing workflow", svc.methods[signal].GoName, svc.fqnForSignal(signal))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
-		Id(signal).
+		Id(svc.methods[signal].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -147,7 +148,7 @@ func (svc *Service) genClientImplSignalMethod(f *g.File, signal string) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
-					args.Id(fmt.Sprintf("%sSignalName", signal))
+					args.Id(svc.toCamel("%sSignalName", signal))
 					if hasInput {
 						args.Id("signal")
 					} else {
@@ -159,12 +160,12 @@ func (svc *Service) genClientImplSignalMethod(f *g.File, signal string) {
 }
 
 // genClientImplSignalWithStartAsyncMethod adds a <Workflow>With<Signal>Async client method
-func (svc *Service) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow, signal string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow, signal protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	method := svc.methods[workflow]
 	handler := svc.methods[signal]
-	name := toCamel("%sWith%sAsync", workflow, signal)
-	runName := toLowerCamel("%sRun", workflow)
+	name := svc.toCamel("%sWith%sAsync", workflow, signal)
+	runName := svc.toLowerCamel("%sRun", workflow)
 	hasWorkflowInput := !isEmpty(method.Input)
 	hasSignalInput := !isEmpty(handler.Input)
 
@@ -180,10 +181,10 @@ func (svc *Service) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow,
 			if hasSignalInput {
 				args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
 		Params(
-			g.Id(toCamel("%sRun", workflow)),
+			g.Id(svc.toCamel("%sRun", workflow)),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
@@ -194,14 +195,14 @@ func (svc *Service) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow,
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("opts").Dot("ID")
-				args.Id(toCamel("%sSignalName", signal))
+				args.Id(svc.toCamel("%sSignalName", signal))
 				if hasSignalInput {
 					args.Id("signal")
 				} else {
 					args.Nil()
 				}
 				args.Op("*").Id("opts")
-				args.Id(toCamel("%sWorkflowName", workflow))
+				args.Id(svc.toCamel("%sWorkflowName", workflow))
 				if hasWorkflowInput {
 					args.Id("req")
 				}
@@ -220,11 +221,11 @@ func (svc *Service) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow,
 }
 
 // genClientImplSignalWithStartMethod adds a Start<Workflow>With<Signal> client method
-func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, signal string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplSignalWithStartMethod(f *g.File, workflow, signal protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	method := svc.methods[workflow]
 	handler := svc.methods[signal]
-	name := toCamel("%sWith%s", workflow, signal)
+	name := svc.toCamel("%sWith%s", workflow, signal)
 	hasWorkflowInput := !isEmpty(method.Input)
 	hasWorkflowOutput := !isEmpty(method.Output)
 	hasSignalInput := !isEmpty(handler.Input)
@@ -241,7 +242,7 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 			if hasSignalInput {
 				args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasWorkflowOutput {
@@ -251,7 +252,7 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 		}).
 		BlockFunc(func(fn *g.Group) {
 			// signal with start workflow
-			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(svc.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasWorkflowInput {
 					args.Id("req")
@@ -275,9 +276,9 @@ func (svc *Service) genClientImplSignalWithStartMethod(f *g.File, workflow, sign
 		})
 }
 
-func (svc *Service) genClientImplUpdateGetMethod(f *g.File, update string) {
-	methodName := toCamel("Get%s", update)
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplUpdateGetMethod(f *g.File, update protoreflect.FullName) {
+	methodName := svc.toCamel("Get%s", svc.methods[update].GoName)
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 
 	f.Commentf("%s retrieves a handle to an existing %s update", methodName, svc.fqnForUpdate(update))
 	f.Func().
@@ -288,12 +289,12 @@ func (svc *Service) genClientImplUpdateGetMethod(f *g.File, update string) {
 			g.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions"),
 		).
 		Params(
-			g.Id(toCamel("%sHandle", update)),
+			g.Id(svc.toCamel("%sHandle", update)),
 			g.Error(),
 		).
 		Block(
 			g.Return(
-				g.Op("&").Id(toLowerCamel("%sHandle", update)).Custom(
+				g.Op("&").Id(svc.toLowerCamel("%sHandle", update)).Custom(
 					multiLineValues,
 					g.Id("client").Op(":").Id("c"),
 					g.Id("handle").Op(":").Id("c").Dot("client").Dot("GetWorkflowUpdateHandle").Call(
@@ -306,16 +307,16 @@ func (svc *Service) genClientImplUpdateGetMethod(f *g.File, update string) {
 }
 
 // genClientImplUpdateMethod adds an <Update> method to a workflowClient
-func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplUpdateMethod(f *g.File, update protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	handler := svc.methods[update]
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	f.Commentf("%s sends a(n) %s update to an existing workflow", update, svc.fqnForUpdate(update))
+	f.Commentf("%s sends a(n) %s update to an existing workflow", svc.methods[update].GoName, svc.fqnForUpdate(update))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
-		Id(update).
+		Id(svc.methods[update].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -323,7 +324,7 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 			if hasInput {
 				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -333,13 +334,13 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 		}).
 		BlockFunc(func(method *g.Group) {
 			// initialize update request options
-			method.Id("options").Op(":=").Id(toCamel("New%sOptions", update)).Call()
-			method.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
+			method.Id("options").Op(":=").Id(svc.toCamel("New%sOptions", update)).Call()
+			method.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
 				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
 			)
 
 			// call async method
-			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(fmt.Sprintf("%sAsync", update)).CallFunc(func(args *g.Group) {
+			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -363,12 +364,12 @@ func (svc *Service) genClientImplUpdateMethod(f *g.File, update string) {
 }
 
 // genClientImplUpdateMethodAsync adds an <Update>Async method to a workflowClient
-func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplUpdateMethodAsync(f *g.File, update protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	handler := svc.methods[update]
-	handleName := toLowerCamel("%sHandle", update)
+	handleName := svc.toLowerCamel("%sHandle", update)
 	hasInput := !isEmpty(handler.Input)
-	methodName := toCamel("%sAsync", update)
+	methodName := svc.toCamel("%sAsync", update)
 
 	f.Commentf("%s sends a(n) %s update to an existing workflow", methodName, svc.fqnForUpdate(update))
 	f.Func().
@@ -381,10 +382,10 @@ func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 			if hasInput {
 				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
 		Params(
-			g.Id(toCamel("%sHandle", update)),
+			g.Id(svc.toCamel("%sHandle", update)),
 			g.Error(),
 		).
 		BlockFunc(func(method *g.Group) {
@@ -407,12 +408,12 @@ func (svc *Service) genClientImplUpdateMethodAsync(f *g.File, update string) {
 }
 
 // genClientImplWorkflowAsyncMethod generates an <Workflow>Async client method
-func (svc *Service) genClientImplWorkflowAsyncMethod(f *g.File, workflow string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplWorkflowAsyncMethod(f *g.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	method := svc.methods[workflow]
-	methodName := toCamel("%sAsync", workflow)
-	runImplType := toLowerCamel("%sRun", workflow)
-	runInterfaceType := toCamel("%sRun", workflow)
+	methodName := svc.toCamel("%sAsync", workflow)
+	runImplType := svc.toLowerCamel("%sRun", workflow)
+	runInterfaceType := svc.toCamel("%sRun", workflow)
 	hasInput := !isEmpty(method.Input)
 
 	f.Commentf("%s starts a(n) %s workflow", methodName, svc.fqnForWorkflow(workflow))
@@ -424,7 +425,7 @@ func (svc *Service) genClientImplWorkflowAsyncMethod(f *g.File, workflow string)
 			if hasInput {
 				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
 		Params(
 			g.Id(runInterfaceType),
@@ -438,7 +439,7 @@ func (svc *Service) genClientImplWorkflowAsyncMethod(f *g.File, workflow string)
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Op("*").Id("opts")
-				args.Id(fmt.Sprintf("%sWorkflowName", workflow))
+				args.Id(svc.toCamel("%sWorkflowName", workflow))
 				if hasInput {
 					args.Id("req")
 				}
@@ -460,8 +461,8 @@ func (svc *Service) genClientImplWorkflowAsyncMethod(f *g.File, workflow string)
 }
 
 // genClientImplWorkflowCancelMethod generates a Cancel<Workflow> client method
-func (svc *Service) genClientImplWorkflowCancelMethod(f *g.File) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplWorkflowCancelMethod(f *g.File) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	methodName := "CancelWorkflow"
 
 	f.Commentf("%s requests cancellation of an existing workflow execution", methodName)
@@ -488,11 +489,11 @@ func (svc *Service) genClientImplWorkflowCancelMethod(f *g.File) {
 }
 
 // genClientImplWorkflowGetMethod generates a Get<Workflow> client method
-func (svc *Service) genClientImplWorkflowGetMethod(f *g.File, workflow string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
-	methodName := toCamel("Get%s", workflow)
-	runImplType := toLowerCamel("%sRun", workflow)
-	runInterfaceType := toCamel("%sRun", workflow)
+func (svc *Manifest) genClientImplWorkflowGetMethod(f *g.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	methodName := svc.toCamel("Get%s", workflow)
+	runImplType := svc.toLowerCamel("%sRun", workflow)
+	runInterfaceType := svc.toCamel("%sRun", workflow)
 
 	f.Commentf("%s fetches an existing %s execution", methodName, svc.fqnForWorkflow(workflow))
 	f.Func().
@@ -519,8 +520,8 @@ func (svc *Service) genClientImplWorkflowGetMethod(f *g.File, workflow string) {
 }
 
 // genClientImplWorkflowTerminateMethod generates a TerminateWorkflow client method
-func (svc *Service) genClientImplWorkflowTerminateMethod(f *g.File) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplWorkflowTerminateMethod(f *g.File) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	methodName := "TerminateWorkflow"
 
 	f.Commentf("%s terminates an existing workflow execution", methodName)
@@ -551,22 +552,22 @@ func (svc *Service) genClientImplWorkflowTerminateMethod(f *g.File) {
 }
 
 // genClientImplWorkflowMethod generates an <Workflow> client method
-func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientImplWorkflowMethod(f *g.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s executes a %s workflow and blocks until error or response received", workflow, svc.fqnForWorkflow(workflow))
+	f.Commentf("%s executes a %s workflow and blocks until error or response received", svc.methods[workflow].GoName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
-		Id(workflow).
+		Id(svc.methods[workflow].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
 				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -576,7 +577,7 @@ func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
 		}).
 		BlockFunc(func(fn *g.Group) {
 			// execute workflow
-			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(svc.toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
@@ -598,33 +599,36 @@ func (svc *Service) genClientImplWorkflowMethod(f *g.File, workflow string) {
 }
 
 // genClientInterface generates a Client interface for a given service
-func (svc *Service) genClientInterface(f *g.File) {
-	typeName := toCamel("%sClient", svc.Service.GoName)
+func (svc *Manifest) genClientInterface(f *g.File) {
+	typeName := svc.toCamel("%sClient", svc.Service.GoName)
 
 	f.Commentf("%s describes a client for a(n) %s worker", typeName, svc.Service.Desc.FullName())
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
 		for _, workflow := range svc.workflowsOrdered {
+			if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
 			opts := svc.workflows[workflow]
 
 			method := svc.methods[workflow]
 			hasInput := !isEmpty(method.Input)
 			hasOutput := !isEmpty(method.Output)
-			runInterfaceType := toCamel("%sRun", workflow)
+			runInterfaceType := svc.toCamel("%sRun", workflow)
 
 			// generate <Workflow> method
-			methodName := workflow
+			methodName := svc.methods[workflow].GoName
 			if method.Comments.Leading.String() != "" {
 				methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
 			} else {
 				methods.Commentf("%s executes a(n) %s workflow and blocks until error or response received", methodName, svc.fqnForWorkflow(workflow))
 			}
-			methods.Id(workflow).
+			methods.Id(svc.methods[workflow].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
 						args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+					args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
@@ -634,7 +638,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 				})
 
 			// generate <Workflow>Async method
-			methodName = toCamel("%sAsync", workflow)
+			methodName = svc.toCamel("%sAsync", workflow)
 			methods.Commentf("%s executes a(n) %s workflow asynchronously", methodName, svc.fqnForWorkflow(workflow))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
@@ -642,7 +646,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+					args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 				}).
 				Params(
 					g.Id(runInterfaceType),
@@ -650,9 +654,9 @@ func (svc *Service) genClientInterface(f *g.File) {
 				)
 
 			// generate Get<Workflow> method
-			methodName = toCamel("Get%s", workflow)
+			methodName = svc.toCamel("Get%s", workflow)
 			methods.Commentf("%s retrieves a handle to an existing %s workflow execution", methodName, svc.fqnForWorkflow(workflow))
-			methods.Id(toCamel("Get%s", workflow)).
+			methods.Id(svc.toCamel("Get%s", workflow)).
 				Params(
 					g.Id("ctx").Qual("context", "Context"),
 					g.Id("workflowID").String(),
@@ -668,14 +672,14 @@ func (svc *Service) genClientInterface(f *g.File) {
 					continue
 				}
 				method := svc.methods[workflow]
-				signal := signalOpts.GetRef()
+				signal := getFullyQualifiedRef(workflow, signalOpts.GetRef())
 				handler := svc.methods[signal]
 				hasWorkflowInput := !isEmpty(method.Input)
 				hasWorkflowOutput := !isEmpty(method.Output)
 				hasSignalInput := !isEmpty(handler.Input)
 
 				// add synchronous flavor
-				methodName := toCamel("%sWith%s", workflow, signal)
+				methodName := svc.toCamel("%sWith%s", workflow, signal)
 				methods.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and blocks until workflow completion", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 				methods.Id(methodName).
 					ParamsFunc(func(args *g.Group) {
@@ -686,7 +690,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 						if hasSignalInput {
 							args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
 						}
-						args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+						args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 					}).
 					ParamsFunc(func(returnVals *g.Group) {
 						if hasWorkflowOutput {
@@ -707,7 +711,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 						if hasSignalInput {
 							args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
 						}
-						args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", workflow))
+						args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 					}).
 					Params(
 						g.Id(runInterfaceType),
@@ -742,6 +746,9 @@ func (svc *Service) genClientInterface(f *g.File) {
 
 		// add <Query> methods
 		for _, query := range svc.queriesOrdered {
+			if svc.methods[query].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
 			if desc := handler.Comments.Leading.String(); desc != "" {
@@ -749,7 +756,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 			} else {
 				methods.Commentf("%s executes a(n) %s query", query, svc.fqnForQuery(query))
 			}
-			methods.Id(query).
+			methods.Id(svc.methods[query].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -766,6 +773,9 @@ func (svc *Service) genClientInterface(f *g.File) {
 
 		// add <Signal> methods
 		for _, signal := range svc.signalsOrdered {
+			if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
 			if desc := handler.Comments.Leading.String(); desc != "" {
@@ -773,7 +783,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 			} else {
 				methods.Commentf("%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
 			}
-			methods.Id(signal).
+			methods.Id(svc.methods[signal].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -787,6 +797,9 @@ func (svc *Service) genClientInterface(f *g.File) {
 
 		// add <Update> methods
 		for _, update := range svc.updatesOrdered {
+			if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
 			handler := svc.methods[update]
 			hasInput := !isEmpty(handler.Input)
 			hasOutput := !isEmpty(handler.Output)
@@ -797,7 +810,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 			} else {
 				methods.Commentf("%s executes a(n) %s update and blocks until update completion", update, svc.fqnForUpdate(update))
 			}
-			methods.Id(update).
+			methods.Id(svc.methods[update].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -805,7 +818,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+					args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
@@ -815,7 +828,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 				})
 
 			// add async flavor
-			methodName := toCamel("%sAsync", update)
+			methodName := svc.toCamel("%sAsync", update)
 			if desc := handler.Comments.Leading.String(); desc != "" {
 				methods.Comment(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
 			} else {
@@ -829,23 +842,23 @@ func (svc *Service) genClientInterface(f *g.File) {
 					if hasInput {
 						args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+					args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 				}).
 				Params(
-					g.Id(toCamel("%sHandle", update)),
+					g.Id(svc.toCamel("%sHandle", update)),
 					g.Error(),
 				)
 
 			// add async flavor
-			methodName = toCamel("Get%s", update)
-			methods.Commentf("%s retrieves a handle to an existing %s update", update, svc.fqnForUpdate(update))
+			methodName = svc.toCamel("Get%s", update)
+			methods.Commentf("%s retrieves a handle to an existing %s update", svc.methods[update].GoName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
 				}).
 				Params(
-					g.Id(toCamel("%sHandle", update)),
+					g.Id(svc.toCamel("%sHandle", update)),
 					g.Error(),
 				)
 		}
@@ -853,7 +866,7 @@ func (svc *Service) genClientInterface(f *g.File) {
 }
 
 // genClientStartWorkflowOptions adds logic for initializing StartWorkflowOptions with default values
-func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, child bool) {
+func (svc *Manifest) genClientStartWorkflowOptions(fn *g.Group, workflow protoreflect.FullName, child bool) {
 	method := svc.methods[workflow]
 	opts := svc.workflows[workflow]
 	hasInput := !isEmpty(method.Input)
@@ -882,7 +895,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	if tq := opts.GetTaskQueue(); tq != "" {
 		taskQueue = g.Lit(tq)
 	} else if tq = svc.opts.GetTaskQueue(); tq != "" {
-		taskQueue = g.Id(toCamel("%sTaskQueue", svc.Service.GoName))
+		taskQueue = g.Id(svc.toCamel("%sTaskQueue", svc.Service.GoName))
 	}
 	if taskQueue != nil {
 		fn.If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
@@ -899,7 +912,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 	if idExpr := opts.GetId(); idExpr != "" {
 		fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
 			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-				args.Id(toCamel("%sIDExpression", workflow))
+				args.Id(svc.toCamel("%sIDExpression", workflow))
 				if hasInput {
 					args.Id("req").Dot("ProtoReflect").Call()
 				} else {
@@ -910,7 +923,7 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 				if child {
 					returnVals.Panic(g.Err())
 				} else {
-					returnVals.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow: %%w", workflow)), g.Err()))
+					returnVals.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow: %%w", svc.methods[workflow].GoName)), g.Err()))
 				}
 			})
 			b.Id("opts").Dot(idFieldName).Op("=").Id("id")
@@ -987,19 +1000,19 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 				if hasInput {
 					bl.List(g.Id("structured"), g.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(g.Id("req").Dot("ProtoReflect").Call())
 					bl.If(g.Err().Op("!=").Nil()).Block(
-						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", workflow)), g.Err())),
+						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
 					)
 				} else {
 					bl.Var().Id("structured").Any()
 				}
 
-				bl.List(g.Id("result"), g.Err()).Op(":=").Id(toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
+				bl.List(g.Id("result"), g.Err()).Op(":=").Id(svc.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
 				bl.If(g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", workflow)), g.Err())),
+					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
 				)
 				bl.List(g.Id("searchAttributes"), g.Id("ok")).Op(":=").Id("result").Op(".").Parens(g.Map(g.String()).Interface())
 				bl.If(g.Op("!").Id("ok")).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", workflow)), g.Id("result"))),
+					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", svc.methods[workflow].GoName)), g.Id("result"))),
 				)
 				bl.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
 			})
@@ -1039,10 +1052,10 @@ func (svc *Service) genClientStartWorkflowOptions(fn *g.Group, workflow string, 
 }
 
 // genClientUpdateHandleImpl generates a <Update>Handle struct
-func (svc *Service) genClientUpdateHandleImpl(f *g.File, update string) {
-	clientImplType := toLowerCamel("%sClient", svc.Service.GoName)
-	typeName := toLowerCamel("%sHandle", update)
-	interfaceName := toCamel("%sHandle", update)
+func (svc *Manifest) genClientUpdateHandleImpl(f *g.File, update protoreflect.FullName) {
+	clientImplType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	typeName := svc.toLowerCamel("%sHandle", update)
+	interfaceName := svc.toCamel("%sHandle", update)
 
 	// generate struct
 	f.Commentf("%s provides an internal implementation of a(n) %s", typeName, interfaceName)
@@ -1055,8 +1068,8 @@ func (svc *Service) genClientUpdateHandleImpl(f *g.File, update string) {
 }
 
 // genClientUpdateHandleImplGetMethod generates a <UpdateHandle>'s Get method
-func (svc *Service) genClientUpdateHandleImplGetMethod(f *g.File, update string) {
-	typeName := toLowerCamel("%sHandle", update)
+func (svc *Manifest) genClientUpdateHandleImplGetMethod(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
 	method := svc.methods[update]
 	hasOutput := !isEmpty(method.Output)
 
@@ -1129,8 +1142,8 @@ func (svc *Service) genClientUpdateHandleImplGetMethod(f *g.File, update string)
 }
 
 // genClientUpdateHandleImplRunIDMethod generates a <UpdateHandle>'s RunID method
-func (svc *Service) genClientUpdateHandleImplRunIDMethod(f *g.File, update string) {
-	typeName := toLowerCamel("%sHandle", update)
+func (svc *Manifest) genClientUpdateHandleImplRunIDMethod(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
 
 	f.Comment("RunID returns the execution ID")
 	f.Func().
@@ -1144,8 +1157,8 @@ func (svc *Service) genClientUpdateHandleImplRunIDMethod(f *g.File, update strin
 }
 
 // genClientUpdateHandleImplUpdateIDMethod generates a <UpdateHandle>'s UpdateID method
-func (svc *Service) genClientUpdateHandleImplUpdateIDMethod(f *g.File, update string) {
-	typeName := toLowerCamel("%sHandle", update)
+func (svc *Manifest) genClientUpdateHandleImplUpdateIDMethod(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
 
 	f.Comment("UpdateID returns the update ID")
 	f.Func().
@@ -1159,8 +1172,8 @@ func (svc *Service) genClientUpdateHandleImplUpdateIDMethod(f *g.File, update st
 }
 
 // genClientUpdateHandleImplWorkflowIDMethod generates a <UpdateHandle>'s WorkflowID method
-func (svc *Service) genClientUpdateHandleImplWorkflowIDMethod(f *g.File, update string) {
-	typeName := toLowerCamel("%sHandle", update)
+func (svc *Manifest) genClientUpdateHandleImplWorkflowIDMethod(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
 
 	f.Comment("WorkflowID returns the workflow ID")
 	f.Func().
@@ -1174,8 +1187,8 @@ func (svc *Service) genClientUpdateHandleImplWorkflowIDMethod(f *g.File, update 
 }
 
 // genClientUpdateHandleInterface generates a <Workflow>Run interface
-func (svc *Service) genClientUpdateHandleInterface(f *g.File, update string) {
-	typeName := toCamel("%sHandle", update)
+func (svc *Manifest) genClientUpdateHandleInterface(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toCamel("%sHandle", update)
 	method := svc.methods[update]
 	hasOutput := !isEmpty(method.Output)
 
@@ -1203,19 +1216,19 @@ func (svc *Service) genClientUpdateHandleInterface(f *g.File, update string) {
 }
 
 // genClientUpdateOptions generates a <Update>Options struct
-func (svc *Service) genClientUpdateOptions(f *g.File, update string) {
-	typeName := toCamel("%sOptions", update)
+func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullName) {
+	typeName := svc.toCamel("%sOptions", update)
 	constructorName := "New" + typeName
 
 	f.Commentf("%s provides configuration for a %s update operation", typeName, svc.fqnForUpdate(update))
 	f.Type().Id(typeName).Struct(
-		g.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+		g.Id("Options").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
 	)
 
 	f.Commentf("%s initializes a new %s value", constructorName, typeName)
 	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
 		g.Return(g.Op("&").Id(typeName).Values(
-			g.Id("opts").Op(":").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
+			g.Id("Options").Op(":").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
 		)),
 	)
 
@@ -1226,20 +1239,20 @@ func (svc *Service) genClientUpdateOptions(f *g.File, update string) {
 		Params(g.Id("options").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")).
 		Op("*").Id(typeName).
 		Block(
-			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
+			g.Id("opts").Dot("Options").Op("=").Op("&").Id("options"),
 			g.Return(g.Id("opts")),
 		)
 }
 
-func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
+func (svc *Manifest) genClientUpdateWorkflowOptions(fn *g.Group, update protoreflect.FullName) {
 	updateOpts := svc.updates[update]
 	handler := svc.methods[update]
 	hasInput := !isEmpty(handler.Input)
 
 	// initialize update request options
 	fn.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
-	fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
-		g.Id("options").Op("=").Id("opts").Index(g.Lit(0)).Dot("opts"),
+	fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
+		g.Id("options").Op("=").Id("opts").Index(g.Lit(0)).Dot("Options"),
 	)
 
 	// add request args if update has inpute
@@ -1247,7 +1260,7 @@ func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
 		fn.Id("options").Dot("Args").Op("=").Index().Any().Values(g.Id("req"))
 	}
 	fn.Id("options").Dot("RunID").Op("=").Id("runID")
-	fn.Id("options").Dot("UpdateName").Op("=").Id(toCamel("%sUpdateName", update))
+	fn.Id("options").Dot("UpdateName").Op("=").Id(svc.toCamel("%sUpdateName", update))
 	fn.Id("options").Dot("WorkflowID").Op("=").Id("workflowID")
 	fn.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Custom(multiLineValues,
 		g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"),
@@ -1257,7 +1270,7 @@ func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
 	if idExpr := updateOpts.GetId(); idExpr != "" {
 		fn.If(g.Id("options").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
 			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-				args.Id(toCamel("%sIDExpression", update))
+				args.Id(svc.toCamel("%sIDExpression", update))
 				if hasInput {
 					args.Id("req").Dot("ProtoReflect").Call()
 				} else {
@@ -1265,7 +1278,7 @@ func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
 				}
 			})
 			b.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating %s id expression: %w"), g.Id(fmt.Sprintf("%sUpdateName", update)), g.Err())),
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating %s id expression: %w"), g.Id(svc.toCamel("%sUpdateName", update)), g.Err())),
 			)
 			b.Id("options").Dot("UpdateID").Op("=").Id("id")
 		})
@@ -1291,8 +1304,8 @@ func (svc *Service) genClientUpdateWorkflowOptions(fn *g.Group, update string) {
 }
 
 // genClientWorkflowOptions generates a <Workflow>Options struct
-func (svc *Service) genClientWorkflowOptions(f *g.File, workflow string) {
-	typeName := toCamel("%sOptions", workflow)
+func (svc *Manifest) genClientWorkflowOptions(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toCamel("%sOptions", workflow)
 	constructorName := "New" + typeName
 
 	f.Commentf("%s provides configuration for a %s workflow operation", typeName, svc.fqnForWorkflow(workflow))
@@ -1318,10 +1331,10 @@ func (svc *Service) genClientWorkflowOptions(f *g.File, workflow string) {
 }
 
 // genClientWorkflowRunImpl generates a <Workflow>Run struct
-func (svc *Service) genClientWorkflowRunImpl(f *g.File, workflow string) {
-	clientType := toLowerCamel("%sClient", svc.Service.GoName)
-	typeName := toLowerCamel("%sRun", workflow)
-	interfaceName := toCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImpl(f *g.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	interfaceName := svc.toCamel("%sRun", workflow)
 
 	// generate struct
 	f.Commentf("%s provides an internal implementation of a(n) %sRun", typeName, interfaceName)
@@ -1334,8 +1347,8 @@ func (svc *Service) genClientWorkflowRunImpl(f *g.File, workflow string) {
 }
 
 // genClientWorkflowRunImplCancelMethod generates a <Workflow>Run's Cancel method
-func (svc *Service) genClientWorkflowRunImplCancelMethod(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplCancelMethod(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 
 	f.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
 	f.Func().
@@ -1355,8 +1368,8 @@ func (svc *Service) genClientWorkflowRunImplCancelMethod(f *g.File, workflow str
 }
 
 // genClientWorkflowRunImplGetMethod generates a <Workflow>Run's Get method
-func (svc *Service) genClientWorkflowRunImplGetMethod(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplGetMethod(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 	method := svc.methods[workflow]
 	hasOutput := !isEmpty(method.Output)
 
@@ -1400,8 +1413,8 @@ func (svc *Service) genClientWorkflowRunImplGetMethod(f *g.File, workflow string
 }
 
 // genClientWorkflowRunImplIDMethod generates a <Workflow>Run's ID method
-func (svc *Service) genClientWorkflowRunImplIDMethod(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplIDMethod(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 
 	f.Comment("ID returns the workflow ID")
 	f.Func().
@@ -1415,15 +1428,15 @@ func (svc *Service) genClientWorkflowRunImplIDMethod(f *g.File, workflow string)
 }
 
 // genClientWorkflowRunImplQueryMethod generates a <WOrkflow>Run's <Query> method
-func (svc *Service) genClientWorkflowRunImplQueryMethod(f *g.File, workflow string, query string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplQueryMethod(f *g.File, workflow protoreflect.FullName, query protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 	handler := svc.methods[query]
 	hasInput := !isEmpty(handler.Input)
 
-	f.Commentf("%s executes a(n) %s query", query, svc.fqnForQuery(query))
+	f.Commentf("%s executes a(n) %s query", svc.methods[query].GoName, svc.fqnForQuery(query))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
-		Id(query).
+		Id(svc.methods[query].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
@@ -1436,7 +1449,7 @@ func (svc *Service) genClientWorkflowRunImplQueryMethod(f *g.File, workflow stri
 		).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(query).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(svc.methods[query].GoName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Lit("")
@@ -1449,8 +1462,8 @@ func (svc *Service) genClientWorkflowRunImplQueryMethod(f *g.File, workflow stri
 }
 
 // genClientWorkflowRunImplRunMethod generates a <Workflow>Run's Run method
-func (svc *Service) genClientWorkflowRunImplRunMethod(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplRunMethod(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 
 	f.Comment("Run returns the inner client.WorkflowRun")
 	f.Func().
@@ -1464,8 +1477,8 @@ func (svc *Service) genClientWorkflowRunImplRunMethod(f *g.File, workflow string
 }
 
 // genClientWorkflowRunImplRunIDMethod generates a <Workflow>Run's RunID method
-func (svc *Service) genClientWorkflowRunImplRunIDMethod(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplRunIDMethod(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 
 	f.Comment("RunID returns the execution ID")
 	f.Func().
@@ -1479,40 +1492,54 @@ func (svc *Service) genClientWorkflowRunImplRunIDMethod(f *g.File, workflow stri
 }
 
 // genClientWorkflowRunImplSignalMethod generates a <Workflow>Run's <Signal> method
-func (svc *Service) genClientWorkflowRunImplSignalMethod(f *g.File, workflow string, signal string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplSignalMethod(f *g.File, workflow protoreflect.FullName, signal protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 	handler := svc.methods[signal]
 	hasInput := !isEmpty(handler.Input)
 
 	// generate get method
-	f.Commentf("%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+	f.Commentf("%s sends a(n) %s signal", svc.methods[signal].GoName, svc.fqnForSignal(signal))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
-		Id(signal).
+		Id(svc.methods[signal].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 		}).
 		Params(g.Error()).
 		Block(
-			g.Return(
-				g.Id("r").Dot("client").Dot(signal).CallFunc(func(args *g.Group) {
-					args.Id("ctx")
-					args.Id("r").Dot("ID").Call()
-					args.Lit("")
-					if hasInput {
-						args.Id("req")
-					}
-				}),
-			),
+			g.ReturnFunc(func(returnVals *g.Group) {
+				if svc.methodsFromSameService(signal, workflow) {
+					returnVals.Id("r").Dot("client").Dot(svc.methods[signal].GoName).CallFunc(func(args *g.Group) {
+						args.Id("ctx")
+						args.Id("r").Dot("ID").Call()
+						args.Lit("")
+						if hasInput {
+							args.Id("req")
+						}
+					})
+				} else {
+					returnVals.Id("r").Dot("client").Dot("client").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
+						args.Id("ctx")
+						args.Id("r").Dot("ID").Call()
+						args.Id("r").Dot("RunID").Call()
+						args.Add(svc.Qual(signal, svc.toCamel("%sSignalName", signal)))
+						if hasInput {
+							args.Id("req")
+						} else {
+							args.Nil()
+						}
+					})
+				}
+			}),
 		)
 }
 
 // genClientWorkflowRunImplTerminateMethod generates a <Workflow>Run's Terminate method
-func (svc *Service) genClientWorkflowRunImplTerminateMethod(f *g.File, workflow string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplTerminateMethod(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 
 	f.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
 	f.Func().
@@ -1538,9 +1565,9 @@ func (svc *Service) genClientWorkflowRunImplTerminateMethod(f *g.File, workflow 
 }
 
 // genClientWorkflowRunImplUpdateAsyncMethod generates a <Workflow>Run's <Update>Async method
-func (svc *Service) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workflow string, update string) {
-	typeName := toLowerCamel("%sRun", workflow)
-	methodName := toCamel("%sAsync", update)
+func (svc *Manifest) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workflow protoreflect.FullName, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	methodName := svc.toCamel("%sAsync", update)
 	handler := svc.methods[update]
 	hasInput := !isEmpty(handler.Input)
 
@@ -1554,45 +1581,63 @@ func (svc *Service) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workflo
 			if hasInput {
 				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
 		Params(
-			g.Id(toCamel("%sHandle", update)),
+			g.Add(svc.Qual(update, svc.toCamel("%sHandle", update))),
 			g.Error(),
 		).
-		Block(
-			g.Return(
-				g.Id("r").Dot("client").Dot(toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
-					args.Id("ctx")
-					args.Id("r").Dot("ID").Call()
-					args.Id("r").Dot("RunID").Call()
-					if hasInput {
-						args.Id("req")
-					}
-					args.Id("opts").Op("...")
-				}),
-			),
-		)
+		BlockFunc(func(fn *g.Group) {
+			if svc.methodsFromSamePackage(workflow, update) {
+				fn.Return(
+					g.Id("r").Dot("client").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
+						args.Id("ctx")
+						args.Id("r").Dot("ID").Call()
+						args.Id("r").Dot("RunID").Call()
+						if hasInput {
+							args.Id("req")
+						}
+						args.Id("opts").Op("...")
+					}),
+				)
+			} else {
+				svc.genClientUpdateWorkflowOptions(fn, update)
+
+				// update workflow
+				fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(g.Id("ctx"), g.Id("options"))
+				fn.If(g.Err().Op("!=").Nil()).Block(
+					g.Return(g.Nil(), g.Err()),
+				)
+
+				fn.Return(
+					g.Op("&").Add(svc.Qual(update, svc.toCamel("%sHandle", update))).Values(
+						g.Id("client").Op(":").Id("c"),
+						g.Id("handle").Op(":").Id("handle"),
+					),
+					g.Nil(),
+				)
+			}
+		})
 }
 
 // genClientWorkflowRunImplUpdateMethod generates a <Workflow>Run's <Update> method
-func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow string, update string) {
-	typeName := toLowerCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow protoreflect.FullName, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
 	handler := svc.methods[update]
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
 	// generate get method
-	f.Commentf("%s executes a(n) %s update", update, svc.fqnForUpdate(update))
+	f.Commentf("%s executes a(n) %s update", svc.methods[update].GoName, svc.fqnForUpdate(update))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
-		Id(update).
+		Id(svc.methods[update].GoName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
 				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
@@ -1602,7 +1647,7 @@ func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow str
 		}).
 		Block(
 			g.Return(
-				g.Id("r").Dot("client").Dot(update).CallFunc(func(args *g.Group) {
+				g.Id("r").Dot("client").Dot(svc.methods[update].GoName).CallFunc(func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -1616,8 +1661,8 @@ func (svc *Service) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow str
 }
 
 // genClientWorkflowRunInterface generates a <Workflow>Run interface
-func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
-	typeName := toCamel("%sRun", workflow)
+func (svc *Manifest) genClientWorkflowRunInterface(f *g.File, workflow protoreflect.FullName) {
+	typeName := svc.toCamel("%sRun", workflow)
 	opts := svc.workflows[workflow]
 	method := svc.methods[workflow]
 	hasOutput := !isEmpty(method.Output)
@@ -1658,50 +1703,50 @@ func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
 			Params(g.Error())
 
 		for _, queryOpts := range opts.GetQuery() {
-			query := queryOpts.GetRef()
+			query := getFullyQualifiedRef(workflow, queryOpts.GetRef())
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
 
 			if desc := handler.Comments.Leading.String(); desc != "" {
 				methods.Comment(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
 			} else {
-				methods.Commentf("%s executes a(n) %s query", query, svc.fqnForQuery(query))
+				methods.Commentf("%s executes a(n) %s query", svc.methods[query].GoName, svc.fqnForQuery(query))
 			}
-			methods.Id(query).
+			methods.Id(svc.methods[query].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
 				}).
 				Params(
-					g.Op("*").Id(svc.getMessageName(handler.Output)),
+					g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output)),
 					g.Error(),
 				)
 		}
 
 		for _, signalOpts := range opts.GetSignal() {
-			signal := signalOpts.GetRef()
+			signal := getFullyQualifiedRef(workflow, signalOpts.GetRef())
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
 
 			if desc := handler.Comments.Leading.String(); desc != "" {
 				methods.Comment(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
 			} else {
-				methods.Commentf("%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+				methods.Commentf("%s sends a(n) %s signal", svc.methods[signal].GoName, svc.fqnForSignal(signal))
 			}
-			methods.Id(signal).
+			methods.Id(svc.methods[signal].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
 				}).
 				Params(g.Error())
 		}
 
 		for _, updateOpts := range opts.GetUpdate() {
-			update := updateOpts.GetRef()
+			update := getFullyQualifiedRef(workflow, updateOpts.GetRef())
 			handler := svc.methods[update]
 			hasInput := !isEmpty(handler.Input)
 			hasOutput := !isEmpty(handler.Output)
@@ -1710,35 +1755,35 @@ func (svc *Service) genClientWorkflowRunInterface(f *g.File, workflow string) {
 			if desc := handler.Comments.Leading.String(); desc != "" {
 				methods.Comment(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
 			} else {
-				methods.Commentf("%s executes a(n) %s update", update, svc.fqnForUpdate(update))
+				methods.Commentf("%s executes a(n) %s update", svc.methods[update].GoName, svc.fqnForUpdate(update))
 			}
-			methods.Id(update).
+			methods.Id(svc.methods[update].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+					args.Id("opts").Op("...").Op("*").Add(svc.Qual(update, svc.toCamel("%sOptions", update)))
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(svc.getMessageName(handler.Output))
+						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
 				})
 
 			// add async flavor
-			methods.Commentf("%sAsync sends a(n) %s update to the workflow", update, svc.fqnForUpdate(update))
-			methods.Id(toCamel("%sAsync", update)).
+			methods.Commentf("%sAsync sends a(n) %s update to the workflow", svc.methods[update].GoName, svc.fqnForUpdate(update))
+			methods.Id(svc.toCamel("%sAsync", update)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(toCamel("%sOptions", update))
+					args.Id("opts").Op("...").Op("*").Add(svc.Qual(update, svc.toCamel("%sOptions", update)))
 				}).
 				Params(
-					g.Id(toCamel("%sHandle", update)),
+					g.Add(svc.Qual(update, svc.toCamel("%sHandle", update))),
 					g.Error(),
 				)
 		}
