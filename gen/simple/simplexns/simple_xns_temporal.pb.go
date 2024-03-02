@@ -3369,3 +3369,70 @@ func (a *ignoredActivities) What(ctx context.Context, input *v1.WorkflowRequest)
 		}
 	}
 }
+
+// OnlyActivitiesOptions is used to configure mycompany.simple.OnlyActivities xns activity registration
+type OnlyActivitiesOptions struct {
+	// Filter is used to filter xns activity registrations. It receives as
+	// input the original activity name, and should return one of the following:
+	// 1. the original activity name, for no changes
+	// 2. a modified activity name, to override the original activity name
+	// 3. an empty string, to skip registration
+	Filter func(string) string
+}
+
+// filter is used to filter xns activity registrations
+func (opts *OnlyActivitiesOptions) filter(name string) string {
+	if opts == nil || opts.Filter == nil {
+		return name
+	}
+	return opts.Filter(name)
+}
+
+// onlyActivitiesOptions is a reference to the OnlyActivitiesOptions initialized at registration
+var onlyActivitiesOptions *OnlyActivitiesOptions
+
+// RegisterOnlyActivitiesActivities registers mycompany.simple.OnlyActivities cross-namespace activities
+func RegisterOnlyActivitiesActivities(r worker.ActivityRegistry, c simple.OnlyActivitiesClient, opts ...OnlyActivitiesOptions) {
+	if len(opts) > 0 {
+		onlyActivitiesOptions = &opts[0]
+	}
+	a := &onlyActivitiesActivities{c}
+	if name := onlyActivitiesOptions.filter("mycompany.simple.OnlyActivities.CancelWorkflow"); name != "" {
+		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
+	}
+}
+
+// CancelOnlyActivitiesWorkflow cancels an existing workflow
+func CancelOnlyActivitiesWorkflow(ctx workflow.Context, workflowID string, runID string) error {
+	return CancelOnlyActivitiesWorkflowAsync(ctx, workflowID, runID).Get(ctx, nil)
+}
+
+// CancelOnlyActivitiesWorkflowAsync cancels an existing workflow
+func CancelOnlyActivitiesWorkflowAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
+	activityName := onlyActivitiesOptions.filter("mycompany.simple.OnlyActivities.CancelWorkflow")
+	if activityName == "" {
+		f, s := workflow.NewFuture(ctx)
+		s.SetError(temporal.NewNonRetryableApplicationError(
+			"no activity registered for mycompany.simple.OnlyActivities.CancelWorkflow",
+			"Unimplemented",
+			nil,
+		))
+		return f
+	}
+	ao := workflow.GetActivityOptions(ctx)
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.StartToCloseTimeout = time.Minute
+	}
+	ctx = workflow.WithActivityOptions(ctx, ao)
+	return workflow.ExecuteActivity(ctx, activityName, workflowID, runID)
+}
+
+// onlyActivitiesActivities provides activities that can be used to interact with a(n) OnlyActivities service's workflow, queries, signals, and updates across namespaces
+type onlyActivitiesActivities struct {
+	client simple.OnlyActivitiesClient
+}
+
+// CancelWorkflow cancels an existing workflow execution
+func (a *onlyActivitiesActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+	return a.client.CancelWorkflow(ctx, workflowID, runID)
+}

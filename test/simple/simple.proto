@@ -292,3 +292,15 @@ service Ignored {
 message WhatRequest {
   string blah = 1;
 }
+
+service OnlyActivities {
+  rpc LonelyActivity1(LonelyActivity1Request) returns (LonelyActivity1Response) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+}
+
+message LonelyActivity1Request {}
+
+message LonelyActivity1Response {}

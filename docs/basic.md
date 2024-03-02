@@ -64,8 +64,13 @@
     - [mycompany.simple.Ignored](#mycompany-simple-ignored)
       - [Workflows](#mycompany-simple-ignored-workflows)
         - [mycompany.simple.Ignored.What](#mycompany-simple-ignored-what-workflow)
+    - [mycompany.simple.OnlyActivities](#mycompany-simple-onlyactivities)
+      - [Activities](#mycompany-simple-onlyactivities-activities)
+        - [mycompany.simple.OnlyActivities.LonelyActivity1](#mycompany-simple-onlyactivities-lonelyactivity1-activity)
   - Messages
     - [mycompany.simple.Foo](#mycompany-simple-foo)
+    - [mycompany.simple.LonelyActivity1Request](#mycompany-simple-lonelyactivity1request)
+    - [mycompany.simple.LonelyActivity1Response](#mycompany-simple-lonelyactivity1response)
     - [mycompany.simple.OtherEnum](#mycompany-simple-otherenum)
     - [mycompany.simple.OtherQueryResponse](#mycompany-simple-otherqueryresponse)
     - [mycompany.simple.OtherSignalRequest](#mycompany-simple-othersignalrequest)
@@ -1685,6 +1690,33 @@ go_name: Blah</pre></td>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
 </table>     
 
+<a name="mycompany-simple-onlyactivities"></a>
+## mycompany.simple.OnlyActivities   
+
+<a name="mycompany-simple-onlyactivities-activities"></a>
+### Activities
+
+---
+<a name="mycompany-simple-onlyactivities-lonelyactivity1-activity"></a>
+### mycompany.simple.OnlyActivities.LonelyActivity1
+
+
+
+**Input:** [mycompany.simple.LonelyActivity1Request](#mycompany-simple-lonelyactivity1request)
+
+
+
+**Output:** [mycompany.simple.LonelyActivity1Response](#mycompany-simple-lonelyactivity1response)
+
+
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table>   
+
 <a name="mycompany-simple-messages"></a>
 ## Messages
 
@@ -1705,6 +1737,16 @@ json_name: foo
 go_name: Foo</pre></td>
 </tr>
 </table>
+
+
+
+<a name="mycompany-simple-lonelyactivity1request"></a>
+### mycompany.simple.LonelyActivity1Request
+
+
+
+<a name="mycompany-simple-lonelyactivity1response"></a>
+### mycompany.simple.LonelyActivity1Response
 
 
 
