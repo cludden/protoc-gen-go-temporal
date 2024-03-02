@@ -204,6 +204,13 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 				bl.Id("opts").Dot("opts").Op("=").Op("&").Id("activityOpts")
 			})
 
+			// set default task queue
+			if tq := opts.GetTaskQueue(); !local && tq != "" {
+				fn.If(g.Id("opts").Dot("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
+					g.Id("opts").Dot("opts").Dot("TaskQueue").Op("=").Lit(tq),
+				)
+			}
+
 			// set default retry policy
 			if policy := opts.GetRetryPolicy(); policy != nil {
 				fn.If(g.Id("opts").Dot("opts").Dot("RetryPolicy").Op("==").Nil()).Block(

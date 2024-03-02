@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -11,7 +12,10 @@ import (
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/workflow"
 )
 
 func TestSomeWorkflow1WithTestClient(t *testing.T) {
@@ -204,4 +208,37 @@ func TestUnmarshalCLIFlagsToOtherWorkflowRequest(t *testing.T) {
 			"simple", "other-workflow",
 		}, c.args...)))
 	}
+}
+
+type testActivitiesTQ struct {
+	Activities
+}
+
+func (a *testActivitiesTQ) SomeActivity3(ctx context.Context, req *simplepb.SomeActivity3Request) (*simplepb.SomeActivity3Response, error) {
+	if tq := activity.GetInfo(ctx).TaskQueue; tq != "some-other-task-queue" {
+		return nil, fmt.Errorf("expected task queue %q, got: %q", "some-other-task-queue", tq)
+	}
+	return &simplepb.SomeActivity3Response{ResponseVal: req.GetRequestVal()}, nil
+}
+
+func TestActivityTaskQueue(t *testing.T) {
+	require := require.New(t)
+
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simplepb.RegisterSimpleActivities(env, &testActivitiesTQ{})
+
+	env.ExecuteWorkflow(func(ctx workflow.Context) error {
+		_, err := simplepb.SomeActivity3(ctx, &simplepb.SomeActivity3Request{
+			RequestVal: "foo",
+		}, simplepb.NewSomeActivity3ActivityOptions().WithActivityOptions(workflow.ActivityOptions{
+			RetryPolicy: &temporal.RetryPolicy{
+				MaximumAttempts: 1,
+			},
+		}))
+		require.NoError(err)
+		return nil
+	})
+	require.True(env.IsWorkflowCompleted())
+	require.NoError(env.GetWorkflowError())
 }

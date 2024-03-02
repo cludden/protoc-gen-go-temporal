@@ -69,6 +69,7 @@ service Simple {
   rpc SomeActivity3(SomeActivity3Request) returns (SomeActivity3Response) {
     option (temporal.v1.activity) = {
       start_to_close_timeout: { seconds: 10 }
+      task_queue: 'some-other-task-queue'
       retry_policy {
         max_attempts: 5
       }
