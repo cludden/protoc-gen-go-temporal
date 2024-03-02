@@ -6026,3 +6026,375 @@ func WithIgnoredSchemeTypes() scheme.Option {
 		s.RegisterType(File_simple_simple_proto.Messages().ByName("WhatRequest"))
 	}
 }
+
+// mycompany.simple.OnlyActivities activity names
+const (
+	LonelyActivity1ActivityName = "mycompany.simple.OnlyActivities.LonelyActivity1"
+)
+
+// OnlyActivitiesClient describes a client for a(n) mycompany.simple.OnlyActivities worker
+type OnlyActivitiesClient interface {
+	// CancelWorkflow requests cancellation of an existing workflow execution
+	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
+	// TerminateWorkflow an existing workflow execution
+	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
+}
+
+// onlyActivitiesClient implements a temporal client for a mycompany.simple.OnlyActivities service
+type onlyActivitiesClient struct {
+	client client.Client
+}
+
+// NewOnlyActivitiesClient initializes a new mycompany.simple.OnlyActivities client
+func NewOnlyActivitiesClient(c client.Client) OnlyActivitiesClient {
+	return &onlyActivitiesClient{client: c}
+}
+
+// NewOnlyActivitiesClientWithOptions initializes a new OnlyActivities client with the given options
+func NewOnlyActivitiesClientWithOptions(c client.Client, opts client.Options) (OnlyActivitiesClient, error) {
+	var err error
+	c, err = client.NewClientFromExisting(c, opts)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client with options: %w", err)
+	}
+	return &onlyActivitiesClient{client: c}, nil
+}
+
+// CancelWorkflow requests cancellation of an existing workflow execution
+func (c *onlyActivitiesClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+	return c.client.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// TerminateWorkflow terminates an existing workflow execution
+func (c *onlyActivitiesClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
+	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
+}
+
+// Reference to generated workflow functions
+var ()
+
+// OnlyActivitiesWorkflows provides methods for initializing new mycompany.simple.OnlyActivities workflow values
+type OnlyActivitiesWorkflows interface{}
+
+// RegisterOnlyActivitiesWorkflows registers mycompany.simple.OnlyActivities workflows with the given worker
+func RegisterOnlyActivitiesWorkflows(r worker.WorkflowRegistry, workflows OnlyActivitiesWorkflows) {}
+
+// OnlyActivitiesActivities describes available worker activities
+type OnlyActivitiesActivities interface {
+	LonelyActivity1(ctx context.Context, req *LonelyActivity1Request) (*LonelyActivity1Response, error)
+}
+
+// RegisterOnlyActivitiesActivities registers activities with a worker
+func RegisterOnlyActivitiesActivities(r worker.ActivityRegistry, activities OnlyActivitiesActivities) {
+	RegisterLonelyActivity1Activity(r, activities.LonelyActivity1)
+}
+
+// RegisterLonelyActivity1Activity registers a mycompany.simple.OnlyActivities.LonelyActivity1 activity
+func RegisterLonelyActivity1Activity(r worker.ActivityRegistry, fn func(context.Context, *LonelyActivity1Request) (*LonelyActivity1Response, error)) {
+	r.RegisterActivityWithOptions(fn, activity.RegisterOptions{
+		Name: LonelyActivity1ActivityName,
+	})
+}
+
+// LonelyActivity1Future describes a(n) mycompany.simple.OnlyActivities.LonelyActivity1 activity execution
+type LonelyActivity1Future struct {
+	Future workflow.Future
+}
+
+// Get blocks on the activity's completion, returning the response
+func (f *LonelyActivity1Future) Get(ctx workflow.Context) (*LonelyActivity1Response, error) {
+	var resp LonelyActivity1Response
+	if err := f.Future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Select adds the activity's completion to the selector, callback can be nil
+func (f *LonelyActivity1Future) Select(sel workflow.Selector, fn func(*LonelyActivity1Future)) workflow.Selector {
+	return sel.AddFuture(f.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(f)
+		}
+	})
+}
+
+// LonelyActivity1 executes a(n) mycompany.simple.OnlyActivities.LonelyActivity1 activity
+func LonelyActivity1(ctx workflow.Context, req *LonelyActivity1Request, options ...*LonelyActivity1ActivityOptions) (*LonelyActivity1Response, error) {
+	var opts *LonelyActivity1ActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		opts = options[0]
+	} else {
+		opts = NewLonelyActivity1ActivityOptions()
+	}
+	if opts.opts == nil {
+		activityOpts := workflow.GetActivityOptions(ctx)
+		opts.opts = &activityOpts
+	}
+	if opts.opts.StartToCloseTimeout == 0 {
+		opts.opts.StartToCloseTimeout = 5000000000 // 5s
+	}
+	ctx = workflow.WithActivityOptions(ctx, *opts.opts)
+	var activity any
+	activity = LonelyActivity1ActivityName
+	future := &LonelyActivity1Future{Future: workflow.ExecuteActivity(ctx, activity, req)}
+	return future.Get(ctx)
+}
+
+// LonelyActivity1Async executes a(n) mycompany.simple.OnlyActivities.LonelyActivity1 activity (asynchronously)
+func LonelyActivity1Async(ctx workflow.Context, req *LonelyActivity1Request, options ...*LonelyActivity1ActivityOptions) *LonelyActivity1Future {
+	var opts *LonelyActivity1ActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		opts = options[0]
+	} else {
+		opts = NewLonelyActivity1ActivityOptions()
+	}
+	if opts.opts == nil {
+		activityOpts := workflow.GetActivityOptions(ctx)
+		opts.opts = &activityOpts
+	}
+	if opts.opts.StartToCloseTimeout == 0 {
+		opts.opts.StartToCloseTimeout = 5000000000 // 5s
+	}
+	ctx = workflow.WithActivityOptions(ctx, *opts.opts)
+	var activity any
+	activity = LonelyActivity1ActivityName
+	future := &LonelyActivity1Future{Future: workflow.ExecuteActivity(ctx, activity, req)}
+	return future
+}
+
+// LonelyActivity1Local executes a(n) mycompany.simple.OnlyActivities.LonelyActivity1 activity (locally)
+func LonelyActivity1Local(ctx workflow.Context, req *LonelyActivity1Request, options ...*LonelyActivity1LocalActivityOptions) (*LonelyActivity1Response, error) {
+	var opts *LonelyActivity1LocalActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		opts = options[0]
+	} else {
+		opts = NewLonelyActivity1LocalActivityOptions()
+	}
+	if opts.opts == nil {
+		activityOpts := workflow.GetLocalActivityOptions(ctx)
+		opts.opts = &activityOpts
+	}
+	if opts.opts.StartToCloseTimeout == 0 {
+		opts.opts.StartToCloseTimeout = 5000000000 // 5s
+	}
+	ctx = workflow.WithLocalActivityOptions(ctx, *opts.opts)
+	var activity any
+	if opts.fn != nil {
+		activity = opts.fn
+	} else {
+		activity = LonelyActivity1ActivityName
+	}
+	future := &LonelyActivity1Future{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
+	return future.Get(ctx)
+}
+
+// LonelyActivity1LocalAsync executes a(n) mycompany.simple.OnlyActivities.LonelyActivity1 activity (asynchronously, locally)
+func LonelyActivity1LocalAsync(ctx workflow.Context, req *LonelyActivity1Request, options ...*LonelyActivity1LocalActivityOptions) *LonelyActivity1Future {
+	var opts *LonelyActivity1LocalActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		opts = options[0]
+	} else {
+		opts = NewLonelyActivity1LocalActivityOptions()
+	}
+	if opts.opts == nil {
+		activityOpts := workflow.GetLocalActivityOptions(ctx)
+		opts.opts = &activityOpts
+	}
+	if opts.opts.StartToCloseTimeout == 0 {
+		opts.opts.StartToCloseTimeout = 5000000000 // 5s
+	}
+	ctx = workflow.WithLocalActivityOptions(ctx, *opts.opts)
+	var activity any
+	if opts.fn != nil {
+		activity = opts.fn
+	} else {
+		activity = LonelyActivity1ActivityName
+	}
+	future := &LonelyActivity1Future{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
+	return future
+}
+
+// LonelyActivity1LocalActivityOptions provides configuration for a local mycompany.simple.OnlyActivities.LonelyActivity1 activity
+type LonelyActivity1LocalActivityOptions struct {
+	fn   func(context.Context, *LonelyActivity1Request) (*LonelyActivity1Response, error)
+	opts *workflow.LocalActivityOptions
+}
+
+// NewLonelyActivity1LocalActivityOptions sets default LocalActivityOptions
+func NewLonelyActivity1LocalActivityOptions() *LonelyActivity1LocalActivityOptions {
+	return &LonelyActivity1LocalActivityOptions{}
+}
+
+// Local provides a local mycompany.simple.OnlyActivities.LonelyActivity1 activity implementation
+func (opts *LonelyActivity1LocalActivityOptions) Local(fn func(context.Context, *LonelyActivity1Request) (*LonelyActivity1Response, error)) *LonelyActivity1LocalActivityOptions {
+	opts.fn = fn
+	return opts
+}
+
+// WithLocalActivityOptions sets default LocalActivityOptions
+func (opts *LonelyActivity1LocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *LonelyActivity1LocalActivityOptions {
+	opts.opts = &options
+	return opts
+}
+
+// LonelyActivity1ActivityOptions provides configuration for a(n) mycompany.simple.OnlyActivities.LonelyActivity1 activity
+type LonelyActivity1ActivityOptions struct {
+	opts *workflow.ActivityOptions
+}
+
+// NewLonelyActivity1ActivityOptions sets default ActivityOptions
+func NewLonelyActivity1ActivityOptions() *LonelyActivity1ActivityOptions {
+	return &LonelyActivity1ActivityOptions{}
+}
+
+// WithActivityOptions sets default ActivityOptions
+func (opts *LonelyActivity1ActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *LonelyActivity1ActivityOptions {
+	opts.opts = &options
+	return opts
+}
+
+// TestClient provides a testsuite-compatible Client
+type TestOnlyActivitiesClient struct {
+	env       *testsuite.TestWorkflowEnvironment
+	workflows OnlyActivitiesWorkflows
+}
+
+var _ OnlyActivitiesClient = &TestOnlyActivitiesClient{}
+
+// NewTestOnlyActivitiesClient initializes a new TestOnlyActivitiesClient value
+func NewTestOnlyActivitiesClient(env *testsuite.TestWorkflowEnvironment, workflows OnlyActivitiesWorkflows, activities OnlyActivitiesActivities) *TestOnlyActivitiesClient {
+	RegisterOnlyActivitiesWorkflows(env, workflows)
+	if activities != nil {
+		RegisterOnlyActivitiesActivities(env, activities)
+	}
+	return &TestOnlyActivitiesClient{env, workflows}
+}
+
+// CancelWorkflow requests cancellation of an existing workflow execution
+func (c *TestOnlyActivitiesClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+	c.env.CancelWorkflow()
+	return nil
+}
+
+// TerminateWorkflow terminates an existing workflow execution
+func (c *TestOnlyActivitiesClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
+	return c.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// OnlyActivitiesCliOptions describes runtime configuration for mycompany.simple.OnlyActivities cli
+type OnlyActivitiesCliOptions struct {
+	after            func(*v2.Context) error
+	before           func(*v2.Context) error
+	clientForCommand func(*v2.Context) (client.Client, error)
+	worker           func(*v2.Context, client.Client) (worker.Worker, error)
+}
+
+// NewOnlyActivitiesCliOptions initializes a new OnlyActivitiesCliOptions value
+func NewOnlyActivitiesCliOptions() *OnlyActivitiesCliOptions {
+	return &OnlyActivitiesCliOptions{}
+}
+
+// WithAfter injects a custom After hook to be run after any command invocation
+func (opts *OnlyActivitiesCliOptions) WithAfter(fn func(*v2.Context) error) *OnlyActivitiesCliOptions {
+	opts.after = fn
+	return opts
+}
+
+// WithBefore injects a custom Before hook to be run prior to any command invocation
+func (opts *OnlyActivitiesCliOptions) WithBefore(fn func(*v2.Context) error) *OnlyActivitiesCliOptions {
+	opts.before = fn
+	return opts
+}
+
+// WithClient provides a Temporal client factory for use by commands
+func (opts *OnlyActivitiesCliOptions) WithClient(fn func(*v2.Context) (client.Client, error)) *OnlyActivitiesCliOptions {
+	opts.clientForCommand = fn
+	return opts
+}
+
+// WithWorker provides an method for initializing a worker
+func (opts *OnlyActivitiesCliOptions) WithWorker(fn func(*v2.Context, client.Client) (worker.Worker, error)) *OnlyActivitiesCliOptions {
+	opts.worker = fn
+	return opts
+}
+
+// NewOnlyActivitiesCli initializes a cli for a(n) mycompany.simple.OnlyActivities service
+func NewOnlyActivitiesCli(options ...*OnlyActivitiesCliOptions) (*v2.App, error) {
+	commands, err := newOnlyActivitiesCommands(options...)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing subcommands: %w", err)
+	}
+	return &v2.App{
+		Name:     "only-activities",
+		Commands: commands,
+	}, nil
+}
+
+// NewOnlyActivitiesCliCommand initializes a cli command for a mycompany.simple.OnlyActivities service with subcommands for each query, signal, update, and workflow
+func NewOnlyActivitiesCliCommand(options ...*OnlyActivitiesCliOptions) (*v2.Command, error) {
+	subcommands, err := newOnlyActivitiesCommands(options...)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing subcommands: %w", err)
+	}
+	return &v2.Command{
+		Name:        "only-activities",
+		Subcommands: subcommands,
+	}, nil
+}
+
+// newOnlyActivitiesCommands initializes (sub)commands for a mycompany.simple.OnlyActivities cli or command
+func newOnlyActivitiesCommands(options ...*OnlyActivitiesCliOptions) ([]*v2.Command, error) {
+	opts := &OnlyActivitiesCliOptions{}
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	if opts.clientForCommand == nil {
+		opts.clientForCommand = func(*v2.Context) (client.Client, error) {
+			return client.Dial(client.Options{})
+		}
+	}
+	commands := []*v2.Command{}
+	if opts.worker != nil {
+		commands = append(commands, []*v2.Command{
+			{
+				Name:                   "worker",
+				Usage:                  "runs a mycompany.simple.OnlyActivities worker process",
+				UseShortOptionHandling: true,
+				Before:                 opts.before,
+				After:                  opts.after,
+				Action: func(cmd *v2.Context) error {
+					c, err := opts.clientForCommand(cmd)
+					if err != nil {
+						return fmt.Errorf("error initializing client for command: %w", err)
+					}
+					defer c.Close()
+					w, err := opts.worker(cmd, c)
+					if opts.worker != nil {
+						if err != nil {
+							return fmt.Errorf("error initializing worker: %w", err)
+						}
+					}
+					if err := w.Start(); err != nil {
+						return fmt.Errorf("error starting worker: %w", err)
+					}
+					defer w.Stop()
+					<-cmd.Context.Done()
+					return nil
+				},
+			},
+		}...)
+	}
+	sort.Slice(commands, func(i, j int) bool {
+		return commands[i].Name < commands[j].Name
+	})
+	return commands, nil
+}
+
+// WithOnlyActivitiesSchemeTypes registers all OnlyActivities protobuf types with the given scheme
+func WithOnlyActivitiesSchemeTypes() scheme.Option {
+	return func(s *scheme.Scheme) {
+		s.RegisterType(File_simple_simple_proto.Messages().ByName("LonelyActivity1Request"))
+		s.RegisterType(File_simple_simple_proto.Messages().ByName("LonelyActivity1Response"))
+	}
+}

@@ -27,6 +27,7 @@ type someWorkflow1 struct {
 func Register(r worker.Registry) {
 	simplepb.RegisterSimpleWorkflows(r, &Workflows{})
 	simplepb.RegisterSimpleActivities(r, &Activities{})
+	simplepb.RegisterOnlyActivitiesActivities(r, &OnlyActivites{})
 }
 
 func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1WorkflowInput) (simplepb.SomeWorkflow1Workflow, error) {
