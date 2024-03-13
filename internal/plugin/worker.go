@@ -843,7 +843,7 @@ func (svc *Service) genWorkerWorkflowInput(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, method.Desc.FullName())
+	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, svc.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).StructFunc(func(fields *g.Group) {
 		if hasInput {
 			fields.Id("Req").Op("*").Id(svc.getMessageName(method.Input))
@@ -867,8 +867,13 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 	// generate workflow interface
 	if method.Comments.Leading.String() != "" {
 		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
+		f.Comment("")
+		f.Commentf("workflow.name: %s", svc.fqnForWorkflow(workflow))
+		if id := opts.GetId(); id != "" {
+			f.Commentf("workflow.id: %s", id)
+		}
 	} else {
-		f.Commentf("%s describes a(n) %s workflow implementation", typeName, method.Desc.FullName())
+		f.Commentf("%s describes a(n) %s workflow implementation", typeName, svc.fqnForWorkflow(workflow))
 	}
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
 		if method.Comments.Leading.String() != "" {
