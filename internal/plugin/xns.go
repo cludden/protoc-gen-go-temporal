@@ -111,7 +111,7 @@ func (svc *Service) genXNSActivitiesQueryMethod(f *g.File, query string) {
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s executes a(n) %s query via an activity", methodName, svc.fqnForQuery(query))
+	commentf(f, methodSet(method), "%s executes a(n) %s query via an activity", methodName, svc.fqnForQuery(query))
 	f.Func().
 		Params(
 			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
@@ -128,6 +128,9 @@ func (svc *Service) genXNSActivitiesQueryMethod(f *g.File, query string) {
 			returnVals.Err().Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated query detected"), g.Lit("query"), g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query))).Line()
+			}
 			if hasInput {
 				fn.Comment("unmarshal query request")
 				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
@@ -207,7 +210,7 @@ func (svc *Service) genXNSActivitiesSignalMethod(f *g.File, signal string) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s executes a(n) %s signal via an activity", methodName, svc.fqnForSignal(signal))
+	commentf(f, methodSet(method), "%s executes a(n) %s signal via an activity", methodName, svc.fqnForSignal(signal))
 	f.Func().
 		Params(
 			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
@@ -219,6 +222,9 @@ func (svc *Service) genXNSActivitiesSignalMethod(f *g.File, signal string) {
 		).
 		Params(g.Err().Error()).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated signal detected"), g.Lit("signal"), g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal))).Line()
+			}
 			if hasInput {
 				fn.Comment("unmarshal signal request")
 				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
@@ -281,7 +287,7 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s executes a(n) %s update via an activity", methodName, svc.fqnForUpdate(update))
+	commentf(f, methodSet(method), "%s executes a(n) %s update via an activity", methodName, svc.fqnForUpdate(update))
 	f.Func().
 		Params(
 			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
@@ -298,6 +304,9 @@ func (svc *Service) genXNSActivitiesUpdateMethod(f *g.File, update string) {
 			returnVals.Err().Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated update detected"), g.Lit("update"), g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update))).Line()
+			}
 			fn.Var().Id("update").Qual(string(svc.File.GoImportPath), toCamel("%sHandle", update))
 			fn.If(g.Qual(activityPkg, "HasHeartbeatDetails").Call(g.Id("ctx"))).Block(
 				g.Comment("extract update id from heartbeat details"),
@@ -434,7 +443,7 @@ func (svc *Service) genXNSActivitiesWorkflowMethod(f *g.File, workflow string) {
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s executes a(n) %s workflow via an activity", methodName, svc.fqnForWorkflow(workflow))
+	commentf(f, methodSet(method), "%s executes a(n) %s workflow via an activity", methodName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(
 			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
@@ -451,6 +460,9 @@ func (svc *Service) genXNSActivitiesWorkflowMethod(f *g.File, workflow string) {
 			returnVals.Err().Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated workflow detected"), g.Lit("workflow"), g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow))).Line()
+			}
 			if hasInput {
 				fn.Comment("unmarshal workflow request")
 				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
@@ -571,7 +583,7 @@ func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow,
 	handler := svc.methods[signal]
 	handlerInput := !isEmpty(handler.Input)
 
-	f.Commentf("%s sends a(n) %s signal to a(n) %s workflow via an activity", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
+	commentf(f, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow via an activity", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(
 			g.Id("a").Op("*").Id(toLowerCamel("%sActivities", svc.GoName)),
@@ -588,6 +600,15 @@ func (svc *Service) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow,
 			returnVals.Err().Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
+			if workflowDeprecated, signalDeprecated := isDeprecated(method), isDeprecated(handler); workflowDeprecated || signalDeprecated {
+				if workflowDeprecated {
+					fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated workflow detected"), g.Lit("workflow"), g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)))
+				}
+				if signalDeprecated {
+					fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated signal detected"), g.Lit("signal"), g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)))
+				}
+				fn.Line()
+			}
 			if hasInput {
 				fn.Comment("unmarshal workflow request")
 				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
@@ -925,12 +946,7 @@ func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s query and blocks until error or response received", methodName, svc.fqnForQuery(query))
-	}
-
+	commentf(f, methodSet(method), "%s executes a(n) %s query and blocks until error or response received", methodName, svc.fqnForQuery(query))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -948,8 +964,8 @@ func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
 			}
 			returnVals.Error()
 		}).
-		Block(
-			g.List(g.Id("handle"), g.Err()).Op(":=").Id(toCamel("%sAsync", query)).CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *g.Group) {
+			fn.List(g.Id("handle"), g.Err()).Op(":=").Id(toCamel("%sAsync", query)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -957,17 +973,17 @@ func (svc *Service) genXNSQueryFunction(f *g.File, query string) {
 					args.Id("req")
 				}
 				args.Id("opts").Op("...")
-			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Err()
 				}),
-			),
-			g.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx"))),
-		)
+			)
+			fn.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx")))
+		})
 }
 
 func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
@@ -976,12 +992,7 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 	opts := svc.queries[query]
 	hasInput := !isEmpty(method.Input)
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s query and blocks until error or response received", methodName, svc.fqnForQuery(query))
-	}
-
+	commentf(f, methodSet(method), "%s executes a(n) %s query and returns a handle to the activity", methodName, svc.fqnForQuery(query))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -998,6 +1009,9 @@ func (svc *Service) genXNSQueryFunctionAsync(f *g.File, query string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated query detected"), g.Lit("query"), g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query))).Line()
+			}
 			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
 				g.Qual(string(svc.File.GoImportPath), toCamel("%sQueryName", query)),
 			)
@@ -1152,10 +1166,11 @@ func (svc *Service) genXNSQueryHandleInterface(f *g.File, query string) {
 		methods.Comment("Cancel cancels the workflow")
 		methods.Id("Cancel").
 			Params(g.Qual(workflowPkg, "Context")).
-			Error()
+			Error().
+			Line()
 
 		methods.Comment("Future returns the inner workflow.Future")
-		methods.Id("Future").Params().Qual(workflowPkg, "Future")
+		methods.Id("Future").Params().Qual(workflowPkg, "Future").Line()
 
 		methods.Comment("Get returns the inner workflow.Future")
 		methods.Id("Get").
@@ -1165,7 +1180,8 @@ func (svc *Service) genXNSQueryHandleInterface(f *g.File, query string) {
 					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
-			})
+			}).
+			Line()
 	})
 }
 
@@ -1225,12 +1241,7 @@ func (svc *Service) genXNSSignalFunction(f *g.File, signal string) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s signal", methodName, svc.fqnForSignal(signal))
-	}
-
+	commentf(f, methodSet(method), "%s executes a(n) %s signal", methodName, svc.fqnForSignal(signal))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1243,8 +1254,8 @@ func (svc *Service) genXNSSignalFunction(f *g.File, signal string) {
 			args.Id("opts").Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
 		}).
 		Error().
-		Block(
-			g.List(g.Id("handle"), g.Err()).Op(":=").Id(toCamel("%sAsync", signal)).CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *g.Group) {
+			fn.List(g.Id("handle"), g.Err()).Op(":=").Id(toCamel("%sAsync", signal)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -1252,12 +1263,12 @@ func (svc *Service) genXNSSignalFunction(f *g.File, signal string) {
 					args.Id("req")
 				}
 				args.Id("opts").Op("...")
-			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Err()),
-			),
-			g.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx"))),
-		)
+			)
+			fn.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx")))
+		})
 }
 
 func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
@@ -1266,12 +1277,7 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 	opts := svc.signals[signal]
 	hasInput := !isEmpty(method.Input)
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s query", methodName, svc.fqnForSignal(signal))
-	}
-
+	commentf(f, methodSet(method), "%s executes a(n) %s signal", methodName, svc.fqnForSignal(signal))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1288,6 +1294,9 @@ func (svc *Service) genXNSSignalFunctionAsync(f *g.File, signal string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated signal detected"), g.Lit("signal"), g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal))).Line()
+			}
 			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
 				g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)),
 			)
@@ -1468,12 +1477,7 @@ func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s update and blocks until error or response received", methodName, svc.fqnForUpdate(update))
-	}
-
+	commentf(f, methodSet(method), "%s executes a(n) %s update and blocks until error or response received", methodName, svc.fqnForUpdate(update))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1491,8 +1495,8 @@ func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
 			}
 			returnVals.Error()
 		}).
-		Block(
-			g.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *g.Group) {
+			fn.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -1500,17 +1504,17 @@ func (svc *Service) genXNSUpdateFunction(f *g.File, update string) {
 					args.Id("req")
 				}
 				args.Id("opts").Op("...")
-			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Err()
 				}),
-			),
-			g.Return(g.Id("run").Dot("Get").Call(g.Id("ctx"))),
-		)
+			)
+			fn.Return(g.Id("run").Dot("Get").Call(g.Id("ctx")))
+		})
 }
 
 func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
@@ -1519,12 +1523,7 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 	hasInput := !isEmpty(method.Input)
 	opts := svc.updates[update]
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s update and blocks until error or response received", methodName, svc.fqnForUpdate(update))
-	}
-
+	commentf(f, methodSet(method), "%s executes a(n) %s update and blocks until error or response received", methodName, svc.fqnForUpdate(update))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1541,6 +1540,9 @@ func (svc *Service) genXNSUpdateFunctionAsync(f *g.File, update string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated update detected"), g.Lit("update"), g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update))).Line()
+			}
 			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
 				g.Qual(string(svc.File.GoImportPath), toCamel("%sUpdateName", update)),
 			)
@@ -1846,10 +1848,11 @@ func (svc *Service) genXNSUpdateHandleInterface(f *g.File, update string) {
 		methods.Comment("Cancel cancels the update activity")
 		methods.Id("Cancel").
 			Params(g.Qual(workflowPkg, "Context")).
-			Error()
+			Error().
+			Line()
 
 		methods.Comment("Future returns the inner workflow.Future")
-		methods.Id("Future").Params().Qual(workflowPkg, "Future")
+		methods.Id("Future").Params().Qual(workflowPkg, "Future").Line()
 
 		methods.Comment("Get blocks on update completion and returns the result")
 		methods.Id("Get").
@@ -1859,12 +1862,14 @@ func (svc *Service) genXNSUpdateHandleInterface(f *g.File, update string) {
 					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
-			})
+			}).
+			Line()
 
 		methods.Comment("ID returns the update id")
 		methods.Id("ID").
 			Params().
-			String()
+			String().
+			Line()
 	})
 }
 
@@ -1895,24 +1900,24 @@ func (svc *Service) genXNSWorkflowFunction(f *g.File, workflow string) {
 			}
 			returnVals.Error()
 		}).
-		Block(
-			g.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *g.Group) {
+			fn.List(g.Id("run"), g.Err()).Op(":=").Id(toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
 				}
 				args.Id("opts").Op("...")
-			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Err()
 				}),
-			),
-			g.Return(g.Id("run").Dot("Get").Call(g.Id("ctx"))),
-		)
+			)
+			fn.Return(g.Id("run").Dot("Get").Call(g.Id("ctx")))
+		})
 }
 
 func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
@@ -1942,6 +1947,9 @@ func (svc *Service) genXNSWorkflowFunctionAsync(f *g.File, workflow string) {
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated workflow detected"), g.Lit("workflow"), g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow))).Line()
+			}
 			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
 				g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)),
 			)
@@ -2188,11 +2196,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 		handlerOutput := !isEmpty(handler.Output)
 
 		methodName := toCamel(query)
-		if handler.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-		} else {
-			f.Commentf("%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
-		}
+		commentf(f, methodSet(handler), "%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2234,11 +2238,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			})
 
 		methodName = toCamel("%sAsync", query)
-		if handler.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-		} else {
-			f.Commentf("%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
-		}
+		commentf(f, methodSet(handler), "%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2284,11 +2284,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 		handlerInput := !isEmpty(handler.Input)
 
 		methodName := toCamel(signal)
-		if handler.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-		} else {
-			f.Commentf("%s executes a(n) %s signal and blocks until the underlying activity completes", methodName, svc.fqnForSignal(signal))
-		}
+		commentf(f, methodSet(handler), "%s executes a(n) %s signal and blocks until the underlying activity completes", methodName, svc.fqnForSignal(signal))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2325,11 +2321,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			})
 
 		methodName = toCamel("%sAsync", signal)
-		if handler.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-		} else {
-			f.Commentf("%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
-		}
+		commentf(f, methodSet(handler), "%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2376,11 +2368,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 		handlerOutput := !isEmpty(handler.Output)
 
 		methodName := toCamel(update)
-		if handler.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-		} else {
-			f.Commentf("%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
-		}
+		commentf(f, methodSet(handler), "%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2422,11 +2410,7 @@ func (svc *Service) genXNSWorkflowRunImpl(f *g.File, workflow string) {
 			})
 
 		methodName = toCamel("%sAsync", update)
-		if handler.Comments.Leading.String() != "" {
-			f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-		} else {
-			f.Commentf("%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
-		}
+		commentf(f, methodSet(handler), "%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2478,10 +2462,10 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 		methods.Comment("Cancel cancels the workflow")
 		methods.Id("Cancel").
 			Params(g.Qual(workflowPkg, "Context")).
-			Error()
+			Error().Line()
 
 		methods.Comment("Future returns the inner workflow.Future")
-		methods.Id("Future").Params().Qual(workflowPkg, "Future")
+		methods.Id("Future").Params().Qual(workflowPkg, "Future").Line()
 
 		methods.Comment("Get returns the inner workflow.Future")
 		methods.Id("Get").
@@ -2491,12 +2475,13 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
-			})
+			}).Line()
 
 		methods.Comment("ID returns the workflow id")
 		methods.Id("ID").
 			Params().
-			String()
+			String().
+			Line()
 
 		for i := range opts.GetQuery() {
 			query := opts.GetQuery()[i].GetRef()
@@ -2506,11 +2491,7 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 
 			// synchronous
 			methodName := toCamel(query)
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
-			}
+			commentf(methods, methodSet(handler), "%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2524,15 +2505,12 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 						returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
-				})
+				}).
+				Line()
 
 			// async
-			methodName = toCamel("%sAsync", query)
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
-			}
+			methodName += "Async"
+			commentf(methods, methodSet(handler), "%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2544,7 +2522,8 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				Params(
 					g.Id(toCamel("%sQueryHandle", query)),
 					g.Error(),
-				)
+				).
+				Line()
 		}
 
 		for i := range opts.GetSignal() {
@@ -2554,11 +2533,7 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 
 			// synchronnous
 			methodName := toCamel(signal)
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s executes a(n) %s signal and blocks until completion", methodName, svc.fqnForSignal(signal))
-			}
+			commentf(methods, methodSet(handler), "%s executes a(n) %s signal and blocks until completion", methodName, svc.fqnForSignal(signal))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2567,15 +2542,12 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 					}
 					args.Op("...").Op("*").Id(toCamel("%sSignalOptions", signal))
 				}).
-				Error()
+				Error().
+				Line()
 
 			// async
 			methodName = toCamel("%sAsync", signal)
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
-			}
+			commentf(methods, methodSet(handler), "%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2587,7 +2559,8 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				Params(
 					g.Id(toCamel("%sSignalHandle", signal)),
 					g.Error(),
-				)
+				).
+				Line()
 		}
 
 		for i := range opts.GetUpdate() {
@@ -2598,11 +2571,7 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 
 			// synchronous
 			methodName := toCamel(update)
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
-			}
+			commentf(methods, methodSet(handler), "%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2616,15 +2585,12 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 						returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
-				})
+				}).
+				Line()
 
 			// async
 			methodName = toCamel("%sAsync", update)
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
-			}
+			commentf(methods, methodSet(handler), "%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2636,7 +2602,8 @@ func (svc *Service) genXNSWorkflowRunInterface(f *g.File, workflow string) {
 				Params(
 					g.Id(toCamel("%sHandle", update)),
 					g.Error(),
-				)
+				).
+				Line()
 		}
 	})
 }
@@ -2649,12 +2616,7 @@ func (svc *Service) genXNSWorkflowWithStartFunction(f *g.File, workflow, signal 
 	handler := svc.methods[signal]
 	handlerInput := !isEmpty(handler.Input)
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s sends a(n) %s signal to a %s workflow, starting it if necessary, and blocks until the workflow completes", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
-	}
-
+	commentf(f, methodSet(method, handler), "%s sends a(n) %s signal to a %s workflow, starting it if necessary, and blocks until the workflow completes", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -2704,11 +2666,7 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 	handlerInput := !isEmpty(handler.Input)
 	opts := svc.workflows[workflow]
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
-	}
+	commentf(f, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -2726,6 +2684,15 @@ func (svc *Service) genXNSWorkflowWithStartFunctionAsync(f *g.File, workflow, si
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
+			if workflowDeprecated, signalDeprecated := isDeprecated(method), isDeprecated(handler); workflowDeprecated || signalDeprecated {
+				if workflowDeprecated {
+					fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated workflow detected"), g.Lit("workflow"), g.Qual(string(svc.File.GoImportPath), toCamel("%sWorkflowName", workflow)))
+				}
+				if signalDeprecated {
+					fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated signal detected"), g.Lit("signal"), g.Qual(string(svc.File.GoImportPath), toCamel("%sSignalName", signal)))
+				}
+				fn.Line()
+			}
 			fn.Id("activityName").Op(":=").Id(toLowerCamel("%sOptions", svc.GoName)).Dot("filter").Call(
 				g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), toCamel("%sWith%s", workflow, signal))),
 			)

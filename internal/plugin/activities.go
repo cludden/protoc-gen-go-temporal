@@ -15,9 +15,9 @@ func (svc *Service) genActivitiesInterface(f *g.File) {
 	f.Type().Id(fmt.Sprintf("%sActivities", svc.Service.GoName)).InterfaceFunc(func(methods *g.Group) {
 		for _, activity := range svc.activitiesOrdered {
 			method := svc.methods[activity]
-			methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
 			hasInput := !isEmpty(method.Input)
 			hasOutput := !isEmpty(method.Output)
+			commentf(methods, methodSet(method), "%s implements a(n) %s activity definition", activity, svc.fqnForActivity(activity))
 			methods.Id(activity).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -30,87 +30,10 @@ func (svc *Service) genActivitiesInterface(f *g.File) {
 						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
 					}
 					returnVals.Error()
-				})
+				}).
+				Line()
 		}
 	})
-}
-
-// genActivityFuture generates a <Activity>Future struct
-func (svc *Service) genActivityFuture(f *g.File, activity string) {
-	future := toCamel("%sFuture", activity)
-
-	f.Commentf("%s describes a(n) %s activity execution", future, svc.fqnForActivity(activity))
-	f.Type().Id(future).Struct(
-		g.Id("Future").Qual(workflowPkg, "Future"),
-	)
-}
-
-// genActivityFutureGetMethod generates a <Workflow>Future's Get method
-func (svc *Service) genActivityFutureGetMethod(f *g.File, activity string) {
-	method := svc.methods[activity]
-	hasOutput := !isEmpty(method.Output)
-	future := toCamel("%sFuture", activity)
-
-	f.Comment("Get blocks on the activity's completion, returning the response")
-	f.Func().
-		Params(g.Id("f").Op("*").Id(future)).
-		Id("Get").
-		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
-		ParamsFunc(func(returnVals *g.Group) {
-			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
-			}
-			returnVals.Error()
-		}).
-		BlockFunc(func(fn *g.Group) {
-			if hasOutput {
-				fn.Var().Id("resp").Id(method.Output.GoIdent.GoName)
-				fn.If(
-					g.Err().Op(":=").Id("f").Dot("Future").Dot("Get").Call(
-						g.Id("ctx"), g.Op("&").Id("resp"),
-					),
-					g.Err().Op("!=").Nil(),
-				).Block(
-					g.Return(g.Nil(), g.Err()),
-				)
-				fn.Return(g.Op("&").Id("resp"), g.Nil())
-			} else {
-				fn.Return(g.Id("f").Dot("Future").Dot("Get").Call(
-					g.Id("ctx"), g.Nil(),
-				))
-			}
-		})
-}
-
-// genActivityFutureSelectMethod generates a <Workflow>Future's Select method
-func (svc *Service) genActivityFutureSelectMethod(f *g.File, activity string) {
-	future := toCamel("%sFuture", activity)
-
-	f.Comment("Select adds the activity's completion to the selector, callback can be nil")
-	f.Func().
-		Params(g.Id("f").Op("*").Id(future)).
-		Id("Select").
-		Params(
-			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Op("*").Id(future)),
-		).
-		Params(
-			g.Qual(workflowPkg, "Selector"),
-		).
-		Block(
-			g.Return(
-				g.Id("sel").Dot("AddFuture").Call(
-					g.Id("f").Dot("Future"),
-					g.Func().
-						Params(g.Qual(workflowPkg, "Future")).
-						Block(
-							g.If(g.Id("fn").Op("!=").Nil()).Block(
-								g.Id("fn").Call(g.Id("f")),
-							),
-						),
-				),
-			),
-		)
 }
 
 // genActivityFunction generates a public <Activity>[Local] function
@@ -144,7 +67,7 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 		desc = fmt.Sprintf("%s (%s)", desc, strings.Join(annotations, ", "))
 	}
 
-	f.Comment(desc)
+	commentf(f, methodSet(method), desc)
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -169,6 +92,9 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 			}
 		}).
 		BlockFunc(func(fn *g.Group) {
+			if isDeprecated(method) {
+				fn.Qual(workflowPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated activity detected"), g.Lit("activity"), g.Id(toCamel("%sActivityName", activity))).Line()
+			}
 			// initialize activity options if nil
 			if local {
 				fn.Var().Id("opts").Op("*").Id(toCamel("%sLocalActivityOptions", activity))
@@ -313,6 +239,84 @@ func (svc *Service) genActivityFunction(f *g.File, activity string, local, async
 				}
 			})
 		})
+}
+
+// genActivityFuture generates a <Activity>Future struct
+func (svc *Service) genActivityFuture(f *g.File, activity string) {
+	future := toCamel("%sFuture", activity)
+
+	f.Commentf("%s describes a(n) %s activity execution", future, svc.fqnForActivity(activity))
+	f.Type().Id(future).Struct(
+		g.Id("Future").Qual(workflowPkg, "Future"),
+	)
+}
+
+// genActivityFutureGetMethod generates a <Workflow>Future's Get method
+func (svc *Service) genActivityFutureGetMethod(f *g.File, activity string) {
+	method := svc.methods[activity]
+	hasOutput := !isEmpty(method.Output)
+	future := toCamel("%sFuture", activity)
+
+	f.Comment("Get blocks on the activity's completion, returning the response")
+	f.Func().
+		Params(g.Id("f").Op("*").Id(future)).
+		Id("Get").
+		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
+		ParamsFunc(func(returnVals *g.Group) {
+			if hasOutput {
+				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(fn *g.Group) {
+			if hasOutput {
+				fn.Var().Id("resp").Id(method.Output.GoIdent.GoName)
+				fn.If(
+					g.Err().Op(":=").Id("f").Dot("Future").Dot("Get").Call(
+						g.Id("ctx"), g.Op("&").Id("resp"),
+					),
+					g.Err().Op("!=").Nil(),
+				).Block(
+					g.Return(g.Nil(), g.Err()),
+				)
+				fn.Return(g.Op("&").Id("resp"), g.Nil())
+			} else {
+				fn.Return(g.Id("f").Dot("Future").Dot("Get").Call(
+					g.Id("ctx"), g.Nil(),
+				))
+			}
+		})
+}
+
+// genActivityFutureSelectMethod generates a <Workflow>Future's Select method
+func (svc *Service) genActivityFutureSelectMethod(f *g.File, activity string) {
+	future := toCamel("%sFuture", activity)
+
+	f.Comment("Select adds the activity's completion to the selector, callback can be nil")
+	f.Func().
+		Params(g.Id("f").Op("*").Id(future)).
+		Id("Select").
+		Params(
+			g.Id("sel").Qual(workflowPkg, "Selector"),
+			g.Id("fn").Func().Params(g.Op("*").Id(future)),
+		).
+		Params(
+			g.Qual(workflowPkg, "Selector"),
+		).
+		Block(
+			g.Return(
+				g.Id("sel").Dot("AddFuture").Call(
+					g.Id("f").Dot("Future"),
+					g.Func().
+						Params(g.Qual(workflowPkg, "Future")).
+						Block(
+							g.If(g.Id("fn").Op("!=").Nil()).Block(
+								g.Id("fn").Call(g.Id("f")),
+							),
+						),
+				),
+			),
+		)
 }
 
 // genActivityRegisterAllFunction generates a Register<Service>Activities public function

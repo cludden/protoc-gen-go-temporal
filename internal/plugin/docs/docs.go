@@ -13,12 +13,14 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 type (
 	Activity struct {
 		Descriptor
 		Comments               Comments
+		Deprecated             bool
 		HasNonDefaultOptions   bool
 		HeartbeatTimeout       time.Duration
 		Input                  string
@@ -103,6 +105,7 @@ type (
 	Query struct {
 		Descriptor
 		Comments             Comments
+		Deprecated           bool
 		HasNonDefaultOptions bool
 		Input                string
 		Name                 string
@@ -122,6 +125,7 @@ type (
 		Descriptor
 		Activities           []string
 		Comments             Comments
+		Deprecated           bool
 		HasTemporalResources bool
 		Queries              []string
 		Signals              []string
@@ -133,6 +137,7 @@ type (
 	Signal struct {
 		Descriptor
 		Comments             Comments
+		Deprecated           bool
 		HasNonDefaultOptions bool
 		Input                string
 		Name                 string
@@ -142,6 +147,7 @@ type (
 	Update struct {
 		Descriptor
 		Comments             Comments
+		Deprecated           bool
 		HasNonDefaultOptions bool
 		Input                string
 		Name                 string
@@ -154,6 +160,7 @@ type (
 	Workflow struct {
 		Descriptor
 		Comments            Comments
+		Deprecated          bool
 		ExecutionTimeout    time.Duration
 		ID                  string
 		IDReusePolicy       string
@@ -333,6 +340,7 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 				if opts, ok := proto.GetExtension(m.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
 					workflow := Workflow{
 						Comments:         parseComments(m.Comments),
+						Deprecated:       m.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated(),
 						ExecutionTimeout: opts.GetExecutionTimeout().AsDuration(),
 						Descriptor: Descriptor{
 							Name:     string(m.Desc.Name()),
@@ -390,7 +398,8 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 
 				if opts, ok := proto.GetExtension(m.Desc.Options(), temporalv1.E_Query).(*temporalv1.QueryOptions); ok && opts != nil {
 					query := Query{
-						Comments: parseComments(m.Comments),
+						Comments:   parseComments(m.Comments),
+						Deprecated: m.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated(),
 						Descriptor: Descriptor{
 							Name:     string(m.Desc.Name()),
 							FullName: string(m.Desc.FullName()),
@@ -424,7 +433,8 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 
 				if opts, ok := proto.GetExtension(m.Desc.Options(), temporalv1.E_Signal).(*temporalv1.SignalOptions); ok && opts != nil {
 					signal := Signal{
-						Comments: parseComments(m.Comments),
+						Comments:   parseComments(m.Comments),
+						Deprecated: m.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated(),
 						Descriptor: Descriptor{
 							Name:     string(m.Desc.Name()),
 							FullName: string(m.Desc.FullName()),
@@ -454,7 +464,8 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 
 				if opts, ok := proto.GetExtension(m.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
 					update := Update{
-						Comments: parseComments(m.Comments),
+						Comments:   parseComments(m.Comments),
+						Deprecated: m.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated(),
 						Descriptor: Descriptor{
 							Name:     string(m.Desc.Name()),
 							FullName: string(m.Desc.FullName()),
@@ -491,7 +502,8 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 
 				if opts, ok := proto.GetExtension(m.Desc.Options(), temporalv1.E_Activity).(*temporalv1.ActivityOptions); ok && opts != nil {
 					activity := Activity{
-						Comments: parseComments(m.Comments),
+						Comments:   parseComments(m.Comments),
+						Deprecated: m.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated(),
 						Descriptor: Descriptor{
 							Name:     string(m.Desc.Name()),
 							FullName: string(m.Desc.FullName()),

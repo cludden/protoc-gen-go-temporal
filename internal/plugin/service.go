@@ -412,6 +412,7 @@ func (svc *Service) render(f *g.File) {
 
 	// generate client interface and implementation
 	svc.genClientInterface(f)
+	svc.genClientOptions(f)
 	svc.genClientImpl(f)
 	svc.genClientImplConstructor(f)
 

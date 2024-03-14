@@ -243,7 +243,7 @@ func (svc *Service) genWorkerSignalExternal(f *g.File, signal string) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s sends a(n) %s signal to an existing workflow", functionName, method.Desc.FullName())
+	commentf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
 	f.Func().Id(functionName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
@@ -274,7 +274,7 @@ func (svc *Service) genWorkerSignalExternalAsync(f *g.File, signal string) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s sends a(n) %s signal to an existing workflow", functionName, method.Desc.FullName())
+	commentf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
 	f.Func().Id(functionName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
@@ -482,7 +482,7 @@ func (svc *Service) genWorkerWorkflowChild(f *g.File, workflow string) {
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s executes a child %s workflow", functionName, svc.fqnForWorkflow(workflow))
+	commentf(f, methodSet(method), "%s executes a child %s workflow and blocks until error or response received", functionName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(functionName).
 		ParamsFunc(func(args *g.Group) {
@@ -526,7 +526,7 @@ func (svc *Service) genWorkerWorkflowChildAsync(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s executes a child %s workflow", functionName, svc.fqnForWorkflow(workflow))
+	commentf(f, methodSet(method), "%s starts a child %s workflow and returns a handle to the child workflow run", functionName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(functionName).
 		ParamsFunc(func(args *g.Group) {
@@ -802,6 +802,9 @@ func (svc *Service) genWorkerWorkflowChildRunWaitStart(f *g.File, workflow strin
 // genWorkerWorkflowFunctionVars generates a <Workflow>Function var for each workflow that are
 // initialized on registration
 func (svc *Service) genWorkerWorkflowFunctionVars(f *g.File) {
+	if len(svc.workflowsOrdered) == 0 {
+		return
+	}
 	f.Commentf("Reference to generated workflow functions")
 	f.Var().DefsFunc(func(defs *g.Group) {
 		for _, workflow := range svc.workflowsOrdered {
@@ -843,7 +846,7 @@ func (svc *Service) genWorkerWorkflowInput(f *g.File, workflow string) {
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, method.Desc.FullName())
+	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, svc.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).StructFunc(func(fields *g.Group) {
 		if hasInput {
 			fields.Id("Req").Op("*").Id(svc.getMessageName(method.Input))
@@ -865,10 +868,18 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 	hasOutput := !isEmpty(method.Output)
 
 	// generate workflow interface
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s describes a(n) %s workflow implementation", typeName, method.Desc.FullName())
+	var details []string
+	if comments := method.Comments.Leading.String(); comments != "" && !strings.Contains(comments, svc.fqnForWorkflow(workflow)) {
+		details = append(details, fmt.Sprintf("name: \"%s\"", svc.fqnForWorkflow(workflow)))
+	}
+	if id := opts.GetId(); id != "" {
+		details = append(details, fmt.Sprintf("id: \"%s\"", id))
+	}
+
+	commentf(f, methodSet(method), "%s describes a(n) %s workflow implementation", typeName, svc.fqnForWorkflow(workflow))
+	if len(details) > 0 {
+		f.Comment(" ")
+		f.Commentf("workflow details: (%s)", strings.Join(details, ", "))
 	}
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
 		if method.Comments.Leading.String() != "" {
@@ -886,7 +897,8 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 					returnVals.Op("*").Id(svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
-			})
+			}).
+			Line()
 
 		// add workflow query methods
 		for _, queryOpts := range opts.GetQuery() {
@@ -894,11 +906,7 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
 
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s implements a(n) %s query handler", query, handler.Desc.FullName())
-			}
+			commentf(methods, methodSet(handler), "%s implements a(n) %s query handler", query, svc.fqnForQuery(query))
 			methods.Id(query).
 				ParamsFunc(func(args *g.Group) {
 					if hasInput {
@@ -908,7 +916,8 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 				Params(
 					g.Op("*").Id(svc.getMessageName(handler.Output)),
 					g.Error(),
-				)
+				).
+				Line()
 		}
 
 		// add workflow update methods
@@ -922,7 +931,7 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 			// add Validate<Update> method if enabled
 			if handlerOpts.GetValidate() {
 				validatorName := toCamel("Validate%s", update)
-				methods.Commentf("%s validates a(n) %s update", validatorName, handler.Desc.FullName())
+				methods.Commentf("%s validates a(n) %s update", validatorName, svc.fqnForUpdate(update))
 				methods.Id(validatorName).
 					ParamsFunc(func(args *g.Group) {
 						args.Qual(workflowPkg, "Context")
@@ -930,15 +939,12 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 							args.Op("*").Id(svc.getMessageName(handler.Input))
 						}
 					}).
-					Params(g.Error())
+					Params(g.Error()).
+					Line()
 			}
 
 			// add <Update> method
-			if handler.Comments.Leading.String() != "" {
-				methods.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				methods.Commentf("%s implements a(n) %s update handler", update, handler.Desc.FullName())
-			}
+			commentf(methods, methodSet(handler), "%s implements a(n) %s update handler", update, svc.fqnForQuery(update))
 			methods.Id(update).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -951,7 +957,8 @@ func (svc *Service) genWorkerWorkflowInterface(f *g.File, workflow string) {
 						returnVals.Op("*").Id(svc.getMessageName(handler.Output))
 					}
 					returnVals.Error()
-				})
+				}).
+				Line()
 		}
 	})
 }
@@ -965,11 +972,7 @@ func (svc *Service) genWorkerWorkflowsInterface(f *g.File) {
 		for _, workflow := range svc.workflowsOrdered {
 			handler := svc.methods[workflow]
 
-			if handler.Comments.Leading.String() != "" {
-				f.Comment(strings.TrimSuffix(handler.Comments.Leading.String(), "\n"))
-			} else {
-				f.Commentf("%s initializes a new a(n) %s implementation", workflow, toCamel("%sWorkflow", workflow))
-			}
+			commentf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", workflow, toCamel("%sWorkflow", workflow))
 			methods.
 				Id(workflow).
 				ParamsFunc(func(args *g.Group) {
@@ -983,7 +986,8 @@ func (svc *Service) genWorkerWorkflowsInterface(f *g.File) {
 				Params(
 					g.Id(toCamel("%sWorkflow", workflow)),
 					g.Error(),
-				)
+				).
+				Line()
 		}
 	})
 }
