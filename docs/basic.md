@@ -67,6 +67,22 @@
     - [mycompany.simple.OnlyActivities](#mycompany-simple-onlyactivities)
       - [Activities](#mycompany-simple-onlyactivities-activities)
         - [mycompany.simple.OnlyActivities.LonelyActivity1](#mycompany-simple-onlyactivities-lonelyactivity1-activity)
+    - [mycompany.simple.Deprecated](#mycompany-simple-deprecated)
+      - [Workflows](#mycompany-simple-deprecated-workflows)
+        - [mycompany.simple.Deprecated.SomeDeprecatedWorkflow1](#mycompany-simple-deprecated-somedeprecatedworkflow1-workflow)
+        - [mycompany.simple.Deprecated.SomeDeprecatedWorkflow2](#mycompany-simple-deprecated-somedeprecatedworkflow2-workflow)
+      - [Queries](#mycompany-simple-deprecated-queries)
+        - [mycompany.simple.Deprecated.SomeDeprecatedQuery1](#mycompany-simple-deprecated-somedeprecatedquery1-query)
+        - [mycompany.simple.Deprecated.SomeDeprecatedQuery2](#mycompany-simple-deprecated-somedeprecatedquery2-query)
+      - [Signals](#mycompany-simple-deprecated-signals)
+        - [mycompany.simple.Deprecated.SomeDeprecatedSignal1](#mycompany-simple-deprecated-somedeprecatedsignal1-signal)
+        - [mycompany.simple.Deprecated.SomeDeprecatedSignal2](#mycompany-simple-deprecated-somedeprecatedsignal2-signal)
+      - [Updates](#mycompany-simple-deprecated-updates)
+        - [mycompany.simple.Deprecated.SomeDeprecatedUpdate1](#mycompany-simple-deprecated-somedeprecatedupdate1-update)
+        - [mycompany.simple.Deprecated.SomeDeprecatedUpdate2](#mycompany-simple-deprecated-somedeprecatedupdate2-update)
+      - [Activities](#mycompany-simple-deprecated-activities)
+        - [mycompany.simple.Deprecated.SomeDeprecatedActivity1](#mycompany-simple-deprecated-somedeprecatedactivity1-activity)
+        - [mycompany.simple.Deprecated.SomeDeprecatedActivity2](#mycompany-simple-deprecated-somedeprecatedactivity2-activity)
   - Messages
     - [mycompany.simple.Foo](#mycompany-simple-foo)
     - [mycompany.simple.LonelyActivity1Request](#mycompany-simple-lonelyactivity1request)
@@ -84,6 +100,7 @@
     - [mycompany.simple.SomeActivity2Request](#mycompany-simple-someactivity2request)
     - [mycompany.simple.SomeActivity3Request](#mycompany-simple-someactivity3request)
     - [mycompany.simple.SomeActivity3Response](#mycompany-simple-someactivity3response)
+    - [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
     - [mycompany.simple.SomeQuery1Response](#mycompany-simple-somequery1response)
     - [mycompany.simple.SomeQuery2Request](#mycompany-simple-somequery2request)
     - [mycompany.simple.SomeQuery2Response](#mycompany-simple-somequery2response)
@@ -754,6 +771,7 @@ SomeWorkflow2 does some workflow thing.
 
 <pre>
 SomeWorkflow3 does some workflow thing.
+Deprecated: Use SomeWorkflow2 instead.
 </pre>
 
 **Input:** [mycompany.simple.SomeWorkflow3Request](#mycompany-simple-someworkflow3request)
@@ -1717,6 +1735,256 @@ go_name: Blah</pre></td>
 <tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
 </table>   
 
+<a name="mycompany-simple-deprecated"></a>
+## mycompany.simple.Deprecated
+
+<a name="mycompany-simple-deprecated-workflows"></a>
+### Workflows
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedworkflow1-workflow"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedWorkflow1
+
+<pre>
+SomeDeprecatedWorkflow1 does something
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+**Queries:**
+
+<table>
+<tr><th>Query</th></tr>
+<tr><td><a href="#mycompany-simple-deprecated-somedeprecatedquery1-query">mycompany.simple.Deprecated.SomeDeprecatedQuery1</a></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#mycompany-simple-deprecated-somedeprecatedsignal1-signal">mycompany.simple.Deprecated.SomeDeprecatedSignal1</a></td><td>true</td></tr>
+</table>
+
+**Updates:**
+
+<table>
+<tr><th>Update</th></tr>
+<tr><td><a href="#mycompany-simple-deprecated-somedeprecatedupdate1-update">mycompany.simple.Deprecated.SomeDeprecatedUpdate1</a></td></tr>
+</table>
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedworkflow2-workflow"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedWorkflow2
+
+<pre>
+SomeDeprecatedWorkflow2 does something else
+
+Deprecated: a custom workflow deprecation message.
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+**Queries:**
+
+<table>
+<tr><th>Query</th></tr>
+<tr><td><a href="#mycompany-simple-deprecated-somedeprecatedquery2-query">mycompany.simple.Deprecated.SomeDeprecatedQuery2</a></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#mycompany-simple-deprecated-somedeprecatedsignal2-signal">mycompany.simple.Deprecated.SomeDeprecatedSignal2</a></td><td>true</td></tr>
+</table>
+
+**Updates:**
+
+<table>
+<tr><th>Update</th></tr>
+<tr><td><a href="#mycompany-simple-deprecated-somedeprecatedupdate2-update">mycompany.simple.Deprecated.SomeDeprecatedUpdate2</a></td></tr>
+</table>  
+
+<a name="mycompany-simple-deprecated-queries"></a>
+### Queries
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedquery1-query"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedQuery1
+
+<pre>
+SomeDeprecatedQuery1 does something else
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedquery2-query"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedQuery2
+
+<pre>
+SomeDeprecatedQuery2 does something else
+
+Deprecated: a custom query deprecation message.
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+  
+
+<a name="mycompany-simple-deprecated-signals"></a>
+### Signals
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedsignal1-signal"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedSignal1
+
+<pre>
+SomeDeprecatedSignal1 does something else
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedsignal2-signal"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedSignal2
+
+<pre>
+SomeDeprecatedSignal2 does something else
+
+Deprecated: a custom signal deprecation message.
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+  
+
+<a name="mycompany-simple-deprecated-updates"></a>
+### Updates
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedupdate1-update"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedUpdate1
+
+<pre>
+SomeDeprecatedUpdate1 does something else
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedupdate2-update"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedUpdate2
+
+<pre>
+SomeDeprecatedUpdate2 does something else
+
+Deprecated: a custom signal deprecation message.
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+<a name="mycompany-simple-deprecated-activities"></a>
+### Activities
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedactivity1-activity"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedActivity1
+
+<pre>
+SomeDeprecatedActivity1 does something
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table> 
+
+---
+<a name="mycompany-simple-deprecated-somedeprecatedactivity2-activity"></a>
+### mycompany.simple.Deprecated.SomeDeprecatedActivity2
+
+<pre>
+SomeDeprecatedActivity2 does something else
+
+Deprecated: a custom activity deprecation message.
+</pre>
+
+**Input:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Output:** [mycompany.simple.SomeDeprecatedMessage](#mycompany-simple-somedeprecatedmessage)
+
+
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table>   
+
 <a name="mycompany-simple-messages"></a>
 ## Messages
 
@@ -2112,6 +2380,11 @@ json_name: responseVal
 go_name: ResponseVal</pre></td>
 </tr>
 </table>
+
+
+
+<a name="mycompany-simple-somedeprecatedmessage"></a>
+### mycompany.simple.SomeDeprecatedMessage
 
 
 

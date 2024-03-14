@@ -5,6 +5,7 @@ package mycompany.simple;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
@@ -35,7 +36,9 @@ service Simple {
   }
 
   // SomeWorkflow3 does some workflow thing.
+  // Deprecated: Use SomeWorkflow2 instead.
   rpc SomeWorkflow3(SomeWorkflow3Request) returns (google.protobuf.Empty) {
+    option deprecated = true;
     option (temporal.v1.workflow) = {
       id: 'some-workflow-3/${! id }/${! requestVal }'
       task_queue       : 'my-task-queue-2'
@@ -304,3 +307,89 @@ service OnlyActivities {
 message LonelyActivity1Request {}
 
 message LonelyActivity1Response {}
+
+service Deprecated {
+  // SomeDeprecatedWorkflow1 does something
+  rpc SomeDeprecatedWorkflow1(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.workflow) = {
+      query: { ref: 'SomeDeprecatedQuery1' }
+      signal: { ref: 'SomeDeprecatedSignal1', start: true }
+      update: { ref: 'SomeDeprecatedUpdate1' }
+    };
+  }
+
+  // SomeDeprecatedWorkflow2 does something else
+  //
+  // Deprecated: a custom workflow deprecation message.
+  rpc SomeDeprecatedWorkflow2(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.workflow) = {
+      query: { ref: 'SomeDeprecatedQuery2' }
+      signal: { ref: 'SomeDeprecatedSignal2', start: true }
+      update: { ref: 'SomeDeprecatedUpdate2' }
+    };
+  }
+
+  // SomeDeprecatedActivity1 does something
+  rpc SomeDeprecatedActivity1(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+
+  // SomeDeprecatedActivity2 does something else
+  //
+  // Deprecated: a custom activity deprecation message.
+  rpc SomeDeprecatedActivity2(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+
+  // SomeDeprecatedQuery1 does something else
+  rpc SomeDeprecatedQuery1(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.query) = {};
+  }
+
+  // SomeDeprecatedQuery2 does something else
+  //
+  // Deprecated: a custom query deprecation message.
+  rpc SomeDeprecatedQuery2(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.query) = {};
+  }
+
+  // SomeDeprecatedSignal1 does something else
+  rpc SomeDeprecatedSignal1(SomeDeprecatedMessage) returns (google.protobuf.Empty) {
+    option deprecated = true;
+    option (temporal.v1.signal) = {};
+  }
+
+  // SomeDeprecatedSignal2 does something else
+  //
+  // Deprecated: a custom signal deprecation message.
+  rpc SomeDeprecatedSignal2(SomeDeprecatedMessage) returns (google.protobuf.Empty) {
+    option deprecated = true;
+    option (temporal.v1.signal) = {};
+  }
+
+  // SomeDeprecatedUpdate1 does something else
+  rpc SomeDeprecatedUpdate1(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.update) = {};
+  }
+
+  // SomeDeprecatedUpdate2 does something else
+  //
+  // Deprecated: a custom signal deprecation message.
+  rpc SomeDeprecatedUpdate2(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
+    option deprecated = true;
+    option (temporal.v1.update) = {};
+  }
+}
+
+message SomeDeprecatedMessage {}
