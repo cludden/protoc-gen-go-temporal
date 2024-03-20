@@ -996,11 +996,23 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 		cmd.Id("After").Op(":").Id("opts").Dot("after")
 		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *g.Group) {
 			// add async flag
-			// generate flag
 			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
 				fields.Id("Name").Op(":").Lit("detach")
 				fields.Id("Usage").Op(":").Lit("run workflow in the background and print workflow and execution id")
 				fields.Id("Aliases").Op(":").Index().String().Values(g.Lit("d"))
+			})
+			// add task-queue flag
+			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
+				fields.Id("Name").Op(":").Lit("task-queue")
+				fields.Id("Usage").Op(":").Lit("task queue name")
+				fields.Id("Aliases").Op(":").Index().String().Values(g.Lit("t"))
+				fields.Id("EnvVars").Op(":").Index().String().Values(g.Lit("TEMPORAL_TASK_QUEUE_NAME"), g.Lit("TEMPORAL_TASK_QUEUE"), g.Lit("TASK_QUEUE_NAME"), g.Lit("TASK_QUEUE"))
+				tq := svc.opts.GetTaskQueue()
+				if tq == "" {
+					fields.Id("Required").Op(":").True()
+				} else {
+					fields.Id("Value").Op(":").Lit(tq)
+				}
 			})
 			if hasInput {
 				// add -f flag to read input from json file
@@ -1017,12 +1029,12 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 		})
 		cmd.Id("Action").Op(":").Func().Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *g.Group) {
 			// initialize client
-			fn.List(g.Id("c"), g.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(g.Id("cmd"))
+			fn.List(g.Id("tc"), g.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(g.Id("cmd"))
 			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client for command: %w"), g.Err())),
 			)
-			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("c"))
+			fn.Defer().Id("tc").Dot("Close").Call()
+			fn.Id("c").Op(":=").Id(toCamel("New%sClient", svc.Service.GoName)).Call(g.Id("tc"))
 
 			// unmarshal input
 			if hasInput {
@@ -1034,12 +1046,19 @@ func (svc *Service) genCliWorkflowCommand(f *g.Group, workflow string) {
 				)
 			}
 
+			// build workflow options
+			fn.Id("opts").Op(":=").Qual(clientPkg, "StartWorkflowOptions").Values()
+			fn.If(g.Id("tq").Op(":=").Id("cmd").Dot("String").Call(g.Lit("task-queue")), g.Id("tq").Op("!=").Lit("")).Block(
+				g.Id("opts").Dot("TaskQueue").Op("=").Id("tq"),
+			)
+
 			// execute operation
-			fn.List(g.Id("run"), g.Err()).Op(":=").Id("client").Dot(fmt.Sprintf("%sAsync", workflow)).CallFunc(func(args *g.Group) {
+			fn.List(g.Id("run"), g.Err()).Op(":=").Id("c").Dot(fmt.Sprintf("%sAsync", workflow)).CallFunc(func(args *g.Group) {
 				args.Id("cmd").Dot("Context")
 				if hasInput {
 					args.Id("req")
 				}
+				args.Id(toCamel("New%sOptions", workflow)).Call().Dot("WithStartWorkflowOptions").Call(g.Id("opts"))
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow: %w"), g.Id(fmt.Sprintf("%sWorkflowName", workflow)), g.Err())),
