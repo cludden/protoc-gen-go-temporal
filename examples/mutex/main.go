@@ -105,7 +105,7 @@ func (w *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) error {
 	if d == 0 {
 		d = time.Second * 10
 	}
-	err = workflow.Sleep(ctx, w.Req.GetSleep().AsDuration())
+	err = workflow.Sleep(ctx, d)
 	w.log.Info("critical operation finished")
 	return err
 }

@@ -20,7 +20,6 @@
     ```
 3. In a different shell, execute the workflow
     ```shell
-    # initialize background timer for 1h in the future
     go run examples/searchattributes/main.go search-attributes \
         --custom-datetime-field=2024-01-01T00:00:00Z \
         --custom-keyword-field=foo-bar \

@@ -10,7 +10,7 @@
     ```
 2. In a different shell, run the example worker
     ```shell
-    go run examples/mutex/main.go worker
+    go run examples/updatabletimer/main.go worker
     ```
 3. In a different shell, execute the workflow
     ```shell

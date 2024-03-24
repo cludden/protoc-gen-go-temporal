@@ -1034,7 +1034,6 @@ go_name: Foo</pre></td>
 <tr><td>execution_timeout</td><td>1 hour</td></tr>
 <tr><td>id</td><td><pre><code>create-foo/${! name.slug() }</code></pre></td></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE</code></pre></td></tr>
-<tr><td>retry_policy.non_retryable_error_types</td><td>foo,bar,baz</td></tr>
 </table>
 
 **Queries:**
