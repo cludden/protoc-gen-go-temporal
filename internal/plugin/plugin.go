@@ -86,6 +86,25 @@ func commentf[T any, PT interface {
 			break
 		}
 	}
+	c.Commentf(defaultMsg, a...)
+	if deprecated {
+		c.Comment(" ")
+		c.Comment(deprecatedComment)
+	}
+}
+
+func commentWithDefaultf[T any, PT interface {
+	*T
+	Comment(string) *g.Statement
+	Commentf(string, ...any) *g.Statement
+}](c PT, methods []*protogen.Method, defaultMsg string, a ...any) {
+	var deprecated bool
+	for _, method := range methods {
+		deprecated = isDeprecated(method)
+		if deprecated {
+			break
+		}
+	}
 	if len(methods) == 1 && methods[0].Comments.Leading.String() != "" {
 		comment := strings.TrimSuffix(methods[0].Comments.Leading.String(), "\n")
 		c.Comment(comment)

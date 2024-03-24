@@ -265,7 +265,7 @@ func (svc *Manifest) genWorkerSignalExternal(f *g.File, signal protoreflect.Full
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	commentf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
 	f.Func().Id(functionName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
@@ -296,7 +296,7 @@ func (svc *Manifest) genWorkerSignalExternalAsync(f *g.File, signal protoreflect
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	commentf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
 	f.Func().Id(functionName).
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
@@ -504,7 +504,7 @@ func (svc *Manifest) genWorkerWorkflowChild(f *g.File, workflow protoreflect.Ful
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	commentf(f, methodSet(method), "%s executes a child %s workflow and blocks until error or response received", functionName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s executes a child %s workflow and blocks until error or response received", functionName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(functionName).
 		ParamsFunc(func(args *g.Group) {
@@ -548,7 +548,7 @@ func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflec
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	commentf(f, methodSet(method), "%s starts a child %s workflow and returns a handle to the child workflow run", functionName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s starts a child %s workflow and returns a handle to the child workflow run", functionName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(functionName).
 		ParamsFunc(func(args *g.Group) {
@@ -838,11 +838,7 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 			hasOutput := !isEmpty(method.Output)
 			varName := svc.toCamel("%sFunction", workflow)
 
-			if method.Comments.Leading.String() != "" {
-				defs.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-			} else {
-				defs.Commentf("%s implements a %q workflow", varName, svc.toCamel("%sWorkflow", workflow))
-			}
+			commentWithDefaultf(defs, methodSet(method), "%s implements a %q workflow", varName, svc.toCamel("%sWorkflow", workflow))
 			defs.Id(varName).
 				Func().
 				ParamsFunc(func(args *g.Group) {
@@ -901,17 +897,13 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 		details = append(details, fmt.Sprintf("id: \"%s\"", id))
 	}
 
-	commentf(f, methodSet(method), "%s describes a(n) %s workflow implementation", typeName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s describes a(n) %s workflow implementation", typeName, svc.fqnForWorkflow(workflow))
 	if len(details) > 0 {
 		f.Comment(" ")
 		f.Commentf("workflow details: (%s)", strings.Join(details, ", "))
 	}
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
-		if method.Comments.Leading.String() != "" {
-			methods.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-		} else {
-			methods.Commentf("Execute defines the entrypoint to a(n) %s workflow", method.Desc.FullName())
-		}
+		commentf(methods, methodSet(method), "Execute defines the entrypoint to a(n) %s workflow", method.Desc.FullName())
 		methods.
 			Id("Execute").
 			Params(
@@ -931,7 +923,7 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
 
-			commentf(methods, methodSet(handler), "%s implements a(n) %s query handler", query, svc.fqnForQuery(query))
+			commentWithDefaultf(methods, methodSet(handler), "%s implements a(n) %s query handler", query, svc.fqnForQuery(query))
 			methods.Id(svc.toCamel("%s", query)).
 				ParamsFunc(func(args *g.Group) {
 					if hasInput {
@@ -969,7 +961,7 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 			}
 
 			// add <Update> method
-			commentf(methods, methodSet(handler), "%s implements a(n) %s update handler", update, svc.fqnForQuery(update))
+			commentWithDefaultf(methods, methodSet(handler), "%s implements a(n) %s update handler", update, svc.fqnForQuery(update))
 			methods.Id(svc.toCamel("%s", update)).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -1000,7 +992,7 @@ func (svc *Manifest) genWorkerWorkflowsInterface(f *g.File) {
 			}
 			handler := svc.methods[workflow]
 
-			commentf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", workflow, svc.toCamel("%sWorkflow", workflow))
+			commentWithDefaultf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", workflow, svc.toCamel("%sWorkflow", workflow))
 			methods.
 				Id(svc.methods[workflow].GoName).
 				ParamsFunc(func(args *g.Group) {
