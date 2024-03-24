@@ -1,5 +1,10 @@
 version: v1
 directories:
-  - example/proto
+  - examples/helloworld/proto
+  - examples/mutex/proto
+  - examples/example/proto
+  - examples/searchattributes/proto
+  - examples/updatabletimer/proto
+  - examples/xns/proto
   - proto
   - test

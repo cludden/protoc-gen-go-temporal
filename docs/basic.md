@@ -1,5 +1,53 @@
 # Table of Contents
 
+- [example.helloworld.v1](#example-helloworld-v1)
+  - Services
+    - [example.helloworld.v1.Example](#example-helloworld-v1-example)
+      - [Workflows](#example-helloworld-v1-example-workflows)
+        - [example.helloworld.v1.Example.HelloWorld](#example-helloworld-v1-example-helloworld-workflow)
+      - [Activities](#example-helloworld-v1-example-activities)
+        - [example.helloworld.v1.Example.HelloWorld](#example-helloworld-v1-example-helloworld-activity)
+  - Messages
+    - [example.helloworld.v1.HelloWorldInput](#example-helloworld-v1-helloworldinput)
+    - [example.helloworld.v1.HelloWorldOutput](#example-helloworld-v1-helloworldoutput)
+- [example.mutex.v1](#example-mutex-v1)
+  - Services
+    - [example.mutex.v1.Example](#example-mutex-v1-example)
+      - [Workflows](#example-mutex-v1-example-workflows)
+        - [example.mutex.v1.Example.Mutex](#example-mutex-v1-example-mutex-workflow)
+        - [example.mutex.v1.Example.SampleWorkflowWithMutex](#example-mutex-v1-example-sampleworkflowwithmutex-workflow)
+      - [Signals](#example-mutex-v1-example-signals)
+        - [example.mutex.v1.Example.AcquireLock](#example-mutex-v1-example-acquirelock-signal)
+        - [example.mutex.v1.Example.LockAcquired](#example-mutex-v1-example-lockacquired-signal)
+        - [example.mutex.v1.Example.ReleaseLock](#example-mutex-v1-example-releaselock-signal)
+      - [Activities](#example-mutex-v1-example-activities)
+        - [example.mutex.v1.Example.Mutex](#example-mutex-v1-example-mutex-activity)
+  - Messages
+    - [example.mutex.v1.AcquireLockInput](#example-mutex-v1-acquirelockinput)
+    - [example.mutex.v1.LockAcquiredInput](#example-mutex-v1-lockacquiredinput)
+    - [example.mutex.v1.MutexInput](#example-mutex-v1-mutexinput)
+    - [example.mutex.v1.ReleaseLockInput](#example-mutex-v1-releaselockinput)
+    - [example.mutex.v1.SampleWorkflowWithMutexInput](#example-mutex-v1-sampleworkflowwithmutexinput)
+- [example.searchattributes.v1](#example-searchattributes-v1)
+  - Services
+    - [example.searchattributes.v1.Example](#example-searchattributes-v1-example)
+      - [Workflows](#example-searchattributes-v1-example-workflows)
+        - [example.searchattributes.v1.Example.SearchAttributes](#example-searchattributes-v1-example-searchattributes-workflow)
+  - Messages
+    - [example.searchattributes.v1.SearchAttributesInput](#example-searchattributes-v1-searchattributesinput)
+- [example.updatabletimer.v1](#example-updatabletimer-v1)
+  - Services
+    - [example.updatabletimer.v1.Example](#example-updatabletimer-v1-example)
+      - [Workflows](#example-updatabletimer-v1-example-workflows)
+        - [example.updatabletimer.v1.Example.UpdatableTimer](#example-updatabletimer-v1-example-updatabletimer-workflow)
+      - [Queries](#example-updatabletimer-v1-example-queries)
+        - [example.updatabletimer.v1.Example.GetWakeUpTime](#example-updatabletimer-v1-example-getwakeuptime-query)
+      - [Signals](#example-updatabletimer-v1-example-signals)
+        - [example.updatabletimer.v1.Example.UpdateWakeUpTime](#example-updatabletimer-v1-example-updatewakeuptime-signal)
+  - Messages
+    - [example.updatabletimer.v1.GetWakeUpTimeOutput](#example-updatabletimer-v1-getwakeuptimeoutput)
+    - [example.updatabletimer.v1.UpdatableTimerInput](#example-updatabletimer-v1-updatabletimerinput)
+    - [example.updatabletimer.v1.UpdateWakeUpTimeInput](#example-updatabletimer-v1-updatewakeuptimeinput)
 - [example.v1](#example-v1)
   - Services
     - [example.v1.Example](#example-v1-example)
@@ -13,9 +61,6 @@
         - [example.v1.Example.UpdateFooProgress](#example-v1-example-updatefooprogress-update)
       - [Activities](#example-v1-example-activities)
         - [example.v1.Example.Notify](#example-v1-example-notify-activity)
-    - [example.v1.External](#example-v1-external)
-      - [Workflows](#example-v1-external-workflows)
-        - [example.v1.External.ProvisionFoo](#example-v1-external-provisionfoo-workflow)
   - Messages
     - [example.v1.CreateFooRequest](#example-v1-createfoorequest)
     - [example.v1.CreateFooResponse](#example-v1-createfooresponse)
@@ -23,9 +68,33 @@
     - [example.v1.Foo.Status](#example-v1-foo-status)
     - [example.v1.GetFooProgressResponse](#example-v1-getfooprogressresponse)
     - [example.v1.NotifyRequest](#example-v1-notifyrequest)
-    - [example.v1.ProvisionFooRequest](#example-v1-provisionfoorequest)
-    - [example.v1.ProvisionFooResponse](#example-v1-provisionfooresponse)
     - [example.v1.SetFooProgressRequest](#example-v1-setfooprogressrequest)
+- [example.xns.v1](#example-xns-v1)
+  - Services
+    - [example.xns.v1.Xns](#example-xns-v1-xns)
+      - [Workflows](#example-xns-v1-xns-workflows)
+        - [example.xns.v1.Xns.ProvisionFoo](#example-xns-v1-xns-provisionfoo-workflow)
+    - [example.xns.v1.Example](#example-xns-v1-example)
+      - [Workflows](#example-xns-v1-example-workflows)
+        - [example.xns.v1.Example.CreateFoo](#example-xns-v1-example-createfoo-workflow)
+      - [Queries](#example-xns-v1-example-queries)
+        - [example.xns.v1.Example.GetFooProgress](#example-xns-v1-example-getfooprogress-query)
+      - [Signals](#example-xns-v1-example-signals)
+        - [example.xns.v1.Example.SetFooProgress](#example-xns-v1-example-setfooprogress-signal)
+      - [Updates](#example-xns-v1-example-updates)
+        - [example.xns.v1.Example.UpdateFooProgress](#example-xns-v1-example-updatefooprogress-update)
+      - [Activities](#example-xns-v1-example-activities)
+        - [example.xns.v1.Example.Notify](#example-xns-v1-example-notify-activity)
+  - Messages
+    - [example.xns.v1.CreateFooRequest](#example-xns-v1-createfoorequest)
+    - [example.xns.v1.CreateFooResponse](#example-xns-v1-createfooresponse)
+    - [example.xns.v1.Foo](#example-xns-v1-foo)
+    - [example.xns.v1.Foo.Status](#example-xns-v1-foo-status)
+    - [example.xns.v1.GetFooProgressResponse](#example-xns-v1-getfooprogressresponse)
+    - [example.xns.v1.NotifyRequest](#example-xns-v1-notifyrequest)
+    - [example.xns.v1.ProvisionFooRequest](#example-xns-v1-provisionfoorequest)
+    - [example.xns.v1.ProvisionFooResponse](#example-xns-v1-provisionfooresponse)
+    - [example.xns.v1.SetFooProgressRequest](#example-xns-v1-setfooprogressrequest)
 - [mycompany.simple](#mycompany-simple)
   - Services
     - [mycompany.simple.Simple](#mycompany-simple-simple)
@@ -118,6 +187,790 @@
     - [google.protobuf.Duration](#google-protobuf-duration)
     - [google.protobuf.Timestamp](#google-protobuf-timestamp)
 
+<a name="example-helloworld-v1"></a>
+# example.helloworld.v1
+
+<a name="example-helloworld-v1-services"></a>
+## Services
+
+<a name="example-helloworld-v1-example"></a>
+## example.helloworld.v1.Example
+
+<a name="example-helloworld-v1-example-workflows"></a>
+### Workflows
+
+---
+<a name="example-helloworld-v1-example-helloworld-workflow"></a>
+### example.helloworld.v1.Example.HelloWorld
+
+**Input:** [example.helloworld.v1.HelloWorldInput](#example-helloworld-v1-helloworldinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+**Output:** [example.helloworld.v1.HelloWorldOutput](#example-helloworld-v1-helloworldoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>hello_world/${! uuid_v4() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>    
+
+<a name="example-helloworld-v1-example-activities"></a>
+### Activities
+
+---
+<a name="example-helloworld-v1-example-helloworld-activity"></a>
+### example.helloworld.v1.Example.HelloWorld
+
+
+
+**Input:** [example.helloworld.v1.HelloWorldInput](#example-helloworld-v1-helloworldinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+**Output:** [example.helloworld.v1.HelloWorldOutput](#example-helloworld-v1-helloworldoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>10 seconds</td></tr>
+</table>   
+
+<a name="example-helloworld-v1-messages"></a>
+## Messages
+
+<a name="example-helloworld-v1-helloworldinput"></a>
+### example.helloworld.v1.HelloWorldInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-helloworld-v1-helloworldoutput"></a>
+### example.helloworld.v1.HelloWorldOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-mutex-v1"></a>
+# example.mutex.v1
+
+<a name="example-mutex-v1-services"></a>
+## Services
+
+<a name="example-mutex-v1-example"></a>
+## example.mutex.v1.Example
+
+<a name="example-mutex-v1-example-workflows"></a>
+### Workflows
+
+---
+<a name="example-mutex-v1-example-mutex-workflow"></a>
+### example.mutex.v1.Example.Mutex
+
+**Input:** [example.mutex.v1.MutexInput](#example-mutex-v1-mutexinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>resource_id</td>
+<td>string</td>
+<td><pre>
+json_name: resourceId
+go_name: ResourceId</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>mutex:${! resourceId }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+<tr><td>retry_policy.backoff_coefficient</td><td>2</td></tr>
+<tr><td>retry_policy.initial_interval</td><td>1 second</td></tr>
+<tr><td>retry_policy.max_attempts</td><td>5</td></tr>
+<tr><td>retry_policy.max_interval</td><td>1 minute</td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#example-mutex-v1-example-acquirelock-signal">example.mutex.v1.Example.AcquireLock</a></td><td>true</td></tr>
+<tr><td><a href="#example-mutex-v1-example-releaselock-signal">example.mutex.v1.Example.ReleaseLock</a></td><td>false</td></tr>
+</table>
+
+---
+<a name="example-mutex-v1-example-sampleworkflowwithmutex-workflow"></a>
+### example.mutex.v1.Example.SampleWorkflowWithMutex
+
+**Input:** [example.mutex.v1.SampleWorkflowWithMutexInput](#example-mutex-v1-sampleworkflowwithmutexinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>resource_id</td>
+<td>string</td>
+<td><pre>
+json_name: resourceId
+go_name: ResourceId</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>SampleWorkflow1WithMutex_${! uuid_v4() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#example-mutex-v1-example-lockacquired-signal">example.mutex.v1.Example.LockAcquired</a></td><td>false</td></tr>
+</table>   
+
+<a name="example-mutex-v1-example-signals"></a>
+### Signals
+
+---
+<a name="example-mutex-v1-example-acquirelock-signal"></a>
+### example.mutex.v1.Example.AcquireLock
+
+
+
+**Input:** [example.mutex.v1.AcquireLockInput](#example-mutex-v1-acquirelockinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>timeout</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: timeout
+go_name: Timeout</pre></td>
+</tr><tr>
+<td>workflow_id</td>
+<td>string</td>
+<td><pre>
+json_name: workflowId
+go_name: WorkflowId</pre></td>
+</tr>
+</table>
+
+---
+<a name="example-mutex-v1-example-lockacquired-signal"></a>
+### example.mutex.v1.Example.LockAcquired
+
+
+
+**Input:** [example.mutex.v1.LockAcquiredInput](#example-mutex-v1-lockacquiredinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>lease_id</td>
+<td>string</td>
+<td><pre>
+json_name: leaseId
+go_name: LeaseId</pre></td>
+</tr>
+</table>
+
+---
+<a name="example-mutex-v1-example-releaselock-signal"></a>
+### example.mutex.v1.Example.ReleaseLock
+
+
+
+**Input:** [example.mutex.v1.ReleaseLockInput](#example-mutex-v1-releaselockinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>lease_id</td>
+<td>string</td>
+<td><pre>
+json_name: leaseId
+go_name: LeaseId</pre></td>
+</tr>
+</table>  
+
+<a name="example-mutex-v1-example-activities"></a>
+### Activities
+
+---
+<a name="example-mutex-v1-example-mutex-activity"></a>
+### example.mutex.v1.Example.Mutex
+
+
+
+**Input:** [example.mutex.v1.MutexInput](#example-mutex-v1-mutexinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>resource_id</td>
+<td>string</td>
+<td><pre>
+json_name: resourceId
+go_name: ResourceId</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>10 seconds</td></tr>
+</table>   
+
+<a name="example-mutex-v1-messages"></a>
+## Messages
+
+<a name="example-mutex-v1-acquirelockinput"></a>
+### example.mutex.v1.AcquireLockInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>timeout</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: timeout
+go_name: Timeout</pre></td>
+</tr><tr>
+<td>workflow_id</td>
+<td>string</td>
+<td><pre>
+json_name: workflowId
+go_name: WorkflowId</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-mutex-v1-lockacquiredinput"></a>
+### example.mutex.v1.LockAcquiredInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>lease_id</td>
+<td>string</td>
+<td><pre>
+json_name: leaseId
+go_name: LeaseId</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-mutex-v1-mutexinput"></a>
+### example.mutex.v1.MutexInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>resource_id</td>
+<td>string</td>
+<td><pre>
+json_name: resourceId
+go_name: ResourceId</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-mutex-v1-releaselockinput"></a>
+### example.mutex.v1.ReleaseLockInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>lease_id</td>
+<td>string</td>
+<td><pre>
+json_name: leaseId
+go_name: LeaseId</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-mutex-v1-sampleworkflowwithmutexinput"></a>
+### example.mutex.v1.SampleWorkflowWithMutexInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>resource_id</td>
+<td>string</td>
+<td><pre>
+json_name: resourceId
+go_name: ResourceId</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-searchattributes-v1"></a>
+# example.searchattributes.v1
+
+<a name="example-searchattributes-v1-services"></a>
+## Services
+
+<a name="example-searchattributes-v1-example"></a>
+## example.searchattributes.v1.Example
+
+<a name="example-searchattributes-v1-example-workflows"></a>
+### Workflows
+
+---
+<a name="example-searchattributes-v1-example-searchattributes-workflow"></a>
+### example.searchattributes.v1.Example.SearchAttributes
+
+**Input:** [example.searchattributes.v1.SearchAttributesInput](#example-searchattributes-v1-searchattributesinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>custom_bool_field</td>
+<td>bool</td>
+<td><pre>
+json_name: customBoolField
+go_name: CustomBoolField</pre></td>
+</tr><tr>
+<td>custom_datetime_field</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: customDatetimeField
+go_name: CustomDatetimeField</pre></td>
+</tr><tr>
+<td>custom_double_field</td>
+<td>double</td>
+<td><pre>
+json_name: customDoubleField
+go_name: CustomDoubleField</pre></td>
+</tr><tr>
+<td>custom_int_field</td>
+<td>int64</td>
+<td><pre>
+json_name: customIntField
+go_name: CustomIntField</pre></td>
+</tr><tr>
+<td>custom_keyword_field</td>
+<td>string</td>
+<td><pre>
+json_name: customKeywordField
+go_name: CustomKeywordField</pre></td>
+</tr><tr>
+<td>custom_text_field</td>
+<td>string</td>
+<td><pre>
+json_name: customTextField
+go_name: CustomTextField</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>search_attributes_${! uuid_v4() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+<tr><td>search_attributes</td><td><pre><code>CustomKeywordField = customKeywordField 
+CustomTextField = customTextField 
+CustomIntField = customIntField.int64() 
+CustomDoubleField = customDoubleField 
+CustomBoolField = customBoolField 
+CustomDatetimeField = customDatetimeField.ts_parse("2006-01-02T15:04:05Z")</code></pre></td></tr>
+</table>     
+
+<a name="example-searchattributes-v1-messages"></a>
+## Messages
+
+<a name="example-searchattributes-v1-searchattributesinput"></a>
+### example.searchattributes.v1.SearchAttributesInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>custom_bool_field</td>
+<td>bool</td>
+<td><pre>
+json_name: customBoolField
+go_name: CustomBoolField</pre></td>
+</tr><tr>
+<td>custom_datetime_field</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: customDatetimeField
+go_name: CustomDatetimeField</pre></td>
+</tr><tr>
+<td>custom_double_field</td>
+<td>double</td>
+<td><pre>
+json_name: customDoubleField
+go_name: CustomDoubleField</pre></td>
+</tr><tr>
+<td>custom_int_field</td>
+<td>int64</td>
+<td><pre>
+json_name: customIntField
+go_name: CustomIntField</pre></td>
+</tr><tr>
+<td>custom_keyword_field</td>
+<td>string</td>
+<td><pre>
+json_name: customKeywordField
+go_name: CustomKeywordField</pre></td>
+</tr><tr>
+<td>custom_text_field</td>
+<td>string</td>
+<td><pre>
+json_name: customTextField
+go_name: CustomTextField</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-updatabletimer-v1"></a>
+# example.updatabletimer.v1
+
+<a name="example-updatabletimer-v1-services"></a>
+## Services
+
+<a name="example-updatabletimer-v1-example"></a>
+## example.updatabletimer.v1.Example
+
+<a name="example-updatabletimer-v1-example-workflows"></a>
+### Workflows
+
+---
+<a name="example-updatabletimer-v1-example-updatabletimer-workflow"></a>
+### example.updatabletimer.v1.Example.UpdatableTimer
+
+**Input:** [example.updatabletimer.v1.UpdatableTimerInput](#example-updatabletimer-v1-updatabletimerinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>initial_wake_up_time</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: initialWakeUpTime
+go_name: InitialWakeUpTime</pre></td>
+</tr><tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>updatable-timer/${! name.or(uuid_v4()) }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+**Queries:**
+
+<table>
+<tr><th>Query</th></tr>
+<tr><td><a href="#example-updatabletimer-v1-example-getwakeuptime-query">example.updatabletimer.v1.Example.GetWakeUpTime</a></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#example-updatabletimer-v1-example-updatewakeuptime-signal">example.updatabletimer.v1.Example.UpdateWakeUpTime</a></td><td>false</td></tr>
+</table>  
+
+<a name="example-updatabletimer-v1-example-queries"></a>
+### Queries
+
+---
+<a name="example-updatabletimer-v1-example-getwakeuptime-query"></a>
+### example.updatabletimer.v1.Example.GetWakeUpTime
+
+
+
+**Output:** [example.updatabletimer.v1.GetWakeUpTimeOutput](#example-updatabletimer-v1-getwakeuptimeoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>wake_up_time</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: wakeUpTime
+go_name: WakeUpTime</pre></td>
+</tr>
+</table>  
+
+<a name="example-updatabletimer-v1-example-signals"></a>
+### Signals
+
+---
+<a name="example-updatabletimer-v1-example-updatewakeuptime-signal"></a>
+### example.updatabletimer.v1.Example.UpdateWakeUpTime
+
+
+
+**Input:** [example.updatabletimer.v1.UpdateWakeUpTimeInput](#example-updatabletimer-v1-updatewakeuptimeinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>wake_up_time</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: wakeUpTime
+go_name: WakeUpTime</pre></td>
+</tr>
+</table>   
+
+<a name="example-updatabletimer-v1-messages"></a>
+## Messages
+
+<a name="example-updatabletimer-v1-getwakeuptimeoutput"></a>
+### example.updatabletimer.v1.GetWakeUpTimeOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>wake_up_time</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: wakeUpTime
+go_name: WakeUpTime</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-updatabletimer-v1-updatabletimerinput"></a>
+### example.updatabletimer.v1.UpdatableTimerInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>initial_wake_up_time</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: initialWakeUpTime
+go_name: InitialWakeUpTime</pre></td>
+</tr><tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-updatabletimer-v1-updatewakeuptimeinput"></a>
+### example.updatabletimer.v1.UpdateWakeUpTimeInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>wake_up_time</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: wakeUpTime
+go_name: WakeUpTime</pre></td>
+</tr>
+</table>
+
+
+
 <a name="example-v1"></a>
 # example.v1
 
@@ -153,7 +1006,7 @@ CreateFoo creates a new foo operation
 unique foo name<br>
 
 json_name: name
-go_name: RequestName</pre></td>
+go_name: Name</pre></td>
 </tr>
 </table>
 
@@ -181,11 +1034,7 @@ go_name: Foo</pre></td>
 <tr><td>execution_timeout</td><td>1 hour</td></tr>
 <tr><td>id</td><td><pre><code>create-foo/${! name.slug() }</code></pre></td></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE</code></pre></td></tr>
-<tr><td>search_attributes</td><td><pre><code>foo = name
-created_at = now().ts_tz("UTC")</code></pre></td></tr>
-<tr><td>xns.heartbeat_interval</td><td>10 seconds</td></tr>
-<tr><td>xns.heartbeat_timeout</td><td>20 seconds</td></tr>
-<tr><td>xns.start_to_close_timeout</td><td>1 hour 30 seconds</td></tr>
+<tr><td>retry_policy.non_retryable_error_types</td><td>foo,bar,baz</td></tr>
 </table>
 
 **Queries:**
@@ -326,12 +1175,6 @@ go_name: Status</pre></td>
 </tr>
 </table>
 
-**Defaults:**
-
-<table>
-<tr><th>Name</th><th>Value</th></tr>
-</table>
-
 <a name="example-v1-example-activities"></a>
 ### Activities
 
@@ -368,68 +1211,6 @@ go_name: Message</pre></td>
 <tr><td>start_to_close_timeout</td><td>30 seconds</td></tr>
 </table>   
 
-<a name="example-v1-external"></a>
-## example.v1.External
-
-<a name="example-v1-external-workflows"></a>
-### Workflows
-
----
-<a name="example-v1-external-provisionfoo-workflow"></a>
-### example.v1.External.ProvisionFoo
-
-**Input:** [example.v1.ProvisionFooRequest](#example-v1-provisionfoorequest)
-
-<table>
-<tr>
-<th>Attribute</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>name</td>
-<td>string</td>
-<td><pre>
-unique foo name<br>
-
-json_name: name
-go_name: RequestName</pre></td>
-</tr>
-</table>
-
-**Output:** [example.v1.ProvisionFooResponse](#example-v1-provisionfooresponse)
-
-<table>
-<tr>
-<th>Attribute</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>foo</td>
-<td><a href="#example-v1-foo">example.v1.Foo</a></td>
-<td><pre>
-json_name: foo
-go_name: Foo</pre></td>
-</tr>
-</table>
-
-**Defaults:**
-
-<table>
-<tr><th>Name</th><th>Value</th></tr>
-<tr><td>id</td><td><pre><code>provision-foo/${! name.slug() }</code></pre></td></tr>
-<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
-</table>
-
-**Signals:**
-
-<table>
-<tr><th>Signal</th><th>Start</th></tr>
-<tr><td><a href="#example-v1-external-example-v1-example-setfooprogress-signal">example.v1.External.example.v1.Example.SetFooProgress</a></td><td>false</td></tr>
-<tr><td><a href="#example-v1-external-mycompany-simple-simple-somesignal3-signal">example.v1.External.mycompany.simple.Simple.SomeSignal3</a></td><td>false</td></tr>
-</table>     
-
 <a name="example-v1-messages"></a>
 ## Messages
 
@@ -453,7 +1234,7 @@ CreateFooRequest describes the input to a CreateFoo workflow
 unique foo name<br>
 
 json_name: name
-go_name: RequestName</pre></td>
+go_name: Name</pre></td>
 </tr>
 </table>
 
@@ -584,8 +1365,490 @@ go_name: Message</pre></td>
 
 
 
-<a name="example-v1-provisionfoorequest"></a>
-### example.v1.ProvisionFooRequest
+<a name="example-v1-setfooprogressrequest"></a>
+### example.v1.SetFooProgressRequest
+
+<pre>
+SetFooProgressRequest describes the input to a SetFooProgress signal
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>progress</td>
+<td>float</td>
+<td><pre>
+value of current workflow progress<br>
+
+json_name: progress
+go_name: Progress</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-xns-v1"></a>
+# example.xns.v1
+
+<a name="example-xns-v1-services"></a>
+## Services
+
+<a name="example-xns-v1-xns"></a>
+## example.xns.v1.Xns
+
+<a name="example-xns-v1-xns-workflows"></a>
+### Workflows
+
+---
+<a name="example-xns-v1-xns-provisionfoo-workflow"></a>
+### example.xns.v1.Xns.ProvisionFoo
+
+**Input:** [example.xns.v1.ProvisionFooRequest](#example-xns-v1-provisionfoorequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+unique foo name<br>
+
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+**Output:** [example.xns.v1.ProvisionFooResponse](#example-xns-v1-provisionfooresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>foo</td>
+<td><a href="#example-xns-v1-foo">example.xns.v1.Foo</a></td>
+<td><pre>
+json_name: foo
+go_name: Foo</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>provision-foo/${! name.slug() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
+
+<a name="example-xns-v1-example"></a>
+## example.xns.v1.Example
+
+<a name="example-xns-v1-example-workflows"></a>
+### Workflows
+
+---
+<a name="example-xns-v1-example-createfoo-workflow"></a>
+### example.xns.v1.Example.CreateFoo
+
+<pre>
+CreateFoo creates a new foo operation
+</pre>
+
+**Input:** [example.xns.v1.CreateFooRequest](#example-xns-v1-createfoorequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+unique foo name<br>
+
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+**Output:** [example.xns.v1.CreateFooResponse](#example-xns-v1-createfooresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>foo</td>
+<td><a href="#example-xns-v1-foo">example.xns.v1.Foo</a></td>
+<td><pre>
+json_name: foo
+go_name: Foo</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>execution_timeout</td><td>1 hour</td></tr>
+<tr><td>id</td><td><pre><code>create-foo/${! name.slug() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE</code></pre></td></tr>
+<tr><td>xns.heartbeat_interval</td><td>10 seconds</td></tr>
+<tr><td>xns.heartbeat_timeout</td><td>20 seconds</td></tr>
+<tr><td>xns.start_to_close_timeout</td><td>1 hour 30 seconds</td></tr>
+</table>
+
+**Queries:**
+
+<table>
+<tr><th>Query</th></tr>
+<tr><td><a href="#example-xns-v1-example-getfooprogress-query">example.xns.v1.Example.GetFooProgress</a></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#example-xns-v1-example-setfooprogress-signal">example.xns.v1.Example.SetFooProgress</a></td><td>true</td></tr>
+</table>
+
+**Updates:**
+
+<table>
+<tr><th>Update</th></tr>
+<tr><td><a href="#example-xns-v1-example-updatefooprogress-update">example.xns.v1.Example.UpdateFooProgress</a></td></tr>
+</table>  
+
+<a name="example-xns-v1-example-queries"></a>
+### Queries
+
+---
+<a name="example-xns-v1-example-getfooprogress-query"></a>
+### example.xns.v1.Example.GetFooProgress
+
+<pre>
+GetFooProgress returns the status of a CreateFoo operation
+</pre>
+
+**Output:** [example.xns.v1.GetFooProgressResponse](#example-xns-v1-getfooprogressresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>progress</td>
+<td>float</td>
+<td><pre>
+json_name: progress
+go_name: Progress</pre></td>
+</tr><tr>
+<td>status</td>
+<td><a href="#example-xns-v1-foo-status">example.xns.v1.Foo.Status</a></td>
+<td><pre>
+json_name: status
+go_name: Status</pre></td>
+</tr>
+</table>  
+
+<a name="example-xns-v1-example-signals"></a>
+### Signals
+
+---
+<a name="example-xns-v1-example-setfooprogress-signal"></a>
+### example.xns.v1.Example.SetFooProgress
+
+<pre>
+SetFooProgress sets the current status of a CreateFoo operation
+</pre>
+
+**Input:** [example.xns.v1.SetFooProgressRequest](#example-xns-v1-setfooprogressrequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>progress</td>
+<td>float</td>
+<td><pre>
+value of current workflow progress<br>
+
+json_name: progress
+go_name: Progress</pre></td>
+</tr>
+</table>  
+
+<a name="example-xns-v1-example-updates"></a>
+### Updates
+
+---
+<a name="example-xns-v1-example-updatefooprogress-update"></a>
+### example.xns.v1.Example.UpdateFooProgress
+
+<pre>
+UpdateFooProgress sets the current status of a CreateFoo operation
+</pre>
+
+**Input:** [example.xns.v1.SetFooProgressRequest](#example-xns-v1-setfooprogressrequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>progress</td>
+<td>float</td>
+<td><pre>
+value of current workflow progress<br>
+
+json_name: progress
+go_name: Progress</pre></td>
+</tr>
+</table>
+
+**Output:** [example.xns.v1.GetFooProgressResponse](#example-xns-v1-getfooprogressresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>progress</td>
+<td>float</td>
+<td><pre>
+json_name: progress
+go_name: Progress</pre></td>
+</tr><tr>
+<td>status</td>
+<td><a href="#example-xns-v1-foo-status">example.xns.v1.Foo.Status</a></td>
+<td><pre>
+json_name: status
+go_name: Status</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+</table>
+
+<a name="example-xns-v1-example-activities"></a>
+### Activities
+
+---
+<a name="example-xns-v1-example-notify-activity"></a>
+### example.xns.v1.Example.Notify
+
+<pre>
+Notify sends a notification
+</pre>
+
+**Input:** [example.xns.v1.NotifyRequest](#example-xns-v1-notifyrequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>message</td>
+<td>string</td>
+<td><pre>
+json_name: message
+go_name: Message</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>retry_policy.max_attempts</td><td>3</td></tr>
+<tr><td>start_to_close_timeout</td><td>30 seconds</td></tr>
+</table>   
+
+<a name="example-xns-v1-messages"></a>
+## Messages
+
+<a name="example-xns-v1-createfoorequest"></a>
+### example.xns.v1.CreateFooRequest
+
+<pre>
+CreateFooRequest describes the input to a CreateFoo workflow
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+unique foo name<br>
+
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-xns-v1-createfooresponse"></a>
+### example.xns.v1.CreateFooResponse
+
+<pre>
+SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>foo</td>
+<td><a href="#example-xns-v1-foo">example.xns.v1.Foo</a></td>
+<td><pre>
+json_name: foo
+go_name: Foo</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-xns-v1-foo"></a>
+### example.xns.v1.Foo
+
+<pre>
+Foo describes an illustrative foo resource
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+json_name: name
+go_name: Name</pre></td>
+</tr><tr>
+<td>status</td>
+<td><a href="#example-xns-v1-foo-status">example.xns.v1.Foo.Status</a></td>
+<td><pre>
+json_name: status
+go_name: Status</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-xns-v1-foo-status"></a>
+### example.xns.v1.Foo.Status
+
+<table>
+<tr><th>Value</th><th>Description</th></tr>
+<tr>
+<td>FOO_STATUS_UNSPECIFIED</td>
+<td></td>
+</tr><tr>
+<td>FOO_STATUS_READY</td>
+<td></td>
+</tr><tr>
+<td>FOO_STATUS_CREATING</td>
+<td></td>
+</tr>
+</table>
+
+<a name="example-xns-v1-getfooprogressresponse"></a>
+### example.xns.v1.GetFooProgressResponse
+
+<pre>
+GetFooProgressResponse describes the output from a GetFooProgress query
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>progress</td>
+<td>float</td>
+<td><pre>
+json_name: progress
+go_name: Progress</pre></td>
+</tr><tr>
+<td>status</td>
+<td><a href="#example-xns-v1-foo-status">example.xns.v1.Foo.Status</a></td>
+<td><pre>
+json_name: status
+go_name: Status</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-xns-v1-notifyrequest"></a>
+### example.xns.v1.NotifyRequest
+
+<pre>
+NotifyRequest describes the input to a Notify activity
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>message</td>
+<td>string</td>
+<td><pre>
+json_name: message
+go_name: Message</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-xns-v1-provisionfoorequest"></a>
+### example.xns.v1.ProvisionFooRequest
 
 <pre>
 ProvisionFooRequest describes the input to a ProvisionFoo workflow
@@ -604,14 +1867,14 @@ ProvisionFooRequest describes the input to a ProvisionFoo workflow
 unique foo name<br>
 
 json_name: name
-go_name: RequestName</pre></td>
+go_name: Name</pre></td>
 </tr>
 </table>
 
 
 
-<a name="example-v1-provisionfooresponse"></a>
-### example.v1.ProvisionFooResponse
+<a name="example-xns-v1-provisionfooresponse"></a>
+### example.xns.v1.ProvisionFooResponse
 
 <pre>
 SampleWorkflowWithMutexResponse describes the output from a ProvisionFoo workflow
@@ -625,7 +1888,7 @@ SampleWorkflowWithMutexResponse describes the output from a ProvisionFoo workflo
 </tr>
 <tr>
 <td>foo</td>
-<td><a href="#example-v1-foo">example.v1.Foo</a></td>
+<td><a href="#example-xns-v1-foo">example.xns.v1.Foo</a></td>
 <td><pre>
 json_name: foo
 go_name: Foo</pre></td>
@@ -634,8 +1897,8 @@ go_name: Foo</pre></td>
 
 
 
-<a name="example-v1-setfooprogressrequest"></a>
-### example.v1.SetFooProgressRequest
+<a name="example-xns-v1-setfooprogressrequest"></a>
+### example.xns.v1.SetFooProgressRequest
 
 <pre>
 SetFooProgressRequest describes the input to a SetFooProgress signal

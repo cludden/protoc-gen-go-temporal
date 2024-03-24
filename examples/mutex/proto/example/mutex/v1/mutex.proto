@@ -1,0 +1,71 @@
+syntax="proto3";
+
+package example.mutex.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "mutex"
+  };
+
+  rpc AcquireLock(AcquireLockInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc LockAcquired(LockAcquiredInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Mutex(MutexInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'mutex:${! resourceId }'
+      retry_policy: {
+        initial_interval: { seconds: 1 }
+        backoff_coefficient: 2.0
+        max_interval: { seconds: 60 }
+        max_attempts: 5
+      }
+      signal: { ref: 'AcquireLock', start: true }
+      signal: { ref: 'ReleaseLock' }
+    };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 10 }
+    };
+  }
+
+  rpc ReleaseLock(ReleaseLockInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc SampleWorkflowWithMutex(SampleWorkflowWithMutexInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'SampleWorkflow1WithMutex_${! uuid_v4() }'
+      signal: { ref: 'LockAcquired' }
+    };
+  }
+}
+
+message MutexInput {
+  string resource_id = 1;
+}
+
+message AcquireLockInput {
+  string workflow_id = 1;
+  google.protobuf.Duration timeout = 2;
+}
+
+message LockAcquiredInput {
+  string lease_id = 1;
+}
+
+message ReleaseLockInput {
+  string lease_id = 1;
+}
+
+message SampleWorkflowWithMutexInput {
+  string resource_id = 1;
+  google.protobuf.Duration sleep = 2;
+}

@@ -1,0 +1,42 @@
+syntax="proto3";
+
+package example.updatabletimer.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "updatable-timer"
+  };
+
+  rpc GetWakeUpTime(google.protobuf.Empty) returns (GetWakeUpTimeOutput) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc UpdatableTimer(UpdatableTimerInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'updatable-timer/${! name.or(uuid_v4()) }'
+      query: { ref: 'GetWakeUpTime' }
+      signal: { ref: 'UpdateWakeUpTime' }
+    };
+  }
+
+  rpc UpdateWakeUpTime(UpdateWakeUpTimeInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+message GetWakeUpTimeOutput {
+  google.protobuf.Timestamp wake_up_time = 1;
+}
+
+message UpdatableTimerInput {
+  google.protobuf.Timestamp initial_wake_up_time = 1;
+  string name = 2;
+}
+
+message UpdateWakeUpTimeInput {
+  google.protobuf.Timestamp wake_up_time = 1;
+}

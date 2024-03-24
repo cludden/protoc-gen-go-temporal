@@ -2,13 +2,14 @@
 
 A protoc plugin for generating typed Temporal clients and workers in Go from protobuf schemas. This plugin allows Workflow authors to configure sensible defaults and guardrails, simplifies the implementation and testing of Temporal workers, and streamlines integration by providing typed client SDKs and a generated CLI application. 
 
-<small>inspired by [Chad Retz's](https://github.com/cretz/) awesome [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced) and [Jacob LeGrone's](https://github.com/jlegrone/) excellent Replay talk on [Temporal @ Datadog](https://youtu.be/LxgkAoTSI8Q)</small>
+<small><i>Inspired by [Chad Retz's](https://github.com/cretz/) awesome [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced) and [Jacob LeGrone's](https://github.com/jlegrone/) excellent Replay talk on [Temporal @ Datadog](https://youtu.be/LxgkAoTSI8Q)</i></small>
 
 **Table of Contents**
 
 - [protoc-gen-go-temporal](#protoc-gen-go-temporal)
   - [How it works](#how-it-works)
   - [Features](#features)
+  - [Examples](#examples)
   - [Getting Started](#getting-started)
   - [Options](#options)
     - [Plugin Options](#plugin-options)
@@ -59,12 +60,23 @@ Optional **CLI** with:
 Generated [Cross-Namespace (XNS)](#cross-namespace-xns) helpers: **[Experimental]**
   - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace
 
-Generated [Remote Codec Server](#codec) helpers **[Experimental]**
+Generated [Remote Codec Server](#codec) helpers
 
-Generated [Markdown Documentation](#documentation) **[Experimental]**
+Generated [Markdown Documentation](#documentation)
 
+## Examples
+
+See examples for more usage:
+- [codecserver](./examples/codecserver/)
+- [example](./examples/example/)
+- [helloworld](./examples/helloworld/)
+- [mutex](./examples/mutex/)
+- [searchattributes](./examples/searchattributes/)
+- [updatabletimer](./examples/updatabletimer/)
+- [xns](./examples/xns/)
 
 ## Getting Started
+
 1. Install [buf](https://docs.buf.build/installation)
    
 2. Install this plugin
@@ -110,12 +122,12 @@ Generated [Markdown Documentation](#documentation) **[Experimental]**
       opt: paths=source_relative
     - plugin: go_temporal
       out: gen
-      opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true
+      opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,docs-out=./proto/README.md
       strategy: all
   ```
 
 7. Define your service  
-  <small><b><i>note:</i></b> see [example](./example/) and [test](./test/) for more details on generated code and usage</small>
+  <small><b><i>note:</i></b> see [examples](./examples/) and [test](./test/) for more details on generated code and usage</small>
 
   ```protobuf
   syntax="proto3";
@@ -135,10 +147,10 @@ Generated [Markdown Documentation](#documentation) **[Experimental]**
       option (temporal.v1.workflow) = {
         execution_timeout: { seconds: 3600 } // foos can take awhile to create
         id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-        id: 'create-foo/${!name.slug()}'
-        query: { ref: 'GetFooProgress' }
-        signal: { ref: 'SetFooProgress', start: true }
-        update: { ref: 'UpdateFooProgress' }
+        id: 'create-foo/${! name.slug() }'
+        query: { ref: "GetFooProgress" }
+        signal: { ref: "SetFooProgress", start: true }
+        update: { ref: "UpdateFooProgress" }
       };
     }
 
@@ -223,23 +235,22 @@ Generated [Markdown Documentation](#documentation) **[Experimental]**
   import (
     "context"
     "fmt"
-    "log"
-    "os"
 
     examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-    "github.com/urfave/cli/v2"
     "go.temporal.io/sdk/activity"
-    "go.temporal.io/sdk/client"
-    "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/log"
     "go.temporal.io/sdk/workflow"
-    logger "go.temporal.io/server/common/log"
   )
 
-  // Workflows manages shared state for workflow constructors and is used to
-  // register workflows with a worker
-  type Workflows struct{}
+  type (
+    // Workflows manages shared state for workflow constructors and is used to
+    // register workflows with a worker
+    Workflows struct{}
 
-  // ============================================================================
+    // Activities manages shared state for activities and is used to register
+    // activities with a worker
+    Activities struct{}
+  )
 
   // CreateFooWorkflow manages workflow state for a CreateFoo workflow
   type CreateFooWorkflow struct {
@@ -247,38 +258,43 @@ Generated [Markdown Documentation](#documentation) **[Experimental]**
     // input and signal helpers
     *examplev1.CreateFooWorkflowInput
 
+    log      log.Logger
     progress float32
     status   examplev1.Foo_Status
   }
 
-  // CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
-  // that initializes a new CreateFooWorkflow for each execution
-  func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooInput) (examplev1.CreateFooWorkflow, error) {
-    return &CreateFooWorkflow{input, 0, examplev1.Foo_FOO_STATUS_CREATING}, nil
+  // CreateFoo initializes a new CreateFooWorkflow value
+  func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooWorkflowInput) (examplev1.CreateFooWorkflow, error) {
+    return &CreateFooWorkflow{
+      CreateFooWorkflowInput: input,
+      log:                    workflow.GetLogger(ctx),
+      status:                 examplev1.Foo_FOO_STATUS_CREATING,
+    }, nil
   }
 
-  // Execute defines the entrypoint to a CreateFooWorkflow
+  // Execute defines the entrypoint to a CreateFooWorkflow value
   func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
     // listen for signals
     workflow.Go(ctx, func(ctx workflow.Context) {
       for {
         signal, _ := wf.SetFooProgress.Receive(ctx)
-        wf.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: signal.GetProgress()})
+        wf.UpdateFooProgress(ctx, signal)
       }
     })
 
     // execute Notify activity using generated helper
-    err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
+    if err := examplev1.Notify(ctx, &examplev1.NotifyRequest{
       Message: fmt.Sprintf("creating foo resource (%s)", wf.Req.GetName()),
-    })
-    if err != nil {
+    }); err != nil {
       return nil, fmt.Errorf("error sending notification: %w", err)
     }
 
     // block until progress has reached 100 via signals and/or updates
-    workflow.Await(ctx, func() bool {
+    if err := workflow.Await(ctx, func() bool {
       return wf.status == examplev1.Foo_FOO_STATUS_READY
-    })
+    }); err != nil {
+      return nil, fmt.Errorf("error awaiting ready status: %w", err)
+    }
 
     return &examplev1.CreateFooResponse{
       Foo: &examplev1.Foo{
@@ -307,42 +323,26 @@ Generated [Markdown Documentation](#documentation) **[Experimental]**
     return &examplev1.GetFooProgressResponse{Progress: wf.progress, Status: wf.status}, nil
   }
 
-  // ============================================================================
-
-  // Activities manages shared state for activities and is used to register
-  // activities with a worker
-  type Activities struct{}
-
   // Notify defines the implementation for a Notify activity
   func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) error {
     activity.GetLogger(ctx).Info("notification", "message", req.GetMessage())
     return nil
   }
 
-  // ============================================================================
-
   func main() {
     // initialize the generated cli application
     app, err := examplev1.NewExampleCli(
-      examplev1.NewExampleCliOptions().
-        WithClient(func(cmd *cli.Context) (client.Client, error) {
-          return client.Dial(client.Options{
-            Logger: logger.NewSdkLogger(logger.NewCLILogger()),
-          })
-        }).
-        WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-          w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-          // register activities and workflows using generated helpers
-          examplev1.RegisterExampleActivities(w, &Activities{})
-          examplev1.RegisterExampleWorkflows(w, &Workflows{})
-          return w, nil
-        }),
+      examplev1.NewExampleCliOptions().WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+        // register activities and workflows using generated helpers
+        w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+        examplev1.RegisterExampleActivities(w, &example.Activities{})
+        examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
+        return w, nil
+      }),
     )
     if err != nil {
-      log.Fatalf("error initializing commands: %v", err)
+      log.Fatalf("error initializing example cli: %v", err)
     }
-    app.Name = "example"
-    app.Usage = "an example temporal cli"
 
     // run cli
     if err := app.Run(os.Args); err != nil {
@@ -355,7 +355,9 @@ Generated [Markdown Documentation](#documentation) **[Experimental]**
     
   *start temporal*
   ```shell
-  temporal server start-dev --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true"
+  temporal server start-dev \
+    --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true" \
+    --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true"
   ```
 
   *start worker*
@@ -503,7 +505,7 @@ import "temporal/v1/temporal.proto";
 
 service Example {
   option (temporal.v1.service) = {
-    task_queue: 'example-v1'
+    task_queue: "example-v1"
   };
 }
 ```
@@ -528,45 +530,134 @@ import "temporal/v1/temporal.proto";
 service Example {
   rpc MyWorkflow(MyWorkflowRequest) returns (MyWorkflowResponse) {
     option (temporal.v1.workflow) = {
-      default_options: {
-        id: 'my-workflow/${! uuid_v4() }'
-        execution_timeout: { seconds: 3600 }
+      execution_timeout: { seconds: 3600 }
+      id: 'my-workflow/${! uuid_v4() }'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      name: "MyWorkflow"
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+      query: { ref: "MyQuery" }
+      retry_policy: {
+        backoff_coefficient: 2.0
+        initial_interval: { seconds: 5 }
+        max_attempts: 10
+        max_interval: { seconds: 60 }
+        non_retryable_error_types: ["SomeError", "SomeOtherError"]
       }
-      query: { ref: 'MyQuery' }
-      signal: { ref: 'MySignal', start: true }
-      update: { ref: 'MyUpdate' }
+      task_timeout: { seconds: 1800 }
+      signal: { ref: "MySignal", start: true }
+      task_queue: "override-service-task-queue"
+      task_timeout: { seconds: 10 }
+      update: { ref: "MyUpdate" }
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+        name: "xns.MyWorkflow"
+        retry_policy: {
+          backoff_coefficient: 2.0
+          initial_interval: { seconds: 5 }
+          max_attempts: 10
+          max_interval: { seconds: 60 }
+          non_retryable_error_types: ["SomeError", "SomeOtherError"]
+        }
+        schedule_to_close_timeout: { seconds: 3600 }
+        schedule_to_start_timeout: { seconds: 30 }
+        start_to_close_timeout: { seconds: 1800 }
+        task_queue: "override-xns-task-queue"
+      }
+      wait_for_cancellation: true
     };
   }
 
   rpc MyActivity(MyActivityRequest) returns (MyActivityResponse) {
     option (temporal.v1.activity) = {
-      default_options: {
-        start_to_close_timeout: { seconds: 30 }
-        retry_policy: {
-          max_attempts: 3
-        }
+      heartbeat_timeout: { seconds: 30 }
+      name: "MyActivity"
+      retry_policy: {
+        backoff_coefficient: 2.0
+        initial_interval: { seconds: 5 }
+        max_attempts: 10
+        max_interval: { seconds: 60 }
+        non_retryable_error_types: ["SomeError", "SomeOtherError"]
       }
+      schedule_to_close_timeout: { seconds: 3600 }
+      schedule_to_start_timeout: { seconds: 30 }
+      start_to_close_timeout: { seconds: 1800 }
+      task_queue: "override-xns-task-queue"
     };
   }
 
   rpc MyQuery(MyQueryRequest) returns (MyQueryResponse) {
-    option (temporal.v1.query) = {};
+    option (temporal.v1.query) = {
+      name: "MyQuery"
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+        name: "xns.MyQuery"
+        retry_policy: {
+          backoff_coefficient: 2.0
+          initial_interval: { seconds: 5 }
+          max_attempts: 10
+          max_interval: { seconds: 60 }
+          non_retryable_error_types: ["SomeError", "SomeOtherError"]
+        }
+        schedule_to_close_timeout: { seconds: 3600 }
+        schedule_to_start_timeout: { seconds: 30 }
+        start_to_close_timeout: { seconds: 1800 }
+        task_queue: "override-xns-task-queue"
+      }
+    };
   }
 
   rpc MySignal(MySignalRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = {};
+    option (temporal.v1.signal) = {
+      name: "MySignal"
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+        name: "xns.MySignal"
+        retry_policy: {
+          backoff_coefficient: 2.0
+          initial_interval: { seconds: 5 }
+          max_attempts: 10
+          max_interval: { seconds: 60 }
+          non_retryable_error_types: ["SomeError", "SomeOtherError"]
+        }
+        schedule_to_close_timeout: { seconds: 3600 }
+        schedule_to_start_timeout: { seconds: 30 }
+        start_to_close_timeout: { seconds: 1800 }
+        task_queue: "override-xns-task-queue"
+      }
+    };
   }
 
   rpc MyUpdate(MyUpdateRequest) returns (MyUpdateResponse) {
     option (temporal.v1.update) = {
       id: 'my-update/${!uuid_v4()}'
+      name: "MyUpdate"
       validate: true
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+        name: "xns.MySignal"
+        retry_policy: {
+          backoff_coefficient: 2.0
+          initial_interval: { seconds: 5 }
+          max_attempts: 10
+          max_interval: { seconds: 60 }
+          non_retryable_error_types: ["SomeError", "SomeOtherError"]
+        }
+        schedule_to_close_timeout: { seconds: 3600 }
+        schedule_to_start_timeout: { seconds: 30 }
+        start_to_close_timeout: { seconds: 1800 }
+        task_queue: "override-xns-task-queue"
+      }
     };
   }
 }
 ```
 
 ### Bloblang Expressions
+
 Default workflow IDs, update IDs, and search attributes can be defined using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
 
 **Example**
@@ -610,6 +701,8 @@ require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
 ```
 
 ## Workflow Update
+
+*__Experimental__*
 
 This plugin has experimental support for Temporal's experimental [Workflow Update](https://docs.temporal.io/workflows#update) capability. Note that this requires cluster support enabled with both of the following dynamic config values set to `true`
 
@@ -658,107 +751,33 @@ func main() {
 
 ## Test Client
 
-The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [tests](./test/simple/main_test.go) for example usage.
+The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [examples](./examples/) for example usage.
 
 **_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
+
+**Example:** 
+
+See the [example_test.go](./examples/example/example_test.go) example for more details.
 
 ## Cross-Namespace (XNS)
 
 *__Experimental__*
 
-This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. For an example of xns integration, see the [example/external](./example/external/external.go) package.
+This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. 
+
+**Example:** 
+
+See the [xns](./examples/xns/) example for more details.
 
 ## Codec
-
-*__Experimental__*
 
 Temporal's [default data converter](https://pkg.go.dev/go.temporal.io/sdk/converter#GetDefaultDataConverter) will serialize protobuf types using the `json/protobuf` encoding provided by the [ProtoJSONPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoJSONPayloadConverter), which allows the Temporal UI to automatically decode the underlying payload and render it as JSON. If you'd prefer to take advantage of protobuf's binary format for smaller payloads, you can provide an alternative data converter to the Temporal client at initialization that prioritizes the [ProtoPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoPayloadConverter) ahead of the `ProtoJSONPayloadConverter`. See below for an example.
 
 If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. This plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
 
-**Example:** *custom data converter that uses `binary/protobuf` for encoding, but supports all of `binary/protobuf`, `json/protobuf`, and `json/plain` for decoding.*
+**Example:** 
 
-```go
-package main
-
-import (
-    "go.temporal.io/sdk/client"
-    "go.temporal.io/sdk/converter"
-)
-func main() {
-    client, _ := client.Dial(client.Options{
-        DataConverter: converter.NewCompositeDataConverter(
-            // Order is important here, as the first match (ProtoPayload in this case) will always 
-            // be used for serialization, and both ProtoJsonPayload and ProtoPayload converters 
-            // check for the same proto.Message interface. 
-            // Deserialization is controlled by metadata, therefore both converters can deserialize 
-            // corresponding data format (JSON or binary proto).
-            converter.NewNilPayloadConverter(),
-            converter.NewByteSlicePayloadConverter(),
-            converter.NewProtoPayloadConverter(),
-            converter.NewProtoJSONPayloadConverterWithOptions(converter.ProtoJSONPayloadConverterOptions{
-              AllowUnknownFields: true, // Prevent errors when the underlying protobuf payload has added fields
-            }),
-            converter.NewJSONPayloadConverter(),
-        ),
-    })
-}
-```
-
-**Example:** *basic Remote Codec Server implementation*
-
-```go
-package main
-
-import (
-    "context"
-    "errors"
-    "log"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-
-    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-    "github.com/cludden/protoc-gen-go-temporal/pkg/codec"
-    "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
-    "go.temporal.io/sdk/converter"
-)
-
-func main() {
-    // initialize codec handler using this plugin's `pkg/codec` and `pkg/scheme` packages
-    // along with the generated scheme helpers
-    handler := converter.NewPayloadCodecHTTPHandler(
-        codec.NewProtoJSONCodec(
-            scheme.New(
-                examplev1.WithExampleSchemeTypes(),
-            ),
-        ),
-    )
-
-    // initialize http server with codec handler
-    srv := &http.Server{
-        Addr:    "0.0.0.0:8080",
-        Handler: handler,
-    }
-
-    // handle graceful shutdown
-    go func() {
-        shutdownCh := make(chan os.Signal, 1)
-        signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
-        <-shutdownCh
-
-        if err := srv.Shutdown(context.Background()); err != nil {
-            log.Fatalf("error shutting down server: %v", err)
-        }
-    }()
-
-    // start remote codec server
-    if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-        log.Fatalf("server error: %v", err)
-    }
-}
-```
+See the [codecserver](./examples/codecserver/) example for more details.
 
 ## Documentation
 
@@ -770,4 +789,4 @@ This plugin has experimental support for generating documentation via Go templat
 
 ## License
 Licensed under the [MIT License](LICENSE.md)  
-Copyright for portions of project cludden/protoc-gen-go-temporal are held by Chad Retz, 2021 as part of project cretz/temporal-sdk-go-advanced. All other copyright for project cludden/protoc-gen-go-temporal are held by Chris Ludden, 2023.
+Copyright for portions of project cludden/protoc-gen-go-temporal are held by Chad Retz, 2021 as part of project cretz/temporal-sdk-go-advanced. All other copyright for project cludden/protoc-gen-go-temporal are held by Chris Ludden, 2024.

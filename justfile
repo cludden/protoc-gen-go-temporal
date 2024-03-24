@@ -23,10 +23,11 @@ gen:
     rm -rf {{ justfile_directory() }}/gen/*
     rm -rf {{ justfile_directory() }}/test/simple/gen/*.pb.go
     rm -rf {{ justfile_directory() }}/example/gen/*.pb.go
+    rm -rf {{ justfile_directory() }}/mocks/*
     buf generate
+    mockery --quiet
     go mod tidy
     rm -rf docs/api/example docs/api/simple docs/api/test
-    mockery --quiet
 
 # generate temporal
 gen-temporal:
