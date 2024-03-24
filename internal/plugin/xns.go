@@ -332,7 +332,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 			if isDeprecated(method) {
 				fn.Qual(activityPkg, "GetLogger").Call(g.Id("ctx")).Dot("Warn").Call(g.Lit("use of deprecated update detected"), g.Lit("update"), g.Qual(string(svc.File.GoImportPath), svc.toCamel("%sUpdateName", update))).Line()
 			}
-			fn.Var().Id("update").Qual(string(svc.File.GoImportPath), svc.toCamel("%sHandle", update))
+			fn.Var().Id("handle").Qual(string(svc.File.GoImportPath), svc.toCamel("%sHandle", update))
 			fn.If(g.Qual(activityPkg, "HasHeartbeatDetails").Call(g.Id("ctx"))).Block(
 				g.Comment("extract update id from heartbeat details"),
 				g.Var().Id("updateID").String(),
@@ -349,7 +349,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 				),
 				g.Line(),
 				g.Comment("retrieve handle for existing update"),
-				g.List(g.Id("update"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("Get%s", update)).Call(
+				g.List(g.Id("handle"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("Get%s", update)).Call(
 					g.Id("ctx"),
 					g.Qual(clientPkg, "GetWorkflowUpdateHandleOptions").Custom(
 						multiLineValues,
@@ -389,8 +389,16 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 					bl.Line()
 				}
 
+				bl.Id("uo").Op(":=").Qual(xnsPkg, "UnmarshalUpdateWorkflowOptions").Call(
+					g.Id("input").Dot("GetUpdateWorkflowOptions").Call(),
+				)
+				bl.Id("uo").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Custom(
+					multiLineValues,
+					g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"),
+				).Line()
+
 				bl.Comment("initialize update execution")
-				bl.List(g.Id("update"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(args *g.Group) {
+				bl.List(g.Id("handle"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(args *g.Group) {
 					args.Id("ctx")
 					args.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetWorkflowId").Call()
 					args.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetRunId").Call()
@@ -400,9 +408,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 					args.Qual(string(svc.File.GoImportPath), svc.toCamel("New%sOptions", update)).
 						Call().
 						Dot("WithUpdateWorkflowOptions").
-						Custom(multiLineArgs, g.Qual(xnsPkg, "UnmarshalUpdateWorkflowOptions").Call(
-							g.Id("input").Dot("GetUpdateWorkflowOptions").Call(),
-						))
+						Call(g.Id("uo"))
 				})
 				bl.If(g.Err().Op("!=").Nil()).Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
@@ -412,7 +418,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 						returnVals.Err()
 					}),
 				)
-				bl.Qual(activityPkg, "RecordHeartbeat").Call(g.Id("ctx"), g.Id("update").Dot("UpdateID").Call())
+				bl.Qual(activityPkg, "RecordHeartbeat").Call(g.Id("ctx"), g.Id("handle").Dot("UpdateID").Call())
 			})
 			fn.Line()
 
@@ -424,7 +430,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 						ls.Id("resp")
 					}
 					ls.Err()
-				}).Op("=").Id("update").Dot("Get").Call(g.Id("ctx")),
+				}).Op("=").Id("handle").Dot("Get").Call(g.Id("ctx")),
 				g.Close(g.Id("doneCh")),
 			).Call()
 			fn.Line()
@@ -439,7 +445,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 			fn.For().Block(
 				g.Select().Block(
 					g.Case(g.Op("<-").Qual("time", "After").Call(g.Id("heartbeatInterval"))).Block(
-						g.Qual(activityPkg, "RecordHeartbeat").Call(g.Id("ctx"), g.Id("update").Dot("UpdateID").Call()),
+						g.Qual(activityPkg, "RecordHeartbeat").Call(g.Id("ctx"), g.Id("handle").Dot("UpdateID").Call()),
 					),
 					g.Case(g.Op("<-").Id("ctx").Dot("Done").Call()).Block(
 						g.ReturnFunc(func(returnVals *g.Group) {
@@ -983,7 +989,7 @@ func (svc *Manifest) genXNSQueryFunction(f *g.File, query protoreflect.FullName)
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	commentf(f, methodSet(method), "%s executes a(n) %s query and blocks until error or response received", methodName, svc.fqnForQuery(query))
+	commentWithDefaultf(f, methodSet(method), "%s executes a(n) %s query and blocks until error or response received", methodName, svc.fqnForQuery(query))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1278,7 +1284,7 @@ func (svc *Manifest) genXNSSignalFunction(f *g.File, signal protoreflect.FullNam
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	commentf(f, methodSet(method), "%s executes a(n) %s signal", methodName, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method), "%s executes a(n) %s signal", methodName, svc.fqnForSignal(signal))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1514,7 +1520,7 @@ func (svc *Manifest) genXNSUpdateFunction(f *g.File, update protoreflect.FullNam
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	commentf(f, methodSet(method), "%s executes a(n) %s update and blocks until error or response received", methodName, svc.fqnForUpdate(update))
+	commentWithDefaultf(f, methodSet(method), "%s executes a(n) %s update and blocks until error or response received", methodName, svc.fqnForUpdate(update))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -1961,15 +1967,9 @@ func (svc *Manifest) genXNSWorkflowFunctionAsync(f *g.File, workflow protoreflec
 	methodName := svc.toCamel("%sAsync", workflow)
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
-	// hasOutput := !isEmpty(method.Output)
 	opts := svc.workflows[workflow]
 
-	if method.Comments.Leading.String() != "" {
-		f.Comment(strings.TrimSuffix(method.Comments.Leading.String(), "\n"))
-	} else {
-		f.Commentf("%s executes a(n) %s workflow and blocks until error or response received", methodName, svc.fqnForWorkflow(workflow))
-	}
-
+	commentWithDefaultf(f, methodSet(method), "%s executes a(n) %s workflow and blocks until error or response received", methodName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
@@ -2233,7 +2233,7 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 		handlerOutput := !isEmpty(handler.Output)
 
 		methodName := svc.toCamel("%s", query)
-		commentf(f, methodSet(handler), "%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
+		commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2275,7 +2275,7 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 			})
 
 		methodName = svc.toCamel("%sAsync", query)
-		commentf(f, methodSet(handler), "%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
+		commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2321,7 +2321,7 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 		handlerInput := !isEmpty(handler.Input)
 
 		methodName := svc.toCamel("%s", signal)
-		commentf(f, methodSet(handler), "%s executes a(n) %s signal and blocks until the underlying activity completes", methodName, svc.fqnForSignal(signal))
+		commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s signal and blocks until the underlying activity completes", methodName, svc.fqnForSignal(signal))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2358,7 +2358,7 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 			})
 
 		methodName = svc.toCamel("%sAsync", signal)
-		commentf(f, methodSet(handler), "%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
+		commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2405,7 +2405,7 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 		handlerOutput := !isEmpty(handler.Output)
 
 		methodName := svc.toCamel("%s", update)
-		commentf(f, methodSet(handler), "%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
+		commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2447,7 +2447,7 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 			})
 
 		methodName = svc.toCamel("%sAsync", update)
-		commentf(f, methodSet(handler), "%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
+		commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
 		f.Func().
 			Params(g.Id("r").Op("*").Id(typeName)).
 			Id(methodName).
@@ -2528,7 +2528,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 
 			// synchronous
 			methodName := svc.toCamel("%s", query)
-			commentf(methods, methodSet(handler), "%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query and blocks until completion", methodName, svc.fqnForQuery(query))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2547,7 +2547,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 
 			// async
 			methodName += "Async"
-			commentf(methods, methodSet(handler), "%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query and returns a handle to the underlying activity", methodName, svc.fqnForQuery(query))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2570,7 +2570,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 
 			// synchronnous
 			methodName := svc.toCamel("%s", signal)
-			commentf(methods, methodSet(handler), "%s executes a(n) %s signal and blocks until completion", methodName, svc.fqnForSignal(signal))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s signal and blocks until completion", methodName, svc.fqnForSignal(signal))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2584,7 +2584,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 
 			// async
 			methodName = svc.toCamel("%sAsync", signal)
-			commentf(methods, methodSet(handler), "%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s signal and returns a handle to the underlying activity", methodName, svc.fqnForSignal(signal))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2608,7 +2608,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 
 			// synchronous
 			methodName := svc.toCamel("%s", update)
-			commentf(methods, methodSet(handler), "%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update and blocks until completion", methodName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
@@ -2627,7 +2627,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 
 			// async
 			methodName = svc.toCamel("%sAsync", update)
-			commentf(methods, methodSet(handler), "%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update and returns a handle to the underlying activity", methodName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
