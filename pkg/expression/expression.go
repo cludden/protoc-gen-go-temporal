@@ -1,7 +1,7 @@
 package expression
 
 import (
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,6 +10,7 @@ import (
 	"github.com/cludden/benthos/v4/public/bloblang"
 	_ "github.com/cludden/benthos/v4/public/components/pure"
 	_ "github.com/cludden/benthos/v4/public/components/pure/extended"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -107,7 +108,7 @@ func ParseExpression(input string) (*Expression, error) {
 		if e := fragment.Expr; e != nil {
 			m, err := bloblang.Parse(fmt.Sprintf(`root = %s`, e.Mapping))
 			if err != nil {
-				return nil, fmt.Errorf("Error parsing bloblang mapping: %q, %w", e.Mapping, err)
+				return nil, fmt.Errorf("error parsing bloblang mapping: %q, %w", e.Mapping, err)
 			}
 			e.m = m
 		}
@@ -117,86 +118,10 @@ func ParseExpression(input string) (*Expression, error) {
 
 // ToStructured marshals a proto message into a map[string]any value
 func ToStructured(msg protoreflect.Message) (any, error) {
+	b, err := protojson.Marshal(msg.Interface())
+	if err != nil {
+		return nil, err
+	}
 	structured := make(map[string]any)
-	var err error
-	msg.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		val, merr := marshalValue(v, fd)
-		if merr != nil {
-			err = merr
-			return false
-		}
-		structured[fd.JSONName()] = val
-		return true
-	})
-	return structured, err
-}
-
-// marshalValue marshals a proto value into any
-func marshalValue(val protoreflect.Value, fd protoreflect.FieldDescriptor) (any, error) {
-	switch {
-	case fd.IsList():
-		return marshalList(val.List(), fd)
-	case fd.IsMap():
-		return marshalMap(val.Map(), fd)
-	default:
-		return marshalSingular(val, fd)
-	}
-}
-
-// marshalSingular marshals a non-list, non-map proto value into its json-compatible scalar value
-func marshalSingular(val protoreflect.Value, fd protoreflect.FieldDescriptor) (any, error) {
-	switch kind := fd.Kind(); kind {
-	case protoreflect.BoolKind:
-		return val.Bool(), nil
-	case protoreflect.StringKind:
-		return val.String(), nil
-	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind, protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
-		return val.Int(), nil
-	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
-		return val.Uint(), nil
-	case protoreflect.FloatKind, protoreflect.DoubleKind:
-		return val.Float(), nil
-	case protoreflect.BytesKind:
-		return base64.StdEncoding.EncodeToString(val.Bytes()), nil
-	case protoreflect.EnumKind:
-		if val.Enum() == protoreflect.EnumNumber(0) {
-			return nil, nil
-		} else {
-			return string(fd.Enum().Values().ByNumber(val.Enum()).Name()), nil
-		}
-	case protoreflect.MessageKind, protoreflect.GroupKind:
-		return ToStructured(val.Message())
-	default:
-		return nil, fmt.Errorf("unsupported proto kind: %v", kind)
-	}
-}
-
-// marshalList marshals a proto list value into []any
-func marshalList(list protoreflect.List, fd protoreflect.FieldDescriptor) ([]any, error) {
-	structured := make([]any, list.Len())
-	for i := 0; i < list.Len(); i++ {
-		item := list.Get(i)
-		val, err := marshalSingular(item, fd)
-		if err != nil {
-			return nil, err
-		}
-		structured[i] = val
-	}
-	return structured, nil
-}
-
-// marshalMap marshals a proto mmap value in map[string]any
-func marshalMap(mmap protoreflect.Map, fd protoreflect.FieldDescriptor) (map[string]any, error) {
-	structured := make(map[string]any)
-	var err error
-	mmap.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
-		val, merr := marshalSingular(v, fd.MapValue())
-		if merr != nil {
-			err = merr
-			return false
-		}
-		structured[mk.String()] = val
-		return true
-	})
-	return structured, err
+	return structured, json.Unmarshal(b, &structured)
 }
