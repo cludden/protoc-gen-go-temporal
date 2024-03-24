@@ -1057,12 +1057,12 @@ func (svc *Manifest) genClientStartWorkflowOptions(fn *g.Group, workflow protore
 
 	if policy := opts.GetRetryPolicy(); policy != nil {
 		fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
-			g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").ValuesFunc(func(fields *g.Group) {
+			g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(fields *g.Group) {
 				if d := policy.GetInitialInterval(); d.IsValid() {
-					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(d.AsDuration().String())
+					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 				}
 				if d := policy.GetMaxInterval(); d.IsValid() {
-					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(d.AsDuration().String())
+					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 				}
 				if n := policy.GetBackoffCoefficient(); n != 0 {
 					fields.Id("BackoffCoefficient").Op(":").Lit(n)
@@ -1071,7 +1071,11 @@ func (svc *Manifest) genClientStartWorkflowOptions(fn *g.Group, workflow protore
 					fields.Id("MaximumAttempts").Op(":").Lit(n)
 				}
 				if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
-					fields.Id("NonRetryableErrorTypes").Op(":").Lit(errs)
+					fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *g.Group) {
+						for _, err := range errs {
+							vals.Lit(err)
+						}
+					})
 				}
 			}),
 		)
