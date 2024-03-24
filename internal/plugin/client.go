@@ -103,7 +103,7 @@ func (svc *Manifest) genClientImplQueryMethod(f *g.File, query protoreflect.Full
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
 
-	commentf(f, methodSet(method), "%s sends a(n) %s query to an existing workflow", query, svc.fqnForQuery(query))
+	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s query to an existing workflow", query, svc.fqnForQuery(query))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(svc.methods[query].GoName).
@@ -157,7 +157,7 @@ func (svc *Manifest) genClientImplSignalMethod(f *g.File, signal protoreflect.Fu
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	commentf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", signal, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", signal, svc.fqnForSignal(signal))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(svc.methods[signal].GoName).
@@ -201,7 +201,7 @@ func (svc *Manifest) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow
 	hasWorkflowInput := !isEmpty(method.Input)
 	hasSignalInput := !isEmpty(handler.Input)
 
-	commentf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, svc.fqnForWorkflow(workflow), svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, svc.fqnForWorkflow(workflow), svc.fqnForSignal(signal))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(name).
@@ -272,7 +272,7 @@ func (svc *Manifest) genClientImplSignalWithStartMethod(f *g.File, workflow, sig
 	hasWorkflowOutput := !isEmpty(method.Output)
 	hasSignalInput := !isEmpty(handler.Input)
 
-	commentf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, svc.fqnForWorkflow(workflow), svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, svc.fqnForWorkflow(workflow), svc.fqnForSignal(signal))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(name).
@@ -364,7 +364,7 @@ func (svc *Manifest) genClientImplUpdateMethod(f *g.File, update protoreflect.Fu
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	commentf(f, methodSet(handler), "%s sends a(n) %s update to an existing workflow", update, svc.fqnForUpdate(update))
+	commentWithDefaultf(f, methodSet(handler), "%s sends a(n) %s update to an existing workflow", update, svc.fqnForUpdate(update))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(svc.methods[update].GoName).
@@ -433,7 +433,7 @@ func (svc *Manifest) genClientImplUpdateMethodAsync(f *g.File, update protorefle
 	hasInput := !isEmpty(handler.Input)
 	methodName := svc.toCamel("%sAsync", update)
 
-	commentf(f, methodSet(handler), "%s sends a(n) %s update to an existing workflow", update, svc.fqnForUpdate(update))
+	commentWithDefaultf(f, methodSet(handler), "%s sends a(n) %s update to an existing workflow", update, svc.fqnForUpdate(update))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(methodName).
@@ -483,7 +483,7 @@ func (svc *Manifest) genClientImplWorkflowAsyncMethod(f *g.File, workflow protor
 	hasInput := !isEmpty(method.Input)
 	deprecated := isDeprecated(method)
 
-	commentf(f, methodSet(method), "%s starts a(n) %s workflow and returns a handle to the workflow run", methodName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s starts a(n) %s workflow and returns a handle to the workflow run", methodName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(methodName).
@@ -629,7 +629,7 @@ func (svc *Manifest) genClientImplWorkflowMethod(f *g.File, workflow protoreflec
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	commentf(f, methodSet(method), "%s executes a %s workflow and blocks until error or response received", workflow, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s executes a %s workflow and blocks until error or response received", workflow, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(clientType)).
 		Id(svc.methods[workflow].GoName).
@@ -688,7 +688,7 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 
 			// generate <Workflow> method
 			methodName := svc.toCamel("%s", workflow)
-			commentf(methods, methodSet(method), "%s executes a(n) %s workflow and blocks until error or response received", methodName, svc.fqnForWorkflow(workflow))
+			commentWithDefaultf(methods, methodSet(method), "%s executes a(n) %s workflow and blocks until error or response received", methodName, svc.fqnForWorkflow(workflow))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -707,7 +707,7 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 
 			// generate <Workflow>Async method
 			methodName = svc.toCamel("%sAsync", workflow)
-			commentf(methods, methodSet(method), "%s executes a(n) %s workflow asynchronously", methodName, svc.fqnForWorkflow(workflow))
+			commentf(methods, methodSet(method), "%s starts a(n) %s workflow and returns a handle to the workflow run", methodName, svc.fqnForWorkflow(workflow))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -724,7 +724,7 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 
 			// generate Get<Workflow> method
 			methodName = svc.toCamel("Get%s", workflow)
-			methods.Commentf("%s retrieves a handle to an existing %s workflow execution", methodName, svc.fqnForWorkflow(workflow))
+			commentf(methods, methodSet(method), "%s retrieves a handle to an existing %s workflow execution", methodName, svc.fqnForWorkflow(workflow))
 			methods.Id(svc.toCamel("Get%s", workflow)).
 				Params(
 					g.Id("ctx").Qual("context", "Context"),
@@ -825,7 +825,7 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 			}
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
-			commentf(methods, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
 			methods.Id(svc.toCamel("%s", query)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -849,7 +849,7 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 			}
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
-			commentf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
 			methods.Id(svc.toCamel("%s", signal)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -873,8 +873,9 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 			hasOutput := !isEmpty(handler.Output)
 
 			// add synchronous flavor
-			commentf(methods, methodSet(handler), "%s executes a(n) %s update and blocks until update completion", update, svc.fqnForUpdate(update))
-			methods.Id(svc.toCamel("%s", update)).
+			methodName := svc.toCamel("%s", update)
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update and blocks until update completion", methodName, svc.fqnForUpdate(update))
+			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -893,8 +894,8 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 				Line()
 
 			// add async flavor
-			methodName := svc.toCamel("%sAsync", update)
-			commentf(methods, methodSet(handler), "%s starts a(n) %s update and returns a handle to the workflow update", update, svc.fqnForUpdate(update))
+			methodName = svc.toCamel("%sAsync", update)
+			commentf(methods, methodSet(handler), "%s starts a(n) %s update and returns a handle to the workflow update", methodName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -913,7 +914,7 @@ func (svc *Manifest) genClientInterface(f *g.File) {
 
 			// add getter
 			methodName = svc.toCamel("Get%s", update)
-			methods.Commentf("%s retrieves a handle to an existing %s update", update, svc.fqnForUpdate(update))
+			commentf(methods, methodSet(handler), "%s retrieves a handle to an existing %s update", methodName, svc.fqnForUpdate(update))
 			methods.Id(methodName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -1545,7 +1546,7 @@ func (svc *Manifest) genClientWorkflowRunImplQueryMethod(f *g.File, workflow pro
 	handler := svc.methods[query]
 	hasInput := !isEmpty(handler.Input)
 
-	commentf(f, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
+	commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
 		Id(svc.methods[query].GoName).
@@ -1610,7 +1611,7 @@ func (svc *Manifest) genClientWorkflowRunImplSignalMethod(f *g.File, workflow pr
 	hasInput := !isEmpty(handler.Input)
 
 	// generate get method
-	commentf(f, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
 		Id(svc.methods[signal].GoName).
@@ -1683,7 +1684,7 @@ func (svc *Manifest) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workfl
 	handler := svc.methods[update]
 	hasInput := !isEmpty(handler.Input)
 
-	commentf(f, methodSet(handler), "%s start a(n) %s workflow update and returns a handle to the update", methodName, svc.fqnForUpdate(update))
+	commentWithDefaultf(f, methodSet(handler), "%s start a(n) %s workflow update and returns a handle to the update", methodName, svc.fqnForUpdate(update))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
 		Id(methodName).
@@ -1738,7 +1739,7 @@ func (svc *Manifest) genClientWorkflowRunImplUpdateMethod(f *g.File, workflow pr
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	commentf(f, methodSet(handler), "%s executes a(n) %s workflow update", update, svc.fqnForUpdate(update))
+	commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s workflow update", update, svc.fqnForUpdate(update))
 	f.Func().
 		Params(g.Id("r").Op("*").Id(typeName)).
 		Id(svc.methods[update].GoName).
@@ -1817,7 +1818,7 @@ func (svc *Manifest) genClientWorkflowRunInterface(f *g.File, workflow protorefl
 			handler := svc.methods[query]
 			hasInput := !isEmpty(handler.Input)
 
-			commentf(methods, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
 			methods.Id(svc.toCamel("%s", query)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -1836,7 +1837,7 @@ func (svc *Manifest) genClientWorkflowRunInterface(f *g.File, workflow protorefl
 			handler := svc.methods[signal]
 			hasInput := !isEmpty(handler.Input)
 
-			commentf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
 			methods.Id(svc.toCamel("%s", signal)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -1854,7 +1855,7 @@ func (svc *Manifest) genClientWorkflowRunInterface(f *g.File, workflow protorefl
 			hasOutput := !isEmpty(handler.Output)
 
 			// add synchronous flavor
-			commentf(methods, methodSet(handler), "%s executes a(n) %s update", update, svc.fqnForUpdate(update))
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update", update, svc.fqnForUpdate(update))
 			methods.Id(svc.toCamel("%s", update)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -1871,7 +1872,7 @@ func (svc *Manifest) genClientWorkflowRunInterface(f *g.File, workflow protorefl
 				}).Line()
 
 			// add async flavor
-			commentf(methods, methodSet(handler), "%sAsync sends a(n) %s update to the workflow", update, svc.fqnForUpdate(update))
+			commentWithDefaultf(methods, methodSet(handler), "%sAsync sends a(n) %s update to the workflow", update, svc.fqnForUpdate(update))
 			methods.Id(svc.toCamel("%sAsync", update)).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")

@@ -21,7 +21,7 @@ func (svc *Manifest) genActivitiesInterface(f *g.File) {
 			method := svc.methods[activity]
 			hasInput := !isEmpty(method.Input)
 			hasOutput := !isEmpty(method.Output)
-			commentf(methods, methodSet(method), "%s implements a(n) %s activity definition", activity, svc.fqnForActivity(activity))
+			commentWithDefaultf(methods, methodSet(method), "%s implements a(n) %s activity definition", activity, svc.fqnForActivity(activity))
 			methods.Id(svc.methods[activity].GoName).
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
@@ -71,7 +71,7 @@ func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullNa
 		desc = fmt.Sprintf("%s (%s)", desc, strings.Join(annotations, ", "))
 	}
 
-	commentf(f, methodSet(method), desc)
+	commentWithDefaultf(f, methodSet(method), desc)
 	f.Func().
 		Id(methodName).
 		ParamsFunc(func(args *g.Group) {
