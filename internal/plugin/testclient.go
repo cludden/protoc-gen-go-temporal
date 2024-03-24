@@ -37,7 +37,9 @@ func (svc *Manifest) genTestClientImplNewMethod(f *g.File) {
 			g.Op("*").Id(typeName),
 		).
 		Block(
-			g.Id(svc.toCamel("Register%sWorkflows", svc.Service.GoName)).Call(g.Id("env"), g.Id("workflows")),
+			g.If(g.Id("workflows").Op("!=").Nil()).Block(
+				g.Id(svc.toCamel("Register%sWorkflows", svc.Service.GoName)).Call(g.Id("env"), g.Id("workflows")),
+			),
 			g.If(g.Id("activities").Op("!=").Nil()).Block(
 				g.Id(svc.toCamel("Register%sActivities", svc.Service.GoName)).Call(g.Id("env"), g.Id("activities")),
 			),
