@@ -18,7 +18,6 @@ require (
 	github.com/urfave/cli/v2 v2.25.7
 	go.temporal.io/api v1.26.0
 	go.temporal.io/sdk v1.25.1
-	go.temporal.io/server v1.22.3
 	google.golang.org/protobuf v1.33.0
 )
 
@@ -78,8 +77,6 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/net v0.18.0 // indirect

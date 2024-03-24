@@ -1,0 +1,35 @@
+syntax="proto3";
+
+package example.searchattributes.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "searchattributes"
+  };
+
+  rpc SearchAttributes(SearchAttributesInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'search_attributes_${! uuid_v4() }'
+      search_attributes:
+        'CustomKeywordField = customKeywordField \n'
+        'CustomTextField = customTextField \n'
+        'CustomIntField = customIntField.int64() \n'
+        'CustomDoubleField = customDoubleField \n'
+        'CustomBoolField = customBoolField \n'
+        'CustomDatetimeField = customDatetimeField.ts_parse("2006-01-02T15:04:05Z") \n'
+    };
+  }
+}
+
+message SearchAttributesInput {
+  string custom_keyword_field = 1;
+  string custom_text_field = 2;
+  int64 custom_int_field = 3;
+  double custom_double_field = 4;
+  bool custom_bool_field = 5;
+  google.protobuf.Timestamp custom_datetime_field = 6;
+}

@@ -73,7 +73,7 @@ func (_c *MockExampleClient_CancelWorkflow_Call) RunAndReturn(run func(context.C
 }
 
 // CreateFoo provides a mock function with given fields: ctx, req, opts
-func (_m *MockExampleClient) CreateFoo(ctx context.Context, req *examplev1.CreateFooInput, opts ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error) {
+func (_m *MockExampleClient) CreateFoo(ctx context.Context, req *examplev1.CreateFooRequest, opts ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -89,10 +89,10 @@ func (_m *MockExampleClient) CreateFoo(ctx context.Context, req *examplev1.Creat
 
 	var r0 *examplev1.CreateFooResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)); ok {
 		return rf(ctx, req, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) *examplev1.CreateFooResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) *examplev1.CreateFooResponse); ok {
 		r0 = rf(ctx, req, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -100,7 +100,7 @@ func (_m *MockExampleClient) CreateFoo(ctx context.Context, req *examplev1.Creat
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) error); ok {
 		r1 = rf(ctx, req, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -116,14 +116,14 @@ type MockExampleClient_CreateFoo_Call struct {
 
 // CreateFoo is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req *examplev1.CreateFooInput
+//   - req *examplev1.CreateFooRequest
 //   - opts ...*examplev1.CreateFooOptions
 func (_e *MockExampleClient_Expecter) CreateFoo(ctx interface{}, req interface{}, opts ...interface{}) *MockExampleClient_CreateFoo_Call {
 	return &MockExampleClient_CreateFoo_Call{Call: _e.mock.On("CreateFoo",
 		append([]interface{}{ctx, req}, opts...)...)}
 }
 
-func (_c *MockExampleClient_CreateFoo_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooInput, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFoo_Call {
+func (_c *MockExampleClient_CreateFoo_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooRequest, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFoo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]*examplev1.CreateFooOptions, len(args)-2)
 		for i, a := range args[2:] {
@@ -131,7 +131,7 @@ func (_c *MockExampleClient_CreateFoo_Call) Run(run func(ctx context.Context, re
 				variadicArgs[i] = a.(*examplev1.CreateFooOptions)
 			}
 		}
-		run(args[0].(context.Context), args[1].(*examplev1.CreateFooInput), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*examplev1.CreateFooRequest), variadicArgs...)
 	})
 	return _c
 }
@@ -141,13 +141,13 @@ func (_c *MockExampleClient_CreateFoo_Call) Return(_a0 *examplev1.CreateFooRespo
 	return _c
 }
 
-func (_c *MockExampleClient_CreateFoo_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)) *MockExampleClient_CreateFoo_Call {
+func (_c *MockExampleClient_CreateFoo_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)) *MockExampleClient_CreateFoo_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateFooAsync provides a mock function with given fields: ctx, req, opts
-func (_m *MockExampleClient) CreateFooAsync(ctx context.Context, req *examplev1.CreateFooInput, opts ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error) {
+func (_m *MockExampleClient) CreateFooAsync(ctx context.Context, req *examplev1.CreateFooRequest, opts ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -163,10 +163,10 @@ func (_m *MockExampleClient) CreateFooAsync(ctx context.Context, req *examplev1.
 
 	var r0 examplev1.CreateFooRun
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)); ok {
 		return rf(ctx, req, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) examplev1.CreateFooRun); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) examplev1.CreateFooRun); ok {
 		r0 = rf(ctx, req, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -174,7 +174,7 @@ func (_m *MockExampleClient) CreateFooAsync(ctx context.Context, req *examplev1.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) error); ok {
 		r1 = rf(ctx, req, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -190,14 +190,14 @@ type MockExampleClient_CreateFooAsync_Call struct {
 
 // CreateFooAsync is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req *examplev1.CreateFooInput
+//   - req *examplev1.CreateFooRequest
 //   - opts ...*examplev1.CreateFooOptions
 func (_e *MockExampleClient_Expecter) CreateFooAsync(ctx interface{}, req interface{}, opts ...interface{}) *MockExampleClient_CreateFooAsync_Call {
 	return &MockExampleClient_CreateFooAsync_Call{Call: _e.mock.On("CreateFooAsync",
 		append([]interface{}{ctx, req}, opts...)...)}
 }
 
-func (_c *MockExampleClient_CreateFooAsync_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooInput, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFooAsync_Call {
+func (_c *MockExampleClient_CreateFooAsync_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooRequest, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFooAsync_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]*examplev1.CreateFooOptions, len(args)-2)
 		for i, a := range args[2:] {
@@ -205,7 +205,7 @@ func (_c *MockExampleClient_CreateFooAsync_Call) Run(run func(ctx context.Contex
 				variadicArgs[i] = a.(*examplev1.CreateFooOptions)
 			}
 		}
-		run(args[0].(context.Context), args[1].(*examplev1.CreateFooInput), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*examplev1.CreateFooRequest), variadicArgs...)
 	})
 	return _c
 }
@@ -215,13 +215,13 @@ func (_c *MockExampleClient_CreateFooAsync_Call) Return(_a0 examplev1.CreateFooR
 	return _c
 }
 
-func (_c *MockExampleClient_CreateFooAsync_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooInput, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)) *MockExampleClient_CreateFooAsync_Call {
+func (_c *MockExampleClient_CreateFooAsync_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooRequest, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)) *MockExampleClient_CreateFooAsync_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateFooWithSetFooProgress provides a mock function with given fields: ctx, req, signal, opts
-func (_m *MockExampleClient) CreateFooWithSetFooProgress(ctx context.Context, req *examplev1.CreateFooInput, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error) {
+func (_m *MockExampleClient) CreateFooWithSetFooProgress(ctx context.Context, req *examplev1.CreateFooRequest, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -237,10 +237,10 @@ func (_m *MockExampleClient) CreateFooWithSetFooProgress(ctx context.Context, re
 
 	var r0 *examplev1.CreateFooResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)); ok {
 		return rf(ctx, req, signal, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) *examplev1.CreateFooResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) *examplev1.CreateFooResponse); ok {
 		r0 = rf(ctx, req, signal, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -248,7 +248,7 @@ func (_m *MockExampleClient) CreateFooWithSetFooProgress(ctx context.Context, re
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) error); ok {
 		r1 = rf(ctx, req, signal, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -264,7 +264,7 @@ type MockExampleClient_CreateFooWithSetFooProgress_Call struct {
 
 // CreateFooWithSetFooProgress is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req *examplev1.CreateFooInput
+//   - req *examplev1.CreateFooRequest
 //   - signal *examplev1.SetFooProgressRequest
 //   - opts ...*examplev1.CreateFooOptions
 func (_e *MockExampleClient_Expecter) CreateFooWithSetFooProgress(ctx interface{}, req interface{}, signal interface{}, opts ...interface{}) *MockExampleClient_CreateFooWithSetFooProgress_Call {
@@ -272,7 +272,7 @@ func (_e *MockExampleClient_Expecter) CreateFooWithSetFooProgress(ctx interface{
 		append([]interface{}{ctx, req, signal}, opts...)...)}
 }
 
-func (_c *MockExampleClient_CreateFooWithSetFooProgress_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooInput, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFooWithSetFooProgress_Call {
+func (_c *MockExampleClient_CreateFooWithSetFooProgress_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooRequest, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFooWithSetFooProgress_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]*examplev1.CreateFooOptions, len(args)-3)
 		for i, a := range args[3:] {
@@ -280,7 +280,7 @@ func (_c *MockExampleClient_CreateFooWithSetFooProgress_Call) Run(run func(ctx c
 				variadicArgs[i] = a.(*examplev1.CreateFooOptions)
 			}
 		}
-		run(args[0].(context.Context), args[1].(*examplev1.CreateFooInput), args[2].(*examplev1.SetFooProgressRequest), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*examplev1.CreateFooRequest), args[2].(*examplev1.SetFooProgressRequest), variadicArgs...)
 	})
 	return _c
 }
@@ -290,13 +290,13 @@ func (_c *MockExampleClient_CreateFooWithSetFooProgress_Call) Return(_a0 *exampl
 	return _c
 }
 
-func (_c *MockExampleClient_CreateFooWithSetFooProgress_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)) *MockExampleClient_CreateFooWithSetFooProgress_Call {
+func (_c *MockExampleClient_CreateFooWithSetFooProgress_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (*examplev1.CreateFooResponse, error)) *MockExampleClient_CreateFooWithSetFooProgress_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateFooWithSetFooProgressAsync provides a mock function with given fields: ctx, req, signal, opts
-func (_m *MockExampleClient) CreateFooWithSetFooProgressAsync(ctx context.Context, req *examplev1.CreateFooInput, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error) {
+func (_m *MockExampleClient) CreateFooWithSetFooProgressAsync(ctx context.Context, req *examplev1.CreateFooRequest, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -312,10 +312,10 @@ func (_m *MockExampleClient) CreateFooWithSetFooProgressAsync(ctx context.Contex
 
 	var r0 examplev1.CreateFooRun
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)); ok {
 		return rf(ctx, req, signal, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) examplev1.CreateFooRun); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) examplev1.CreateFooRun); ok {
 		r0 = rf(ctx, req, signal, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -323,7 +323,7 @@ func (_m *MockExampleClient) CreateFooWithSetFooProgressAsync(ctx context.Contex
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) error); ok {
 		r1 = rf(ctx, req, signal, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -339,7 +339,7 @@ type MockExampleClient_CreateFooWithSetFooProgressAsync_Call struct {
 
 // CreateFooWithSetFooProgressAsync is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req *examplev1.CreateFooInput
+//   - req *examplev1.CreateFooRequest
 //   - signal *examplev1.SetFooProgressRequest
 //   - opts ...*examplev1.CreateFooOptions
 func (_e *MockExampleClient_Expecter) CreateFooWithSetFooProgressAsync(ctx interface{}, req interface{}, signal interface{}, opts ...interface{}) *MockExampleClient_CreateFooWithSetFooProgressAsync_Call {
@@ -347,7 +347,7 @@ func (_e *MockExampleClient_Expecter) CreateFooWithSetFooProgressAsync(ctx inter
 		append([]interface{}{ctx, req, signal}, opts...)...)}
 }
 
-func (_c *MockExampleClient_CreateFooWithSetFooProgressAsync_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooInput, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFooWithSetFooProgressAsync_Call {
+func (_c *MockExampleClient_CreateFooWithSetFooProgressAsync_Call) Run(run func(ctx context.Context, req *examplev1.CreateFooRequest, signal *examplev1.SetFooProgressRequest, opts ...*examplev1.CreateFooOptions)) *MockExampleClient_CreateFooWithSetFooProgressAsync_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]*examplev1.CreateFooOptions, len(args)-3)
 		for i, a := range args[3:] {
@@ -355,7 +355,7 @@ func (_c *MockExampleClient_CreateFooWithSetFooProgressAsync_Call) Run(run func(
 				variadicArgs[i] = a.(*examplev1.CreateFooOptions)
 			}
 		}
-		run(args[0].(context.Context), args[1].(*examplev1.CreateFooInput), args[2].(*examplev1.SetFooProgressRequest), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*examplev1.CreateFooRequest), args[2].(*examplev1.SetFooProgressRequest), variadicArgs...)
 	})
 	return _c
 }
@@ -365,7 +365,7 @@ func (_c *MockExampleClient_CreateFooWithSetFooProgressAsync_Call) Return(_a0 ex
 	return _c
 }
 
-func (_c *MockExampleClient_CreateFooWithSetFooProgressAsync_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooInput, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)) *MockExampleClient_CreateFooWithSetFooProgressAsync_Call {
+func (_c *MockExampleClient_CreateFooWithSetFooProgressAsync_Call) RunAndReturn(run func(context.Context, *examplev1.CreateFooRequest, *examplev1.SetFooProgressRequest, ...*examplev1.CreateFooOptions) (examplev1.CreateFooRun, error)) *MockExampleClient_CreateFooWithSetFooProgressAsync_Call {
 	_c.Call.Return(run)
 	return _c
 }
