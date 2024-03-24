@@ -160,7 +160,7 @@ func UnmarshalUpdateWorkflowOptions(o *xnsv1.UpdateWorkflowWithOptionsRequest) c
 		opts.WaitPolicy = &update.WaitPolicy{LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED}
 	case xnsv1.WaitPolicy_WAIT_POLICY_ADMITTED:
 		opts.WaitPolicy = &update.WaitPolicy{LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED}
-	default:
+	case xnsv1.WaitPolicy_WAIT_POLICY_COMPLETED:
 		opts.WaitPolicy = &update.WaitPolicy{LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED}
 	}
 	return opts
