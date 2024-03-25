@@ -1,0 +1,30 @@
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../../examples/helloworld/proto/example/helloworld/v1/helloworld.proto';
+import Implementation from '!!raw-loader!../../../examples/helloworld/main.go';
+
+# Hello World
+
+A simple example inspired by [temporalio/samples-go/helloworld](https://github.com/temporalio/samples-go/tree/main/helloworld)
+
+<CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Implementation}</CodeBlock>
+
+## Run this example
+
+1. Clone the examples
+    ```sh
+    git clone https://github.com/cludden/protoc-gen-go-temporal && cd protoc-gen-go-temporal
+    ```
+2. Run a local Temporal server
+    ```sh
+    temporal server start-dev
+    ```
+3. Run the example worker
+    ```sh
+    go run examples/helloworld/main.go worker
+    ```
+4. Execute a `HelloWorld` workflow
+    ```sh
+    go run examples/helloworld/main.go hello-world --name Temporal
+    ```

@@ -1,0 +1,240 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Plugin
+
+Plugin options are used to globally configure this plugin's behavior at runtime.
+
+<Tabs>
+<TabItem value="buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: <flag>=<value>,<flag>=<value>
+    strategy: all
+```
+</TabItem>
+<TabItem value="protoc" label="Protoc">
+```shell
+--go_temporal_opt=<flag>=<value>,<flag>=<value>
+```
+</TabItem>
+</Tabs>
+
+## Options
+
+### cli-categories
+
+`bool`
+
+Enables [cli categories](https://cli.urfave.org/v2/examples/subcommands-categories/) for grouping workflow, query, signal, and update commands.
+
+:::info
+Requires the [cli-categories](#cli-enabled) plugin option to be enabled.
+:::
+
+<Tabs>
+<TabItem value="cli-categories-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: cli-enabled=true,cli-categories=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="cli-categories-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=cli-enabled=true,cli-categories=true
+```
+</TabItem>
+</Tabs>
+
+### cli-enabled
+
+`bool`
+
+Enables [cli generation](/docs/guides/cli).
+
+<Tabs>
+<TabItem value="cli-enabled-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: cli-enabled=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="cli-enabled-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=cli-enabled=true
+```
+</TabItem>
+</Tabs>
+
+### disable-workflow-input-rename
+
+`bool`
+
+Prior to [v1.3.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.3.0), the generated workflow input struct used the `<Workflow>Input` naming convention. This caused conflicts with workflow definitions that used input messages with the same naming convetion. In `v1.3.0`, the naming convention for the generated workflow input struct was changed to `<Workflow>WorkflowInput`. In order to continue to support schemas using the old convention, this option was added to enable the old naming convention.
+
+<Tabs>
+<TabItem value="disable-workflow-input-rename-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: disable-workflow-input-rename=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="disable-workflow-input-rename-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=disable-workflow-input-rename=true
+```
+</TabItem>
+</Tabs>
+
+### docs-out
+
+`string`
+
+Enables [doc generation](/docs/guides/documentation) by specifying the output path.
+
+<Tabs>
+<TabItem value="docs-out-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: docs-out=./proto/README.md
+    strategy: all
+```
+</TabItem>
+<TabItem value="docs-out-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=docs-out=./proto/README.md
+```
+</TabItem>
+</Tabs>
+
+### docs-template
+
+`string`
+
+Specifies the path to a custom template to use for generated documentation. See the [guide](/docs/guides/documentation) for more details.
+
+:::info
+Requires the [docs-out](#docs-out) plugin option to be defined.
+:::
+
+<Tabs>
+<TabItem value="docs-template-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: docs-out=./proto/README.md,docs-template=./docs/custom.tpl
+    strategy: all
+```
+</TabItem>
+<TabItem value="docs-template-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=docs-out=./proto/README.md,docs-template=./docs/custom.tpl
+```
+</TabItem>
+</Tabs>
+
+### enable-codec
+
+`bool`
+
+Enables [codec server generation](/docs/guides/codec-server)
+
+<Tabs>
+<TabItem value="enable-codec-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: enable-codec=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="enable-codec-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=enable-codec=true
+```
+</TabItem>
+</Tabs>
+
+### enable-patch-support
+
+`bool`
+
+Enables support for [protoc-gen-go-patch](https://github.com/alta/protopatch)
+
+<Tabs>
+<TabItem value="enable-patch-support-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: enable-patch-support=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="enable-patch-support-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=enable-patch-support=true
+```
+</TabItem>
+</Tabs>
+
+### enable-xns
+
+`bool`
+
+Enables [xns generation](/docs/guides/xns)
+
+<Tabs>
+<TabItem value="enable-xns-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: enable-xns=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="enable-xns-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=enable-xns=true
+```
+</TabItem>
+</Tabs>
+
+### workflow-update-enabled
+
+`bool`
+
+Enables [update support](/docs/guides/updates)
+
+<Tabs>
+<TabItem value="workflow-update-enabled-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: workflow-update-enabled=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="workflow-update-enabled-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=workflow-update-enabled=true
+```
+</TabItem>
+</Tabs>

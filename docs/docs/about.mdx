@@ -1,0 +1,142 @@
+---
+sidebar_position: 1
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../examples/example/proto/example/v1/example.proto';
+import Implementation from '!!raw-loader!../../examples/example/example.go';
+import Entrypoint from '!!raw-loader!../../examples/example/cmd/example/main.go';
+import Client from '!!raw-loader!../../examples/example/cmd/client/main.go';
+
+
+# About
+
+A protoc plugin for generating typed Temporal clients and workers in Go from protobuf schemas. This plugin allows:
+- workflow authors to configure sensible defaults and guardrails
+- simplifies the implementation and testing of Temporal workers
+- and streamlines integration by providing typed client SDKs and a generated CLI application
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/fqKDWZDj-c0?si=3Wgvj_nP2BnSVcum&amp;start=912" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>
+
+## How It Works
+
+<details>
+<summary>1. **Annotate** your protobuf services and methods with Temporal options provided by this plugin</summary>
+<CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
+</details>
+
+<details>
+<summary>2. **Generate** Go code that includes types, methods, and functions for implementing Temporal clients, workers, and cli applications</summary>
+```shell
+buf generate
+```
+</details>
+
+<details>
+<summary>3. **Implement** the required Workflow and Activity interfaces</summary>
+<CodeBlock language="go" title="example.go">{Implementation}</CodeBlock>
+</details>
+
+<details>
+<summary>4. **Run** your Temporal worker using the generated helpers and interact with it using the generated client and/or cli</summary>
+
+*Sample worker entrypoint*
+<CodeBlock language="go" title="main.go">{Entrypoint}</CodeBlock>
+
+*Sample client usage*
+<CodeBlock language="go" title="client.go">{Client}</CodeBlock>
+
+*Sample CLI usage*
+```bash title="go run main.go -h"
+NAME:
+   example - A new cli application
+
+USAGE:
+   example [global options] command [command options] [arguments...]
+
+COMMANDS:
+   worker   runs a example.v1.Example worker process
+   help, h  Shows a list of commands or help for one command
+   QUERIES:
+     get-foo-progress  GetFooProgress returns the status of a CreateFoo operation
+   SIGNALS:
+     set-foo-progress  SetFooProgress sets the current status of a CreateFoo operation
+   UPDATES:
+     update-foo-progress  UpdateFooProgress sets the current status of a CreateFoo operation
+   WORKFLOWS:
+     create-foo                        CreateFoo creates a new foo operation
+     create-foo-with-set-foo-progress  sends a example.v1.Example.SetFooProgress signal to a example.v1.Example.CreateFoo workflow, starting it if necessary
+
+GLOBAL OPTIONS:
+   --help, -h  show help
+```
+
+```sh title="go run main.go create-foo -d --name test"
+success
+workflow id: create-foo/test
+run id: 44cacae1-6a13-4b4a-8db7-d29eaafd1499
+```
+
+```sh title="go run main.go set-foo-progress -w create-foo/test --progress 5.7"
+success
+```
+
+```json title="go run main.go get-foo-progress -w create-foo/test"
+{
+  "progress": 5.7,
+  "status": "FOO_STATUS_CREATING"
+}
+```
+
+```json title="go run main.go update-foo-progress -w create-foo/test --progress 100"
+{
+  "progress": 100,
+  "status": "FOO_STATUS_READY"
+}
+```
+
+```json title="go run main.go get-foo-progress -w create-foo/test"
+{
+  "progress": 100,
+  "status": "FOO_STATUS_READY"
+}
+```
+</details>
+
+## Features
+
+Generated **Client** with:
+  - methods for executing workflows, queries, signals, and updates
+  - methods for cancelling or terminating workflows
+  - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
+  - dynamic workflow ids, update ids, and search attributes via [Bloblang expressions](#bloblang-expressions)
+  - default timeouts, id reuse policies, retry policies, wait policies
+
+
+Generated **Worker** resources with:
+  - functions for calling activities and local activities from workflows
+  - functions for executing child workflows and signalling external workflows
+  - default `workflow.ActivityOptions`, `workflow.ChildWorkflowOptions`
+  - default timeouts, parent cose policies, retry policies
+
+
+Optional **CLI** with:
+  - commands for executing workflows, synchronously or asynchronously
+  - commands for starting workflows with signals, synchronously or asynchronously
+  - commands for querying existing workflows
+  - commands for sending signals to existing workflows
+  - typed flags for conventiently specifying workflow, query, and signal inputs
+
+
+Generated [Cross-Namespace (XNS)](/docs/guides/xns) helpers: **[Experimental]**
+  - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace
+
+Generated [Remote Codec Server](/docs/guides/codec-server) helpers
+
+Generated [Markdown Documentation](/docs/guides/documentation)
+
+## Inspiration
+
+This project was inspired by [Chad Retz's](https://github.com/cretz/) awesome [github.com/cretz/temporal-sdk-go-advanced](https://github.com/cretz/temporal-sdk-go-advanced) and [Jacob LeGrone's](https://github.com/jlegrone/) excellent Replay talk on [Temporal @ Datadog](https://youtu.be/LxgkAoTSI8Q?si=ZGwwbfbMz48MkPhj&t=681)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/LxgkAoTSI8Q?si=L3O5it48sy38dsx7&amp;start=681" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>

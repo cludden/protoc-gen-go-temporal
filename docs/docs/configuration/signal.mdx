@@ -1,0 +1,76 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Signal
+
+[Signals](https://docs.temporal.io/workflows#signal) are defined as Protobuf RPCs annotated with the `temporal.v1.signal` method option. They're mapped to workflows using the [signal workflow option](/docs/configuration/workflow#signal). See the [Signals guide](/docs/guides/signals) for more usage details.
+
+:::warning
+Signals definitions must use `google.protobuf.Empty` as their return value. This requires an additional `google/protobuf/empty.proto` protobuf import.
+:::
+
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'Ping' }
+    };
+  }
+
+  // Ping sends a signal to an existing workflow
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+## Options
+
+### name
+
+`string`
+
+Fully qualified [Signal type name](https://docs.temporal.io/workflows#signal). Defaults to protobuf method full name (e.g. `example.v1.Example.Ping`)
+
+```protobuf
+service Example {
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {
+      name: "Ping"
+    };
+  }
+}
+```
+
+### xns
+
+[temporal.v1.XNSActivityOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.XNSActivityOptions)
+
+Used to configure [cross-namespace](/docs/guides/xns) activity options.
+
+:::note
+This requires the [enable-xns](/docs/configuration/plugin) plugin option to be enabled.
+:::
+
+```protobuf
+service Example {
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {
+      xns: {
+        heartbeat_timeout: { seconds: 30 }
+        heartbeat_interval: { seconds: 10 }
+        start_to_close_timeout: { seconds: 300 }
+      }
+    };
+  }
+}
+```
+

@@ -1,0 +1,42 @@
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../../examples/searchattributes/proto/example/searchattributes/v1/searchattributes.proto';
+import Implementation from '!!raw-loader!../../../examples/searchattributes/main.go';
+
+# Search Attributes
+
+A simple example inspired by [temporalio/samples-go/searchattributes](https://github.com/temporalio/samples-go/tree/main/searchattributes)
+
+<CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Implementation}</CodeBlock>
+
+## Run this example
+
+1. Clone the examples
+    ```sh
+    git clone https://github.com/cludden/protoc-gen-go-temporal && cd protoc-gen-go-temporal
+    ```
+2. Run a local Temporal server
+    ```sh
+    temporal server start-dev
+    ```
+3. In a different shell, register custom search attributes and run the example worker
+    ```shell
+    temporal operator search-attribute create --name CustomDatetimeField --type Datetime
+    temporal operator search-attribute create --name CustomKeywordField --type Keyword
+    temporal operator search-attribute create --name CustomTextField --type Text
+    temporal operator search-attribute create --name CustomIntField --type Int
+    temporal operator search-attribute create --name CustomDoubleField --type Double
+    temporal operator search-attribute create --name CustomBoolField --type Bool
+    go run examples/searchattributes/main.go worker
+    ```
+4. In a different shell, execute the workflow
+    ```shell
+    go run examples/searchattributes/main.go search-attributes \
+        --custom-datetime-field=2024-01-01T00:00:00Z \
+        --custom-keyword-field=foo-bar \
+        --custom-text-field=foo-bar \
+        --custom-int-field=42 \
+        --custom-double-field=42 \
+        --custom-bool-field=true
+    ```

@@ -7,6 +7,12 @@ build:
     set -euo pipefail
     goreleaser build --clean --snapshot
 
+# run doc server
+docs:
+    #!/usr/bin/env bash
+    cd {{ justfile_directory() }}/docs
+    npm start
+
 # configure local temporal for example
 example:
     #!/usr/bin/env bash

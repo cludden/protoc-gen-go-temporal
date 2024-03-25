@@ -1,0 +1,375 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Queries
+
+## Implementation
+
+A query is implemented as a method on a workflow struct.
+
+<Tabs>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type HelloWorkflow struct {
+    *examplev1.HelloWorkflowInput
+}
+
+func (w *HelloWorkflow) Execute(ctx workflow.Context) (*examplev1.HelloOutput, error) {
+    workflow.GetLogger(ctx).Info("executing hello workflow", "input", w.Req)
+    return &examplev1.HelloOutput{}, nil
+}
+
+func (w *HelloWorkflow) GetHelloStatus(input *examplev1.GetHelloStatusInput) (*examplev1.GetHelloStatusOutput, error) {
+    return &examplev1.GetHelloStatusOutput{
+        Status: w.Req.GetStatus(),
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      query: { ref: "GetHelloStatus" }
+    };
+  }
+
+  // GetHelloStatus retrieves the status of a Hello workflow
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Parameters
+
+Query definitions can omit an input parameter by specifying the native `google.protobuf.Empty` message type in its place. This requires an additional `google/protobuf/empty.proto` protobuf import. 
+
+:::warning
+Query definitions must specify a non-empty output parameter.
+:::
+
+<Tabs>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type HelloWorkflow struct {
+    *examplev1.HelloWorkflowInput
+}
+
+func (w *HelloWorkflow) Execute(ctx workflow.Context) (*examplev1.HelloOutput, error) {
+    workflow.GetLogger(ctx).Info("executing hello workflow", "input", w.Req)
+    return &examplev1.HelloOutput{}, nil
+}
+
+func (w *HelloWorkflow) GetHelloStatus() (*examplev1.GetHelloStatusOutput, error) {
+    return &examplev1.GetHelloStatusOutput{
+        Status: w.Req.GetStatus(),
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      query: { ref: "GetHelloStatus" }
+    };
+  }
+
+  // GetHelloStatus retrieves the status of a Hello workflow
+  rpc GetHelloStatus(google.protobuf.Empty) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Invocation
+
+This plugin supports several methods for executing protobuf queries, each of which is outlined in more detail below.
+
+### Client
+
+Consumers can utilize the generated Client to execute queries from any Go application. See the [Clients guide](/docs/guides/clients) for more usage details.
+
+<Tabs>
+<TabItem value="client-go" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // initialize temporal client
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatalf("error initializing client: %v", err)
+    }
+
+    // initialize temporal protobuf client
+    ctx, client := context.Background(), examplev1.NewExampleClient(c)
+
+    // execute an example.v1.Example.GetHelloStatus query
+    // via workflow ID
+    status, err := client.GetHelloStatus(ctx, "wf-id", "", &examplev1.GetHelloStatusInput{})
+    if err != nil {
+        log.Fatalf("error executing example.v1.Example.GetHelloStatus query: %v", err)
+    }
+
+    // or use the corresponding query method defined on the
+    // workflow run
+    run, err := client.HelloAsync(ctx, &examplev1.HelloInput{})
+    if err != nil {
+        log.Fatalf("error starting example.v1.Example.Hello workflow: %v", err)
+    }
+    status, err = run.GetHelloStatus(&examplev1.GetHelloStatusInput{})
+    if err != nil {
+        log.Fatalf("error executing example.v1.Example.GetHelloStatus query: %v", err)
+    }
+}
+```
+</TabItem>
+<TabItem value="client-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  }
+
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Command Line Interface
+
+Consumers can utilize the generated Command Line Interface as a standalone application for executing queries. See the [CLI guide](/docs/guides/cli) for more usage details.
+
+<Tabs>
+<TabItem value="cli-shell" label="Shell">
+```sh title="example -h"
+NAME:
+  example - an example temporal cli
+
+USAGE:
+  example [global options] command [command options] [arguments...]
+
+COMMANDS:
+  help, h  Shows a list of commands or help for one command
+    QUERIES:
+      get-hello-status    GetHelloStatus retrieves the status of a Hello workflow
+    WORKFLOWS:
+      hello               Hello returns a friendly greeting
+```
+
+```sh title="example get-hello-status -h"
+NAME:
+  example get-hello-status - GetHelloStatus retrieves the status of a Hello workflow
+
+USAGE:
+  example get-hello-status [command options] [arguments...]
+
+CATEGORY:
+   WORKFLOWS
+
+OPTIONS:
+   --help, -h                      show help
+   --input-file value, -f value    path to json-formatted input file
+   --run-id value, -r value        run id
+   --workflow-id value, -w value   workflow id
+
+   INPUT
+
+   --format value    // Format specifies the output format
+```
+
+```json title="example get-hello-status -w foo --format json"
+{
+  "result": "..."
+}
+```
+</TabItem>
+<TabItem value="cli-go" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "log"
+    "os"
+
+    examplev1 "path/to/gen/example/v1"
+)
+
+func main() {
+    app, err := examplev1.NewExampleCLI()
+    if err != nil {
+        log.Fatalf("error initializing cli: %v", err)
+    }
+
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+<TabItem value="cli-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  }
+
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  // GetHelloStatus retrieves the status of a Hello workflow
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+}
+
+message HelloInput {
+  // Name specifies the subject to greet
+  string name = 1;
+}
+
+message HelloOutput {
+  string result = 1;
+}
+
+message GetHelloStatusInput {
+  // Format specifies the output format
+  string format = 1;
+}
+
+message GetHelloStatusOutput {
+  string status = 1;
+}
+```
+</TabItem>
+</Tabs>
+
+### Cross-Namespace (XNS)
+
+Queries can be executed from other workflows in a different Temporal namespace or even an entirely separate Temporal cluster (e.g. on-prem to cloud). See the [Cross-Namespace guide](/docs/guides/xns) for more usage details.
+
+<Tabs>
+<TabItem value="xns-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "path/to/gen/example/v1/examplev1xns"
+    "go.temporal.io/sdk/workflow"
+)
+
+func MyWorkflow(ctx workflow.Context) error {
+    run, err := examplev1xns.HelloAsync(ctx, &examplev1.HelloInput{})
+    if err != nil {
+        return fmt.Errorf("error starting example.v1.Example.Hello xns workflow: %w", err)
+    }
+
+    status, err := run.GetHelloStatus(ctx, &examplev1.GetHelloStatusInput{})
+    if err != nil {
+        return fmt.Errorf("error querying workflow: %w", err)
+    }
+
+    _, err = run.Get(ctx)
+    return err
+}
+```
+</TabItem>
+<TabItem value="xns-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  }
+
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+        start_to_close_timeout: { seconds: 300 }
+      }
+    };
+  }
+
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+        start_to_close_timeout: { seconds: 60 }
+      }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>

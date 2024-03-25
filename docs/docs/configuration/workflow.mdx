@@ -1,0 +1,335 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Workflow
+
+[Workflows](https://docs.temporal.io/workflows) are defined as Protobuf RPCs annotated with the `temporal.v1.workflow` method option. See the [Workflows guide](/docs/guides/workflows) for more usage details.
+
+:::info
+
+Workflow definitions can omit an input and/or out parameter by specifying the native `google.protobuf.Empty` message type in its place. This requires an additional `google/protobuf/empty.proto` protobuf import.
+
+:::
+
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+
+## Options
+
+### execution_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The timeout for duration of [Workflow execution](https://docs.temporal.io/workflows#time-constraints). It includes retries and continue as new. Use [run_timeout](#run_timeout) to limit execution time of a single workflow run. Defaults to unlimited.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 3600 } // 1h
+    };
+  }
+}
+```
+
+### id
+
+`string`
+
+Specifies the default [Workflow ID](https://docs.temporal.io/workflows#workflow-id) as a [Bloblang expression](/docs/guides/bloblang).
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'hello/${! name }/${! uuid_v4() }'
+    };
+  }
+}
+
+message HelloInput {
+  string name = 1;
+}
+```
+
+### id_reuse_policy
+
+[temporal.v1.IDReusePolicy](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.IDReusePolicy)
+
+Whether server allow reuse of workflow ID, can be useful for dedupe logic if set to `WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE`. Defaults to `WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE`. See [docs](https://docs.temporal.io/workflows#workflow-id-reuse-policy) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+    };
+  }
+}
+```
+
+### name
+
+`string`
+
+Fully qualified [Workflow type name](https://docs.temporal.io/workflows#workflow-type). Defaults to protobuf method full name (e.g. `example.v1.Example.Hello`)
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      name: "Hello"
+    };
+  }
+}
+```
+
+### parent_close_policy
+
+[temporal.v1.ParentClosePolicy](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.ParentClosePolicy)
+
+When execution as a child workflow, this [optional policy](https://docs.temporal.io/workflows#parent-close-policy) determines what to do when the parent workflow is closed. Default to `PARENT_CLOSE_POLICY_TERMINATE`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+    };
+  }
+}
+```
+
+### query
+
+[temporal.v1.WorkflowOptions.Query](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WorkflowOptions.Query)
+
+Identifies a [query](https://docs.temporal.io/workflows#query) supported by the workflow. Can be specified 0, 1, or more times. See the [query docs](/docs/guides/queries) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      query: { ref: 'SomeQuery1' }
+      query: { ref: 'SomeQuery2' }
+      query: {
+        // can reference a query definition from another service
+        ref: 'example.v2.Example.SomeQuery3'
+      }
+    };
+  }
+
+  rpc SomeQuery1(SomeQuery1Input) returns (SomeQuery1Output) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc SomeQuery2(SomeQuery2Input) returns (SomeQuery2Output) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+
+### retry_policy
+
+[temporal.v1.RetryPolicy](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.RetryPolicy)
+
+Optional [retry policy](https://docs.temporal.io/retry-policies) for workflow. If a retry policy is specified, in case of workflow failure server will start new workflow execution if needed based on the retry policy.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      retry_policy: {
+        max_attempts: 10
+        initial_interval: { seconds: 5 }
+        max_interval: { seconds: 60 }
+        backoff_coefficient: 2.0
+        non_retryable_error_types: ["SomeError", "SomeOtherError"]
+      }
+    };
+  }
+}
+```
+
+### run_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The timeout for duration of [a single workflow run](https://docs.temporal.io/workflows#time-constraints). Defaults to [execution_timeout](#execution_timeout).
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 300 } // 5m
+    };
+  }
+}
+```
+
+### search_attributes
+
+`string`
+
+Specifies the default [Workflow search attributes](https://docs.temporal.io/visibility#search-attribute) as a [Bloblang mapping](https://www.benthos.dev/docs/guides/bloblang/about/). See the [Search Attributes example](/docs/examples/searchattributes/) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      search_attributes:
+        'Name = name.or("World") \n'
+        'CreatedAt = now().ts_parse("2006-01-02T15:04:05Z") \n'
+    };
+  }
+}
+```
+
+### signal
+
+[temporal.v1.WorkflowOptions.Signal](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WorkflowOptions.Signal)
+
+Identifies a [signal](https://docs.temporal.io/workflows#signal) supported by the workflow. Can be specified 0, 1, or more times. See the [signal docs](/docs/guides/signals) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: 'SomeSignal1' }
+      signal: {
+        ref: 'SomeSignal2'
+        start: true // generates signal with start helpers
+      }
+      signal: {
+        // can reference a signal definition from another service
+        ref: 'example.v2.Example.SomeSignal3'
+      }
+    };
+  }
+
+  rpc SomeSignal1(SomeSignal1Input) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc SomeSignal2(SomeSignal2Input) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+
+### task_queue
+
+`string`
+
+Overrides the default task queue for a particular workflow type. Defaults to Service's `task_queue` if specified.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "example-v2"
+    };
+  }
+}
+```
+
+### task_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The timeout for processing [workflow task](https://docs.temporal.io/workflows#workflow-task-timeout) from the time the worker pulled this task. If a workflow task is lost, it is retried after this timeout. Defaults to `10s`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      task_timeout: { seconds: 10 }
+    };
+  }
+}
+```
+
+### update
+
+[temporal.v1.WorkflowOptions.Update](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WorkflowOptions.Update)
+
+Identifies an [update](https://docs.temporal.io/workflows#update) supported by the workflow. Can be specified 0, 1, or more times. See the [update docs](/docs/guides/updates) for more details.
+
+:::note
+This requires the [workflow-update-enabled](/docs/configuration/plugin#workflow-update-enabled) plugin option to be enabled.
+:::
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: 'SomeUpdate1' }
+      update: { ref: 'SomeUpdate2' }
+      update: {
+        // can reference an update definition from another service
+        ref: 'example.v2.Example.SomeUpdate3'
+      }
+    };
+  }
+
+  rpc SomeUpdate1(SomeUpdate1Input) returns (SomeUpdate1Output) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc SomeUpdate2(SomeUpdate2Input) returns (SomeUpdate2Output) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+
+### xns
+
+[temporal.v1.XNSActivityOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.XNSActivityOptions)
+
+Used to configure [cross-namespace](/docs/guides/xns) activity options.
+
+:::note
+This requires the [enable-xns](/docs/configuration/plugin#enable-xns) plugin option to be enabled.
+:::
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      xns: {
+        heartbeat_timeout: { seconds: 30 }
+        heartbeat_interval: { seconds: 10 }
+        start_to_close_timeout: { seconds: 300 }
+      }
+    };
+  }
+}
+```
+
+### wait_for_cancellation
+
+`bool`
+
+Whether to wait for canceled [child workflow](https://docs.temporal.io/workflows#child-workflow) to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled). Defaults to `false`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      wait_for_cancellation: false
+    };
+  }
+}
+```

@@ -9,24 +9,28 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
-	tlog "go.temporal.io/sdk/log"
+	sdklog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
 type (
+	// HelloWorldWorkflow provides a helloworldv1.HelloWorldWorkflow implementation
 	HelloWorldWorkflow struct {
 		*helloworldv1.HelloWorldWorkflowInput
-		log tlog.Logger
+		log sdklog.Logger
 	}
 
+	// Activities provides a helloworldv1.HelloWorldActivities implementation
 	Activities struct{}
 )
 
+// NewHelloWorldWorkflow initializes a new helloworldv1.HelloWorldWorkflow value
 func NewHelloWorldWorkflow(ctx workflow.Context, input *helloworldv1.HelloWorldWorkflowInput) (helloworldv1.HelloWorldWorkflow, error) {
 	return &HelloWorldWorkflow{input, workflow.GetLogger(ctx)}, nil
 }
 
+// Execute defines the entrypoint to a HelloWorld workflow
 func (w *HelloWorldWorkflow) Execute(ctx workflow.Context) (*helloworldv1.HelloWorldOutput, error) {
 	result, err := helloworldv1.HelloWorld(ctx, w.Req)
 	if err != nil {
@@ -38,6 +42,7 @@ func (w *HelloWorldWorkflow) Execute(ctx workflow.Context) (*helloworldv1.HelloW
 	return result, nil
 }
 
+// HelloWorld defines the entrypoint to a HelloWorld activity
 func (a *Activities) HelloWorld(ctx context.Context, input *helloworldv1.HelloWorldInput) (*helloworldv1.HelloWorldOutput, error) {
 	activity.GetLogger(ctx).Info("Activity", "name", input.GetName())
 	return &helloworldv1.HelloWorldOutput{
@@ -46,12 +51,12 @@ func (a *Activities) HelloWorld(ctx context.Context, input *helloworldv1.HelloWo
 }
 
 func main() {
-	app, err := helloworldv1.NewExampleCli(
-		helloworldv1.NewExampleCliOptions().
+	app, err := helloworldv1.NewHelloWorldCli(
+		helloworldv1.NewHelloWorldCliOptions().
 			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-				w := worker.New(c, helloworldv1.ExampleTaskQueue, worker.Options{})
+				w := worker.New(c, helloworldv1.HelloWorldTaskQueue, worker.Options{})
 				helloworldv1.RegisterHelloWorldWorkflow(w, NewHelloWorldWorkflow)
-				helloworldv1.RegisterExampleActivities(w, &Activities{})
+				helloworldv1.RegisterHelloWorldActivities(w, &Activities{})
 				return w, nil
 			}),
 	)

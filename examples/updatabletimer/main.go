@@ -13,19 +13,21 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// UpdatableTimerWorkflow provides a updatabletimerv1.UpdatableTimerWorkflow implementation
 type UpdatableTimerWorkflow struct {
 	*updatabletimerv1.UpdatableTimerWorkflowInput
 	log        tlog.Logger
 	wakeUpTime *timestamppb.Timestamp
 }
 
+// NewUpdatableTimerWorkflow initializes a new updatabletimerv1.UpdatableTimerWorkflow value
 func NewUpdatableTimerWorkflow(ctx workflow.Context, input *updatabletimerv1.UpdatableTimerWorkflowInput) (updatabletimerv1.UpdatableTimerWorkflow, error) {
 	return &UpdatableTimerWorkflow{input, workflow.GetLogger(ctx), input.Req.GetInitialWakeUpTime()}, nil
 }
 
+// Execute defines the entrypoint to a UpdatableTimer workflow
 func (w *UpdatableTimerWorkflow) Execute(ctx workflow.Context) error {
-	var timerFired bool
-	for !timerFired && ctx.Err() == nil {
+	for timerFired := false; !timerFired && ctx.Err() == nil; {
 		timerCtx, cancelTimer := workflow.WithCancel(ctx)
 		timer := workflow.NewTimer(timerCtx, w.wakeUpTime.AsTime().Sub(workflow.Now(ctx)))
 		w.log.Info("SleepUntil", "WakeUpTime", w.wakeUpTime)
@@ -49,6 +51,7 @@ func (w *UpdatableTimerWorkflow) Execute(ctx workflow.Context) error {
 	return ctx.Err()
 }
 
+// GetWakeUpTime defines the entrypoint to a GetWakeUpTime query
 func (w *UpdatableTimerWorkflow) GetWakeUpTime() (*updatabletimerv1.GetWakeUpTimeOutput, error) {
 	return &updatabletimerv1.GetWakeUpTimeOutput{WakeUpTime: w.wakeUpTime}, nil
 }

@@ -1,0 +1,74 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Query
+
+[Queries](https://docs.temporal.io/workflows#query) are defined as Protobuf RPCs annotated with the `temporal.v1.query` method option. They're mapped to workflows using the [query workflow option](/docs/configuration/workflow#query). See the [Queries guide](/docs/guides/queries) for more usage details.
+
+:::warning
+Query definitions must specify a non-empty output parameter. Query definitions can omit an input parameter by specifying the native `google.protobuf.Empty` message type in its place. This requires an additional `google/protobuf/empty.proto` protobuf import.
+:::
+
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      query: { ref: 'GetHelloStatus' }
+    };
+  }
+
+  // GetHelloStatus retrieves the status of an existing Hello workflow
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+
+## Options
+
+### name
+
+`string`
+
+Fully qualified [Query type name](https://docs.temporal.io/workflows#query). Defaults to protobuf method full name (e.g. `example.v1.Example.GetHelloStatus`)
+
+```protobuf
+service Example {
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      name: "GetHelloStatus"
+    };
+  }
+}
+```
+
+### xns
+
+[temporal.v1.XNSActivityOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.XNSActivityOptions)
+
+Used to configure [cross-namespace](/docs/guides/xns) activity options.
+
+:::note
+This requires the [enable-xns](/docs/configuration/plugin) plugin option to be enabled.
+:::
+
+```protobuf
+service Example {
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      xns: {
+        heartbeat_timeout: { seconds: 30 }
+        heartbeat_interval: { seconds: 10 }
+        start_to_close_timeout: { seconds: 300 }
+      }
+    };
+  }
+}
+```
