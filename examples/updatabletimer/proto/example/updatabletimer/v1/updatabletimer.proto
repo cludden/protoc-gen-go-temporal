@@ -11,32 +11,39 @@ service Example {
     task_queue: "updatable-timer"
   };
 
+  // GetWakeUpTime retrieves the current timer expiration timestamp
   rpc GetWakeUpTime(google.protobuf.Empty) returns (GetWakeUpTimeOutput) {
     option (temporal.v1.query) = {};
   }
 
+  // UpdatableTimer describes an updatable timer workflow
   rpc UpdatableTimer(UpdatableTimerInput) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
+      name: "UpdatableTimer"
       id: 'updatable-timer/${! name.or(uuid_v4()) }'
-      query: { ref: 'GetWakeUpTime' }
-      signal: { ref: 'UpdateWakeUpTime' }
+      query: { ref: "GetWakeUpTime" }
+      signal: { ref: "UpdateWakeUpTime" }
     };
   }
 
+  // UpdateWakeUpTime updates the timer expiration timestamp
   rpc UpdateWakeUpTime(UpdateWakeUpTimeInput) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 }
 
+// GetWakeUpTimeOutput describes the input to a GetWakeUpTime query
 message GetWakeUpTimeOutput {
   google.protobuf.Timestamp wake_up_time = 1;
 }
 
+// UpdatableTimerInput describes the input to a UpdatableTimer workflow
 message UpdatableTimerInput {
   google.protobuf.Timestamp initial_wake_up_time = 1;
   string name = 2;
 }
 
+// UpdateWakeUpTimeInput describes the input to a UpdateWakeUpTime signal
 message UpdateWakeUpTimeInput {
   google.protobuf.Timestamp wake_up_time = 1;
 }

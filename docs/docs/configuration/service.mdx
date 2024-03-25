@@ -1,0 +1,23 @@
+# Service
+
+Service options apply to all Temporal resources defined within an individual protobuf service.
+
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+}
+```
+
+## Options
+
+| field | type | description |
+| :--- | :---: | :--- |
+| task_queue | `string` | default task queue for all workflows, activities |

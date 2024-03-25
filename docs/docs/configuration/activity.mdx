@@ -1,0 +1,149 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Activity
+
+[Activities](https://docs.temporal.io/activities) are defined as Protobuf RPCs annotated with the `temporal.v1.activity` method option. See the [Activities guide](/docs/guides/activities) for more usage details.
+
+:::info
+
+Activity definitions can omit an input and/or out parameter by specifying the native `google.protobuf.Empty` message type in its place. This requires an additional `google/protobuf/empty.proto` protobuf import.
+
+:::
+
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+        start_to_close_timeout: { seconds: 60 }
+    };
+  }
+}
+```
+
+## Options
+
+### heartbeat_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The maximum time allowed between [Activity Heartbeats](https://docs.temporal.io/activities#activity-heartbeat). See [docs](https://docs.temporal.io/activities#heartbeat-timeout) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      heartbeat_timeout: { seconds: 300 } // 5m
+    };
+  }
+}
+```
+
+### name
+
+`string`
+
+Fully qualified [Activity type name](https://docs.temporal.io/activities#activity-type). Defaults to protobuf method full name (e.g. `example.v1.Example.Hello`)
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      name: "Hello"
+    };
+  }
+}
+```
+
+### retry_policy
+
+[temporal.v1.RetryPolicy](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.RetryPolicy)
+
+Optional [retry policy](https://docs.temporal.io/retry-policies) for activity.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      retry_policy: {
+        max_attempts: 10
+        initial_interval: { seconds: 5 }
+        max_interval: { seconds: 60 }
+        backoff_coefficient: 2.0
+        non_retryable_error_types: ["SomeError", "SomeOtherError"]
+      }
+    };
+  }
+}
+```
+
+### schedule_to_close_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The maximum time allowed for the overall [Activity Execution](https://docs.temporal.io/activities#activity-execution). At least one of [schedule_to_close_timeout](#schedule_to_close_timeout), [schedule_to_start_timeout](#schedule_to_start_timeout), or [start_to_close_timeout](#start_to_close_timeout) is required. See [docs](https://docs.temporal.io/activities#schedule-to-close-timeout) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      schedule_to_close_timeout: { seconds: 10 }
+    };
+  }
+}
+```
+
+### schedule_to_start_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The maximum time allowed from when an [Activity Task](https://docs.temporal.io/workers#activity-task) is scheduled to when a Worker starts the Activity Task. At least one of [schedule_to_close_timeout](#schedule_to_close_timeout), [schedule_to_start_timeout](#schedule_to_start_timeout), or [start_to_close_timeout](#start_to_close_timeout) is required. See [docs](https://docs.temporal.io/activities#schedule-to-start-timeout) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      schedule_to_start_timeout: { seconds: 10 }
+    };
+  }
+}
+```
+
+### start_to_close_timeout
+
+[google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)
+
+The maximum time allowed for a single [Activity Task Execution](https://docs.temporal.io/workers#activity-task-execution). At least one of [schedule_to_close_timeout](#schedule_to_close_timeout), [schedule_to_start_timeout](#schedule_to_start_timeout), or [start_to_close_timeout](#start_to_close_timeout) is required. See [docs](https://docs.temporal.io/activities#start-to-close-timeout) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 10 }
+    };
+  }
+}
+```
+
+### task_queue
+
+`string`
+
+Overrides the default task queue for a particular activity type. Defaults to Service's `task_queue` if specified.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      task_queue: "example-v2"
+    };
+  }
+}
+```

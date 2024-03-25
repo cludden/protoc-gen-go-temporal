@@ -1,0 +1,110 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Install
+
+<Tabs>
+<TabItem value="brew" label="brew">
+
+```sh
+brew install cludden/formula/protoc-gen-go_temporal
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```sh
+curl -L https://raw.githubusercontent.com/cludden/protoc-gen-go-temporal/main/scripts/install.sh | bash
+```
+
+</TabItem>
+<TabItem value="go" label="go">
+
+:::warning
+This installation method omits detailed version metadata in generated file headers.
+:::
+
+```sh
+go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@<version>
+```
+
+</TabItem>
+</Tabs>
+
+
+## Dependencies
+
+<details>
+<summary>1. Install **[buf](https://docs.buf.build/installation)**</summary>
+
+<Tabs>
+<TabItem value="brew" label="brew">
+
+```sh
+brew install bufbuild/buf/buf
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```sh
+# Substitute BIN for your bin directory.
+# Substitute VERSION for the current released version.
+BIN="/usr/local/bin" && \
+VERSION="1.30.0" && \
+curl -sSL \
+"https://github.com/bufbuild/buf/releases/download/v${VERSION}/buf-$(uname -s)-$(uname -m)" \
+-o "${BIN}/buf" && \
+chmod +x "${BIN}/buf"
+```
+
+</TabItem>
+</Tabs>
+
+</details>
+
+<details>
+<summary>2. Install **[protoc-gen-go](https://github.com/golang/protobuf)**</summary>
+
+<Tabs>
+<TabItem value="brew" label="brew">
+
+```sh
+brew install protoc-gen-go
+```
+
+</TabItem>
+<TabItem value="go" label="go">
+
+```sh
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+```
+
+</TabItem>
+</Tabs>
+
+</details>
+
+<details>
+<summary>3. Install **[temporal](https://docs.temporal.io/cli#install)**</summary>
+
+<Tabs>
+<TabItem value="brew" label="brew">
+
+```sh
+brew install temporal
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```sh
+curl -sSf https://temporal.download/cli.sh | sh
+```
+
+</TabItem>
+</Tabs>
+
+</details>
+
+

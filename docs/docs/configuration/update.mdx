@@ -1,0 +1,130 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Update
+
+[Updates](https://docs.temporal.io/workflows#update) are defined as Protobuf RPCs annotated with the [temporal.v1.update](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.UpdateOptions) method option. They're mapped to workflows using the [update workflow option](/docs/configuration/workflow#update). See the [Updates guide](/docs/guides/queries) for more usage details.
+
+:::warning
+
+Updates are considered experimental. They can be enabled using the [workflow-update-enabled](/docs/configuration/plugin#options) plugin option. They are disabled by default.
+
+:::
+
+:::info
+
+Update definitions can omit an input and/or out parameter by specifying the native `google.protobuf.Empty` message type in its place. This requires an additional `google/protobuf/empty.proto` protobuf import.
+
+:::
+
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Hello returns a friendly greeting
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: 'UpdateHello' }
+    };
+  }
+
+  // UpdateHello updates an existing Hello workflow
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+
+## Options
+
+### id
+
+`string`
+
+Specifies the default Update ID as a [Bloblang expression](/docs/guides/bloblang).
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      id: 'update-hello/${! newName }'
+    };
+  }
+}
+
+message UpdateHelloInput {
+  string new_name = 1;
+}
+```
+
+### name
+
+`string`
+
+Fully qualified Update type name. Defaults to protobuf method full name (e.g. `example.v1.Example.UpdateHello`)
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      name: "UpdateHello"
+    };
+  }
+}
+```
+
+### validate
+
+`bool`
+
+Enables update [validation](https://docs.temporal.io/workflows#update).
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      validate: true
+    };
+  }
+}
+```
+
+### xns
+
+[temporal.v1.XNSActivityOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.XNSActivityOptions)
+
+Used to configure [cross-namespace](/docs/guides/xns) activity options. Note that this requires the [enable-xns](/docs/guides/plugin) plugin option to be enabled.
+
+```protobuf
+service Example {
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.update) = {
+      xns: {
+        heartbeat_timeout: { seconds: 30 }
+        heartbeat_interval: { seconds: 10 }
+        start_to_close_timeout: { seconds: 300 }
+      }
+    };
+  }
+}
+```
+
+### wait_policy
+
+[temporal.v1.WaitPolicy](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WaitPolicy)
+
+Used to indicate to the server how long the client wishes to wait for a return value from an UpdateWorkflow RPC.
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      wait_policy: WAIT_POLICY_COMPLETED
+    };
+  }
+}
+```

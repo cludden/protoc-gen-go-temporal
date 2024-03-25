@@ -1,0 +1,37 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Plugin
+
+Plugin options are used to globally configure this plugin's behavior at runtime.
+
+<Tabs>
+<TabItem value="buf" label="buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: <flag>=<value>,<flag>=<value>
+    strategy: all
+```
+</TabItem>
+<TabItem value="protoc" label="protoc">
+```shell
+--go_temporal_opt=<flag>=<value>,<flag>=<value>
+```
+</TabItem>
+</Tabs>
+
+## Options
+
+| flag | type | description | default |
+| :--- | :---: | :--- | :---: |
+| cli-categories | `bool` | enables cli categories | `true` |
+| cli-enabled | `bool` | enables cli generation | `false` |
+| disable-workflow-input-rename | `bool` | disables renamed workflow input suffix | `false` |
+| docs-out | `string` | path to output documentation, leave empty to disable doc generation | `""` |
+| docs-template | `string` | built-in template name or path to custom template file | `"basic"` |
+| enable-codec | `bool` | enables [experimental codec-server support](#codec) | `false` |
+| enable-patch-support | `bool` | enables experimental support for [protoc-gen-go-patch](https://github.com/alta/protopatch) | `false` |
+| enable-xns | `bool` | enables [experimental cross-namespace support](#cross-namespace-xns) | `false` |
+| workflow-update-enabled | `bool` | enables experimental workflow update | `false` |

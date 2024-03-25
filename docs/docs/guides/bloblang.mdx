@@ -1,0 +1,44 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Bloblang
+
+Default workflow IDs, update IDs, and search attributes can be defined using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
+
+## Example
+
+```protobuf title="example.proto"
+syntax="proto3"
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc SayGreeting(SayGreetingRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'say-greeting/${! greeting.or("hello").capitalize() }/${! subject.or("world").capitalize() }/${! uuid_v4() }'
+    };
+  }
+}
+
+message SayGreetingRequest {
+  string greeting = 1;
+  string subject = 2;
+}
+```
+
+```go title="main.go"
+c, _ := client.Dial(client.Options{})
+example := examplev1.NewClient(c)
+
+run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{})
+require.Regexp(`^say-greeting/Hello/World/[a-f0-9-]{32}$`, run.ID())
+
+run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{
+    Greeting: "howdy",
+    Subject: "stranger",
+})
+require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
+```

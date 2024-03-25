@@ -14,8 +14,8 @@ service Example {
   rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
     option (temporal.v1.workflow) = {
       execution_timeout: { seconds: 3600 }
-      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       id: 'create-foo/${! name.slug() }'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       query: { ref: "GetFooProgress" }
       signal: { ref: "SetFooProgress", start: true }
       update: { ref: "UpdateFooProgress" }

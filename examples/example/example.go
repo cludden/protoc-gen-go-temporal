@@ -18,18 +18,18 @@ type (
 	// Activities manages shared state for activities and is used to register
 	// activities with a worker
 	Activities struct{}
+
+	// CreateFooWorkflow manages workflow state for a CreateFoo workflow
+	CreateFooWorkflow struct {
+		// it embeds the generated workflow Input type that contains the workflow
+		// input and signal helpers
+		*examplev1.CreateFooWorkflowInput
+
+		log      log.Logger
+		progress float32
+		status   examplev1.Foo_Status
+	}
 )
-
-// CreateFooWorkflow manages workflow state for a CreateFoo workflow
-type CreateFooWorkflow struct {
-	// it embeds the generated workflow Input type that contains the workflow
-	// input and signal helpers
-	*examplev1.CreateFooWorkflowInput
-
-	log      log.Logger
-	progress float32
-	status   examplev1.Foo_Status
-}
 
 // CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
 // that initializes a new CreateFooWorkflow for each execution
@@ -43,7 +43,7 @@ func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooWo
 
 // Execute defines the entrypoint to a CreateFooWorkflow
 func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
-	// listen for signals
+	// listen for signals using generated signal provided by workflow input
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		for {
 			signal, _ := wf.SetFooProgress.Receive(ctx)

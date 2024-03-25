@@ -4,25 +4,31 @@ package example.helloworld.v1;
 
 import "temporal/v1/temporal.proto";
 
-service Example {
+service HelloWorld {
   option (temporal.v1.service) = {
     task_queue: "hello-world"
   };
 
+  // HelloWorld describes a Temporal workflow and activity with the same name
+  // and signature
   rpc HelloWorld(HelloWorldInput) returns (HelloWorldOutput) {
     option (temporal.v1.workflow) = {
+      name: "HelloWorld"
       id: 'hello_world/${! uuid_v4() }'
     };
     option (temporal.v1.activity) = {
+      name: "HelloWorld"
       start_to_close_timeout: { seconds: 10 }
     };
   }
 }
 
+// HelloWorldInput describes the input to a HelloWorld task
 message HelloWorldInput {
   string name = 1;
 }
 
+// HelloWorldOutput describes the output from a HelloWorld task
 message HelloWorldOutput {
   string result = 1;
 }

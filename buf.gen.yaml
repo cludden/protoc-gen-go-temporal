@@ -9,7 +9,7 @@ plugins:
     opt: plugin=go,paths=source_relative
   - plugin: go_temporal
     out: gen
-    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,enable-patch-support=true,enable-xns=true,enable-codec=true,docs-out=./docs/basic.md
+    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,enable-patch-support=true,enable-xns=true,enable-codec=true,docs-out=./proto/README.md
     strategy: all
   - plugin: doc
     out: docs/api
