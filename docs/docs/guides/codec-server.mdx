@@ -1,0 +1,132 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Codec Server
+
+## Data Converter
+
+Temporal's [default data converter](https://pkg.go.dev/go.temporal.io/sdk/converter#GetDefaultDataConverter) will serialize protobuf types using the `json/protobuf` encoding provided by the [ProtoJSONPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoJSONPayloadConverter), which allows the Temporal UI to automatically decode the underlying payload and render it as JSON. If you'd prefer to take advantage of protobuf's binary format for smaller payloads, you can provide an alternative data converter to the Temporal client at initialization that prioritizes the [ProtoPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoPayloadConverter) ahead of the `ProtoJSONPayloadConverter`. See below for an example.
+
+```go title="worker/main.go"
+package main
+
+import (
+	"log"
+	"log/slog"
+	"os"
+
+	"path/to/interal/example"
+	examplev1 "path/to/gen/example/v1"
+	"github.com/urfave/cli/v2"
+	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
+	sdklog "go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/worker"
+)
+
+func main() {
+	app, err := examplev1.NewExampleCli(
+		examplev1.NewExampleCliOptions().
+			WithClient(func(cmd *cli.Context) (client.Client, error) {
+				return client.Dial(client.Options{
+					DataConverter: converter.NewCompositeDataConverter(
+						converter.NewNilPayloadConverter(),
+						converter.NewByteSlicePayloadConverter(),
+						converter.NewProtoPayloadConverter(),
+					),
+					Logger: sdklog.NewStructuredLogger(slog.Default()),
+				})
+			}).
+			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+				examplev1.RegisterExampleActivities(w, &example.Activities{})
+				examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
+				return w, nil
+			}),
+	)
+	if err != nil {
+		log.Fatalf("error initializing example cli: %v", err)
+	}
+
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+## Codec Server
+
+If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. This plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
+
+:::info
+This requires the [enable-codec](/docs/configuration/plugin#enable-codec) plugin option to be enabled
+:::
+
+```go title="codecserver/main.go"
+package main
+
+import (
+	"context"
+	"errors"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	examplev1 "path/to/gen/example/v1"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/codec"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
+	"github.com/urfave/cli/v2"
+	"go.temporal.io/sdk/converter"
+)
+
+func main() {
+	app, err := examplev1.NewExampleCli(/* ... */)
+	if err != nil {
+		log.Fatalf("error initializing example cli: %v", err)
+	}
+
+	app.Commands = append(app.Commands, &cli.Command{
+		Name:  "codec",
+		Usage: "run remote codec server",
+		Action: func(cmd *cli.Context) error {
+			handler := converter.NewPayloadCodecHTTPHandler(
+				codec.NewProtoJSONCodec(
+					scheme.New(
+						examplev1.WithExampleSchemeTypes(),
+					),
+				),
+			)
+
+			srv := &http.Server{
+				Addr:    "0.0.0.0:8080",
+				Handler: handler,
+			}
+
+			go func() {
+				sigChan := make(chan os.Signal, 1)
+				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+				<-sigChan
+
+				if err := srv.Shutdown(context.Background()); err != nil {
+					log.Fatalf("error shutting down server: %v", err)
+				}
+			}()
+
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("server error: %v", err)
+			}
+			return nil
+		},
+	})
+
+	// run cli
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+See the [codecserver](./examples/codecserver/) example for more details.
