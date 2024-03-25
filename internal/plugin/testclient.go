@@ -325,7 +325,7 @@ func (svc *Manifest) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow pr
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%sAsync executes a(n) %s workflow in the test environment", svc.methods[workflow].GoName, workflow)
+	f.Commentf("%sAsync executes a(n) %s workflow in the test environment", svc.methods[workflow].GoName, svc.fqnForWorkflow(workflow))
 	f.Func().
 		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
 		Id(svc.toCamel("%sAsync", workflow)).

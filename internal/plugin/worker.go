@@ -903,7 +903,7 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 		f.Commentf("workflow details: (%s)", strings.Join(details, ", "))
 	}
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
-		commentf(methods, methodSet(method), "Execute defines the entrypoint to a(n) %s workflow", method.Desc.FullName())
+		commentf(methods, methodSet(method), "Execute defines the entrypoint to a(n) %s workflow", svc.fqnForWorkflow(workflow))
 		methods.
 			Id("Execute").
 			Params(
