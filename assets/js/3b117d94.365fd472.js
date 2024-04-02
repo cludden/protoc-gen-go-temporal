@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[9184],{5681:o=>{o.exports=JSON.parse('{"label":"facebook","permalink":"/protoc-gen-go-temporal/blog/tags/facebook","allTagsPath":"/protoc-gen-go-temporal/blog/tags","count":1,"unlisted":false}')}}]);
