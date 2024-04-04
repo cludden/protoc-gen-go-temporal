@@ -1721,7 +1721,7 @@ func (svc *Manifest) genXNSUpdateFunctionAsync(f *g.File, update protoreflect.Fu
 func (svc *Manifest) genXNSUpdateOptions(f *g.File, update protoreflect.FullName) {
 	typeName := svc.toCamel("%sUpdateOptions", update)
 
-	f.Commentf("%s are used to configure a(n) %s update execution", typeName, update)
+	f.Commentf("%s are used to configure a(n) %s update execution", typeName, svc.fqnForUpdate(update))
 	f.Type().Id(typeName).Struct(
 		g.Id("ActivityOptions").Op("*").Qual(workflowPkg, "ActivityOptions"),
 		g.Id("HeartbeatInterval").Qual("time", "Duration"),
@@ -2047,7 +2047,7 @@ func (svc *Manifest) genXNSWorkflowFunctionAsync(f *g.File, workflow protoreflec
 func (svc *Manifest) genXNSWorkflowOptions(f *g.File, workflow protoreflect.FullName) {
 	typeName := svc.toCamel("%sWorkflowOptions", workflow)
 
-	f.Commentf("%s are used to configure a(n) %s workflow execution", typeName, workflow)
+	f.Commentf("%s are used to configure a(n) %s workflow execution", typeName, svc.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).Struct(
 		g.Id("ActivityOptions").Op("*").Qual(workflowPkg, "ActivityOptions"),
 		g.Id("Detached").Bool(),
@@ -2494,7 +2494,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 	opts := svc.workflows[workflow]
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s provides a handle to a %s workflow execution", typeName, workflow)
+	f.Commentf("%s provides a handle to a %s workflow execution", typeName, svc.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
 		methods.Comment("Cancel cancels the workflow")
 		methods.Id("Cancel").
