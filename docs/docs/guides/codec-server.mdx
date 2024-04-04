@@ -56,7 +56,7 @@ func main() {
 
 ## Codec Server
 
-If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. This plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
+If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. The plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
 
 :::info
 This requires the [enable-codec](/docs/configuration/plugin#enable-codec) plugin option to be enabled
