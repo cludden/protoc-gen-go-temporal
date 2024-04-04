@@ -8,11 +8,15 @@ builds:
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm64
     ldflags:
       - "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}"
+    ignore:
+      - goos: windows
+        goarch: arm64
 archives:
   - files:
       - LICENSE.md
