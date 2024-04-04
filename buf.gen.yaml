@@ -11,6 +11,3 @@ plugins:
     out: gen
     opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,enable-patch-support=true,enable-xns=true,enable-codec=true,docs-out=./proto/README.md
     strategy: all
-  - plugin: doc
-    out: docs/api
-    opt: markdown,api.md,source_relative
