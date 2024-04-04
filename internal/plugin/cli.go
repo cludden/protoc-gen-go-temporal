@@ -483,16 +483,15 @@ func (svc *Manifest) genCliQueryCommand(cmds *g.Group, query protoreflect.FullNa
 	method := svc.methods[query]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	desc := method.Comments.Leading.String()
-	if desc != "" {
-		desc = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
+	usage := method.Comments.Leading.String()
+	if usage != "" {
+		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
-		desc = fmt.Sprintf("executes a %s query and blocks until error or response received", query)
+		usage = fmt.Sprintf("executes a %s query and blocks until error or response received", svc.fqnForQuery(query))
 	}
-	cmds.Comment(desc)
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[query].GoName))
-		cmd.Id("Usage").Op(":").Lit(desc)
+		cmd.Id("Usage").Op(":").Lit(usage)
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("QUERIES")
 		}
@@ -584,16 +583,15 @@ func (svc *Manifest) genCliQueryCommand(cmds *g.Group, query protoreflect.FullNa
 func (svc *Manifest) genCliSignalCommand(cmds *g.Group, signal protoreflect.FullName) {
 	method := svc.methods[signal]
 	hasInput := !isEmpty(method.Input)
-	desc := method.Comments.Leading.String()
-	if desc != "" {
-		desc = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
+	usage := method.Comments.Leading.String()
+	if usage != "" {
+		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
-		desc = fmt.Sprintf("executes a %s signal", signal)
+		usage = fmt.Sprintf("executes a %s signal", svc.fqnForSignal(signal))
 	}
-	cmds.Comment(desc)
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[signal].GoName))
-		cmd.Id("Usage").Op(":").Lit(desc)
+		cmd.Id("Usage").Op(":").Lit(usage)
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("SIGNALS")
 		}
@@ -672,16 +670,15 @@ func (svc *Manifest) genCliUpdateCommand(f *g.Group, update protoreflect.FullNam
 	method := svc.methods[update]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	desc := method.Comments.Leading.String()
-	if desc != "" {
-		desc = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
+	usage := method.Comments.Leading.String()
+	if usage != "" {
+		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
-		desc = fmt.Sprintf("%s executes a(n) %s update", update, update)
+		usage = fmt.Sprintf("executes a(n) %s update", svc.fqnForUpdate(update))
 	}
-	f.Comment(desc)
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[update].GoName))
-		cmd.Id("Usage").Op(":").Lit(desc)
+		cmd.Id("Usage").Op(":").Lit(usage)
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("UPDATES")
 		}
@@ -1002,16 +999,15 @@ func (svc *Manifest) genCliWorkflowCommand(f *g.Group, workflow protoreflect.Ful
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	desc := method.Comments.Leading.String()
-	if desc != "" {
-		desc = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(desc, "//"), "\n//", ""))
+	usage := method.Comments.Leading.String()
+	if usage != "" {
+		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
-		desc = fmt.Sprintf("%s executes a(n) %s workflow", workflow, workflow)
+		usage = fmt.Sprintf("executes a(n) %s workflow", svc.fqnForWorkflow(workflow))
 	}
-	f.Comment(desc)
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
 		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[workflow].GoName))
-		cmd.Id("Usage").Op(":").Lit(desc)
+		cmd.Id("Usage").Op(":").Lit(usage)
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}

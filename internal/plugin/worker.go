@@ -992,7 +992,7 @@ func (svc *Manifest) genWorkerWorkflowsInterface(f *g.File) {
 			}
 			handler := svc.methods[workflow]
 
-			commentWithDefaultf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", workflow, svc.toCamel("%sWorkflow", workflow))
+			commentWithDefaultf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", svc.toCamel("%s", workflow), svc.toCamel("%sWorkflow", workflow))
 			methods.
 				Id(svc.methods[workflow].GoName).
 				ParamsFunc(func(args *g.Group) {
