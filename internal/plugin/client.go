@@ -978,16 +978,10 @@ func (svc *Manifest) genClientStartWorkflowOptions(fn *g.Group, workflow protore
 
 	// initialize options if nil
 	if child {
-		fn.Var().Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions")
-		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).
-			Block(
-				g.Id("opts").Op("=").Id("options").Index(g.Lit(0)).Dot("opts"),
-			).
-			Else().
-			Block(
-				g.Id("childOpts").Op(":=").Qual(workflowPkg, "GetChildWorkflowOptions").Call(g.Id("ctx")),
-				g.Id("opts").Op("=").Op("&").Id("childOpts"),
-			)
+		fn.Id("opts").Op(":=").Op("&").Qual(workflowPkg, "ChildWorkflowOptions").Values()
+		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
+			g.Id("opts").Op("=").Id("options").Index(g.Lit(0)).Dot("opts"),
+		)
 	} else {
 		fn.Id("opts").Op(":=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Values()
 		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
