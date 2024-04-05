@@ -292,6 +292,7 @@ import (
     examplev1 "path/to/gen/example/v1"
     "go.temporal.io/sdk/client"
     "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/workflow"
 )
 
 // FooWorkflow implements an example.v1.Example.Foo workflow
@@ -361,6 +362,90 @@ service Example {
 ```
 </TabItem>
 </Tabs>
+
+## Initializers
+
+Workflow structs can implement an optional `Initialize` method which will be invoked prior to signal channel initialization and query or update handler registrations. This can be useful if a workflow requires the use of an activity to initialize local workflow state.
+
+<Tabs>
+<TabItem value="initializer-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "context"
+    "errors"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type (
+    Workflows struct {}
+
+    FooWorkflow struct {
+        *examplev1.FooWorkflowInput
+        data map[string]any
+    }
+)
+
+func (w *Workflows) Foo(ctx workflow.Context, input *examplev1.FooWorkflowInput) (examplev1.FooWorkflow, error) {
+    return &FooWorkflow{input, nil}, nil
+}
+
+func (w *FooWorkflow) Initialize(ctx workflow.Context) error {
+    return workflow.SideEffect(ctx, func(workflow.Context) any {
+        return map[string]any{
+            "foo": "bar",
+        }
+    }).Get(&w.data)
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    if err := workflow.Await(ctx, func() bool {
+        foo, ok := w.data["foo"].(string)
+        return ok && foo != "bar"
+    }); err != nil {
+        return nil, err
+    }
+    return &examplev1.FooOutput{}, nil
+}
+
+func (w *FooWorkflow) Bar(ctx workflow.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
+    if foo, _ := w.data["foo"]; foo != "bar" {
+        return nil, errors.New("unable to update foo")
+    }
+    w.data["foo"] = input.GetBar()
+    return &examplev1.BarOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="initializer-schema" label="Schema">
+```go title="example.go"
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  }
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 
 ## Invocation
 
