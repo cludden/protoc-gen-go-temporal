@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"

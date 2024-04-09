@@ -8,6 +8,14 @@ packages:
       CreateFooRun: {}
       ExampleClient: {}
       UpdateFooProgressHandle: {}
+  github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1:
+    config:
+      outpkg: xnserrv1mocks
+      replace-type:
+        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+    interfaces:
+      ServerClient: {}
+      SleepRun: {}
   go.temporal.io/sdk/internal:
     config:
       dir: mocks/go.temporal.io/sdk/clientutils

@@ -7,4 +7,5 @@ directories:
   - examples/updatabletimer/proto
   - examples/xns/proto
   - proto
-  - test
+  - test/simple/proto
+  - test/xnserr/proto

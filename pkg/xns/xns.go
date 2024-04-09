@@ -1,6 +1,7 @@
 package xns
 
 import (
+	"errors"
 	"fmt"
 
 	xnsv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
@@ -11,6 +12,78 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func Code(err error) string {
+	if terr := Unwrap(err); terr != nil {
+		return terr.Type()
+	}
+	return ""
+}
+
+func IsNonRetryable(err error) bool {
+	if terr := Unwrap(err); terr != nil {
+		return terr.NonRetryable()
+	}
+	return false
+}
+
+func Unwrap(err error) *temporal.ApplicationError {
+	if err == nil {
+		return nil
+	}
+	var x *temporal.ApplicationError
+	if errors.As(err, &x) {
+		return x
+	}
+	return Unwrap(errors.Unwrap(err))
+}
+
+// ErrorToApplicationError converts an arbitrary Go error into a temporal application error
+// with the appropriate retryable configuration
+func ErrorToApplicationError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// extract workflow execution cause
+	var workflowExecutionErr *temporal.WorkflowExecutionError
+	if errors.As(err, &workflowExecutionErr) {
+		if inner := workflowExecutionErr.Unwrap(); inner != nil {
+			err = inner
+		}
+	}
+
+	var application *temporal.ApplicationError
+	if errors.As(err, &application) {
+		return temporal.NewNonRetryableApplicationError(application.Message(), application.Type(), application)
+	}
+
+	var childWorkflowExecutionErr *temporal.ChildWorkflowExecutionError
+	if errors.As(err, &childWorkflowExecutionErr) {
+		return temporal.NewNonRetryableApplicationError(childWorkflowExecutionErr.Error(), "ChildWorkflowExecutionError", childWorkflowExecutionErr.Unwrap())
+	}
+
+	var canceledErr *temporal.CanceledError
+	if errors.As(err, &canceledErr) {
+		return temporal.NewNonRetryableApplicationError(canceledErr.Error(), "CanceledError", errors.New(canceledErr.Error()))
+	}
+
+	var terminatedErr *temporal.TerminatedError
+	if errors.As(err, &terminatedErr) {
+		return temporal.NewNonRetryableApplicationError(terminatedErr.Error(), "TerminatedError", terminatedErr)
+	}
+
+	var timeoutErr *temporal.TimeoutError
+	if errors.As(err, &timeoutErr) {
+		return temporal.NewNonRetryableApplicationError(timeoutErr.Error(), "TimeoutError", timeoutErr)
+	}
+
+	if errors.As(err, &workflowExecutionErr) {
+		return temporal.NewNonRetryableApplicationError(workflowExecutionErr.Error(), "WorkflowExecutionError", workflowExecutionErr.Unwrap())
+	}
+
+	return err
+}
 
 func MarshalStartWorkflowOptions(o client.StartWorkflowOptions) (*xnsv1.StartWorkflowOptions, error) {
 	opts := &xnsv1.StartWorkflowOptions{
@@ -93,22 +166,7 @@ func UnmarshalStartWorkflowOptions(o *xnsv1.StartWorkflowOptions) client.StartWo
 		opts.Memo = v.AsMap()
 	}
 	if v := o.GetRetryPolicy(); v != nil {
-		opts.RetryPolicy = &temporal.RetryPolicy{}
-		if x := v.GetBackoffCoefficient(); x != 0 {
-			opts.RetryPolicy.BackoffCoefficient = x
-		}
-		if x := v.GetInitialInterval(); x.IsValid() {
-			opts.RetryPolicy.InitialInterval = x.AsDuration()
-		}
-		if x := v.GetMaxAttempts(); x > 0 {
-			opts.RetryPolicy.MaximumAttempts = x
-		}
-		if x := v.GetMaxInterval(); x.IsValid() {
-			opts.RetryPolicy.MaximumInterval = x.AsDuration()
-		}
-		if x := v.GetNonRetryableErrorTypes(); len(x) > 0 {
-			opts.RetryPolicy.NonRetryableErrorTypes = x
-		}
+		opts.RetryPolicy = UnmarshalRetryPolicy(v)
 	}
 	if v := o.GetRunTimeout(); v.IsValid() {
 		opts.WorkflowRunTimeout = v.AsDuration()
@@ -126,6 +184,35 @@ func UnmarshalStartWorkflowOptions(o *xnsv1.StartWorkflowOptions) client.StartWo
 		opts.WorkflowTaskTimeout = v.AsDuration()
 	}
 	return opts
+}
+
+func UnmarshalRetryPolicy(rp *xnsv1.RetryPolicy) *temporal.RetryPolicy {
+	if rp == nil {
+		return nil
+	}
+
+	result := &temporal.RetryPolicy{}
+	empty := true
+	if x := rp.GetBackoffCoefficient(); x != 0 {
+		result.BackoffCoefficient, empty = x, false
+	}
+	if x := rp.GetInitialInterval(); x.IsValid() {
+		result.InitialInterval, empty = x.AsDuration(), false
+	}
+	if x := rp.GetMaxAttempts(); x > 0 {
+		result.MaximumAttempts, empty = x, false
+	}
+	if x := rp.GetMaxInterval(); x.IsValid() {
+		result.MaximumInterval, empty = x.AsDuration(), false
+	}
+	if x := rp.GetNonRetryableErrorTypes(); len(x) > 0 {
+		result.NonRetryableErrorTypes, empty = x, false
+	}
+
+	if empty {
+		return nil
+	}
+	return result
 }
 
 func MarshalUpdateWorkflowOptions(o client.UpdateWorkflowWithOptionsRequest) (*xnsv1.UpdateWorkflowWithOptionsRequest, error) {

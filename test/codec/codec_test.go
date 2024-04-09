@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	simplev1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/codec"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
 	"github.com/stretchr/testify/require"
@@ -18,18 +18,18 @@ func TestJSONCodec(t *testing.T) {
 	require := require.New(t)
 
 	// initialize protobuf message value
-	msg := &simple.OtherWorkflowRequest{
+	msg := &simplev1.OtherWorkflowRequest{
 		SomeVal: "example",
-		ExampleOneof: &simple.OtherWorkflowRequest_ExampleEnum{
-			ExampleEnum: simple.OtherEnum_OTHER_FOO,
+		ExampleOneof: &simplev1.OtherWorkflowRequest_ExampleEnum{
+			ExampleEnum: simplev1.OtherEnum_OTHER_FOO,
 		},
 	}
 
 	// initialize scheme
 	scheme := scheme.New(
-		simple.WithIgnoredSchemeTypes(),
-		simple.WithOtherSchemeTypes(),
-		simple.WithSimpleSchemeTypes(),
+		simplev1.WithIgnoredSchemeTypes(),
+		simplev1.WithOtherSchemeTypes(),
+		simplev1.WithSimpleSchemeTypes(),
 	)
 	var payloads []*common.Payload
 
@@ -78,7 +78,7 @@ func TestJSONCodec(t *testing.T) {
 	require.JSONEq(`{"someVal":"example","exampleEnum":"OTHER_FOO"}`, string(results[2].Data))
 
 	// verify conversion back to proto message value
-	var out simple.OtherWorkflowRequest
+	var out simplev1.OtherWorkflowRequest
 	require.NoError(protojson.Unmarshal(results[2].Data, &out))
 	require.True(proto.Equal(msg, &out))
 
@@ -99,18 +99,18 @@ func TestProtoJSONCodec(t *testing.T) {
 	require := require.New(t)
 
 	// initialize protobuf message value
-	msg := &simple.OtherWorkflowRequest{
+	msg := &simplev1.OtherWorkflowRequest{
 		SomeVal: "example",
-		ExampleOneof: &simple.OtherWorkflowRequest_ExampleEnum{
-			ExampleEnum: simple.OtherEnum_OTHER_FOO,
+		ExampleOneof: &simplev1.OtherWorkflowRequest_ExampleEnum{
+			ExampleEnum: simplev1.OtherEnum_OTHER_FOO,
 		},
 	}
 
 	// initialize scheme
 	scheme := scheme.New(
-		simple.WithIgnoredSchemeTypes(),
-		simple.WithOtherSchemeTypes(),
-		simple.WithSimpleSchemeTypes(),
+		simplev1.WithIgnoredSchemeTypes(),
+		simplev1.WithOtherSchemeTypes(),
+		simplev1.WithSimpleSchemeTypes(),
 	)
 	var payloads []*common.Payload
 
@@ -134,7 +134,7 @@ func TestProtoJSONCodec(t *testing.T) {
 	require.JSONEq(`{"someVal":"example","exampleEnum":"OTHER_FOO"}`, string(results[0].Data))
 
 	// verify conversion back to proto message value
-	var out simple.OtherWorkflowRequest
+	var out simplev1.OtherWorkflowRequest
 	require.NoError(protojson.Unmarshal(results[0].Data, &out))
 	require.True(proto.Equal(msg, &out))
 
@@ -152,7 +152,7 @@ func TestProtoJSONCodec(t *testing.T) {
 		},
 	)
 
-	out = simple.OtherWorkflowRequest{}
+	out = simplev1.OtherWorkflowRequest{}
 	require.NoError(dc.FromPayload(protop, &out))
 	require.Equal(msg.SomeVal, out.SomeVal)
 	require.True(proto.Equal(msg, &out))
