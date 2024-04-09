@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"github.com/urfave/cli/v2"
 	logger "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"

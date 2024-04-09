@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"

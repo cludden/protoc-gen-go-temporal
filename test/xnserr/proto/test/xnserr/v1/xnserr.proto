@@ -1,0 +1,60 @@
+syntax="proto3";
+
+package test.xnserr.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+import "temporal/xns/v1/xns.proto";
+
+service Server {
+  option (temporal.v1.service).task_queue = "xnserr-server-v1";
+
+  rpc Sleep(SleepRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE
+      xns: {
+        heartbeat_interval: { seconds: 10 }
+        heartbeat_timeout: { seconds: 30 }
+      }
+    };
+  }
+}
+
+service Client {
+  option (temporal.v1.service).task_queue = "xnserr-client-v1";
+
+  rpc CallSleep(CallSleepRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+
+message CallSleepRequest {
+  google.protobuf.Duration sleep = 1;
+  Failure failure = 2;
+  temporal.xns.v1.StartWorkflowOptions start_workflow_options = 3;
+  temporal.xns.v1.RetryPolicy retry_policy = 4;
+}
+
+message SleepRequest {
+  google.protobuf.Duration sleep = 1;
+  Failure failure = 2;
+}
+
+enum FailureInfo {
+  FAILURE_INFO_UNSPECIFIED = 0;
+  FAILURE_INFO_APPLICATION_ERROR = 1;
+  FAILURE_INFO_TIMEOUT = 2;
+  FAILURE_INFO_CANCELED = 3;
+  FAILURE_INFO_TERMINATED = 4;
+  FAILURE_INFO_ACTIVITY = 5;
+  FAILURE_INFO_WORKFLOW_EXECUTION = 6;
+  FAILURE_INFO_CHILD_WORKFLOW_EXECUTION = 7;
+}
+
+message Failure {
+  string message = 1;
+  bool non_retryable = 2;
+  FailureInfo info = 3;
+  string application_error_type = 4;
+}

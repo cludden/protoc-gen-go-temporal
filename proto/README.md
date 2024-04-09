@@ -182,10 +182,33 @@
     - [mycompany.simple.SomeWorkflow1Response](#mycompany-simple-someworkflow1response)
     - [mycompany.simple.SomeWorkflow3Request](#mycompany-simple-someworkflow3request)
     - [mycompany.simple.WhatRequest](#mycompany-simple-whatrequest)
+- [test.xnserr.v1](#test-xnserr-v1)
+  - Services
+    - [test.xnserr.v1.Server](#test-xnserr-v1-server)
+      - [Workflows](#test-xnserr-v1-server-workflows)
+        - [test.xnserr.v1.Server.Sleep](#test-xnserr-v1-server-sleep-workflow)
+    - [test.xnserr.v1.Client](#test-xnserr-v1-client)
+      - [Workflows](#test-xnserr-v1-client-workflows)
+        - [test.xnserr.v1.Client.CallSleep](#test-xnserr-v1-client-callsleep-workflow)
+  - Messages
+    - [test.xnserr.v1.CallSleepRequest](#test-xnserr-v1-callsleeprequest)
+    - [test.xnserr.v1.Failure](#test-xnserr-v1-failure)
+    - [test.xnserr.v1.FailureInfo](#test-xnserr-v1-failureinfo)
+    - [test.xnserr.v1.SleepRequest](#test-xnserr-v1-sleeprequest)
 - [google.protobuf](#google-protobuf)
   - Messages
     - [google.protobuf.Duration](#google-protobuf-duration)
+    - [google.protobuf.ListValue](#google-protobuf-listvalue)
+    - [google.protobuf.NullValue](#google-protobuf-nullvalue)
+    - [google.protobuf.Struct](#google-protobuf-struct)
+    - [google.protobuf.Struct.FieldsEntry](#google-protobuf-struct-fieldsentry)
     - [google.protobuf.Timestamp](#google-protobuf-timestamp)
+    - [google.protobuf.Value](#google-protobuf-value)
+- [temporal.xns.v1](#temporal-xns-v1)
+  - Messages
+    - [temporal.xns.v1.IDReusePolicy](#temporal-xns-v1-idreusepolicy)
+    - [temporal.xns.v1.RetryPolicy](#temporal-xns-v1-retrypolicy)
+    - [temporal.xns.v1.StartWorkflowOptions](#temporal-xns-v1-startworkflowoptions)
 
 <a name="example-helloworld-v1"></a>
 # example.helloworld.v1
@@ -3946,6 +3969,243 @@ go_name: Blah</pre></td>
 
 
 
+<a name="test-xnserr-v1"></a>
+# test.xnserr.v1
+
+<a name="test-xnserr-v1-services"></a>
+## Services
+
+<a name="test-xnserr-v1-server"></a>
+## test.xnserr.v1.Server
+
+<a name="test-xnserr-v1-server-workflows"></a>
+### Workflows
+
+---
+<a name="test-xnserr-v1-server-sleep-workflow"></a>
+### test.xnserr.v1.Server.Sleep
+
+**Input:** [test.xnserr.v1.SleepRequest](#test-xnserr-v1-sleeprequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>failure</td>
+<td><a href="#test-xnserr-v1-failure">test.xnserr.v1.Failure</a></td>
+<td><pre>
+json_name: failure
+go_name: Failure</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE</code></pre></td></tr>
+<tr><td>xns.heartbeat_interval</td><td>10 seconds</td></tr>
+<tr><td>xns.heartbeat_timeout</td><td>30 seconds</td></tr>
+</table>     
+
+<a name="test-xnserr-v1-client"></a>
+## test.xnserr.v1.Client
+
+<a name="test-xnserr-v1-client-workflows"></a>
+### Workflows
+
+---
+<a name="test-xnserr-v1-client-callsleep-workflow"></a>
+### test.xnserr.v1.Client.CallSleep
+
+**Input:** [test.xnserr.v1.CallSleepRequest](#test-xnserr-v1-callsleeprequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>failure</td>
+<td><a href="#test-xnserr-v1-failure">test.xnserr.v1.Failure</a></td>
+<td><pre>
+json_name: failure
+go_name: Failure</pre></td>
+</tr><tr>
+<td>retry_policy</td>
+<td><a href="#temporal-xns-v1-retrypolicy">temporal.xns.v1.RetryPolicy</a></td>
+<td><pre>
+json_name: retryPolicy
+go_name: RetryPolicy</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr><tr>
+<td>start_workflow_options</td>
+<td><a href="#temporal-xns-v1-startworkflowoptions">temporal.xns.v1.StartWorkflowOptions</a></td>
+<td><pre>
+json_name: startWorkflowOptions
+go_name: StartWorkflowOptions</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
+
+<a name="test-xnserr-v1-messages"></a>
+## Messages
+
+<a name="test-xnserr-v1-callsleeprequest"></a>
+### test.xnserr.v1.CallSleepRequest
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>failure</td>
+<td><a href="#test-xnserr-v1-failure">test.xnserr.v1.Failure</a></td>
+<td><pre>
+json_name: failure
+go_name: Failure</pre></td>
+</tr><tr>
+<td>retry_policy</td>
+<td><a href="#temporal-xns-v1-retrypolicy">temporal.xns.v1.RetryPolicy</a></td>
+<td><pre>
+json_name: retryPolicy
+go_name: RetryPolicy</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr><tr>
+<td>start_workflow_options</td>
+<td><a href="#temporal-xns-v1-startworkflowoptions">temporal.xns.v1.StartWorkflowOptions</a></td>
+<td><pre>
+json_name: startWorkflowOptions
+go_name: StartWorkflowOptions</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-xnserr-v1-failure"></a>
+### test.xnserr.v1.Failure
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>application_error_type</td>
+<td>string</td>
+<td><pre>
+json_name: applicationErrorType
+go_name: ApplicationErrorType</pre></td>
+</tr><tr>
+<td>info</td>
+<td><a href="#test-xnserr-v1-failureinfo">test.xnserr.v1.FailureInfo</a></td>
+<td><pre>
+json_name: info
+go_name: Info</pre></td>
+</tr><tr>
+<td>message</td>
+<td>string</td>
+<td><pre>
+json_name: message
+go_name: Message</pre></td>
+</tr><tr>
+<td>non_retryable</td>
+<td>bool</td>
+<td><pre>
+json_name: nonRetryable
+go_name: NonRetryable</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-xnserr-v1-failureinfo"></a>
+### test.xnserr.v1.FailureInfo
+
+<table>
+<tr><th>Value</th><th>Description</th></tr>
+<tr>
+<td>FAILURE_INFO_UNSPECIFIED</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_APPLICATION_ERROR</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_TIMEOUT</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_CANCELED</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_TERMINATED</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_ACTIVITY</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_WORKFLOW_EXECUTION</td>
+<td></td>
+</tr><tr>
+<td>FAILURE_INFO_CHILD_WORKFLOW_EXECUTION</td>
+<td></td>
+</tr>
+</table>
+
+<a name="test-xnserr-v1-sleeprequest"></a>
+### test.xnserr.v1.SleepRequest
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>failure</td>
+<td><a href="#test-xnserr-v1-failure">test.xnserr.v1.Failure</a></td>
+<td><pre>
+json_name: failure
+go_name: Failure</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr>
+</table>
+
+
+
 
 <a name="google-protobuf"></a>
 # google.protobuf
@@ -4046,6 +4306,113 @@ to +315,576,000,000 inclusive. Note: these bounds are computed from:
 
 json_name: seconds
 go_name: Seconds</pre></td>
+</tr>
+</table>
+
+
+
+<a name="google-protobuf-listvalue"></a>
+### google.protobuf.ListValue
+
+<pre>
+`ListValue` is a wrapper around a repeated field of values.
+
+The JSON representation for `ListValue` is JSON array.
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>values</td>
+<td><a href="#google-protobuf-value">google.protobuf.Value</a></td>
+<td><pre>
+Repeated field of dynamically typed values.<br>
+
+json_name: values
+go_name: Values</pre></td>
+</tr>
+</table>
+
+
+
+<a name="google-protobuf-nullvalue"></a>
+### google.protobuf.NullValue
+
+<pre>
+`NullValue` is a singleton enumeration to represent the null value for the
+`Value` type union.
+
+The JSON representation for `NullValue` is JSON `null`.
+</pre>
+
+<table>
+<tr><th>Value</th><th>Description</th></tr>
+<tr>
+<td>NULL_VALUE</td>
+<td><pre>
+Null value.
+</pre></td>
+</tr>
+</table>
+
+<a name="google-protobuf-struct"></a>
+### google.protobuf.Struct
+
+<pre>
+`Struct` represents a structured data value, consisting of fields
+which map to dynamically typed values. In some languages, `Struct`
+might be supported by a native representation. For example, in
+scripting languages like JS a struct is represented as an
+object. The details of that representation are described together
+with the proto support for the language.
+
+The JSON representation for `Struct` is JSON object.
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>fields</td>
+<td><a href="#google-protobuf-struct-fieldsentry">google.protobuf.Struct.FieldsEntry</a></td>
+<td><pre>
+Unordered map of dynamically typed values.<br>
+
+json_name: fields
+go_name: Fields</pre></td>
+</tr>
+</table>
+
+
+
+<a name="google-protobuf-struct-fieldsentry"></a>
+### google.protobuf.Struct.FieldsEntry
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>key</td>
+<td>string</td>
+<td><pre>
+json_name: key
+go_name: Key</pre></td>
+</tr><tr>
+<td>value</td>
+<td><a href="#google-protobuf-value">google.protobuf.Value</a></td>
+<td><pre>
+json_name: value
+go_name: Value</pre></td>
 </tr>
 </table>
 
@@ -4173,6 +4540,252 @@ Represents seconds of UTC time since Unix epoch
 
 json_name: seconds
 go_name: Seconds</pre></td>
+</tr>
+</table>
+
+
+
+<a name="google-protobuf-value"></a>
+### google.protobuf.Value
+
+<pre>
+`Value` represents a dynamically typed value which can be either
+null, a number, a string, a boolean, a recursive struct value, or a
+list of values. A producer of value is expected to set one of these
+variants. Absence of any variant indicates an error.
+
+The JSON representation for `Value` is JSON value.
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bool_value</td>
+<td>bool</td>
+<td><pre>
+Represents a boolean value.<br>
+
+json_name: boolValue
+go_name: BoolValue</pre></td>
+</tr><tr>
+<td>list_value</td>
+<td><a href="#google-protobuf-listvalue">google.protobuf.ListValue</a></td>
+<td><pre>
+Represents a repeated `Value`.<br>
+
+json_name: listValue
+go_name: ListValue</pre></td>
+</tr><tr>
+<td>null_value</td>
+<td><a href="#google-protobuf-nullvalue">google.protobuf.NullValue</a></td>
+<td><pre>
+Represents a null value.<br>
+
+json_name: nullValue
+go_name: NullValue</pre></td>
+</tr><tr>
+<td>number_value</td>
+<td>double</td>
+<td><pre>
+Represents a double value.<br>
+
+json_name: numberValue
+go_name: NumberValue</pre></td>
+</tr><tr>
+<td>string_value</td>
+<td>string</td>
+<td><pre>
+Represents a string value.<br>
+
+json_name: stringValue
+go_name: StringValue</pre></td>
+</tr><tr>
+<td>struct_value</td>
+<td><a href="#google-protobuf-struct">google.protobuf.Struct</a></td>
+<td><pre>
+Represents a structured value.<br>
+
+json_name: structValue
+go_name: StructValue</pre></td>
+</tr>
+</table>
+
+
+
+
+<a name="temporal-xns-v1"></a>
+# temporal.xns.v1
+
+<a name="temporal-xns-v1-messages"></a>
+## Messages
+
+<a name="temporal-xns-v1-idreusepolicy"></a>
+### temporal.xns.v1.IDReusePolicy
+
+<table>
+<tr><th>Value</th><th>Description</th></tr>
+<tr>
+<td>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</td>
+<td></td>
+</tr><tr>
+<td>WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE</td>
+<td><pre>
+Allow starting a workflow execution using the same workflow id.
+</pre></td>
+</tr><tr>
+<td>WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY</td>
+<td><pre>
+Allow starting a workflow execution using the same workflow id, only when the last
+execution's final state is one of [terminated, cancelled, timed out, failed].
+</pre></td>
+</tr><tr>
+<td>WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE</td>
+<td><pre>
+Do not permit re-use of the workflow id for this workflow. Future start workflow requests
+could potentially change the policy, allowing re-use of the workflow id.
+</pre></td>
+</tr><tr>
+<td>WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING</td>
+<td><pre>
+If a workflow is running using the same workflow ID, terminate it and start a new one.
+If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
+</pre></td>
+</tr>
+</table>
+
+<a name="temporal-xns-v1-retrypolicy"></a>
+### temporal.xns.v1.RetryPolicy
+
+<pre>
+RetryPolicy describes configuration for activity or child workflow retries
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>backoff_coefficient</td>
+<td>double</td>
+<td><pre>
+json_name: backoffCoefficient
+go_name: BackoffCoefficient</pre></td>
+</tr><tr>
+<td>initial_interval</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: initialInterval
+go_name: InitialInterval</pre></td>
+</tr><tr>
+<td>max_attempts</td>
+<td>int32</td>
+<td><pre>
+json_name: maxAttempts
+go_name: MaxAttempts</pre></td>
+</tr><tr>
+<td>max_interval</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: maxInterval
+go_name: MaxInterval</pre></td>
+</tr><tr>
+<td>non_retryable_error_types</td>
+<td>string</td>
+<td><pre>
+json_name: nonRetryableErrorTypes
+go_name: NonRetryableErrorTypes</pre></td>
+</tr>
+</table>
+
+
+
+<a name="temporal-xns-v1-startworkflowoptions"></a>
+### temporal.xns.v1.StartWorkflowOptions
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>enable_eager_start</td>
+<td>bool</td>
+<td><pre>
+json_name: enableEagerStart
+go_name: EnableEagerStart</pre></td>
+</tr><tr>
+<td>error_when_already_started</td>
+<td>bool</td>
+<td><pre>
+json_name: errorWhenAlreadyStarted
+go_name: ErrorWhenAlreadyStarted</pre></td>
+</tr><tr>
+<td>execution_timeout</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: executionTimeout
+go_name: ExecutionTimeout</pre></td>
+</tr><tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr><tr>
+<td>id_reuse_policy</td>
+<td><a href="#temporal-xns-v1-idreusepolicy">temporal.xns.v1.IDReusePolicy</a></td>
+<td><pre>
+json_name: idReusePolicy
+go_name: IdReusePolicy</pre></td>
+</tr><tr>
+<td>memo</td>
+<td><a href="#google-protobuf-struct">google.protobuf.Struct</a></td>
+<td><pre>
+json_name: memo
+go_name: Memo</pre></td>
+</tr><tr>
+<td>retry_policy</td>
+<td><a href="#temporal-xns-v1-retrypolicy">temporal.xns.v1.RetryPolicy</a></td>
+<td><pre>
+json_name: retryPolicy
+go_name: RetryPolicy</pre></td>
+</tr><tr>
+<td>run_timeout</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: runTimeout
+go_name: RunTimeout</pre></td>
+</tr><tr>
+<td>search_attirbutes</td>
+<td><a href="#google-protobuf-struct">google.protobuf.Struct</a></td>
+<td><pre>
+json_name: searchAttirbutes
+go_name: SearchAttirbutes</pre></td>
+</tr><tr>
+<td>start_delay</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: startDelay
+go_name: StartDelay</pre></td>
+</tr><tr>
+<td>task_queue</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueue
+go_name: TaskQueue</pre></td>
+</tr><tr>
+<td>task_timeout</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: taskTimeout
+go_name: TaskTimeout</pre></td>
 </tr>
 </table>
 

@@ -1,0 +1,10 @@
+version: v1
+deps:
+  - buf.build/cludden/protoc-gen-go-temporal
+breaking:
+  use:
+    - FILE
+lint:
+  allow_comment_ignores: true
+  use:
+    - BASIC

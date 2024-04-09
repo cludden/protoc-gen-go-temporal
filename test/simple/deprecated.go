@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/simple"
+	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
