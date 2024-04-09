@@ -5,7 +5,6 @@ import (
 
 	g "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/compiler/protogen"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const (
@@ -31,50 +30,51 @@ func (svc *Manifest) renderCodec(f *g.File) {
 								continue
 							}
 							method := svc.methods[a]
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Input)
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Output)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Input)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Output)
 						}
 						for _, q := range svc.queriesOrdered {
 							if svc.methods[q].Desc.Parent() != svc.Service.Desc {
 								continue
 							}
 							method := svc.methods[q]
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Input)
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Output)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Input)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Output)
 						}
 						for _, s := range svc.signalsOrdered {
 							if svc.methods[s].Desc.Parent() != svc.Service.Desc {
 								continue
 							}
 							method := svc.methods[s]
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Input)
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Output)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Input)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Output)
 						}
 						for _, u := range svc.updatesOrdered {
 							if svc.methods[u].Desc.Parent() != svc.Service.Desc {
 								continue
 							}
 							method := svc.methods[u]
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Input)
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Output)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Input)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Output)
 						}
 						for _, w := range svc.workflowsOrdered {
 							if svc.methods[w].Desc.Parent() != svc.Service.Desc {
 								continue
 							}
 							method := svc.methods[w]
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Input)
-							registerType(svc.Plugin.Plugin, fn, types, svc.Service, method.Output)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Input)
+							registerType(svc.Plugin.Plugin, fn, types, svc.Service, nil, method.Output)
 						}
 					}),
 			),
 		)
 }
 
-func registerType(p *protogen.Plugin, fn *g.Group, cache map[string]struct{}, svc *protogen.Service, msg *protogen.Message) {
+func registerType(p *protogen.Plugin, fn *g.Group, cache map[string]struct{}, svc *protogen.Service, messages g.Code, msg *protogen.Message) {
 	if string(svc.Desc.ParentFile().Package()) != string(msg.Desc.ParentFile().Package()) {
 		return
 	}
+
 	if _, ok := cache[string(msg.Desc.FullName())]; ok || isEmpty(msg) {
 		return
 	}
@@ -83,20 +83,27 @@ func registerType(p *protogen.Plugin, fn *g.Group, cache map[string]struct{}, sv
 		p.Error(fmt.Errorf("unable to locate parent file for msg: %s", msg.Desc.ParentFile().Path()))
 		return
 	}
+	if messages == nil {
+		messages = g.Id(f.GoDescriptorIdent.GoName)
+	}
 	fn.Id("s").
 		Dot("RegisterType").
 		Call(
-			g.Id(f.GoDescriptorIdent.GoName).
+			g.Add(messages).
 				Dot("Messages").
 				Call().
 				Dot("ByName").
-				Call(g.Lit(string(msg.Desc.FullName().Name()))),
+				Call(g.Lit(string(msg.Desc.Name()))),
 		)
 	cache[string(msg.Desc.FullName())] = struct{}{}
-	for _, f := range msg.Fields {
-		if f.Desc.Kind() != protoreflect.MessageKind {
-			continue
-		}
-		registerType(p, fn, cache, svc, f.Message)
+
+	messages = g.Add(messages).
+		Dot("Messages").
+		Call().
+		Dot("ByName").
+		Call(g.Lit(string(msg.Desc.Name())))
+
+	for _, f := range msg.Messages {
+		registerType(p, fn, cache, svc, messages, f)
 	}
 }
