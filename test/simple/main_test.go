@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -231,11 +230,7 @@ func TestActivityTaskQueue(t *testing.T) {
 	env.ExecuteWorkflow(func(ctx workflow.Context) error {
 		_, err := simplepb.SomeActivity3(ctx, &simplepb.SomeActivity3Request{
 			RequestVal: "foo",
-		}, simplepb.NewSomeActivity3ActivityOptions().WithActivityOptions(workflow.ActivityOptions{
-			RetryPolicy: &temporal.RetryPolicy{
-				MaximumAttempts: 1,
-			},
-		}))
+		})
 		require.NoError(err)
 		return nil
 	})
