@@ -127,18 +127,23 @@ func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullNa
 			// initialize activity options
 			fn.If(g.Id("opts").Dot("opts").Op("==").Nil()).BlockFunc(func(bl *g.Group) {
 				if local {
-					bl.Id("activityOpts").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(g.Id("ctx"))
+					bl.Id("opts").Dot("opts").Op("=").Op("&").Qual(workflowPkg, "LocalActivityOptions").Values()
 				} else {
-					bl.Id("activityOpts").Op(":=").Qual(workflowPkg, "GetActivityOptions").Call(g.Id("ctx"))
+					bl.Id("opts").Dot("opts").Op("=").Op("&").Qual(workflowPkg, "ActivityOptions").Values()
 				}
-				bl.Id("opts").Dot("opts").Op("=").Op("&").Id("activityOpts")
 			})
 
 			// set default task queue
-			if tq := opts.GetTaskQueue(); !local && tq != "" {
-				fn.If(g.Id("opts").Dot("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
-					g.Id("opts").Dot("opts").Dot("TaskQueue").Op("=").Lit(tq),
-				)
+			if !local {
+				if tq := opts.GetTaskQueue(); tq != "" {
+					fn.If(g.Id("opts").Dot("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
+						g.Id("opts").Dot("opts").Dot("TaskQueue").Op("=").Lit(tq),
+					)
+				} else {
+					fn.If(g.Id("opts").Dot("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
+						g.Id("opts").Dot("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName"),
+					)
+				}
 			}
 
 			// set default retry policy
