@@ -133,11 +133,22 @@ func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullNa
 				}
 			})
 
-			// set default task queue
+			// set default task queue for activities with no task queue explicitly configured via
+			// WithActivityOptions using the following priority
+			//   1. option (temporal.v1.activity).task_queue
+			//   2. option (temporal.v1.service).task_queue
+			//   3. workflow.GetInfo(ctx).TaskQueueName
 			if !local {
+				var taskQueue g.Code
 				if tq := opts.GetTaskQueue(); tq != "" {
+					taskQueue = g.Lit(tq)
+				}
+				if tq := svc.opts.GetTaskQueue(); taskQueue == nil && tq != "" {
+					taskQueue = g.Id(svc.toCamel("%sTaskQueue", svc.GoName))
+				}
+				if taskQueue != nil {
 					fn.If(g.Id("opts").Dot("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
-						g.Id("opts").Dot("opts").Dot("TaskQueue").Op("=").Lit(tq),
+						g.Id("opts").Dot("opts").Dot("TaskQueue").Op("=").Add(taskQueue),
 					)
 				} else {
 					fn.If(g.Id("opts").Dot("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
