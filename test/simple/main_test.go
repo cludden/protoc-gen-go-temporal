@@ -72,6 +72,32 @@ func TestSomeWorkflow1WithTestClient(t *testing.T) {
 	}, ActivityEvents)
 }
 
+func TestSomeWorkflow1Alias(t *testing.T) {
+	ActivityEvents = nil
+	require := require.New(t)
+	suite := &testsuite.WorkflowTestSuite{}
+	env := suite.NewTestWorkflowEnvironment()
+	simplepb.RegisterSimpleWorkflows(env, &Workflows{})
+	simplepb.RegisterSimpleActivities(env, &Activities{})
+
+	// send signals
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(simplepb.SomeSignal1SignalName, nil)
+	}, time.Minute*10)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(simplepb.SomeSignal2SignalName, &simplepb.SomeSignal2Request{RequestVal: "foo"})
+	}, time.Minute*30)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(simplepb.SomeSignal2SignalName, &simplepb.SomeSignal2Request{RequestVal: "bar"})
+	}, time.Minute*60)
+
+	env.ExecuteWorkflow("mycompany.SomeWorkflow1", &simplepb.SomeWorkflow1Request{Id: "bar", RequestVal: "blah"})
+	require.True(env.IsWorkflowCompleted())
+	require.NoError(env.GetWorkflowError())
+	var out simplepb.SomeWorkflow1Response
+	require.NoError(env.GetWorkflowResult(&out))
+}
+
 func TestSomeWorkflow2WithTestClient(t *testing.T) {
 	require, ctx := require.New(t), context.Background()
 	var suite testsuite.WorkflowTestSuite

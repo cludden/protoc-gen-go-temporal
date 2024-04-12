@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	g "github.com/dave/jennifer/jen"
@@ -175,6 +176,7 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 // genWorkerRegisterWorkflow generates a Register<Workflow> public function
 func (svc *Manifest) genWorkerRegisterWorkflow(f *g.File, workflow protoreflect.FullName) {
 	method := svc.methods[workflow]
+	opts := svc.workflows[workflow]
 	builderName := fmt.Sprintf("build%s", method.GoName)
 	varName := svc.toCamel("%sFunction", workflow)
 
@@ -199,15 +201,23 @@ func (svc *Manifest) genWorkerRegisterWorkflow(f *g.File, workflow protoreflect.
 					g.Error(),
 				),
 		).
-		Block(
-			g.Id(varName).Op("=").Id(builderName).Call(g.Id("wf")),
-			g.Id("r").Dot("RegisterWorkflowWithOptions").Call(
-				g.Id(varName),
-				g.Qual(workflowPkg, "RegisterOptions").Values(
-					g.Id("Name").Op(":").Id(svc.toCamel("%sWorkflowName", workflow)),
-				),
-			),
-		)
+		BlockFunc(func(fn *g.Group) {
+			fn.Id(varName).Op("=").Id(builderName).Call(g.Id("wf"))
+			names := []g.Code{g.Id(svc.toCamel("%sWorkflowName", workflow))}
+			aliases := opts.GetAliases()
+			sort.Strings(aliases)
+			for _, alias := range aliases {
+				names = append(names, g.Lit(alias))
+			}
+			for _, name := range names {
+				fn.Id("r").Dot("RegisterWorkflowWithOptions").Call(
+					g.Id(varName),
+					g.Qual(workflowPkg, "RegisterOptions").Values(
+						g.Id("Name").Op(":").Add(name),
+					),
+				)
+			}
+		})
 }
 
 // genWorkerRegisterWorkflows generates a public RegisterWorkflows method for a given service

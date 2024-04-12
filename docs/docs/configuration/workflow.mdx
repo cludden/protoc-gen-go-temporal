@@ -28,6 +28,23 @@ service Example {
 
 ## Options
 
+### aliases
+
+`repeated string`
+
+List of additional names to register the workflow under. This can be used to migrate to new naming conventions without breaking workflow history or existing clients. See the [guide](/docs/guides/workflows#aliases) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      aliases: ["example.v1.Hello"] // workers will register the workflow implementation under both names
+      name: "hello-workflow"        // generated clients will use this when executing workflows
+    };
+  }
+}
+```
+
 ### execution_timeout
 
 [google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)

@@ -363,6 +363,82 @@ service Example {
 </TabItem>
 </Tabs>
 
+### Aliases
+
+Workflows can be annotated with 0 or more [aliases](/docs/configuration/workflow#aliases) which results in the worker registering the workflow definition multiple times with different names. This can be used to evolve workflow naming conventions in a non-breaking fashion:
+
+1. Initial workflow definition
+
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      name: "hello-workflow"
+    };
+  }
+}
+```
+
+2. Add new workflow name as alias.
+
+Old clients and new clients generated from this schema will continue to use the old name when executing workflows. New worker deployments will register the workflow under both names. This step is necessary to prevent new clients from attempting to execute the workflow using the new name before workers have been deployed. If this risk is deemed acceptable, this step can be skipped.
+
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      name: "hello-workflow"
+      aliases: ["example.v1.Hello"]
+    };
+  }
+}
+```
+
+3. Update name and aliases.
+
+All new clients will now use the new workflow name. Workers will continue to handle both names.
+
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      name: "example.v1.Hello"
+      aliases: ["hello-workflow"]
+    };
+  }
+}
+```
+
+4. Remove old aliases.
+
+Once all old clients have been phased out and old workflow histories have expired, the old alias can be safely removed.
+
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      name: "example.v1.Hello"
+    };
+  }
+}
+```
+
 ## Initializers
 
 Workflow structs can implement an optional `Initialize` method which will be invoked prior to signal channel initialization and query or update handler registrations. This can be useful if a workflow requires the use of an activity to initialize local workflow state.
@@ -766,4 +842,3 @@ service Example {
 ```
 </TabItem>
 </Tabs>
-

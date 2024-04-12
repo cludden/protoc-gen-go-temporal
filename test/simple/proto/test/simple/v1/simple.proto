@@ -18,6 +18,7 @@ service Simple {
     option (temporal.v1.workflow) = {
       id: 'some-workflow-1/${! id }/${! uuid_v4() }'
       name: 'mycompany.simple.SomeWorkflow1'
+      aliases: ['mycompany.SomeWorkflow1']
       query : { ref: 'SomeQuery1' }
       query : { ref: 'SomeQuery2' }
       signal: { ref: 'SomeSignal1' }
