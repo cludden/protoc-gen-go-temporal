@@ -153,6 +153,10 @@ message WorkflowOptions {
   // Fully-qualified workflow name
   string name = 14;
 
+  // List of additional names to register the workflow under. This can be used to migrate
+  // to new naming conventions without breaking workflow history or existing clients.
+  repeated string aliases = 17;
+
   // Queries supported by this workflow
   repeated Query query = 1;
 
