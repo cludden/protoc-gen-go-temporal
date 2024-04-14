@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'protoc-gen-go-temporal',
   tagline: 'temporal + go + protobuf = ❤️',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.png',
 
   // Set the production url of your site here
   url: 'https://your-docusaurus-site.example.com',
@@ -57,9 +57,19 @@ const config: Config = {
   ],
 
   themeConfig: {
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: false,
+    },
+
     // Replace with your project's social card
     navbar: {
       title: 'protoc-gen-go-temporal',
+      logo: {
+        alt: 'Gopher',
+        src: 'img/favicon.png',
+      },
       items: [
         {
           type: 'docSidebar',

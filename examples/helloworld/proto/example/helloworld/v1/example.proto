@@ -1,0 +1,40 @@
+syntax="proto3";
+
+package example.helloworld.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "hello-world"
+  };
+
+  // Hello prints a friendly greeting and waits for goodbye
+  rpc Hello(HelloRequest) returns (HelloResponse) {
+    option (temporal.v1.workflow) = {
+      name: "example.v1.Hello"
+      id: 'hello/${! name.or("World") }'
+      signal: { ref: "Goodbye" }
+    };
+  }
+
+  // Goodbye signals a running workflow to exit
+  rpc Goodbye(GoodbyeRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+// HelloRequest describes the input to a Hello workflow
+message HelloRequest {
+  string name = 1;
+}
+
+// HelloResponse describes the output from a Hello workflow
+message HelloResponse {
+  string result = 1;
+}
+
+message GoodbyeRequest {
+  string message = 1;
+}

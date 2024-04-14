@@ -1,0 +1,33 @@
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../../examples/mutex/proto/example/mutex/v1/mutex.proto';
+import Implementation from '!!raw-loader!../../../examples/mutex/main.go';
+
+
+# Hello World
+
+A simple example inspired by [temporalio/samples-go/mutex](https://github.com/temporalio/samples-go/tree/main/mutex)
+
+<CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Implementation}</CodeBlock>
+
+
+## Run this example
+
+1. Clone the examples
+    ```sh
+    git clone https://github.com/cludden/protoc-gen-go-temporal && cd protoc-gen-go-temporal
+    ```
+2. Run a local Temporal server
+    ```sh
+    temporal server start-dev
+    ```
+3. In a different shell, run the example worker
+    ```shell
+    go run examples/mutex/main.go worker
+    ```
+4. In a different shell, execute two or more workflows with the same resource-id
+    ```shell
+    go run examples/mutex/main.go sample-workflow-with-mutex --resource-id foo -d
+    go run examples/mutex/main.go sample-workflow-with-mutex --resource-id foo -d
+    ```

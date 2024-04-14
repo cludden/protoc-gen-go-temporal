@@ -1,0 +1,35 @@
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../../examples/xns/proto/example/xns/v1/xns.proto';
+import Implementation from '!!raw-loader!../../../examples/xns/main.go';
+
+
+# Cross-Namespace
+
+A simple example showcasing usage of the generated XNS helpers for simplifying cross-namespace and even cross-cluster integrations.
+
+<CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Implementation}</CodeBlock>
+
+
+## Run this example
+
+1. Clone the examples
+    ```sh
+    git clone https://github.com/cludden/protoc-gen-go-temporal && cd protoc-gen-go-temporal
+    ```
+2. Start temporal
+    ```shell
+    temporal server start-dev \
+        --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true" \
+        --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true"
+    ```
+3. In a different terminal, create `example` namespace and run the worker
+    ```shell
+    temporal operator namespace create example
+    go run ./examples/xns/... worker
+    ```
+4. In a different terminal, execute an xns workflow
+    ```shell
+    go run ./examples/xns/... xns provision-foo --name test
+    ```

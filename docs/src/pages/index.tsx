@@ -1,9 +1,9 @@
 import clsx from 'clsx';
+import classnames from 'classnames';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
-import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
 
@@ -12,16 +12,21 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/about">
-            Introduction - 10min ⏱️
-          </Link>
+        <div className="row">
+          <div className={classnames('col col--6')}>
+            <h1 className="hero__title">{siteConfig.title}</h1>
+            <p className="hero__subtitle">{siteConfig.tagline}</p>
+            <div className={styles.buttons}>
+              <Link
+                className="button button--secondary button--lg"
+                to="/docs/about">
+                Get Started
+              </Link>
+            </div>
+          </div>
+          <div className={classnames('col col--6')}>
+            <img width="300" className={styles.heroImg} src="img/logo.png" />
+          </div>
         </div>
       </div>
     </header>
