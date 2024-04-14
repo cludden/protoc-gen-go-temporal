@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	pb "github.com/cludden/protoc-gen-go-temporal/gen/test/expression/v1"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/expression"
-	pb "github.com/cludden/protoc-gen-go-temporal/pkg/expression/gen/test/expression/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,6 +45,13 @@ func TestExpression(t *testing.T) {
 			expr:     `test/${!intField.or("unknown")}`,
 			msg:      &pb.Request{},
 			expected: "test/unknown",
+		},
+		{
+			expr: `test/${!id.re_find_object("(?P<first>[^:]{3,10}):(?P<second>[^:]{3,10}):(?P<third>[^:]{3,10})").without("0").key_values().sort_by(pair -> pair.key).map_each(pair -> pair.value).join("/")}`,
+			msg: &pb.Request{
+				Id: "foo:bar:baz",
+			},
+			expected: "test/foo/bar/baz",
 		},
 		{
 			expr: "test/${!bytesField}",
@@ -97,6 +104,27 @@ func TestExpression(t *testing.T) {
 				Id: "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-0e9801d129EXAMPLE",
 			},
 			expected: "test/ec2/us-east-1/123456789012/vpc/vpc-0e9801d129EXAMPLE",
+		},
+		{
+			expr: `test/${! if id.contains("z") { id.uppercase() } else { id.lowercase() } }/${! id }`,
+			msg: &pb.Request{
+				Id: "zeb",
+			},
+			expected: "test/ZEB/zeb",
+		},
+		{
+			expr: `this_is_a_\${!test/${! match id { "aaa" => "A", "bbb" => "B", _ => "Z" } }`,
+			msg: &pb.Request{
+				Id: "zeb",
+			},
+			expected: `this_is_a_${!test/Z`,
+		},
+		{
+			expr: `${! id.re_find_object(".*\{(?P<g>[^\}]+)\}.*").g }`,
+			msg: &pb.Request{
+				Id: "foo{bar}baz",
+			},
+			expected: "bar",
 		},
 	}
 

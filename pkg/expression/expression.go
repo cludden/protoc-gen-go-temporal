@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/participle/v2"
-	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/cludden/benthos/v4/public/bloblang"
 	_ "github.com/cludden/benthos/v4/public/components/pure"
 	_ "github.com/cludden/benthos/v4/public/components/pure/extended"
@@ -29,22 +27,6 @@ type (
 		Mapping string `parser:"@Mapping"`
 		m       *bloblang.Executor
 	}
-)
-
-// Initialize lexer & parser for bloblang expressions
-var (
-	lexr = lexer.MustStateful(lexer.Rules{
-		"Root": []lexer.Rule{
-			{Name: "String", Pattern: `([^\$]|$[^{]|${[^!])+`, Action: nil},
-			{Name: "Expr", Pattern: `\${!`, Action: lexer.Push("Expr")},
-		},
-		"Expr": []lexer.Rule{
-			{Name: "Mapping", Pattern: `[^}]+`, Action: nil},
-			{Name: "ExprEnd", Pattern: `}`, Action: lexer.Pop()},
-		},
-	})
-
-	parser = participle.MustBuild[Expression](participle.Lexer(lexr))
 )
 
 // EvalExpression evaluates an expression against a proto message
@@ -100,7 +82,7 @@ func MustParseMapping(input string) *bloblang.Executor {
 
 // ParseExpression parses an Expression value from the provided string
 func ParseExpression(input string) (*Expression, error) {
-	expr, err := parser.ParseString("", input)
+	expr, err := Lex(input)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing expression %q: %w", input, err)
 	}
