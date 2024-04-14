@@ -18,8 +18,6 @@ import (
 )
 
 type (
-	Activities struct{}
-
 	Workflows struct{}
 )
 

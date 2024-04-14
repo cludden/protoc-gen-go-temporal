@@ -1,0 +1,53 @@
+import CodeBlock from '@theme/CodeBlock';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+import Proto from '!!raw-loader!../../examples/example/proto/example/v1/example.proto';
+import Buf from '!!raw-loader!../../examples/example/proto/buf.yaml';
+import BufGen from '!!raw-loader!../../examples/example/buf.gen.yaml';
+import Implementation from '!!raw-loader!../../examples/example/example.go';
+import Entrypoint from '!!raw-loader!../../examples/example/cmd/example/main.go';
+import Client from '!!raw-loader!../../examples/example/cmd/client/main.go';
+
+import { cli_fragments, xns_example } from './how-it-works.tsx';
+
+<Tabs>
+  <TabItem value="annotate" label="Annotate">
+    Annotate your protobuf services and methods with Temporal options.
+    <CodeBlock language="protobuf" title="proto/example/v1/example.proto">{Proto}</CodeBlock>
+  </TabItem>
+  <TabItem value="generate" label="Generate">
+    Generate Go code for implementing Temporal Clients, Workers, and CLI applications.
+    <CodeBlock language="yaml" title="buf.yaml">{Buf}</CodeBlock>
+    <CodeBlock language="yaml" title="buf.gen.yaml">{BufGen}</CodeBlock>
+    <CodeBlock language="sh">buf generate</CodeBlock>
+  </TabItem>
+  <TabItem value="implement" label="Implement">
+    Implement the required Workflow and Activity interfaces.
+    <CodeBlock language="go" title="example.go">{Implementation}</CodeBlock>
+  </TabItem>
+  <TabItem value="run" label="Run">
+    Run your Temporal Worker using the generated helpers.
+    <CodeBlock language="go" title="cmd/example/main.go">{Entrypoint}</CodeBlock>
+    <CodeBlock language="sh">go run cmd/example/main.go worker</CodeBlock>
+  </TabItem>
+  <TabItem value="client" label="Client">
+    Interact with your workers from any Go application using the generated Client.
+    <CodeBlock language="go" title="cmd/client/main.go">{Client}</CodeBlock>
+    <CodeBlock language="sh">go run cmd/client/main.go worker</CodeBlock>
+  </TabItem>
+  <TabItem value="cli" label="CLI">
+    Or from your local machine using the generated Command Line Interface.
+    {cli_fragments.map((fragment, _) => (
+        <section>
+            <CodeBlock language={fragment.language} title={fragment.title}>{fragment.content}</CodeBlock>
+            {fragment.output != '' && <img style={{"margin-bottom":"20px"}} src={fragment.output} />}
+        </section>
+    ))}
+  </TabItem>
+  <TabItem value="xns" label="XNS">
+    Or from other Temporal workflows in a different Namespace or Cluster.
+    <CodeBlock language="go" title="xns.go">{xns_example}</CodeBlock>
+  </TabItem>
+</Tabs>
+

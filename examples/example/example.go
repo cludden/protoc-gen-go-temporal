@@ -31,8 +31,7 @@ type (
 	}
 )
 
-// CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
-// that initializes a new CreateFooWorkflow for each execution
+// CreateFoo initializes a new examplev1.CreateFooWorkflow value
 func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooWorkflowInput) (examplev1.CreateFooWorkflow, error) {
 	return &CreateFooWorkflow{
 		CreateFooWorkflowInput: input,
@@ -41,7 +40,7 @@ func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooWo
 	}, nil
 }
 
-// Execute defines the entrypoint to a CreateFooWorkflow
+// Execute defines the entrypoint to a example.v1.Example.CreateFoo workflow
 func (wf *CreateFooWorkflow) Execute(ctx workflow.Context) (*examplev1.CreateFooResponse, error) {
 	// listen for signals using generated signal provided by workflow input
 	workflow.Go(ctx, func(ctx workflow.Context) {
