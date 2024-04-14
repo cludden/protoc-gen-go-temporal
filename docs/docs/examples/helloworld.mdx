@@ -1,6 +1,8 @@
 import CodeBlock from '@theme/CodeBlock';
-import Proto from '!!raw-loader!../../../examples/helloworld/proto/example/helloworld/v1/helloworld.proto';
-import Implementation from '!!raw-loader!../../../examples/helloworld/main.go';
+import Proto from '!!raw-loader!../../../examples/helloworld/proto/example/helloworld/v1/example.proto';
+import Implementation from '!!raw-loader!../../../examples/helloworld/internal/example.go';
+import Main from '!!raw-loader!../../../examples/helloworld/main.go';
+
 
 # Hello World
 
@@ -8,7 +10,10 @@ A simple example inspired by [temporalio/samples-go/helloworld](https://github.c
 
 <CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
 
-<CodeBlock language="go" title="main.go">{Implementation}</CodeBlock>
+<CodeBlock language="go" title="example.go">{Implementation}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Main}</CodeBlock>
+
 
 ## Run this example
 
@@ -26,5 +31,9 @@ A simple example inspired by [temporalio/samples-go/helloworld](https://github.c
     ```
 4. Execute a `HelloWorld` workflow
     ```sh
-    go run examples/helloworld/main.go hello-world --name Temporal
+    go run examples/helloworld/main.go hello --name Temporal
+    ```
+5. Send a `Goodbye` signal
+    ```sh
+    go run examples/helloworld/main.go goodbye -w hello/Temporal
     ```

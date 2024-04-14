@@ -15,11 +15,6 @@ const sidebars: SidebarsConfig = {
   docs: [
     {
       type: 'doc',
-      id: 'about',
-      label: 'About'
-    },
-    {
-      type: 'doc',
       id: 'install',
       label: 'Installing'
     },
@@ -152,6 +147,16 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'examples/codecserver',
       label: 'Codec Server'
+    },
+    {
+      type: 'doc',
+      id: 'examples/xns',
+      label: 'Cross-Namespace (XNS)'
+    },
+    {
+      type: 'doc',
+      id: 'examples/mutex',
+      label: 'Mutex'
     },
     {
       type: 'doc',
