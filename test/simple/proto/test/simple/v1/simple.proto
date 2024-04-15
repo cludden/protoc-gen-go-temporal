@@ -62,6 +62,7 @@ service Simple {
   rpc SomeActivity2(SomeActivity2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
       start_to_close_timeout: { seconds: 10 }
+      wait_for_cancellation: true
       retry_policy {
         max_interval: { seconds: 30 }
       }
