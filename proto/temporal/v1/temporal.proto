@@ -43,6 +43,10 @@ message ActivityOptions {
   // Heartbeat interval. Activity must call Activity.RecordHeartbeat(ctx, "my-heartbeat")
   google.protobuf.Duration heartbeat_timeout = 5;
 
+  // WaitForCancellation - Whether to wait for canceled activity to be completed
+  // (activity can be failed, completed, cancel accepted)
+  bool wait_for_cancellation = 8;
+
   // Specifies how to retry an Activity if an error occurs
   RetryPolicy retry_policy = 6;
 }

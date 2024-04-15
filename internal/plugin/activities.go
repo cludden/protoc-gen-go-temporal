@@ -208,6 +208,11 @@ func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullNa
 				)
 			}
 
+			// set default cancellation wait
+			if opts.GetWaitForCancellation() && !local {
+				fn.Id("opts").Dot("opts").Dot("WaitForCancellation").Op("=").Lit(true)
+			}
+
 			// inject ctx with activity options
 			if local {
 				fn.Id("ctx").Op("=").Qual(workflowPkg, "WithLocalActivityOptions").Call(

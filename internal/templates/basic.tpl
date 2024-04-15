@@ -408,6 +408,9 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 {{- if gt $a.StartToCloseTimeout 0 }}
 <tr><td>start_to_close_timeout</td><td>{{ $a.StartToCloseTimeout | fmtduration }}</td></tr>
 {{- end }}
+{{- if $a.WaitForCancellation }}
+<tr><td>wait_for_cancellation</td><td>{{ $a.WaitForCancellation }}</td></tr>
+{{- end }}
 {{- if $a.TaskQueue }}
 <tr><td>task_queue</td><td>{{ $a.TaskQueue }}</td></tr>
 {{- end }}

@@ -132,6 +132,22 @@ service Example {
 }
 ```
 
+### wait_for_cancellation
+
+`bool`
+
+Whether to wait for canceled activity to be completed (activity can be failed, completed, cancel accepted). If `true` the Activity Execution will finish executing should there be a [Cancellation](https://docs.temporal.io/dev-guide/go#cancellation) request. Defaults to `false`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      wait_for_cancellation: false
+    };
+  }
+}
+```
+
 ### task_queue
 
 `string`
