@@ -4,7 +4,6 @@ go 1.21.5
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/alecthomas/participle/v2 v2.1.0
 	github.com/alta/protopatch v0.5.3
 	github.com/cludden/benthos/v4 v4.24.0-no-otel.2
 	github.com/dave/jennifer v1.7.0

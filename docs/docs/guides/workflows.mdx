@@ -771,10 +771,10 @@ service Example {
 
 ### Workflow Functions
 
-Workflow definitions can be executed inline with another workflow definition.
+Workflow definitions can be executed inline by another workflow definition using the generated `<Workflow>Function` variables or using the generated `<Service>WorkflowFunctions` helpers that enable mocking.
 
 <Tabs>
-<TabItem value="wffn-go" label="Go">
+<TabItem value="wffn-vars" label="Variables">
 ```go title="main.go"
 package main
 
@@ -785,41 +785,109 @@ import (
     "go.temporal.io/sdk/workflow"
 )
 
-type ExampleWorkflows struct {}
+type (
+  Workflows struct {}
 
-type HelloWorkflow struct {
-    *examplev1.HelloWorkflowInput
+  FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+  }
+
+  BarWorkflow struct {
+    *examplev1.BarWorkflowInput
+  }
+)
+
+func (w *Workflows) Foo(ctx workflow.Context, input *examplev1.FooInput) (examplev1.FooWorkflow, error) {
+    return &FooWorkflow{input}, nil
 }
 
-func (w *ExampleWorkflows) Hello(ctx workflow.Context, input *examplev1.HelloInput) (examplev1.HelloWorkflow, error) {
-    return &HelloWorkflow{input}, nil
-}
-
-func (w *HelloWorkflow) Execute(ctx workflow.Context) error {
-    workflow.GetLogger(ctx).Info("hello!", "name", w.Req.GetName())
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+    workflow.GetLogger(ctx).Info("hello from foo!", "name", w.Req.GetName())
     return nil
 }
 
-func MyWorkflow(ctx workflow.Context) error {
-    // this is equivalent to calling Execute inline
-    out, err := examplev1.HelloFunction(ctx, &examplev1.HelloInput{})
+func (w *Workflows) Bar(ctx workflow.Context, input *examplev1.BarInput) (examplev1.BarWorkflow, error) {
+    return &BarWorkflow{input}, nil
+}
+
+func (w *BarWorkflow) Execute(ctx workflow.Context) error {
+    workflow.GetLogger(ctx).Info("hello from bar!", "name", w.Req.GetName())
+    out, err := examplev1.FooFunction(ctx, &examplev1.FooInput{})
     if err != nil {
-        return fmt.Errorf("error executing example.v1.Example.Hello inline: %w", err)
+        return fmt.Errorf("error executing example.v1.Example.Foo inline: %w", err)
     }
     return nil
 }
 
 func main() {
-    // initialize temporal client and worker
     c, err := client.Dial(client.Options{})
     if err != nil {
         log.Fatalf("error initializing client: %v", err)
     }
     w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
 
-    // Register all example.v1.Example workflows with the worker
     examplev1.RegisterExampleWorkflows(w, &Workflows{})
-    w.RegisterWorkflow(MyWorkflow)
+    w.Run(worker.InterruptCh())
+}
+```
+</TabItem>
+<TabItem value="wffn-functions" label="Functions">
+```go title="main.go"
+package main
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/workflow"
+)
+
+type (
+  Workflows struct {
+    workflows examplev1.ExampleWorkflowFunctions
+  }
+
+  FooWorkflow struct {
+    *Workflows
+    *examplev1.FooWorkflowInput
+  }
+
+  BarWorkflow struct {
+    *Workflows
+    *examplev1.BarWorkflowInput
+  }
+)
+
+func (w *Workflows) Foo(ctx workflow.Context, input *examplev1.FooInput) (examplev1.FooWorkflow, error) {
+    return &FooWorkflow{w, input}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+    workflow.GetLogger(ctx).Info("hello from Foo!", "name", w.Req.GetName())
+    return nil
+}
+
+func (w *Workflows) Bar(ctx workflow.Context, input *examplev1.BarInput) (examplev1.BarWorkflow, error) {
+    return &BarWorkflow{w, input}, nil
+}
+
+func (w *BarWorkflow) Execute(ctx workflow.Context) error {
+    workflow.GetLogger(ctx).Info("hello from Bar!", "name", w.Req.GetName())
+    out, err := w.workflows.Foo(ctx, &examplev1.FooInput{})
+    if err != nil {
+        return fmt.Errorf("error executing example.v1.Example.Foo inline: %w", err)
+    }
+    return nil
+}
+
+func main() {
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatalf("error initializing client: %v", err)
+    }
+    w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+
+    examplev1.RegisterExampleWorkflows(w, &Workflows{examplev1.NewExampleWorkflowFunctions()})
     w.Run(worker.InterruptCh())
 }
 ```
@@ -835,7 +903,11 @@ service Example {
     task_queue: "example-v1"
   }
 
-  rpc Hello(HelloInput) returns (HelloOutput) {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
     option (temporal.v1.workflow) = {};
   }
 }

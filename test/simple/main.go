@@ -14,7 +14,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type Workflows struct{}
+type Workflows struct {
+	workflows simplepb.SimpleWorkflowFunctions
+}
 
 // ============================================================================
 
@@ -25,7 +27,7 @@ type someWorkflow1 struct {
 }
 
 func Register(r worker.Registry) {
-	simplepb.RegisterSimpleWorkflows(r, &Workflows{})
+	simplepb.RegisterSimpleWorkflows(r, &Workflows{simplepb.NewSimpleWorkflowFunctions()})
 	simplepb.RegisterSimpleActivities(r, &Activities{})
 	simplepb.RegisterOnlyActivitiesActivities(r, &OnlyActivites{})
 }
@@ -93,17 +95,21 @@ func (s *someWorkflow1) SomeQuery2(req *simplepb.SomeQuery2Request) (*simplepb.S
 // ============================================================================
 
 type someWorkflow2 struct {
+	*Workflows
 	*simplepb.SomeWorkflow2WorkflowInput
 	log     logger.Logger
 	updates int
 }
 
 func (w *Workflows) SomeWorkflow2(ctx workflow.Context, input *simplepb.SomeWorkflow2WorkflowInput) (simplepb.SomeWorkflow2Workflow, error) {
-	wf := &someWorkflow2{SomeWorkflow2WorkflowInput: input, log: workflow.GetLogger(ctx)}
+	wf := &someWorkflow2{Workflows: w, SomeWorkflow2WorkflowInput: input, log: workflow.GetLogger(ctx)}
 	return wf, nil
 }
 
 func (wf *someWorkflow2) Execute(ctx workflow.Context) error {
+	if err := wf.workflows.SomeWorkflow3(ctx, &simplepb.SomeWorkflow3Request{Id: workflow.GetInfo(ctx).WorkflowExecution.ID, RequestVal: "foo"}); err != nil {
+		return err
+	}
 	return workflow.Await(ctx, func() bool {
 		fmt.Printf("updates: %d\n", wf.updates)
 		return wf.updates > 0

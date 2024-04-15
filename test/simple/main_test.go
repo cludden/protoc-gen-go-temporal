@@ -10,6 +10,8 @@ import (
 	"time"
 
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
+	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
@@ -102,7 +104,35 @@ func TestSomeWorkflow2WithTestClient(t *testing.T) {
 	require, ctx := require.New(t), context.Background()
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
-	client := simplepb.NewTestSimpleClient(env, &Workflows{}, &Activities{})
+	client := simplepb.NewTestSimpleClient(env, &Workflows{simplepb.NewSimpleWorkflowFunctions()}, &Activities{})
+
+	run, err := client.SomeWorkflow2Async(ctx)
+	require.NoError(err)
+	require.NotNil(run)
+
+	env.RegisterDelayedCallback(func() {
+		require.NoError(client.SomeSignal2(ctx, run.ID(), "", &simplepb.SomeSignal2Request{RequestVal: "bar"}))
+	}, time.Second)
+
+	var handle simplepb.SomeUpdate1Handle
+	env.RegisterDelayedCallback(func() {
+		handle, err = run.SomeUpdate1Async(ctx, &simplepb.SomeUpdate1Request{RequestVal: "test"})
+		require.NoError(err)
+	}, time.Second*3)
+
+	require.NoError(run.Get(ctx))
+	update, err := handle.Get(ctx)
+	require.NoError(err)
+	require.Equal("TEST", update.GetResponseVal())
+}
+
+func TestSomeWorkflow2WithMock(t *testing.T) {
+	require, ctx := require.New(t), context.Background()
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	fns := simplemocks.NewMockSimpleWorkflowFunctions(t)
+	fns.EXPECT().SomeWorkflow3(mock.Anything, mock.Anything).Return(nil)
+	client := simplepb.NewTestSimpleClient(env, &Workflows{fns}, &Activities{})
 
 	run, err := client.SomeWorkflow2Async(ctx)
 	require.NoError(err)
@@ -112,7 +142,7 @@ func TestSomeWorkflow2WithTestClient(t *testing.T) {
 	env.RegisterDelayedCallback(func() {
 		handle, err = run.SomeUpdate1Async(ctx, &simplepb.SomeUpdate1Request{RequestVal: "test"})
 		require.NoError(err)
-	}, time.Second)
+	}, time.Second*3)
 
 	require.NoError(run.Get(ctx))
 	update, err := handle.Get(ctx)

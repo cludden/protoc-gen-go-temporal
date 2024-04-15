@@ -848,7 +848,7 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 			hasOutput := !isEmpty(method.Output)
 			varName := svc.toCamel("%sFunction", workflow)
 
-			commentWithDefaultf(defs, methodSet(method), "%s implements a %q workflow", varName, svc.toCamel("%sWorkflow", workflow))
+			commentWithDefaultf(defs, methodSet(method), "%s implements a %q workflow", varName, svc.fqnForWorkflow(workflow))
 			defs.Id(varName).
 				Func().
 				ParamsFunc(func(args *g.Group) {
@@ -865,6 +865,88 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 				})
 		}
 	})
+
+	typeName := svc.toCamel("%sWorkflowFunctions", svc.GoName)
+	implName := svc.toLowerCamel("%sWorkflowFunctions", svc.GoName)
+	f.Commentf("%s describes a mockable dependency for inlining workflows within other workflows", typeName)
+	f.Type().Defs(
+		g.Commentf("%s describes a mockable dependency for inlining workflows within other workflows", typeName),
+		g.Id(typeName).InterfaceFunc(func(methods *g.Group) {
+			for _, workflow := range svc.workflowsOrdered {
+				if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+					continue
+				}
+				methodName := svc.toCamel("%s", workflow)
+				method := svc.methods[workflow]
+				hasInput := !isEmpty(method.Input)
+				hasOutput := !isEmpty(method.Output)
+				commentWithDefaultf(methods, methodSet(method), "%s executes a %q workflow inline", methodName, svc.fqnForWorkflow(workflow))
+				methods.Id(methodName).
+					ParamsFunc(func(args *g.Group) {
+						args.Qual(workflowPkg, "Context")
+						if hasInput {
+							args.Op("*").Id(svc.getMessageName(method.Input))
+						}
+					}).
+					ParamsFunc(func(returnVals *g.Group) {
+						if hasOutput {
+							returnVals.Op("*").Id(svc.getMessageName(method.Output))
+						}
+						returnVals.Error()
+					})
+			}
+		}),
+
+		g.Commentf("%s provides an internal %s implementation", implName, typeName),
+		g.Id(implName).Struct(),
+	)
+
+	f.Func().Id(svc.toCamel("New%s", typeName)).Params().Id(typeName).Block(
+		g.Return(g.Op("&").Id(implName).Values()),
+	)
+
+	for _, workflow := range svc.workflowsOrdered {
+		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+			continue
+		}
+		methodName := svc.toCamel("%s", workflow)
+		method := svc.methods[workflow]
+		varName := svc.toCamel("%sFunction", workflow)
+		hasInput := !isEmpty(method.Input)
+		hasOutput := !isEmpty(method.Output)
+		commentWithDefaultf(f, methodSet(method), "%s executes a %q workflow inline", methodName, svc.fqnForWorkflow(workflow))
+		f.Func().
+			Params(g.Id("f").Op("*").Id(implName)).
+			Id(methodName).
+			ParamsFunc(func(args *g.Group) {
+				args.Id("ctx").Qual(workflowPkg, "Context")
+				if hasInput {
+					args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				}
+			}).
+			ParamsFunc(func(returnVals *g.Group) {
+				if hasOutput {
+					returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				}
+				returnVals.Error()
+			}).
+			Block(
+				g.If(g.Id(varName).Op("==").Nil()).Block(
+					g.ReturnFunc(func(returnVals *g.Group) {
+						if hasOutput {
+							returnVals.Nil()
+						}
+						returnVals.Qual("errors", "New").Call(g.Lit(fmt.Sprintf("%s requires workflow registration via %s or %s", methodName, svc.toCamel("Register%sWorkflows", svc.GoName), svc.toCamel("Register%sWorkflow", workflow))))
+					}),
+				),
+				g.Return(g.Id(varName).CallFunc(func(args *g.Group) {
+					args.Id("ctx")
+					if hasInput {
+						args.Id("req")
+					}
+				})),
+			)
+	}
 }
 
 // genWorkerWorkflowInput generates a <Workflow>Input struct

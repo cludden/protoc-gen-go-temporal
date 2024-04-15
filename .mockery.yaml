@@ -8,6 +8,12 @@ packages:
       CreateFooRun: {}
       ExampleClient: {}
       UpdateFooProgressHandle: {}
+  github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1:
+    config:
+      replace-type:
+        - go.temporal.io/sdk/internal=go.temporal.io/sdk/workflow
+    interfaces:
+      SimpleWorkflowFunctions: {}
   github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1:
     config:
       outpkg: xnserrv1mocks

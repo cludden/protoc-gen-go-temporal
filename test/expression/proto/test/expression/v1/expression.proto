@@ -3,9 +3,6 @@ syntax = "proto3";
 // buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package temporal.v1.test.expression.v1;
 
-import "google/protobuf/empty.proto";
-import "temporal/v1/temporal.proto";
-
 message Request {
   string request_val = 1;
   string id = 2;
