@@ -2372,6 +2372,7 @@ go_name: RequestVal</pre></td>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>retry_policy.max_interval</td><td>30 seconds</td></tr>
 <tr><td>start_to_close_timeout</td><td>10 seconds</td></tr>
+<tr><td>wait_for_cancellation</td><td>true</td></tr>
 </table> 
 
 ---

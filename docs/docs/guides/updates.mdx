@@ -3,4 +3,155 @@ import TabItem from '@theme/TabItem';
 
 # Updates
 
-**Coming Soon...**
+An update is implemented as a method on the workflow struct.
+
+:::info
+Workflow Updates are considered an experimental feature. They require the [--workflow-update-enabled](/docs/configuration/plugin#workflow-update-enabled) to be enabled.
+:::
+
+<Tabs>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {
+      id: 'bar/${! uuid_v4() }'
+    };
+  }
+}
+```
+</TabItem>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+    bar *examplev1.BarInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    if err := workflow.Await(ctx, func() bool {
+        return w.bar != nil
+    }); err != nil {
+        return nil, fmt.Errorf("error awaiting update: %w", err)
+    }
+}
+
+func (w *FooWorkflow) Bar(ctx workflow.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
+    w.bar = input
+    return &examplev1.BarOutput{}, nil
+}
+```
+</TabItem>
+</Tabs>
+
+## Validation
+
+Temporal workflow [updates](https://docs.temporal.io/workflows#update) have four phases: `Admission`, `Validation`, `Execution`, and `Completion`. The `Validation` phase is optional, and can be enabled by specifying a developer-provided validation function.
+
+> This validation code, similar to a Query handler, can observe but not change the Workflow state. This means that the validation of an Update request may depend on the Workflow state at runtime. To indicate that the Update request doesn't pass validation, the validation code must throw/return a language-appropriate error. In this case, the system rejects the request, doesn't record anything in the Workflow Event History to indicate that the Update ever happened, and the Update processing doesn't proceed to later phases.
+
+Validation is enabled using the [validate](/docs/configuration/update#validate) update option and implemented as a method on the workflow struct.
+
+<Tabs>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {
+      id: 'bar/${! uuid_v4() }'
+      validate: true
+    };
+  }
+}
+```
+</TabItem>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/temporal"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+    bar *examplev1.BarInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    if err := workflow.Await(ctx, func() bool {
+        return w.bar != nil
+    }); err != nil {
+        return nil, fmt.Errorf("error awaiting update: %w", err)
+    }
+}
+
+func (w *FooWorkflow) ValidateBar(ctx workflow.Context, input *examplev1.BarInput) error {
+    if w.bar != nil {
+        return temporal.NewNonRetryableApplicationError(ctx, "AlreadyExists", nil)
+    }
+    return nil
+}
+
+func (w *FooWorkflow) Bar(ctx workflow.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
+    w.bar = input
+    return &examplev1.BarOutput{}, nil
+}
+```
+</TabItem>
+</Tabs>
+
+## Invocation
+
+### Client
+
+{/* TODO: sync/async */}
+
+### Command Line Interface (CLI)
+
+### Workflow Run
+
+### Cross-Namespace (XNS)
+
+### SDK

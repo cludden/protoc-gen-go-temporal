@@ -3,4 +3,778 @@ import TabItem from '@theme/TabItem';
 
 # Signals
 
-**Coming Soon...**
+A signal is implemented as a struct value included on the workflow input.
+
+<Tabs>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    examplev1.FooWorkflowInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    bar, _ := w.Bar.Receive(ctx)
+    workflow.GetLogger(ctx).Info("received Bar signal", "bar", bar)
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+</Tabs>
+
+## Fields
+
+### ReceiveChannel
+
+[workflow.ReceiveChannel](https://pkg.go.dev/go.temporal.io/sdk/workflow#ReceiveChannel)
+
+The underlying channel associated with the signal.
+
+<Tabs>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    workflow.NewSelector(ctx).
+        AddReceive(w.Bar.ReceiveChannel, func(workflow.ReceiveChannel, bool) {
+            bar := w.Bar.ReceiveAsync()
+            workflow.GetLogger(ctx).Info("received Bar signal", "bar", bar)
+        }).
+        AddReceive(w.Baz.ReceiveChannel, func(workflow.ReceiveChannel, bool) {
+            baz := w.Baz.ReceiveAsync()
+            workflow.GetLogger(ctx).Info("received Baz signal", "baz", baz)
+        }).
+        Select(ctx)
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+      signal: { ref: "Baz" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Baz(BazInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Methods
+
+Signal structs provide several typed methods for use within workflow definitions.
+
+### Receive
+
+Blocks on signal receive, returning the signal payload, if defined, and a boolean value indicating whether or not there are more pending signals.
+
+<Tabs>
+<TabItem value="receive-go" label="Go">
+```go
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    bar, more := w.Bar.Receive(ctx)
+    workflow.GetLogger(ctx).Info("received Bar signal", "bar", bar, "more", more)
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="receive-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### ReceiveAsync
+
+Attempts to receive from the underlying channel without blocking. If the signal definition specifies a non empty input, this method returns a pointer to the input payload, which will be `nil` in the case of no signal available. If the signal specifies an empty input, the method returns a boolean value, with false indicating no signal available.
+
+<Tabs>
+<TabItem value="receive-async-go" label="Go">
+```go
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    if bar := w.Bar.ReceiveAsync(ctx); bar != nil {
+        workflow.GetLogger(ctx).Info("received Bar signal-with-start", "bar", bar)
+    } else {
+        workflow.GetLogger(ctx).Info("no Bar signal received")
+    }
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="receive-async-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar", start: true }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### ReceiveWithTimeout
+
+Blocks until signal received or timeout expires. Returns `ok` value of `false` when no value was found in the channel for the duration of timeout or the ctx was canceled. Returns `more` value of `false` when Channel is closed.
+
+<Tabs>
+<TabItem value="receive-with-timeout-go" label="Go">
+```go
+package example
+
+import (
+    "time"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    bar, ok, more := w.Bar.ReceiveWithTimeout(ctx, time.Hour)
+    if !ok {
+        workflow.GetLogger(ctx).Info("timeout expired or context cancelled")
+    } else {
+        workflow.GetLogger(ctx).Info("received Bar signal", "bar", bar, "more", more)
+    }
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="receive-with-timeout-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Select
+
+Checks for a signal without blocking.
+
+<Tabs>
+<TabItem value="select-go" label="Go">
+```go
+package example
+
+import (
+    "time"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type FooWorkflow struct {
+    *examplev1.FooWorkflowInput
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    sel := workflow.NewSelector(ctx)
+    w.Bar.Select(sel, func(bar *examplev1.BarInput) {
+        workflow.GetLogger(ctx).Info("received Bar signal", "bar", bar)
+    })
+    w.Baz.Select(sel, func(baz *examplev1.BazInput) {
+        workflow.GetLogger(ctx).Info("received Baz signal", "baz", baz)
+    })
+    sel.Select(ctx)
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="select-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+      signal: { ref: "Baz" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Baz(BazInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Invocation
+
+### Client
+
+Consumers can utilize the generated Client to execute workflows from any Go application. See the [Clients guide](/docs/guides/clients) for more usage details.
+
+<Tabs>
+<TabItem value="client-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client, ctx := examplev1.NewExampleClient(c), context.Background()
+
+    if err := client.Bar(context.Background(), "foo-worklow-id", "", &examplev1.BarInput{}); err != nil {
+        log.Fatalf("error signaling workflow: %v", err)
+    }
+}
+func example(ctx context.Context, client examplev1.Client) error {
+    return 
+}
+```
+</TabItem>
+<TabItem value="client-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Command Line Interface (CLI)
+
+Consumers can utilize the generated Command Line Interface as a standalone application for executing workflows. See the [CLI guide](/docs/guides/cli) for more usage details.
+
+<Tabs>
+<TabItem value="cli-shell" label="Shell">
+```sh title="example -h"
+NAME:
+  example - an example temporal cli
+
+USAGE:
+  example [global options] command [command options] [arguments...]
+
+COMMANDS:
+  help, h  Shows a list of commands or help for one command
+    SIGNALS:
+      bar   Bar signals some bar thing
+    WORKFLOWS:
+      foo   Foo does some foo thing
+```
+
+```sh title="example bar -h"
+NAME:
+  example bar - Bar signals some bar thing
+
+USAGE:
+  example bar [command options] [arguments...]
+
+CATEGORY:
+   SIGNAL
+
+OPTIONS:
+   --input-file value, -f value   path to json-formatted input file
+   --run-id value, -r value       run id
+   --workflow-id value, -w value  workflow id
+
+   INPUT
+
+   --name value    Name specifies the subject to greet
+```
+
+```sh title="example bar --name Temporal"
+success
+```
+</TabItem>
+<TabItem value="cli-go" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "log"
+    "os"
+
+    examplev1 "path/to/gen/example/v1"
+)
+
+func main() {
+    app, err := examplev1.NewExampleCLI()
+    if err != nil {
+        log.Fatalf("error initializing cli: %v", err)
+    }
+
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+<TabItem value="cli-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Foo does some foo thing
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  // Bar signals some bar thing
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+message BarInput {
+  string name = 1;
+}
+```
+</TabItem>
+</Tabs>
+
+### Workflow Run
+
+The generated client's asynchronous workflow methods return a [WorkflowRun](/docs/guides/clients#workflow-run) that provides methods for signaling the workflow.
+
+<Tabs>
+<TabItem value="workflow-run-go" label="Go">
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client, ctx := examplev1.NewExampleClient(c), context.Background()
+
+    run, err := client.FooAsync(ctx, &examplev1.FooInput{})
+    if err != nil {
+        log.Fatalf("error starting workflow: %v", err)
+    }
+
+    if err := run.Bar(ctx, &examplev1.BarInput{}); err != nil {
+        log.Fatalf("error signalling workflow: %v", err)
+    }
+
+    if err := run.Get(ctx); err != nil {
+        log.Fatalf("workflow failed: %v", err)
+    }
+}
+```
+</TabItem>
+<TabItem value="workflow-run-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Child Workflow Run
+
+Similar to workflow runs, asynchronousu child workflow methods return a [ChildWorkflowRun](/docs/guides/workflows#workflow-run) that provides methods for signaling the child workflow.
+
+<Tabs>
+<TabItem value="workflow-run-go" label="Go">
+```go
+package example
+
+import (
+    "context"
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type (
+    FooWorkflow struct {
+        *examplev1.FooWorkflowInput
+    }
+
+    BarWorkflow struct {
+        *examplev1.BarWorkflowInput
+    }
+)
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) error {
+    run, err := examplev1.BarChildAsync(ctx, &examplev1.BarInput{})
+    if err != nil {
+        return fmt.Errorf("error starting child Bar workflow: %w", err)
+    } else if _, err = run.WaitStart(ctx); err != nil {
+        return fmt.Errorf("error waiting for child workflow to start: %w", err)
+    }
+
+    if err := run.Baz(ctx, &examplev1.BazInput{}); err != nil {
+        return fmt.Errorf("error sending Baz signal to child Bar workflow: %w", err)
+    }
+    return run.Get(ctx)
+}
+
+func (w *BarWorkflow) Execute(ctx workflow.Context) error {
+    w.Baz.Receive(ctx)
+    return nil
+}
+```
+</TabItem>
+<TabItem value="workflow-run-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Baz" }
+    };
+  }
+
+  rpc Baz(BazInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Cross-Namespace (XNS)
+
+Signals can be sent from other workflows in a different Temporal namespace or even an entirely separate Temporal cluster (e.g. on-prem to cloud) using the generated Cross-Namespace helpers. See the [Cross-Namespace guide](/docs/guides/xns) for more usage details.
+
+<Tabs>
+<TabItem value="xns-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "path/to/gen/example/v1/examplev1xns"
+    "go.temporal.io/sdk/workflow"
+)
+
+func MyWorkflow(ctx workflow.Context) error {
+    if err := examplev1xns.Bar(ctx, "foo-workflow-id", "", &examplev1.BarInput{}); err != nil {
+        return fmt.Errorf("error sending Bar signal: %w", err)
+    }
+    return nil
+}
+```
+</TabItem>
+<TabItem value="xns-go-run" label="Go (XNS Workflow Run)">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "path/to/gen/example/v1/examplev1xns"
+    "go.temporal.io/sdk/workflow"
+)
+
+func MyWorkflow(ctx workflow.Context) error {
+    run, err := examplev1xns.FooAsync(ctx, &examplev1.FooInput{})
+    if err != nil {
+        return fmt.Errorf("error starting Foo workflow: %w", err)
+    }
+
+    if err := run.Bar(ctx, &examplev1.BarInput{}); err != nil {
+        return fmt.Errorf("error sending Bar signal: %w", err)
+    }
+    return run.Get(ctx)
+}
+```
+</TabItem>
+<TabItem value="xns-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### SDK
+
+Proto signals are compatible with official Temporal sdk signal methods.
+
+<Tabs>
+<TabItem value="sdk-client" label="Client">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    ctx := context.Background()
+
+    run, err := c.SignalWorkflow(
+        ctx, 
+        "foo-workflow-id", 
+        "", 
+        examplev1.BarSignalName, 
+        &examplev1.BarInput{},
+    )
+    if err != nil {
+        log.Fatalf("error starting workflow: %v", err)
+    }
+}
+```
+</TabItem>
+<TabItem value="sdk-workflow" label="Workflow">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+func SomeWorkflow(ctx workflow.Context) error {
+    return workflow.SignalExternalWorkflow(
+        ctx, 
+        "foo-workflow-id", 
+        "", 
+        examplev1.BarSignalName, 
+        &examplev1.BarInput{},
+    ).Get(ctx, nil)
+}
+```
+</TabItem>
+<TabItem value="xns-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
