@@ -30,6 +30,7 @@ type (
 		ScheduleToCloseTimeout time.Duration
 		ScheduleToStartTimeout time.Duration
 		StartToCloseTimeout    time.Duration
+		WaitForCancellation    bool
 		TaskQueue              string
 	}
 
@@ -515,6 +516,7 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 						ScheduleToCloseTimeout: opts.GetHeartbeatTimeout().AsDuration(),
 						ScheduleToStartTimeout: opts.GetScheduleToStartTimeout().AsDuration(),
 						StartToCloseTimeout:    opts.GetStartToCloseTimeout().AsDuration(),
+						WaitForCancellation:    opts.GetWaitForCancellation(),
 						TaskQueue:              opts.GetTaskQueue(),
 					}
 
@@ -537,6 +539,7 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 						activity.ScheduleToCloseTimeout > 0,
 						activity.ScheduleToStartTimeout > 0,
 						activity.StartToCloseTimeout > 0,
+						activity.WaitForCancellation,
 						activity.TaskQueue != "":
 						activity.HasNonDefaultOptions = true
 					}
