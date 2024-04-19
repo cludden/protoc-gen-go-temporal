@@ -2,6 +2,7 @@ package expression
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 type (
 	Expression struct {
 		Fragments []*Fragment `parser:"@@*"`
+		raw       string
 	}
 
 	Fragment struct {
@@ -30,12 +32,10 @@ type (
 )
 
 // EvalExpression evaluates an expression against a proto message
-func EvalExpression(expr *Expression, msg protoreflect.Message) (string, error) {
+func EvalExpression(expr *Expression, msg protoreflect.Message) (result string, err error) {
 	var structured any
-	var err error
 	if msg != nil {
-		structured, err = ToStructured(msg)
-		if err != nil {
+		if structured, err = ToStructured(msg); err != nil {
 			return "", fmt.Errorf("error serializing message for expression evaluation: %w", err)
 		}
 	}
@@ -43,21 +43,25 @@ func EvalExpression(expr *Expression, msg protoreflect.Message) (string, error) 
 	id := strings.Builder{}
 	for _, fragment := range expr.Fragments {
 		if fragment.Expr != nil {
-			r, err := fragment.Expr.m.Query(structured)
-			if err != nil {
-				return "", fmt.Errorf("error querying expression: %w", err)
+			x, xerr := fragment.Expr.m.Query(structured)
+			if xerr != nil {
+				err = errors.Join(err, fmt.Errorf("error querying expression: %w", xerr))
+				continue
 			}
-			switch v := r.(type) {
+			switch v := x.(type) {
 			case string:
 				id.WriteString(v)
 			case []byte:
 				id.Write(v)
 			default:
-				return "", fmt.Errorf("expected string result from expression, got: %T", r)
+				err = errors.Join(err, fmt.Errorf("expected string result from `%s` query, got: %T", fragment.Expr.Mapping, x))
 			}
 			continue
 		}
 		id.WriteString(fragment.Ident)
+	}
+	if err != nil {
+		return "", fmt.Errorf("error evaluating `%s` expression for input of type %s: %w", expr.raw, msg.Descriptor().FullName(), err)
 	}
 	return id.String(), nil
 }

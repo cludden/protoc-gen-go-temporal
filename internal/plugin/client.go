@@ -1022,7 +1022,7 @@ func (svc *Manifest) genClientStartWorkflowOptions(fn *g.Group, workflow protore
 				if child {
 					returnVals.Panic(g.Err())
 				} else {
-					returnVals.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error evaluating id expression for %q workflow: %%w", svc.methods[workflow].GoName)), g.Err()))
+					returnVals.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err()))
 				}
 			})
 			b.Id("opts").Dot(idFieldName).Op("=").Id("id")
@@ -1389,7 +1389,7 @@ func (svc *Manifest) genClientUpdateWorkflowOptions(fn *g.Group, update protoref
 				}
 			})
 			b.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating %s id expression: %w"), g.Id(svc.toCamel("%sUpdateName", update)), g.Err())),
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q update: %w"), g.Id(svc.toCamel("%sUpdateName", update)), g.Err())),
 			)
 			b.Id("options").Dot("UpdateID").Op("=").Id("id")
 		})
