@@ -4,7 +4,9 @@ import "errors"
 
 func Lex(input string) (*Expression, error) {
 	runes := []rune(input)
-	expr := &Expression{}
+	expr := &Expression{
+		raw: input,
+	}
 	fragment := &Fragment{}
 	inside := false
 	i, length := 0, 0

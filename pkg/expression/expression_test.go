@@ -146,3 +146,48 @@ func TestExpression(t *testing.T) {
 		}
 	}
 }
+
+func TestExpression_Error(t *testing.T) {
+	require := require.New(t)
+
+	cases := []struct {
+		expr   string
+		msg    *pb.Request
+		errors []string
+	}{
+		{
+			expr:   "test/${!blah}",
+			msg:    &pb.Request{},
+			errors: []string{"expected string result from `blah` query, got: <nil>"},
+		},
+		{
+			expr: "test/${!blah}/${!blahz}",
+			msg:  &pb.Request{},
+			errors: []string{
+				"expected string result from `blah` query, got: <nil>",
+				"expected string result from `blahz` query, got: <nil>",
+			},
+		},
+		{
+			expr: `test/${!blah}/${!blahz.or(throw("uh oh"))}`,
+			msg:  &pb.Request{},
+			errors: []string{
+				"expected string result from `blah` query, got: <nil>",
+				"uh oh",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		// parse expression
+		expr, err := expression.ParseExpression(c.expr)
+		require.NoError(err)
+		require.NotNil(expr)
+		require.GreaterOrEqual(len(expr.Fragments), 1)
+
+		_, err = expression.EvalExpression(expr, c.msg.ProtoReflect())
+		for _, msg := range c.errors {
+			require.ErrorContains(err, msg)
+		}
+	}
+}
