@@ -7,15 +7,18 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 	"testing"
 	"time"
 
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/patch"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
@@ -102,6 +105,68 @@ func TestSomeWorkflow1Alias(t *testing.T) {
 	require.NoError(env.GetWorkflowResult(&out))
 }
 
+func TestSomeWorkflow1Child(t *testing.T) {
+	require := require.New(t)
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simplepb.RegisterSimpleActivities(env, &Activities{})
+	simplepb.RegisterSimpleWorkflows(env, &Workflows{})
+
+	env.RegisterWorkflowWithOptions(func(ctx workflow.Context) error {
+		_, err := simplepb.SomeWorkflow1Child(ctx, &simplepb.SomeWorkflow1Request{
+			RequestVal: "foo",
+			Id:         "test",
+		})
+		return err
+	}, workflow.RegisterOptions{Name: "test"})
+
+	env.OnWorkflow(simplepb.SomeWorkflow1WorkflowName, mock.Anything, mock.Anything).
+		Return(&simplepb.SomeWorkflow1Response{}, nil)
+
+	var id string
+	env.SetOnLocalActivityCompletedListener(func(activityInfo *activity.Info, result converter.EncodedValue, err error) {
+		require.NoError(result.Get(&id))
+	})
+
+	env.ExecuteWorkflow("test")
+
+	require.True(env.IsWorkflowCompleted())
+	require.NoError(env.GetWorkflowError())
+	require.Regexp(regexp.MustCompile(`some-workflow-1/test/[a-f0-9-]{32}`), id)
+}
+
+func TestSomeWorkflow1Child_DefaultVersion(t *testing.T) {
+	require := require.New(t)
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simplepb.RegisterSimpleActivities(env, &Activities{})
+	simplepb.RegisterSimpleWorkflows(env, &Workflows{})
+
+	env.RegisterWorkflowWithOptions(func(ctx workflow.Context) error {
+		_, err := simplepb.SomeWorkflow1Child(ctx, &simplepb.SomeWorkflow1Request{
+			RequestVal: "foo",
+			Id:         "test",
+		})
+		return err
+	}, workflow.RegisterOptions{Name: "test"})
+
+	env.OnGetVersion(patch.PV_64_ExpressionEvaluationLocalActivity, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+
+	env.OnWorkflow(simplepb.SomeWorkflow1WorkflowName, mock.Anything, mock.Anything).
+		Return(&simplepb.SomeWorkflow1Response{}, nil)
+
+	var called bool
+	env.SetOnLocalActivityCompletedListener(func(activityInfo *activity.Info, result converter.EncodedValue, err error) {
+		called = true
+	})
+
+	env.ExecuteWorkflow("test")
+
+	require.True(env.IsWorkflowCompleted())
+	require.NoError(env.GetWorkflowError())
+	require.False(called)
+}
+
 func TestSomeWorkflow2WithTestClient(t *testing.T) {
 	require, ctx := require.New(t), context.Background()
 	var suite testsuite.WorkflowTestSuite
@@ -150,6 +215,67 @@ func TestSomeWorkflow2WithMock(t *testing.T) {
 	update, err := handle.Get(ctx)
 	require.NoError(err)
 	require.Equal("TEST", update.GetResponseVal())
+}
+
+func TestSomeWorkflow2Child(t *testing.T) {
+	require := require.New(t)
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simplepb.RegisterSimpleActivities(env, &Activities{})
+	simplepb.RegisterSimpleWorkflows(env, &Workflows{})
+
+	env.RegisterWorkflowWithOptions(func(ctx workflow.Context) error {
+		return simplepb.SomeWorkflow2Child(ctx)
+	}, workflow.RegisterOptions{Name: "test"})
+
+	env.OnWorkflow(simplepb.SomeWorkflow2WorkflowName, mock.Anything, mock.Anything).
+		Return(nil)
+
+	var id string
+	env.SetOnLocalActivityCompletedListener(func(activityInfo *activity.Info, result converter.EncodedValue, err error) {
+		require.NoError(result.Get(&id))
+	})
+
+	env.ExecuteWorkflow("test")
+
+	require.True(env.IsWorkflowCompleted())
+	require.NoError(env.GetWorkflowError())
+	require.Regexp(regexp.MustCompile(`some-workflow-2/[a-f0-9-]{32}`), id)
+}
+
+func TestSomeWorkflow3Child(t *testing.T) {
+	require := require.New(t)
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simplepb.RegisterSimpleActivities(env, &Activities{})
+	simplepb.RegisterSimpleWorkflows(env, &Workflows{})
+
+	env.RegisterWorkflowWithOptions(func(ctx workflow.Context) error {
+		return simplepb.SomeWorkflow3Child(ctx, &simplepb.SomeWorkflow3Request{Id: "test", RequestVal: "foo"})
+	}, workflow.RegisterOptions{Name: "test"})
+
+	env.OnWorkflow(simplepb.SomeWorkflow3WorkflowName, mock.Anything, mock.Anything).
+		Return(nil)
+
+	var getVersionCalled bool
+	env.OnGetVersion(patch.PV_64_ExpressionEvaluationLocalActivity, workflow.DefaultVersion, workflow.Version(1)).Run(func(args mock.Arguments) {
+		getVersionCalled = true
+	}).Return(workflow.Version(1))
+	env.OnGetVersion(patch.PV_64_ExpressionEvaluationLocalActivity, workflow.Version(1), workflow.Version(1)).Run(func(args mock.Arguments) {
+		getVersionCalled = true
+	}).Return(workflow.Version(1))
+
+	var localActivityCalled bool
+	env.SetOnLocalActivityCompletedListener(func(activityInfo *activity.Info, result converter.EncodedValue, err error) {
+		localActivityCalled = true
+	})
+
+	env.ExecuteWorkflow("test")
+
+	require.True(env.IsWorkflowCompleted())
+	require.NoError(env.GetWorkflowError())
+	require.False(getVersionCalled)
+	require.False(localActivityCalled)
 }
 
 func TestCli(t *testing.T) {

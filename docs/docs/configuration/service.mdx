@@ -18,6 +18,25 @@ service Example {
 
 ## Options
 
+### patches
+
+[[]temporal.v1.Patch](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.Patch)
+
+Controls how a particular [Patch](/docs/guides/patches) is implemented in generated code, overriding any plugin-level configuration for all resources of the service.
+
+```protobuf
+service Example {
+  option (temporal.v1.service) = {
+    patches: [
+      { version: PV_62, mode: PV_REMOVED },
+      { version: PV_63, mode: PV_MARKER },
+      { version: PV_64, mode: PV_ENABLED },
+      { version: PV_65, mode: PV_DISABLED }
+    ]
+  };
+}
+```
+
 ### task_queue
 
 `string`

@@ -129,6 +129,30 @@ service Example {
 }
 ```
 
+### patches
+
+[[]temporal.v1.Patch](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.Patch)
+
+Controls how a particular [Patch](/docs/guides/patches) is implemented in generated code, overriding any plugin or service-level configuration.
+
+```protobuf
+service Example {
+  option (temporal.v1.service) = {
+    patches: [
+      { version: PV_64, mode: PV_MARKER },
+    ]
+  };
+
+  rpc Example(ExampleInput) returns (ExampleOutput) {
+    option (temporal.v1.workflow) = {
+      patches: [
+        { version: PV_64, mode: PV_ENABLED }
+      ]
+    }
+  }
+}
+```
+
 ### query
 
 [temporal.v1.WorkflowOptions.Query](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WorkflowOptions.Query)

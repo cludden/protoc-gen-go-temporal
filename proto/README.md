@@ -2094,6 +2094,7 @@ SomeWorkflow2 does some workflow thing.
 
 <table>
 <tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>some-workflow-2/${! uuid_v4() }</code></pre></td></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
 </table>
 

@@ -1392,14 +1392,59 @@ func (svc *Manifest) genWorkflowOptions(f *g.File, workflow protoreflect.FullNam
 			)
 			if idExpr := opts.GetId(); idExpr != "" {
 				id.Else().If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-					b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-						args.Id(svc.toCamel("%sIDExpression", workflow))
-						args.Id("req")
-					})
-					b.If(g.Err().Op("!=").Nil()).BlockFunc(func(returnVals *g.Group) {
-						returnVals.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err()))
-					})
-					b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+					// original expression evaluation logic
+					origFn := func(b *g.Group, errorReturn g.Code) {
+						b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+							args.Id(svc.toCamel("%sIDExpression", workflow))
+							args.Id("req")
+						})
+						b.If(g.Err().Op("!=").Nil()).BlockFunc(func(returnVals *g.Group) {
+							returnVals.Return(errorReturn, g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err()))
+						})
+					}
+
+					if child {
+						// local activity wrapper
+						fixFn := func(b *g.Group) {
+							b.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(g.Id("ctx"))
+							b.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
+							b.If(
+								g.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").Call(
+									g.Qual(workflowPkg, "WithLocalActivityOptions").Call(g.Id("ctx"), g.Id("lao")),
+									g.Func().Params(g.Id("ctx").Qual("context", "Context")).Params(g.String(), g.Error()).BlockFunc(func(bl *g.Group) {
+										origFn(bl, g.Lit(""))
+										bl.Return(g.Id("id"), g.Nil())
+									}),
+								).Dot("Get").Call(g.Id("ctx"), g.Op("&").Id("opts").Dot(idFieldName)),
+								g.Err().Op("!=").Nil(),
+							).Block(
+								g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err())),
+							)
+						}
+
+						// introduce local activity wrapper behind workflow versioning
+						switch pvm := svc.patchMode(temporalv1.Patch_PV_64, workflow); pvm {
+						case temporalv1.Patch_PVM_ENABLED:
+							patchComment(b, temporalv1.Patch_PV_64)
+							b.If(g.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
+								fixFn,
+							).Else().BlockFunc(func(b *g.Group) {
+								origFn(b, g.Id("opts"))
+								b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+							})
+						case temporalv1.Patch_PVM_MARKER:
+							b.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
+							fixFn(b)
+						case temporalv1.Patch_PVM_REMOVED:
+							fixFn(b)
+						default:
+							origFn(b, g.Id("opts"))
+							b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+						}
+					} else {
+						origFn(b, g.Id("opts"))
+						b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+					}
 				})
 			}
 
@@ -1479,25 +1524,70 @@ func (svc *Manifest) genWorkflowOptions(f *g.File, workflow protoreflect.FullNam
 			)
 			if mapping := opts.GetSearchAttributes(); mapping != "" {
 				searchAttributes.Else().If(g.Id("opts").Dot("SearchAttributes").Op("==").Nil()).
-					BlockFunc(func(bl *g.Group) {
-						// convert input to generic mapping input
-						bl.List(g.Id("structured"), g.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(g.Id("req"))
-						bl.If(g.Err().Op("!=").Nil()).Block(
-							g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
-						)
+					BlockFunc(func(b *g.Group) {
+						// original expression evaluation logic
+						origFn := func(b *g.Group, errorResult g.Code) {
+							// convert input to generic mapping input
+							b.List(g.Id("structured"), g.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(g.Id("req"))
+							b.If(g.Err().Op("!=").Nil()).Block(
+								g.Return(errorResult, g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
+							)
 
-						// execute mapping
-						bl.List(g.Id("result"), g.Err()).Op(":=").Id(svc.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
-						bl.If(g.Err().Op("!=").Nil()).Block(
-							g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
-						)
+							// execute mapping
+							b.List(g.Id("result"), g.Err()).Op(":=").Id(svc.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
+							b.If(g.Err().Op("!=").Nil()).Block(
+								g.Return(errorResult, g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
+							)
 
-						// coerce mapping result to map[string]any
-						bl.List(g.Id("searchAttributes"), g.Id("ok")).Op(":=").Id("result").Op(".").Parens(g.Map(g.String()).Any())
-						bl.If(g.Op("!").Id("ok")).Block(
-							g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", svc.methods[workflow].GoName)), g.Id("result"))),
-						)
-						bl.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+							// coerce mapping result to map[string]any
+							b.List(g.Id("searchAttributes"), g.Id("ok")).Op(":=").Id("result").Op(".").Parens(g.Map(g.String()).Any())
+							b.If(g.Op("!").Id("ok")).Block(
+								g.Return(errorResult, g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", svc.methods[workflow].GoName)), g.Id("result"))),
+							)
+						}
+
+						if child {
+							// local activity wrapper
+							fixFn := func(b *g.Group) {
+								b.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(g.Id("ctx"))
+								b.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
+								b.If(
+									g.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").Call(
+										g.Qual(workflowPkg, "WithLocalActivityOptions").Call(g.Id("ctx"), g.Id("lao")),
+										g.Func().Params(g.Id("ctx").Qual("context", "Context")).Params(g.Map(g.String()).Any(), g.Error()).BlockFunc(func(b *g.Group) {
+											origFn(b, g.Nil())
+											b.Return(g.Id("searchAttributes"), g.Nil())
+										}),
+									).Dot("Get").Call(g.Id("ctx"), g.Op("&").Id("opts").Dot("SearchAttributes")),
+									g.Err().Op("!=").Nil(),
+								).Block(
+									g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating search attributes for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err())),
+								)
+							}
+
+							// introduce local activity wrapper behind workflow versioning
+							switch pvm := svc.patchMode(temporalv1.Patch_PV_64, workflow); pvm {
+							case temporalv1.Patch_PVM_ENABLED:
+								patchComment(b, temporalv1.Patch_PV_64)
+								b.If(g.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
+									fixFn,
+								).Else().BlockFunc(func(b *g.Group) {
+									origFn(b, g.Id("opts"))
+									b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+								})
+							case temporalv1.Patch_PVM_MARKER:
+								b.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
+								fixFn(b)
+							case temporalv1.Patch_PVM_REMOVED:
+								fixFn(b)
+							default:
+								origFn(b, g.Id("opts"))
+								b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+							}
+						} else {
+							origFn(b, g.Id("opts"))
+							b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+						}
 					})
 			}
 
