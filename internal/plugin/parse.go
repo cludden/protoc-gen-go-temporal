@@ -26,6 +26,7 @@ const (
 	enumsPkg        = "go.temporal.io/api/enums/v1"
 	expressionPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpersPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	protoreflectPkg = "google.golang.org/protobuf/reflect/protoreflect"
 	serviceerrorPkg = "go.temporal.io/api/serviceerror"
 	temporalPkg     = "go.temporal.io/sdk/temporal"
 	timestamppbPkg  = "google.golang.org/protobuf/types/known/timestamppb"
@@ -627,7 +628,7 @@ func (svc *Manifest) renderService(f *g.File, file *protogen.File, service *prot
 			continue
 		}
 		opts := svc.workflows[workflow]
-		svc.genClientWorkflowOptions(f, workflow)
+		svc.genWorkflowOptions(f, workflow, false)
 		svc.genClientWorkflowRunInterface(f, workflow)
 		svc.genClientWorkflowRunImpl(f, workflow)
 		svc.genClientWorkflowRunImplIDMethod(f, workflow)
@@ -684,7 +685,7 @@ func (svc *Manifest) renderService(f *g.File, file *protogen.File, service *prot
 		svc.genWorkerWorkflowInterface(f, workflow)
 		svc.genWorkerWorkflowChild(f, workflow)
 		svc.genWorkerWorkflowChildAsync(f, workflow)
-		svc.genWorkerWorkflowChildOptions(f, workflow)
+		svc.genWorkflowOptions(f, workflow, true)
 		svc.genWorkerWorkflowChildRun(f, workflow)
 		svc.genWorkerWorkflowChildRunGet(f, workflow)
 		svc.genWorkerWorkflowChildRunSelect(f, workflow)
@@ -723,8 +724,8 @@ func (svc *Manifest) renderService(f *g.File, file *protogen.File, service *prot
 		svc.genActivityFunction(f, activity, false, true)
 		svc.genActivityFunction(f, activity, true, false)
 		svc.genActivityFunction(f, activity, true, true)
-		svc.genActivityLocalOptions(f, activity)
-		svc.genActivityOptions(f, activity)
+		svc.genActivityOptions(f, activity, false)
+		svc.genActivityOptions(f, activity, true)
 	}
 }
 

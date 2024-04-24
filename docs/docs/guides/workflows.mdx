@@ -914,3 +914,765 @@ service Example {
 ```
 </TabItem>
 </Tabs>
+
+## Options
+
+Both synchronous and asynchronous workflow methods accept an optional `<Workflow>Options` value as the final argument. This argument can be used to override the default [client.StartWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/client#StartWorkflowOptions) created using the defaults defined in the schema.
+
+### WithExecutionTimeout
+
+Set the workflow `WorkflowExecutionTimeout` value
+
+<Tabs>
+<TabItem value="with-execution-timeout-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default WorkflowExecutionTimeout set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithExecutionTimeout(time.Hour * 2),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-execution-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 3600 } // 1h
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithID
+
+Set the workflow `ID` value
+
+<Tabs>
+<TabItem value="with-id-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default ID set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithID("foo/bar"),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-id-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'foo/${! uuid_v4() }'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithIDReusePolicy
+
+Set the workflow `WorkflowIDReusePolicy` value
+
+<Tabs>
+<TabItem value="with-id-reuse-policy-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default WorkflowIDReusePolicy set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithIDReusePolicy(enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-id-reuse-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithRetryPolicy
+
+Set the workflow `RetryPolicy` value
+
+<Tabs>
+<TabItem value="with-retry-policy-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default RetryPolicy set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithRetryPolicy(&temporal.RetryPolicy{
+            MaximumAttempts: 3,
+        }),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-retry-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      retry_policy: {
+        max_attempts: 5
+      }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithRunTimeout
+
+Set the workflow `WorkflowRunTimeout` value
+
+<Tabs>
+<TabItem value="with-run-timeout-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default WorkflowRunTimeout set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithRunTimeout(time.Minute * 10),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-run-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      run_timeout: { seconds: 1200 } // 20m
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithSearchAttributes
+
+Set the workflow `SearchAttributes` value
+
+<Tabs>
+<TabItem value="with-search-attributes-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default SearchAttributes set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithSearchAttributes(map[string]any{
+            "foo": "baz"
+        }),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-search-attributes-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      search_attributes:
+        'foo = "bar" \n'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithStartWorkflowOptions
+
+Override the initial [client.StartWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/client#StartWorkflowOptions) value for an individual invocation. Schema defined defaults will be applied over this value.
+
+<Tabs>
+<TabItem value="with-start-workflow-options-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithStartWorkflowOptions(client.StartWorkflowOptions{
+            WorkflowExecutionTimeout: time.Hour * 2
+        }),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-start-workflow-options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 3600 } // 1h
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithTaskTimeout
+
+Set the workflow `WorkflowTaskTimeout` value
+
+<Tabs>
+<TabItem value="with-task-timeout-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default WorkflowTaskTimeout set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithTaskTimeout(time.Second * 5),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-task-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      task_timeout: { seconds: 10 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithTaskQueue
+
+Set the workflow `TaskQueue` value
+
+<Tabs>
+<TabItem value="with-task-timeout-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default TaskQueue set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithTaskQueue("example-v3"),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-task-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "example-v2"
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## ChildOptions
+
+Both synchronous and asynchronous child workflow helpers accept an optional `<Workflow>ChildOptions` value as the final argument. This argument can be used to override the default [workflow.ChildWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/workflow#ChildWorkflowOptions) created using the defaults defined in the schema.
+
+### WithChildWorkflowOptions
+
+Override the initial [workflow.ChildWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/workflow#ChildWorkflowOptions) value for an individual invocation. Schema defined defaults will be applied over this value.
+
+<Tabs>
+<TabItem value="with-child-workflow-options-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithChildWorkflowOptions(workflow.ChildWorkflowOptions{
+            WorkflowExecutionTimeout: time.Hour * 2,
+        }),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-workflow-options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 3600 } // 1h
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithExecutionTimeout
+
+Sets the child workflow `WorkflowExecutionTimeout` value
+
+<Tabs>
+<TabItem value="with-child-execution-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithExecutionTimeout(time.Hour * 2),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-execution-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 3600 } // 1h
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithID
+
+Sets the child workflow `WorkflowID` value
+
+<Tabs>
+<TabItem value="with-child-id-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithID("bar/baz"),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-id-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'bar/${! uuid_v4() }'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithIDReusePolicy
+
+Sets the child workflow `WorkflowID` value
+
+<Tabs>
+<TabItem value="with-child-id-reuse-policy-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithIDReusePolicy(enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-id-reuse-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithParentClosePolicy
+
+Sets the child workflow `ParentClosePolicy` value
+
+<Tabs>
+<TabItem value="with-child-parent-close-policy-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithParentClosePolicy(enumspb.PARENT_CLOSE_POLICY_ABANDON),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-parent-close-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithRetryPolicy
+
+Sets the child workflow `RetryPolicy` value
+
+<Tabs>
+<TabItem value="with-child-retry-policy-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithRetryPolicy(&temporal.RetryPolicy{
+            MaximumAttempts: 3,
+        }),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-retry-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      retry_policy: {
+        max_attempts: 5
+      }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithRunTimeout
+
+Sets the child workflow `WorkflowRunTimeout` value
+
+<Tabs>
+<TabItem value="with-child-run-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithRunTimeout(time.Minute * 20),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-run-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      run_timeout: { seconds: 1800 } // 30m
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithSearchAttributes
+
+Sets the child workflow `SearchAttributes` value
+
+<Tabs>
+<TabItem value="with-child-search-attributes-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithSearchAttributes(map[string]any{
+            "foo": "baz"
+        }),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-search-attributes-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      search_attributes:
+        'foo = "bar" \n'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithTaskTimeout
+
+Sets the child workflow `WorkflowTaskTimeout` value
+
+<Tabs>
+<TabItem value="with-child-task-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithTaskTimeout(time.Second * 5),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-task-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      run_timeout: { seconds: 10 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithTaskQueue
+
+Sets the child workflow `TaskQueue` value
+
+<Tabs>
+<TabItem value="with-child-task-queue-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithTaskQueue("example-v3"),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-task-queue-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "example-v2"
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithWaitForCancellation
+
+Sets the child workflow `WaitForCancellation` value
+
+<Tabs>
+<TabItem value="with-child-wait-for-cancellation-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithWaitForCancellation(false),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-wait-for-cancellation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      wait_for_cancellation: true
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>

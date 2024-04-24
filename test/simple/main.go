@@ -168,6 +168,10 @@ func (Activities) SomeActivity3(ctx context.Context, req *simplepb.SomeActivity3
 	return &simplepb.SomeActivity3Response{ResponseVal: "some response"}, nil
 }
 
+func (Activities) SomeActivity4(ctx context.Context) error {
+	return nil
+}
+
 func (Activities) SomeSignal1(ctx context.Context) error {
 	return nil
 }

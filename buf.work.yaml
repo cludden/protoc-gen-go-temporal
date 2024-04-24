@@ -8,5 +8,6 @@ directories:
   - examples/xns/proto
   - proto
   - test/expression/proto
+  - test/option/proto
   - test/simple/proto
   - test/xnserr/proto

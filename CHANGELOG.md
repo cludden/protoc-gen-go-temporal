@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
  
 ### Added
+
+- [#62](https://github.com/cludden/protoc-gen-go-temporal/pull/62) add individual option override methods
  
 ### Changed
  

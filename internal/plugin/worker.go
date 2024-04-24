@@ -573,10 +573,28 @@ func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflec
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			// initialize child workflow options with default values
-			svc.genClientStartWorkflowOptions(fn, workflow, true)
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sChildOptions", workflow))
+			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("options").Index(g.Lit(0)),
+			).Else().Block(
+				g.Id("o").Op("=").Id(svc.toCamel("New%sChildOptions", workflow)).Call(),
+			)
 
-			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Op("*").Id("opts"))
+			// initialize client.StartWorkfowOptions
+			fn.List(g.Id("opts"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+				args.Id("ctx")
+				if hasInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing workflow.ChildWorkflowOptions: %w"), g.Err())),
+			)
+
+			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Id("opts"))
 			fn.Return(
 				g.Op("&").Id(svc.toCamel("%sChildRun", workflow)).Values(
 					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
@@ -592,33 +610,6 @@ func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflec
 				g.Nil(),
 			)
 		})
-}
-
-// genWorkerWorkflowChildOptions generates a <Workflow>ChildOptions struct
-func (svc *Manifest) genWorkerWorkflowChildOptions(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildOptions", workflow)
-	constructorName := "New" + typeName
-
-	f.Commentf("%s provides configuration for a %s workflow operation", typeName, svc.fqnForWorkflow(workflow))
-	f.Type().Id(typeName).Struct(
-		g.Id("opts").Op("*").Qual(workflowPkg, "ChildWorkflowOptions"),
-	)
-
-	f.Commentf("%s initializes a new %s value", constructorName, typeName)
-	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
-		g.Return(g.Op("&").Id(typeName).Values()),
-	)
-
-	f.Comment("WithChildWorkflowOptions sets the initial client.StartWorkflowOptions")
-	f.Func().
-		Params(g.Id("opts").Op("*").Id(typeName)).
-		Id("WithChildWorkflowOptions").
-		Params(g.Id("options").Qual(workflowPkg, "ChildWorkflowOptions")).
-		Op("*").Id(typeName).
-		Block(
-			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
-			g.Return(g.Id("opts")),
-		)
 }
 
 // genWorkerWorkflowChildRun generates a <Workflow>ChildRun struct

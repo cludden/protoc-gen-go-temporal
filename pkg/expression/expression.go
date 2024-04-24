@@ -104,6 +104,9 @@ func ParseExpression(input string) (*Expression, error) {
 
 // ToStructured marshals a proto message into a map[string]any value
 func ToStructured(msg protoreflect.Message) (any, error) {
+	if msg == nil {
+		return map[string]any{}, nil
+	}
 	b, err := protojson.Marshal(msg.Interface())
 	if err != nil {
 		return nil, err

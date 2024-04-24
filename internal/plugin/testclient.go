@@ -224,8 +224,25 @@ func (svc *Manifest) genTestClientImplUpdateAsyncMethod(f *g.File, update protor
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			// generate UpdateWorkflowWithOptionsRequest with defaults
-			svc.genClientUpdateWorkflowOptions(fn, update)
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", update))
+			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("opts").Index(g.Lit(0)),
+			).Else().Block(
+				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", update)).Call(),
+			)
+
+			// build UpdateWorkflowWithOptions
+			fn.List(g.Id("options"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+				args.Id("workflowID")
+				args.Id("runID")
+				if hasInput {
+					args.Id("req")
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing UpdateWorkflowWithOptions: %w"), g.Err())),
+			)
 
 			// update workflow
 			fn.Id("uc").Op(":=").Qual(testutilPkg, "NewUpdateCallbacks").Call()
@@ -341,12 +358,31 @@ func (svc *Manifest) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow pr
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			svc.genClientStartWorkflowOptions(fn, workflow, false)
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("options").Index(g.Lit(0)),
+			).Else().Block(
+				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", workflow)).Call(),
+			)
+
+			// initialize client.StartWorkfowOptions
+			fn.List(g.Id("opts"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+				if hasInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client.StartWorkflowOptions: %w"), g.Err())),
+			)
+
 			fn.Return(
 				g.Op("&").Id(svc.toLowerCamel("test%sRun", workflow)).ValuesFunc(func(fields *g.Group) {
 					fields.Id("client").Op(":").Id("c")
 					fields.Id("env").Op(":").Id("c").Dot("env")
-					fields.Id("opts").Op(":").Id("opts")
+					fields.Id("opts").Op(":").Op("&").Id("opts")
 					if hasInput {
 						fields.Id("req").Op(":").Id("req")
 					}

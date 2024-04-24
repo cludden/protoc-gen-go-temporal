@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -292,4 +294,176 @@ func TestActivityTaskQueue(t *testing.T) {
 	})
 	require.True(env.IsWorkflowCompleted())
 	require.NoError(env.GetWorkflowError())
+}
+
+func TestActivityOptions(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+
+	cases := []struct {
+		desc     string
+		opts     []*simplepb.SomeActivity4ActivityOptions
+		expected workflow.ActivityOptions
+	}{
+		{
+			desc: "defaults",
+			expected: workflow.ActivityOptions{
+				HeartbeatTimeout: time.Second * 30,
+				RetryPolicy: &temporal.RetryPolicy{
+					MaximumAttempts: 5,
+				},
+				ScheduleToCloseTimeout: time.Second * 300,
+				ScheduleToStartTimeout: time.Second * 5,
+				StartToCloseTimeout:    time.Second * 60,
+				TaskQueue:              "some-other-task-queue",
+				WaitForCancellation:    true,
+			},
+			opts: []*simplepb.SomeActivity4ActivityOptions{
+				simplepb.NewSomeActivity4ActivityOptions(),
+				simplepb.NewSomeActivity4ActivityOptions().
+					WithActivityOptions(workflow.ActivityOptions{}),
+			},
+		},
+		{
+			desc: "base",
+			expected: workflow.ActivityOptions{
+				HeartbeatTimeout: time.Second * 20,
+				RetryPolicy: &temporal.RetryPolicy{
+					MaximumAttempts: 3,
+				},
+				ScheduleToCloseTimeout: time.Second * 299,
+				ScheduleToStartTimeout: time.Second * 4,
+				StartToCloseTimeout:    time.Second * 59,
+				TaskQueue:              "bar",
+				WaitForCancellation:    true,
+			},
+			opts: []*simplepb.SomeActivity4ActivityOptions{
+				simplepb.NewSomeActivity4ActivityOptions().
+					WithActivityOptions(workflow.ActivityOptions{
+						HeartbeatTimeout: time.Second * 20,
+						RetryPolicy: &temporal.RetryPolicy{
+							MaximumAttempts: 3,
+						},
+						ScheduleToCloseTimeout: time.Second * 299,
+						ScheduleToStartTimeout: time.Second * 4,
+						StartToCloseTimeout:    time.Second * 59,
+						TaskQueue:              "bar",
+						WaitForCancellation:    true,
+					}),
+			},
+		},
+		{
+			desc: "base partial",
+			expected: workflow.ActivityOptions{
+				HeartbeatTimeout: time.Second * 20,
+				RetryPolicy: &temporal.RetryPolicy{
+					MaximumAttempts: 5,
+				},
+				ScheduleToCloseTimeout: time.Second * 299,
+				ScheduleToStartTimeout: time.Second * 5,
+				StartToCloseTimeout:    time.Second * 59,
+				TaskQueue:              "some-other-task-queue",
+				WaitForCancellation:    true,
+			},
+			opts: []*simplepb.SomeActivity4ActivityOptions{
+				simplepb.NewSomeActivity4ActivityOptions().
+					WithActivityOptions(workflow.ActivityOptions{
+						HeartbeatTimeout:       time.Second * 20,
+						ScheduleToCloseTimeout: time.Second * 299,
+						StartToCloseTimeout:    time.Second * 59,
+						WaitForCancellation:    false,
+					}),
+			},
+		},
+		{
+			desc: "overrides",
+			expected: workflow.ActivityOptions{
+				HeartbeatTimeout:       time.Second * 31,
+				RetryPolicy:            &temporal.RetryPolicy{},
+				ScheduleToCloseTimeout: time.Second * 301,
+				ScheduleToStartTimeout: time.Second * 6,
+				StartToCloseTimeout:    time.Second * 61,
+				TaskQueue:              "bar",
+				WaitForCancellation:    false,
+			},
+			opts: []*simplepb.SomeActivity4ActivityOptions{
+				simplepb.NewSomeActivity4ActivityOptions().
+					WithHeartbeatTimeout(time.Second * 31).
+					WithRetryPolicy(&temporal.RetryPolicy{}).
+					WithScheduleToCloseTimeout(time.Second * 301).
+					WithScheduleToStartTimeout(time.Second * 6).
+					WithStartToCloseTimeout(time.Second * 61).
+					WithWaitForCancellation(false).
+					WithActivityOptions(workflow.ActivityOptions{
+						HeartbeatTimeout: time.Second * 20,
+						RetryPolicy: &temporal.RetryPolicy{
+							MaximumAttempts: 3,
+						},
+						ScheduleToCloseTimeout: time.Second * 299,
+						ScheduleToStartTimeout: time.Second * 4,
+						StartToCloseTimeout:    time.Second * 59,
+						TaskQueue:              "bar",
+						WaitForCancellation:    true,
+					}),
+			},
+		},
+		{
+			desc: "overrides partial",
+			expected: workflow.ActivityOptions{
+				HeartbeatTimeout: time.Second * 20,
+				RetryPolicy: &temporal.RetryPolicy{
+					MaximumAttempts: 5,
+				},
+				ScheduleToCloseTimeout: time.Second * 300,
+				ScheduleToStartTimeout: time.Second * 5,
+				StartToCloseTimeout:    time.Second * 60,
+				TaskQueue:              "some-other-task-queue",
+				WaitForCancellation:    false,
+			},
+			opts: []*simplepb.SomeActivity4ActivityOptions{
+				simplepb.NewSomeActivity4ActivityOptions().
+					WithWaitForCancellation(false).
+					WithActivityOptions(workflow.ActivityOptions{
+						HeartbeatTimeout: time.Second * 20,
+					}),
+			},
+		},
+	}
+
+	for _, c := range cases {
+		for i, opts := range c.opts {
+			t.Run(fmt.Sprintf("%s-%d", c.desc, i), func(t *testing.T) {
+				env := suite.NewTestWorkflowEnvironment()
+				var ao workflow.ActivityOptions
+				env.ExecuteWorkflow(func(ctx workflow.Context) (err error) {
+					ctx, err = opts.Build(ctx)
+					if err != nil {
+						return err
+					}
+					ao = workflow.GetActivityOptions(ctx)
+					return nil
+				})
+				require.True(t, env.IsWorkflowCompleted())
+				require.NoError(t, env.GetWorkflowError())
+				require.Equal(t, c.expected, ao)
+			})
+		}
+
+	}
+}
+
+func TestLocalActivityOptions(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	env.RegisterActivityWithOptions(func(ctx context.Context) error {
+		return nil
+	}, activity.RegisterOptions{Name: simplepb.SomeActivity4ActivityName})
+	env.ExecuteWorkflow(func(ctx workflow.Context) error {
+		return simplepb.SomeActivity4Local(ctx, simplepb.NewSomeActivity4LocalActivityOptions().
+			Local(func(ctx context.Context) error {
+				return errors.New("uh oh")
+			}),
+		)
+	})
+	require.True(t, env.IsWorkflowCompleted())
+	require.ErrorContains(t, env.GetWorkflowError(), "uh oh")
 }

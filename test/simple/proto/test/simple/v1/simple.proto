@@ -80,6 +80,21 @@ service Simple {
     };
   }
 
+  // SomeActivity4 does some activity thing.
+  rpc SomeActivity4(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      heartbeat_timeout: { seconds: 30 }
+      retry_policy: {
+        max_attempts: 5
+      }
+      schedule_to_close_timeout: { seconds: 300 }
+      schedule_to_start_timeout: { seconds: 5 }
+      start_to_close_timeout: { seconds: 60 }
+      task_queue: 'some-other-task-queue'
+      wait_for_cancellation: true
+    };
+  }
+
   // SomeQuery1 queries some thing.
   rpc SomeQuery1(google.protobuf.Empty) returns (SomeQuery1Response) {
     option (temporal.v1.query) = { };
