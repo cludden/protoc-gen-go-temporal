@@ -887,55 +887,16 @@ Both synchronous and asynchronous activity helpers accept an optional `<Activity
 
 Override the initial [workflow.ActivityOptions](https://pkg.go.dev/go.temporal.io/sdk/workflow#ActivityOptions) value for an individual invocation. Schema defined defaults will be applied over this value.
 
-:::warning
-It is currently not possible to override certain scalar options with a empty/falsey value if the schema defines a non-empty/non-falsey value. This may be addressed in a future release.
-:::
-
 <Tabs>
 <TabItem value="synchronous-go" label="Go">
-```go title="main.go"
-package main
-
-import (
-    "context"
-    "fmt"
-    "time"
-
-    examplev1 "path/to/gen/example/v1"
-    "go.temporal.io/sdk/activity"
-    "go.temporal.io/sdk/workflow"
-)
-
-type (
-    Workflows struct {}
-
-    Activities struct {}
-
-    FooWorkflow struct {
-        *examplev1.FooWorkflowInput
-    }
-)
-
-func (w *Workflows) Foo(ctx workflow.Context, input  *examplev1.FooWorkflowInput) (examplev1.FooWorkflow, error) {
-    return &FooWorkflow{input}, nil
-}
-
+```go title="example.go"
 func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
-    bar, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
         WithActivityOptions(workflow.ActivityOptions{
             ScheduleToCloseTimeout: time.Minute, // this overrides the 30s default defined in the schema
         }),
     )
-    if err != nil {
-        return nil, fmt.Errorf("Bar activity error: %w", err)
-    }
-    workflow.GetLogger(ctx).Info("Bar activity success", "bar", bar)
-    return &examplev1.FooOutput{}, nil
-}
-
-func (a *Activities) Bar(ctx context.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
-    activity.GetLogger(ctx).Info("executing Bar activity", "input", input)
-    return &examplev1.BarOutput{}, nil
+    return &examplev1.FooOutput{}, err
 }
 ```
 </TabItem>
@@ -962,6 +923,278 @@ service Example {
 </TabItem>
 </Tabs>
 
+### WithHeartbeatTimeout
+
+Set the activity `HeartbeatTimeout` value
+
+<Tabs>
+<TabItem value="with-heartbeat-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithHeartbeatTimeout(time.Second * 20),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-heartbeat-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      heartbeat_timeout: { seconds: 30 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithRetryPolicy
+
+Set the activity `RetryPolicy` value
+
+<Tabs>
+<TabItem value="with-retry-policy-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithRetryPolicy(&temporal.RetryPolicy{
+            MaximumAttempts: 3,
+        }),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-retry-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      retry_policy: {
+        max_attempts: 5
+      }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithScheduleToCloseTimeout
+
+Set the activity `ScheduleToCloseTimeout` value
+
+<Tabs>
+<TabItem value="with-schedule-to-close-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithScheduleToCloseTimeout(time.Second * 240), // 4m
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-schedule-to-close-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      schedule_to_close_timeout: { seconds: 300 } // 5m
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithScheduleToStartTimeout
+
+Set the activity `ScheduleToStartTimeout` value
+
+<Tabs>
+<TabItem value="with-schedule-to-start-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithScheduleToStartTimeout(time.Second * 10),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-schedule-to-start-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      schedule_to_start_timeout: { seconds: 5 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithStartToCloseTimeout
+
+Set the activity `StartToCloseTimeout` value
+
+<Tabs>
+<TabItem value="with-start-to-close-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithStartToCloseTimeout(time.Second * 90),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-start-to-close-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 60 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithTaskQueue
+
+Set the activity `TaskQueue` value
+
+<Tabs>
+<TabItem value="with-task-queue-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithTaskQueue("example-v3"),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-task-queue-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      task_queue: "example-v2"
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithWaitForCancellation
+
+Set the activity `WaitForCancellation` value
+
+<Tabs>
+<TabItem value="with-wait-for-cancellation-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithWaitForCancellation(false),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-wait-for-cancellation-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      wait_for_cancellation: true
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ## Local Options
 
 Both synchronous and asynchronous local activity helpers accept an optional `<Activity>LocalActivityOptions` value as the final argument. This argument can be used to override the default [workflow.LocalActivityOptions](https://pkg.go.dev/go.temporal.io/sdk/workflow#LocalActivityOptions) created using the defaults defined in the schema.
@@ -972,50 +1205,15 @@ Override the local activity with a caller-defined implementation.
 
 <Tabs>
 <TabItem value="synchronous-go" label="Go">
-```go title="main.go"
-package main
-
-import (
-    "context"
-    "fmt"
-    "time"
-
-    examplev1 "path/to/gen/example/v1"
-    "go.temporal.io/sdk/activity"
-    "go.temporal.io/sdk/workflow"
-)
-
-type (
-    Workflows struct {}
-
-    Activities struct {}
-
-    FooWorkflow struct {
-        *examplev1.FooWorkflowInput
-    }
-)
-
-func (w *Workflows) Foo(ctx workflow.Context, input  *examplev1.FooWorkflowInput) (examplev1.FooWorkflow, error) {
-    return &FooWorkflow{input}, nil
-}
-
+```go title="example.go"
 func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
-    bar, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
+    _, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
         Local(func(ctx context.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
             activity.GetLogger(ctx).Info("executing custom Bar activity", "input", input)
             return &examplev1.BarOutput{}, nil
         }),
     )
-    if err != nil {
-        return nil, fmt.Errorf("Bar local activity error: %w", err)
-    }
-    workflow.GetLogger(ctx).Info("Bar local activity success", "bar", bar)
-    return &examplev1.FooOutput{}, nil
-}
-
-func (a *Activities) Bar(ctx context.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
-    activity.GetLogger(ctx).Info("executing Bar activity", "input", input)
-    return &examplev1.BarOutput{}, nil
+    return &examplev1.FooOutput{}, err
 }
 ```
 </TabItem>
@@ -1047,55 +1245,16 @@ service Example {
 
 Override the initial [workflow.LocalActivityOptions](https://pkg.go.dev/go.temporal.io/sdk/workflow#LocalActivityOptions) value for an individual invocation. Schema defined defaults will be applied over this value.
 
-:::warning
-It is currently not possible to override certain scalar options with a empty/falsey value if the schema defines a non-empty/non-falsey value. This may be addressed in a future release.
-:::
-
 <Tabs>
 <TabItem value="synchronous-go" label="Go">
-```go title="main.go"
-package main
-
-import (
-    "context"
-    "fmt"
-    "time"
-
-    examplev1 "path/to/gen/example/v1"
-    "go.temporal.io/sdk/activity"
-    "go.temporal.io/sdk/workflow"
-)
-
-type (
-    Workflows struct {}
-
-    Activities struct {}
-
-    FooWorkflow struct {
-        *examplev1.FooWorkflowInput
-    }
-)
-
-func (w *Workflows) Foo(ctx workflow.Context, input  *examplev1.FooWorkflowInput) (examplev1.FooWorkflow, error) {
-    return &FooWorkflow{input}, nil
-}
-
+```go title="example.go"
 func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
-    bar, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
+    _, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
         WithLocalActivityOptions(workflow.LocalActivityOptions{
             ScheduleToCloseTimeout: time.Minute, // this overrides the 30s default defined in the schema
         }),
     )
-    if err != nil {
-        return nil, fmt.Errorf("Bar local activity error: %w", err)
-    }
-    workflow.GetLogger(ctx).Info("Bar local activity success", "bar", bar)
-    return &examplev1.FooOutput{}, nil
-}
-
-func (a *Activities) Bar(ctx context.Context, input *examplev1.BarInput) (*examplev1.BarOutput, error) {
-    activity.GetLogger(ctx).Info("executing Bar activity", "input", input)
-    return &examplev1.BarOutput{}, nil
+    return &examplev1.FooOutput{}, err
 }
 ```
 </TabItem>
@@ -1115,6 +1274,124 @@ service Example {
   rpc Bar(BarInput) returns (BarOutput) {
     option (temporal.v1.activity) = {
       schedule_to_close_timeout: { seconds: 30 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithRetryPolicy
+
+Set the activity `RetryPolicy` value
+
+<Tabs>
+<TabItem value="with-local-retry-policy-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
+        WithRetryPolicy(&temporal.RetryPolicy{
+            MaximumAttempts: 3,
+        }),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-local-retry-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      retry_policy: {
+        max_attempts: 5
+      }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithScheduleToClose
+
+Set the activity `ScheduleToClose` value
+
+<Tabs>
+<TabItem value="with-local-schedule-to-close-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
+        WithScheduleToClose(time.Second * 240),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-local-schedule-to-close-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      schedule_to_close_timeout: { seconds: 300 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithStartToCloseTimeout
+
+Set the activity `StartToCloseTimeout` value
+
+<Tabs>
+<TabItem value="with-local-start-to-close-timeout-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarLocal(ctx, &examplev1.BarInput{}, examplev1.NewBarLocalActivityOptions().
+        WithStartToCloseTimeout(time.Second * 90),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-local-start-to-close-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 60 }
     };
   }
 }

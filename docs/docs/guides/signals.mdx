@@ -365,9 +365,6 @@ func main() {
         log.Fatalf("error signaling workflow: %v", err)
     }
 }
-func example(ctx context.Context, client examplev1.Client) error {
-    return 
-}
 ```
 </TabItem>
 <TabItem value="client-schema" label="Schema">
@@ -423,7 +420,7 @@ USAGE:
   example bar [command options] [arguments...]
 
 CATEGORY:
-   SIGNAL
+   SIGNALS
 
 OPTIONS:
    --input-file value, -f value   path to json-formatted input file
@@ -435,7 +432,7 @@ OPTIONS:
    --name value    Name specifies the subject to greet
 ```
 
-```sh title="example bar --name Temporal"
+```sh title="example bar -w foo/test --name Temporal"
 success
 ```
 </TabItem>
@@ -522,9 +519,11 @@ func main() {
         log.Fatalf("error signalling workflow: %v", err)
     }
 
-    if err := run.Get(ctx); err != nil {
+    foo, err := run.Get(ctx)
+    if err != nil {
         log.Fatalf("workflow failed: %v", err)
     }
+    log.Printf("workflow successful: %s\n", foo.String())
 }
 ```
 </TabItem>
@@ -722,14 +721,13 @@ func main() {
     c, _ := client.Dial(client.Options{})
     ctx := context.Background()
 
-    run, err := c.SignalWorkflow(
+    if err := c.SignalWorkflow(
         ctx, 
         "foo-workflow-id", 
         "", 
         examplev1.BarSignalName, 
         &examplev1.BarInput{},
-    )
-    if err != nil {
+    ); err != nil {
         log.Fatalf("error starting workflow: %v", err)
     }
 }

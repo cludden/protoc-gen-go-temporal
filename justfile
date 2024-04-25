@@ -33,7 +33,6 @@ gen:
     buf generate
     mockery --quiet
     go mod tidy
-    rm -rf docs/api/example docs/api/simple docs/api/test
 
 # generate temporal
 gen-temporal:

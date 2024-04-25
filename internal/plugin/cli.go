@@ -689,7 +689,7 @@ func (svc *Manifest) genCliUpdateCommand(f *g.Group, update protoreflect.FullNam
 			// add async flag
 			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
 				fields.Id("Name").Op(":").Lit("detach")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
+				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow update in the background and print workflow, execution, and udpate id"))
 				fields.Id("Aliases").Op(":").Index().String().Values(g.Lit("d"))
 			})
 			// add workflow-id required flag

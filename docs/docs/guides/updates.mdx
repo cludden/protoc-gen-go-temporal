@@ -146,12 +146,477 @@ func (w *FooWorkflow) Bar(ctx workflow.Context, input *examplev1.BarInput) (*exa
 
 ### Client
 
-{/* TODO: sync/async */}
+Consumers can utilize the generated Client to execute workflow updates from any Go application. See the [Clients guide](/docs/guides/clients) for more usage details.
+
+<Tabs>
+<TabItem value="client-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client, ctx := examplev1.NewExampleClient(c), context.Background()
+
+    bar, err := client.Bar(ctx, "foo-worklow-id", "", &examplev1.BarInput{});
+    if err != nil {
+        log.Fatalf("error updating workflow: %v", err)
+    }
+    log.Printf("bar update successful: %s", bar.String())
+}
+```
+</TabItem>
+<TabItem value="client-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
 
 ### Command Line Interface (CLI)
 
+Consumers can utilize the generated Command Line Interface as a standalone application for executing workflow updates. See the [CLI guide](/docs/guides/cli) for more usage details.
+
+<Tabs>
+<TabItem value="cli-shell" label="Shell">
+```sh title="example -h"
+NAME:
+  example - an example temporal cli
+
+USAGE:
+  example [global options] command [command options] [arguments...]
+
+COMMANDS:
+  help, h  Shows a list of commands or help for one command
+    UPDATES:
+      bar   Bar updates a foo workflow
+    WORKFLOWS:
+      foo   Foo does some foo thing
+```
+
+```sh title="example bar -h"
+NAME:
+  example bar - Bar updates a foo workflow
+
+USAGE:
+  example bar [command options] [arguments...]
+
+CATEGORY:
+   UPDATES
+
+OPTIONS:
+   --detach, -d                   run workflow update in the background and print workflow, execution, and update id (default: false)
+   --input-file value, -f value   path to json-formatted input file
+   --run-id value, -r value       run id
+   --workflow-id value, -w value  workflow id
+
+   INPUT
+
+   --name value    Name specifies the subject to greet
+```
+
+```sh title="example bar -w foo/test --name Temporal"
+{}
+```
+</TabItem>
+<TabItem value="cli-go" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "log"
+    "os"
+
+    examplev1 "path/to/gen/example/v1"
+)
+
+func main() {
+    app, err := examplev1.NewExampleCLI()
+    if err != nil {
+        log.Fatalf("error initializing cli: %v", err)
+    }
+
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+<TabItem value="cli-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  // Foo does some foo thing
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  // Bar updates a foo workflow
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+
+message BarInput {
+  string name = 1;
+}
+```
+</TabItem>
+</Tabs>
+
 ### Workflow Run
+
+The generated client's asynchronous workflow methods return a [WorkflowRun](/docs/guides/clients#workflow-run) that provides methods for updating the workflow.
+
+<Tabs>
+<TabItem value="workflow-run-go" label="Go">
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client, ctx := examplev1.NewExampleClient(c), context.Background()
+
+    run, err := client.FooAsync(ctx, &examplev1.FooInput{})
+    if err != nil {
+        log.Fatalf("error starting workflow: %v", err)
+    }
+
+    bar, err := run.Bar(ctx, &examplev1.BarInput{})
+    if err != nil {
+        log.Fatalf("error updating workflow: %v", err)
+    }
+    log.Printf("update successful: %s\n", bar.String())
+
+    foo, err := run.Get(ctx)
+    if err != nil {
+        log.Fatalf("workflow failed: %v", err)
+    }
+    log.Printf("workflow successful: %s\n", foo.String())
+}
+```
+</TabItem>
+<TabItem value="workflow-run-schema" label="Schema">
+```protobuf
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
 
 ### Cross-Namespace (XNS)
 
+Updates can be executed from other workflows in a different Temporal namespace or even an entirely separate Temporal cluster (e.g. on-prem to cloud) using the generated Cross-Namespace helpers. See the [Cross-Namespace guide](/docs/guides/xns) for more usage details.
+
+<Tabs>
+<TabItem value="xns-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "path/to/gen/example/v1/examplev1xns"
+    "go.temporal.io/sdk/workflow"
+)
+
+func MyWorkflow(ctx workflow.Context) error {
+    _, err := examplev1xns.Bar(ctx, "foo-workflow-id", "", &examplev1.BarInput{});
+    if err != nil {
+        return fmt.Errorf("error executing Bar update: %w", err)
+    }
+    return err
+}
+```
+</TabItem>
+<TabItem value="xns-go-run" label="Go (XNS Workflow Run)">
+```go title="example.go"
+package example
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "path/to/gen/example/v1/examplev1xns"
+    "go.temporal.io/sdk/workflow"
+)
+
+func MyWorkflow(ctx workflow.Context) error {
+    run, err := examplev1xns.FooAsync(ctx, &examplev1.FooInput{})
+    if err != nil {
+        return fmt.Errorf("error starting Foo workflow: %w", err)
+    }
+
+    if _, err := run.Bar(ctx, &examplev1.BarInput{}); err != nil {
+        return fmt.Errorf("error executing Bar update: %w", err)
+    }
+    return run.Get(ctx)
+}
+```
+</TabItem>
+<TabItem value="xns-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ### SDK
+
+Proto updates are compatible with official Temporal sdk update methods.
+
+<Tabs>
+<TabItem value="sdk-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    ctx := context.Background()
+
+    handle, err := client.UpdateWorkflow(ctx, "foo-worklow-id", "", examplev1.BarUpdateName, &examplev1.BarInput{});
+    if err != nil {
+        log.Fatalf("error starting workflow update: %v", err)
+    }
+
+    var bar examplev1.BarOutput
+    if err := handle.Get(ctx, &bar); err != nil {
+        log.Fatalf("error updating workflow: %v", err)
+    }
+    log.Printf("bar update successful: %s", bar.String())
+}
+```
+</TabItem>
+<TabItem value="sdk-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## UpdateOptions
+
+Both synchronous and asynchronous update helpers accept an optional `<Update>Options` value as the final argument. This argument can be used to override the default [client.UpdateWorkflowWithOptionsRequest](https://pkg.go.dev/go.temporal.io/sdk/client#UpdateWorkflowWithOptionsRequest) created using the defaults defined in the schema.
+
+### WithUpdateID
+
+Sets the update `UpdateID` value
+
+<Tabs>
+<TabItem value="with-update-id-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Bar(ctx, "foo-workflow-id", "", &examplev1.BarInput{}, examplev1.NewBarOptions().
+        WithUpdateID("bar/baz"),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-update-id-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {
+      id: 'bar/${! uuid_v4() }'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithUpdateWorkflowOptions
+
+Override the initial [client.UpdateWorkflowWithOptionsRequest](https://pkg.go.dev/go.temporal.io/sdk/client#UpdateWorkflowWithOptionsRequest) value for an individual invocation. Schema defined defaults will be applied over this value.
+
+<Tabs>
+<TabItem value="with-update-workflow-options-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Bar(ctx, "foo-workflow-id", "", &examplev1.BarInput{}, examplev1.NewBarOptions().
+        WithUpdateWorkflowOptions(client.UpdateWorkflowWithOptionsRequest{
+            WaitPolicy: &updatepb.WaitPolicy{
+                LifecycleStage: enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
+            },
+        }),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-update-workflow-options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {
+      wait_policy: WAIT_POLICY_ADMITTED
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithWaitPolicy
+
+Sets the update `WaitPolicy` value
+
+<Tabs>
+<TabItem value="with-update-workflow-options-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Bar(ctx, "foo-workflow-id", "", &examplev1.BarInput{}, examplev1.NewBarOptions().
+        WithUpdateWorkflowOptions(enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-update-workflow-options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "Bar" }
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {
+      wait_policy: WAIT_POLICY_ADMITTED
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>

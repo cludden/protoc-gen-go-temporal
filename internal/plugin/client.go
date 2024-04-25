@@ -6,6 +6,7 @@ import (
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
+	"github.com/hako/durafmt"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -230,8 +231,25 @@ func (svc *Manifest) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow
 				fn.Line()
 			}
 
-			// initialize StartWorkflowOptions
-			svc.genClientStartWorkflowOptions(fn, workflow, false)
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("options").Index(g.Lit(0)),
+			).Else().Block(
+				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", workflow)).Call(),
+			)
+
+			// initialize client.StartWorkfowOptions
+			fn.List(g.Id("opts"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+				if hasWorkflowInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client.StartWorkflowOptions: %w"), g.Err())),
+			)
 
 			// signal with start workflow
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *g.Group) {
@@ -243,7 +261,7 @@ func (svc *Manifest) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow
 				} else {
 					args.Nil()
 				}
-				args.Op("*").Id("opts")
+				args.Id("opts")
 				args.Id(svc.toCamel("%sWorkflowName", workflow))
 				if hasWorkflowInput {
 					args.Id("req")
@@ -383,35 +401,30 @@ func (svc *Manifest) genClientImplUpdateMethod(f *g.File, update protoreflect.Fu
 			}
 			returnVals.Error()
 		}).
-		BlockFunc(func(method *g.Group) {
+		BlockFunc(func(fn *g.Group) {
 			if isDeprecated(handler) {
-				method.Id("c").Dot("log").Dot("WarnContext").Call(g.Id("ctx"), g.Lit("use of deprecated client method detected"), g.Lit("method"), g.Lit(svc.toCamel("%s", update)), g.Lit("update"), g.Id(svc.toCamel("%sUpdateName", update))).Line()
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(g.Id("ctx"), g.Lit("use of deprecated client method detected"), g.Lit("method"), g.Lit(svc.toCamel("%s", update)), g.Lit("update"), g.Id(svc.toCamel("%sUpdateName", update))).Line()
 			}
 
-			// initialize update request options
-			method.Id("options").Op(":=").Id(svc.toCamel("New%sOptions", update)).Call()
-			method.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
-				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
+			// initialize update options
+			fn.Comment("initialize update options")
+			fn.Id("o").Op(":=").Id(svc.toCamel("New%sOptions", update)).Call()
+			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("opts").Index(g.Lit(0)),
 			)
 
-			method.If(g.Id("options").Dot("Options").Op("==").Nil()).Block(
-				g.Id("options").Dot("Options").Op("=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
-			)
-			method.Id("options").Dot("Options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"),
-			)
-
-			// call async method
-			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
+			fn.Line()
+			fn.Comment("call sync update with UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED wait policy")
+			fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
 				if hasInput {
 					args.Id("req")
 				}
-				args.Id("options")
+				args.Id("o").Dot("WithWaitPolicy").Call(g.Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"))
 			})
-			method.If(g.Err().Op("!=").Nil()).Block(
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
 					if hasOutput {
 						returnVals.Nil()
@@ -420,8 +433,9 @@ func (svc *Manifest) genClientImplUpdateMethod(f *g.File, update protoreflect.Fu
 				}),
 			)
 
-			// call handle get
-			method.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx")))
+			fn.Line()
+			fn.Comment("block on update completion")
+			fn.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx")))
 		})
 }
 
@@ -450,20 +464,41 @@ func (svc *Manifest) genClientImplUpdateMethodAsync(f *g.File, update protorefle
 			g.Id(svc.toCamel("%sHandle", update)),
 			g.Error(),
 		).
-		BlockFunc(func(method *g.Group) {
+		BlockFunc(func(fn *g.Group) {
 			if isDeprecated(handler) {
-				method.Id("c").Dot("log").Dot("WarnContext").Call(g.Id("ctx"), g.Lit("use of deprecated client method detected"), g.Lit("method"), g.Lit(methodName), g.Lit("update"), g.Id(svc.toCamel("%sUpdateName", update))).Line()
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(g.Id("ctx"), g.Lit("use of deprecated client method detected"), g.Lit("method"), g.Lit(methodName), g.Lit("update"), g.Id(svc.toCamel("%sUpdateName", update))).Line()
 			}
 
-			svc.genClientUpdateWorkflowOptions(method, update)
+			// initialize options
+			fn.Comment("initialize update options")
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", update))
+			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("opts").Index(g.Lit(0)),
+			).Else().Block(
+				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", update)).Call(),
+			)
 
-			// update workflow
-			method.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(g.Id("ctx"), g.Id("options"))
-			method.If(g.Err().Op("!=").Nil()).Block(
+			fn.Line()
+			fn.Comment("build UpdateWorkflowWithOptionsRequest")
+			fn.List(g.Id("options"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+				args.Id("workflowID")
+				args.Id("runID")
+				if hasInput {
+					args.Id("req")
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing UpdateWorkflowWithOptions: %w"), g.Err())),
+			)
+
+			fn.Line()
+			fn.Comment("update workflow")
+			fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(g.Id("ctx"), g.Id("options"))
+			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Nil(), g.Err()),
 			)
 
-			method.Return(
+			fn.Return(
 				g.Op("&").Id(handleName).Values(
 					g.Id("client").Op(":").Id("c"),
 					g.Id("handle").Op(":").Id("handle"),
@@ -503,13 +538,30 @@ func (svc *Manifest) genClientImplWorkflowAsyncMethod(f *g.File, workflow protor
 				fn.Id("c").Dot("log").Dot("WarnContext").Call(g.Id("ctx"), g.Lit("use of deprecated client method detected"), g.Lit("method"), g.Lit(methodName), g.Lit("workflow"), g.Id(svc.toCamel("%sWorkflowName", workflow))).Line()
 			}
 
-			// initialize StartWorkflowOptions with defaults
-			svc.genClientStartWorkflowOptions(fn, workflow, false)
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).Block(
+				g.Id("o").Op("=").Id("options").Index(g.Lit(0)),
+			).Else().Block(
+				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", workflow)).Call(),
+			)
+
+			// initialize client.StartWorkfowOptions
+			fn.List(g.Id("opts"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+				if hasInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
+				}
+			})
+			fn.If(g.Err().Op("!=").Nil()).Block(
+				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client.StartWorkflowOptions: %w"), g.Err())),
+			)
 
 			// execute workflow
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
-				args.Op("*").Id("opts")
+				args.Id("opts")
 				args.Id(svc.toCamel("%sWorkflowName", workflow))
 				if hasInput {
 					args.Id("req")
@@ -970,190 +1022,6 @@ func (svc *Manifest) genClientOptions(f *g.File) {
 		)
 }
 
-// genClientStartWorkflowOptions adds logic for initializing StartWorkflowOptions with default values
-func (svc *Manifest) genClientStartWorkflowOptions(fn *g.Group, workflow protoreflect.FullName, child bool) {
-	method := svc.methods[workflow]
-	opts := svc.workflows[workflow]
-	hasInput := !isEmpty(method.Input)
-
-	// initialize options if nil
-	if child {
-		fn.Id("opts").Op(":=").Op("&").Qual(workflowPkg, "ChildWorkflowOptions").Values()
-		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
-			g.Id("opts").Op("=").Id("options").Index(g.Lit(0)).Dot("opts"),
-		)
-	} else {
-		fn.Id("opts").Op(":=").Op("&").Qual(clientPkg, "StartWorkflowOptions").Values()
-		fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Dot("opts").Op("!=").Nil()).Block(
-			g.Id("opts").Op("=").Id("options").Index(g.Lit(0)).Dot("opts"),
-		)
-	}
-
-	// set task queue if unset and default available
-	var taskQueue g.Code
-	if tq := opts.GetTaskQueue(); tq != "" {
-		taskQueue = g.Lit(tq)
-	} else if tq = svc.opts.GetTaskQueue(); tq != "" {
-		taskQueue = g.Id(svc.toCamel("%sTaskQueue", svc.Service.GoName))
-	}
-	if taskQueue != nil {
-		fn.If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).Block(
-			g.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueue),
-		)
-	}
-
-	idFieldName := "ID"
-	if child {
-		idFieldName = "WorkflowID"
-	}
-
-	// set workflow id if unset and  id field and/or prefix defined
-	if idExpr := opts.GetId(); idExpr != "" {
-		fn.If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-				args.Id(svc.toCamel("%sIDExpression", workflow))
-				if hasInput {
-					args.Id("req").Dot("ProtoReflect").Call()
-				} else {
-					args.Nil()
-				}
-			})
-			b.If(g.Err().Op("!=").Nil()).BlockFunc(func(returnVals *g.Group) {
-				if child {
-					returnVals.Panic(g.Err())
-				} else {
-					returnVals.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err()))
-				}
-			})
-			b.Id("opts").Dot(idFieldName).Op("=").Id("id")
-		})
-	}
-
-	// set default id reuse policy
-	var idReusePolicy string
-	switch opts.GetIdReusePolicy() {
-	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE:
-		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
-	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY:
-		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
-	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE:
-		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
-	case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING:
-		idReusePolicy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
-	}
-
-	if idReusePolicy != "" {
-		fn.If(g.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).
-			Block(
-				g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, idReusePolicy),
-			)
-	}
-
-	if policy := opts.GetRetryPolicy(); policy != nil {
-		fn.If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
-			g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(fields *g.Group) {
-				if d := policy.GetInitialInterval(); d.IsValid() {
-					fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
-				}
-				if d := policy.GetMaxInterval(); d.IsValid() {
-					fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
-				}
-				if n := policy.GetBackoffCoefficient(); n != 0 {
-					fields.Id("BackoffCoefficient").Op(":").Lit(n)
-				}
-				if n := policy.GetMaxAttempts(); n != 0 {
-					fields.Id("MaximumAttempts").Op(":").Lit(n)
-				}
-				if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
-					fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *g.Group) {
-						for _, err := range errs {
-							vals.Lit(err)
-						}
-					})
-				}
-			}),
-		)
-	}
-
-	if timeout := opts.GetExecutionTimeout(); timeout.IsValid() {
-		fn.If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).
-			Block(
-				g.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
-			)
-	}
-
-	if timeout := opts.GetRunTimeout(); timeout.IsValid() {
-		fn.If(g.Id("opts").Dot("WorkflowRunTimeout").Op("==").Lit(0)).
-			Block(
-				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
-			)
-	}
-
-	if timeout := opts.GetTaskTimeout(); timeout.IsValid() {
-		fn.If(g.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).
-			Block(
-				g.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Id(strconv.FormatInt(timeout.AsDuration().Nanoseconds(), 10)).Comment(timeout.AsDuration().String()),
-			)
-	}
-
-	if mapping := opts.GetSearchAttributes(); mapping != "" {
-		fn.If(g.Id("opts").Dot("SearchAttributes").Op("==").Nil()).
-			BlockFunc(func(bl *g.Group) {
-				// initalize mapping input
-				if hasInput {
-					bl.List(g.Id("structured"), g.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(g.Id("req").Dot("ProtoReflect").Call())
-					bl.If(g.Err().Op("!=").Nil()).Block(
-						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
-					)
-				} else {
-					bl.Var().Id("structured").Any()
-				}
-
-				bl.List(g.Id("result"), g.Err()).Op(":=").Id(svc.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
-				bl.If(g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
-				)
-				bl.List(g.Id("searchAttributes"), g.Id("ok")).Op(":=").Id("result").Op(".").Parens(g.Map(g.String()).Interface())
-				bl.If(g.Op("!").Id("ok")).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", svc.methods[workflow].GoName)), g.Id("result"))),
-				)
-				bl.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
-			})
-	}
-
-	// add child workflow default options
-	if child {
-		ns := opts.GetNamespace()
-		if ns == "" {
-			ns = svc.opts.GetNamespace()
-		}
-		if ns != "" {
-			fn.If(g.Id("opts").Dot("Namespace").Op("==").Lit("")).Block(
-				g.Id("opts").Dot("Namespace").Op("=").Lit(ns),
-			)
-		}
-
-		var parentClosePolicy string
-		switch opts.GetParentClosePolicy() {
-		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
-			parentClosePolicy = "PARENT_CLOSE_POLICY_ABANDON"
-		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL:
-			parentClosePolicy = "PARENT_CLOSE_POLICY_REQUEST_CANCEL"
-		case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE:
-			parentClosePolicy = "PARENT_CLOSE_POLICY_TERMINATE"
-		}
-		if parentClosePolicy != "" {
-			fn.If(g.Id("opts").Dot("ParentClosePolicy").Op("==").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).Block(
-				g.Id("opts").Dot("ParentClosePolicy").Op("=").Qual(enumsPkg, parentClosePolicy),
-			)
-		}
-
-		if opts.GetWaitForCancellation() {
-			fn.Id("opts").Dot("WaitForCancellation").Op("=").Lit(true)
-		}
-	}
-}
-
 // genClientUpdateHandleImpl generates a <Update>Handle struct
 func (svc *Manifest) genClientUpdateHandleImpl(f *g.File, update protoreflect.FullName) {
 	clientImplType := svc.toLowerCamel("%sClient", svc.Service.GoName)
@@ -1328,10 +1196,14 @@ func (svc *Manifest) genClientUpdateHandleInterface(f *g.File, update protorefle
 func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullName) {
 	typeName := svc.toCamel("%sOptions", update)
 	constructorName := "New" + typeName
+	updateOpts := svc.updates[update]
+	hasInput := !isEmpty(svc.methods[update].Input)
 
 	f.Commentf("%s provides configuration for a %s update operation", typeName, svc.fqnForUpdate(update))
 	f.Type().Id(typeName).Struct(
 		g.Id("Options").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+		g.Id("id").Op("*").String(),
+		g.Id("waitPolicy").Qual(enumsPkg, "UpdateWorkflowExecutionLifecycleStage"),
 	)
 
 	f.Commentf("%s initializes a new %s value", constructorName, typeName)
@@ -1341,104 +1213,489 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 		)),
 	)
 
+	f.Comment("Build initializes a new client.UpdateWorkflowWithOptionsRequest with defaults and overrides applied")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("Build").
+		ParamsFunc(func(args *g.Group) {
+			args.Id("workflowID").String()
+			args.Id("runID").String()
+			if hasInput {
+				args.Id("req").Op("*").Id(svc.getMessageName(svc.methods[update].Input))
+			}
+		}).
+		Params(
+			g.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+			g.Err().Error(),
+		).
+		BlockFunc(func(fn *g.Group) {
+			fn.Comment("use user-provided UpdateWorkflowWithOptionsRequest if exists")
+			fn.If(g.Id("o").Dot("Options").Op("!=").Nil()).Block(
+				g.Id("opts").Op("=").Id("o").Dot("Options"),
+			).Else().Block(
+				g.Id("opts").Op("=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
+			)
+
+			fn.Line()
+			fn.Comment("set constants")
+			if hasInput {
+				fn.Id("opts").Dot("Args").Op("=").Index().Any().Values(g.Id("req"))
+			}
+			fn.Id("opts").Dot("RunID").Op("=").Id("runID")
+			fn.Id("opts").Dot("UpdateName").Op("=").Id(svc.toCamel("%sUpdateName", update))
+			fn.Id("opts").Dot("WorkflowID").Op("=").Id("workflowID")
+
+			fn.Line()
+			fn.Comment("set UpdateID")
+			id := fn.If(g.Id("v").Op(":=").Id("o").Dot("id"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("UpdateID").Op("=").Op("*").Id("v"),
+			)
+			if idExpr := updateOpts.GetId(); idExpr != "" {
+				id.Else().If(g.Id("opts").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+					b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+						args.Id(svc.toCamel("%sIDExpression", update))
+						if hasInput {
+							args.Id("req").Dot("ProtoReflect").Call()
+						} else {
+							args.Nil()
+						}
+					})
+					b.If(g.Err().Op("!=").Nil()).Block(
+						g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q update: %w"), g.Id(svc.toCamel("%sUpdateName", update)), g.Err())),
+					)
+					b.Id("opts").Dot("UpdateID").Op("=").Id("id")
+				})
+			}
+
+			fn.Line()
+			fn.Comment("set WaitPolicy")
+			waitPolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("waitPolicy"), g.Id("v").Op("!=").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
+				g.Id("opts").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
+					g.Id("LifecycleStage").Op(":").Id("v"),
+				),
+			)
+			if wp := updateOpts.GetWaitPolicy(); wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
+				var stage string
+				switch wp {
+				case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
+					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED"
+				case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
+					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"
+				case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
+					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"
+				}
+				waitPolicy.Else().If(g.Id("opts").Dot("WaitPolicy").Dot("GetLifecycleStage").Call().Op("==").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
+					g.Id("opts").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
+						g.Id("LifecycleStage").Op(":").Qual(enumsPkg, stage),
+					),
+				)
+			}
+
+			fn.Return(g.Id("opts"), g.Nil())
+		})
+
+	f.Comment("WithUpdateID sets the UpdateID")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithUpdateID").
+		Params(g.Id("id").String()).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("id").Op("=").Op("&").Id("id"),
+			g.Return(g.Id("o")),
+		)
+
 	f.Comment("WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowWithOptionsRequest")
 	f.Func().
-		Params(g.Id("opts").Op("*").Id(typeName)).
+		Params(g.Id("o").Op("*").Id(typeName)).
 		Id("WithUpdateWorkflowOptions").
 		Params(g.Id("options").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")).
 		Op("*").Id(typeName).
 		Block(
-			g.Id("opts").Dot("Options").Op("=").Op("&").Id("options"),
-			g.Return(g.Id("opts")),
+			g.Id("o").Dot("Options").Op("=").Op("&").Id("options"),
+			g.Return(g.Id("o")),
+		)
+
+	f.Comment("WithWaitPolicy sets the WaitPolicy")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithWaitPolicy").
+		Params(g.Id("policy").Qual(enumsPkg, "UpdateWorkflowExecutionLifecycleStage")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("waitPolicy").Op("=").Id("policy"),
+			g.Return(g.Id("o")),
 		)
 }
 
-func (svc *Manifest) genClientUpdateWorkflowOptions(fn *g.Group, update protoreflect.FullName) {
-	updateOpts := svc.updates[update]
-	handler := svc.methods[update]
-	hasInput := !isEmpty(handler.Input)
-
-	// initialize update request options
-	fn.Id("options").Op(":=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
-	fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
-		g.Id("options").Op("=").Id("opts").Index(g.Lit(0)).Dot("Options"),
-	)
-
-	// add request args if update has inpute
-	if hasInput {
-		fn.Id("options").Dot("Args").Op("=").Index().Any().Values(g.Id("req"))
-	}
-	fn.Id("options").Dot("RunID").Op("=").Id("runID")
-	fn.Id("options").Dot("UpdateName").Op("=").Id(svc.toCamel("%sUpdateName", update))
-	fn.Id("options").Dot("WorkflowID").Op("=").Id("workflowID")
-	fn.If(g.Id("options").Dot("WaitPolicy").Op("==").Nil().Op("||").Id("options").Dot("WaitPolicy").Dot("LifecycleStage").Op("==").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
-		g.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Custom(multiLineValues,
-			g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"),
-		),
-	)
-
-	// add update id if specified
-	if idExpr := updateOpts.GetId(); idExpr != "" {
-		fn.If(g.Id("options").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
-			b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
-				args.Id(svc.toCamel("%sIDExpression", update))
-				if hasInput {
-					args.Id("req").Dot("ProtoReflect").Call()
-				} else {
-					args.Nil()
-				}
-			})
-			b.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q update: %w"), g.Id(svc.toCamel("%sUpdateName", update)), g.Err())),
-			)
-			b.Id("options").Dot("UpdateID").Op("=").Id("id")
-		})
-	}
-
-	// add default wait policy if specified
-	if wp := updateOpts.GetWaitPolicy(); wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
-		var stage string
-		switch wp {
-		case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
-			stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED"
-		case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
-			stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"
-		case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
-			stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"
-		}
-		fn.If(g.Id("options").Dot("WaitPolicy").Dot("GetLifecycleStage").Call().Op("==").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
-			g.Id("options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, stage),
-			),
-		)
-	}
-}
-
-// genClientWorkflowOptions generates a <Workflow>Options struct
-func (svc *Manifest) genClientWorkflowOptions(f *g.File, workflow protoreflect.FullName) {
+// genWorkflowOptions generates a <Workflow>Options struct
+func (svc *Manifest) genWorkflowOptions(f *g.File, workflow protoreflect.FullName, child bool) {
+	optionsPkg := clientPkg
+	optionsType := "StartWorkflowOptions"
 	typeName := svc.toCamel("%sOptions", workflow)
+	childQualifier := ""
+	if child {
+		optionsPkg = workflowPkg
+		optionsType = "ChildWorkflowOptions"
+		typeName = svc.toCamel("%sChildOptions", workflow)
+		childQualifier = "child "
+	}
 	constructorName := "New" + typeName
+	opts := svc.workflows[workflow]
 
-	f.Commentf("%s provides configuration for a %s workflow operation", typeName, svc.fqnForWorkflow(workflow))
-	f.Type().Id(typeName).Struct(
-		g.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions"),
-	)
+	f.Commentf("%s provides configuration for a %s%s workflow operation", typeName, childQualifier, svc.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).StructFunc(func(values *g.Group) {
+		values.Id("options").Qual(optionsPkg, optionsType)
+		values.Id("executionTimeout").Op("*").Qual("time", "Duration")
+		values.Id("id").Op("*").String()
+		values.Id("idReusePolicy").Qual(enumsPkg, "WorkflowIdReusePolicy")
+		values.Id("retryPolicy").Op("*").Qual(temporalPkg, "RetryPolicy")
+		values.Id("runTimeout").Op("*").Qual("time", "Duration")
+		values.Id("searchAttributes").Map(g.String()).Any()
+		values.Id("taskQueue").Op("*").String()
+		values.Id("taskTimeout").Op("*").Qual("time", "Duration")
+		if child {
+			values.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
+			values.Id("waitForCancellation").Op("*").Bool()
+		}
+	})
 
 	f.Commentf("%s initializes a new %s value", constructorName, typeName)
 	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
 		g.Return(g.Op("&").Id(typeName).Values()),
 	)
 
-	f.Comment("WithStartWorkflowOptions sets the initial client.StartWorkflowOptions")
+	f.Commentf("Build initializes a new %s.%s value with defaults and overrides applied", optionsPkg, optionsType)
 	f.Func().
-		Params(g.Id("opts").Op("*").Id(typeName)).
-		Id("WithStartWorkflowOptions").
-		Params(g.Id("options").Qual(clientPkg, "StartWorkflowOptions")).
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("Build").
+		ParamsFunc(func(args *g.Group) {
+			if child {
+				args.Id("ctx").Qual(workflowPkg, "Context")
+			}
+			args.Id("req").Qual(protoreflectPkg, "Message")
+		}).
+		Params(
+			g.Qual(optionsPkg, optionsType),
+			g.Error(),
+		).
+		BlockFunc(func(fn *g.Group) {
+			fn.Id("opts").Op(":=").Id("o").Dot("options")
+
+			// set ID
+			idFieldName := "ID"
+			if child {
+				idFieldName = "WorkflowID"
+			}
+			id := fn.If(g.Id("v").Op(":=").Id("o").Dot("id"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot(idFieldName).Op("=").Op("*").Id("v"),
+			)
+			if idExpr := opts.GetId(); idExpr != "" {
+				id.Else().If(g.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+					b.List(g.Id("id"), g.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *g.Group) {
+						args.Id(svc.toCamel("%sIDExpression", workflow))
+						args.Id("req")
+					})
+					b.If(g.Err().Op("!=").Nil()).BlockFunc(func(returnVals *g.Group) {
+						returnVals.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit("error evaluating id expression for %q workflow: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Err()))
+					})
+					b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+				})
+			}
+
+			// set WorkflowIDReusePolicy
+			idReusePolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("idReusePolicy"), g.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).Block(
+				g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Id("v"),
+			)
+			if opts.GetIdReusePolicy() != temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+				idReusePolicy.Else().If(g.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).BlockFunc(func(bl *g.Group) {
+					var policy string
+					switch opts.GetIdReusePolicy() {
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE:
+						policy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY:
+						policy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE:
+						policy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING:
+						policy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
+					}
+					bl.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, policy)
+				})
+			}
+
+			// set TaskQueue
+			fn.If(g.Id("v").Op(":=").Id("o").Dot("taskQueue"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
+			).Else().If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(bl *g.Group) {
+				var taskQueueVar g.Code
+				if tq := opts.GetTaskQueue(); tq != "" {
+					taskQueueVar = g.Lit(tq)
+				} else if tq = svc.opts.GetTaskQueue(); tq != "" {
+					taskQueueVar = g.Id(svc.toCamel("%sTaskQueue", svc.Service.GoName))
+				}
+				if taskQueueVar != nil {
+					bl.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueueVar)
+				} else if child {
+					bl.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
+				} else {
+					bl.Return(g.Id("opts"), g.Qual("errors", "New").Call(g.Lit("TaskQueue is required")))
+				}
+			})
+
+			// set RetryPolicy
+			retryPolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("retryPolicy"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("RetryPolicy").Op("=").Id("v"),
+			)
+			if policy := opts.GetRetryPolicy(); policy != nil {
+				retryPolicy.Else().If(g.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
+					g.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(fields *g.Group) {
+						if d := policy.GetInitialInterval(); d.IsValid() {
+							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+						}
+						if d := policy.GetMaxInterval(); d.IsValid() {
+							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+						}
+						if n := policy.GetBackoffCoefficient(); n != 0 {
+							fields.Id("BackoffCoefficient").Op(":").Lit(n)
+						}
+						if n := policy.GetMaxAttempts(); n != 0 {
+							fields.Id("MaximumAttempts").Op(":").Lit(n)
+						}
+						if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
+							fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *g.Group) {
+								for _, err := range errs {
+									vals.Lit(err)
+								}
+							})
+						}
+					}),
+				)
+			}
+
+			// set SearchAttributes
+			searchAttributes := fn.If(g.Id("v").Op(":=").Id("o").Dot("searchAttributes"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("SearchAttributes").Op("=").Id("o").Dot("searchAttributes"),
+			)
+			if mapping := opts.GetSearchAttributes(); mapping != "" {
+				searchAttributes.Else().If(g.Id("opts").Dot("SearchAttributes").Op("==").Nil()).
+					BlockFunc(func(bl *g.Group) {
+						// convert input to generic mapping input
+						bl.List(g.Id("structured"), g.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(g.Id("req"))
+						bl.If(g.Err().Op("!=").Nil()).Block(
+							g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
+						)
+
+						// execute mapping
+						bl.List(g.Id("result"), g.Err()).Op(":=").Id(svc.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(g.Id("structured"))
+						bl.If(g.Err().Op("!=").Nil()).Block(
+							g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", svc.methods[workflow].GoName)), g.Err())),
+						)
+
+						// coerce mapping result to map[string]any
+						bl.List(g.Id("searchAttributes"), g.Id("ok")).Op(":=").Id("result").Op(".").Parens(g.Map(g.String()).Any())
+						bl.If(g.Op("!").Id("ok")).Block(
+							g.Return(g.Id("opts"), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", svc.methods[workflow].GoName)), g.Id("result"))),
+						)
+						bl.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+					})
+			}
+
+			// set WorkflowExecutionTimeout
+			executionTimeout := fn.If(g.Id("v").Op(":=").Id("o").Dot("executionTimeout"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Op("*").Id("v"),
+			)
+			if d := opts.GetExecutionTimeout().AsDuration(); d > 0 {
+				executionTimeout.Else().If(g.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+				)
+			}
+
+			// set WorkflowRunTimeout
+			runTimeout := fn.If(g.Id("v").Op(":=").Id("o").Dot("runTimeout"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Op("*").Id("v"),
+			)
+			if d := opts.GetRunTimeout().AsDuration(); d > 0 {
+				runTimeout.Else().If(g.Id("opts").Dot("WorkflowRunTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+				)
+			}
+
+			// set WorkflowTaskTimeout
+			taskTimeout := fn.If(g.Id("v").Op(":=").Id("o").Dot("taskTimeout"), g.Id("v").Op("!=").Nil()).Block(
+				g.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Op("*").Id("v"),
+			)
+			if d := opts.GetTaskTimeout().AsDuration(); d > 0 {
+				taskTimeout.Else().If(g.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).Block(
+					g.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+				)
+			}
+
+			// set ParentClosePolicy
+			if child {
+				parentClosePolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("parentClosePolicy"), g.Id("v").Op("!=").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).Block(
+					g.Id("opts").Dot("ParentClosePolicy").Op("=").Id("v"),
+				)
+				if opts.GetParentClosePolicy() != temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_UNSPECIFIED {
+					parentClosePolicy.Else().If(g.Id("opts").Dot("ParentClosePolicy").Op("==").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).BlockFunc(func(bl *g.Group) {
+						var policy string
+						switch opts.GetParentClosePolicy() {
+						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
+							policy = "PARENT_CLOSE_POLICY_ABANDON"
+						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+							policy = "PARENT_CLOSE_POLICY_REQUEST_CANCEL"
+						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE:
+							policy = "PARENT_CLOSE_POLICY_TERMINATE"
+						}
+						bl.Id("opts").Dot("ParentClosePolicy").Op("=").Qual(enumsPkg, policy)
+					})
+				}
+			}
+
+			// set WaitForCancellation
+			if child {
+				waitForCancellation := fn.If(g.Id("v").Op(":=").Id("o").Dot("waitForCancellation"), g.Id("v").Op("!=").Nil()).Block(
+					g.Id("opts").Dot("WaitForCancellation").Op("=").Op("*").Id("v"),
+				)
+				if opts.GetWaitForCancellation() {
+					waitForCancellation.Else().Block(
+						g.Id("opts").Dot("WaitForCancellation").Op("=").Lit(true),
+					)
+				}
+			}
+
+			fn.Return(g.Id("opts"), g.Nil())
+		})
+
+	baseName := svc.toCamel("With%s", optionsType)
+	f.Commentf("%s sets the initial %s.%s", baseName, optionsPkg, optionsType)
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id(baseName).
+		Params(g.Id("options").Qual(optionsPkg, optionsType)).
 		Op("*").Id(typeName).
 		Block(
-			g.Id("opts").Dot("opts").Op("=").Op("&").Id("options"),
-			g.Return(g.Id("opts")),
+			g.Id("o").Dot("options").Op("=").Id("options"),
+			g.Return(g.Id("o")),
 		)
+
+	f.Comment("WithExecutionTimeout sets the WorkflowExecutionTimeout value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithExecutionTimeout").
+		Params(g.Id("d").Qual("time", "Duration")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("executionTimeout").Op("=").Op("&").Id("d"),
+			g.Return(g.Id("o")),
+		)
+
+	if child {
+		f.Comment("WithID sets the WorkflowID value")
+	} else {
+		f.Comment("WithID sets the ID value")
+	}
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithID").
+		Params(g.Id("id").String()).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("id").Op("=").Op("&").Id("id"),
+			g.Return(g.Id("o")),
+		)
+
+	f.Comment("WithIDReusePolicy sets the WorkflowIDReusePolicy value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithIDReusePolicy").
+		Params(g.Id("policy").Qual(enumsPkg, "WorkflowIdReusePolicy")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("idReusePolicy").Op("=").Id("policy"),
+			g.Return(g.Id("o")),
+		)
+
+	if child {
+		f.Comment("WithParentClosePolicy sets the WorkflowIDReusePolicy value")
+		f.Func().
+			Params(g.Id("o").Op("*").Id(typeName)).
+			Id("WithParentClosePolicy").
+			Params(g.Id("policy").Qual(enumsPkg, "ParentClosePolicy")).
+			Op("*").Id(typeName).
+			Block(
+				g.Id("o").Dot("parentClosePolicy").Op("=").Id("policy"),
+				g.Return(g.Id("o")),
+			)
+	}
+
+	f.Comment("WithRetryPolicy sets the RetryPolicy value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithRetryPolicy").
+		Params(g.Id("policy").Op("*").Qual(temporalPkg, "RetryPolicy")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("retryPolicy").Op("=").Id("policy"),
+			g.Return(g.Id("o")),
+		)
+
+	f.Comment("WithRunTimeout sets the WorkflowRunTimeout value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithRunTimeout").
+		Params(g.Id("d").Qual("time", "Duration")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("runTimeout").Op("=").Op("&").Id("d"),
+			g.Return(g.Id("o")),
+		)
+
+	f.Comment("WithSearchAttributes sets the SearchAttributes value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithSearchAttributes").
+		Params(g.Id("sa").Map(g.String()).Any()).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("searchAttributes").Op("=").Id("sa"),
+			g.Return(g.Id("o")),
+		)
+
+	f.Comment("WithTaskTimeout sets the WorkflowTaskTimeout value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithTaskTimeout").
+		Params(g.Id("d").Qual("time", "Duration")).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("taskTimeout").Op("=").Op("&").Id("d"),
+			g.Return(g.Id("o")),
+		)
+
+	f.Comment("WithTaskQueue sets the TaskQueue value")
+	f.Func().
+		Params(g.Id("o").Op("*").Id(typeName)).
+		Id("WithTaskQueue").
+		Params(g.Id("tq").String()).
+		Op("*").Id(typeName).
+		Block(
+			g.Id("o").Dot("taskQueue").Op("=").Op("&").Id("tq"),
+			g.Return(g.Id("o")),
+		)
+
+	if child {
+		f.Comment("WithWaitForCancellation sets the WaitForCancellation value")
+		f.Func().
+			Params(g.Id("o").Op("*").Id(typeName)).
+			Id("WithWaitForCancellation").
+			Params(g.Id("wait").Bool()).
+			Op("*").Id(typeName).
+			Block(
+				g.Id("o").Dot("waitForCancellation").Op("=").Op("&").Id("wait"),
+				g.Return(g.Id("o")),
+			)
+	}
 }
 
 // genClientWorkflowRunImpl generates a <Workflow>Run struct
@@ -1711,7 +1968,25 @@ func (svc *Manifest) genClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workfl
 					}),
 				)
 			} else {
-				svc.genClientUpdateWorkflowOptions(fn, update)
+				// initialize options
+				fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", update))
+				fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
+					g.Id("o").Op("=").Id("opts").Index(g.Lit(0)),
+				).Else().Block(
+					g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", update)).Call(),
+				)
+
+				// build UpdateWorkflowWithOptions
+				fn.List(g.Id("options"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+					if hasInput {
+						args.Id("req")
+					}
+				})
+				fn.If(g.Err().Op("!=").Nil()).Block(
+					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing UpdateWorkflowWithOptions: %w"), g.Err())),
+				)
 
 				// update workflow
 				fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(g.Id("ctx"), g.Id("options"))
