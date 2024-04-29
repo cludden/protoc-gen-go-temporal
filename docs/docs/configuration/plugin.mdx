@@ -216,6 +216,29 @@ protoc --go_temporal_opt=enable-xns=true
 </TabItem>
 </Tabs>
 
+### patches
+
+`string`
+
+Configures how particular [Patches](/docs/guides/patches) are introduced in generated code globally.
+
+<Tabs>
+<TabItem value="cli-enabled-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: patches=64_REMOVED;65_MARKER;66_ENABLED;67_DISABLED
+    strategy: all
+```
+</TabItem>
+<TabItem value="cli-enabled-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=patches=64_REMOVED;65_MARKER;66_ENABLED;67_DISABLED
+```
+</TabItem>
+</Tabs>
+
 ### workflow-update-enabled
 
 `bool`

@@ -94,6 +94,37 @@ enum ParentClosePolicy {
   PARENT_CLOSE_POLICY_REQUEST_CANCEL = 3;
 }
 
+// Patch describes how a nondeterministic fix/feature introduced to generated
+// code is implemented. By default, all patches are introduced in PVM_ENABLED
+// mode. Once rollout of updated code has been completed and old workflows have 
+// closed and retention window passed (or certain that replay is no longer a risk),
+// the prior code can be removed by switching to PVM_MARKER or removed entirely
+// with PVM_REMOVED. Patch code can also be disabled explicitly using PVM_DISABLED.
+message Patch {
+  Version version = 1;
+  Mode mode = 2;
+
+  // enumerates all defined patch versions
+  enum Version {
+    PV_UNSPECIFIED = 0;
+    // wraps expression evaluation in local activities within workflow contexts
+    // details: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/fix-versions#fix_version_64_expression_evaluation_local_activity
+    PV_64 = 1;
+  }
+
+  // enumerates all supported patch configurations
+  enum Mode {
+    // both patch and prior code present behind workflow versioning
+    PVM_ENABLED = 0;
+    // only patch code present, workflow version marker present 
+    PVM_MARKER = 1;
+    // only patch code present, workflow version marker removed
+    PVM_REMOVED = 2;
+    // only prior code present, no patch code or workflow version marker introduced
+    PVM_DISABLED = 3;
+  }
+}
+
 // QueryOptions identifies an rpc method as a Temporal query definition, and describes
 // available query configuration options
 message QueryOptions {
@@ -102,6 +133,9 @@ message QueryOptions {
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 2;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
 }
 
 // RetryPolicy describes configuration for activity or child workflow retries
@@ -116,8 +150,14 @@ message RetryPolicy {
 // ServiceOptions provides options that can be used to define common configuration
 // shared by all methods
 message ServiceOptions {
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
+
   // Default namespace for child workflows, activities
-  string namespace = 2;
+  string namespace = 2 [
+    deprecated = true
+  ];
+
   // Default task queue for all workflows, activities
   string task_queue = 1;
 }
@@ -130,6 +170,9 @@ message SignalOptions {
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 2;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
 }
 
 // UpdateOptions identifies an rpc method as a Temporal update definition, and describes
@@ -141,6 +184,9 @@ message UpdateOptions {
   // Fully-qualified update name
   string name = 4;
 
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 6;
+
   // Include validation hook
   bool validate = 2;
 
@@ -149,6 +195,15 @@ message UpdateOptions {
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 5;
+}
+
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
+// value from an UpdateWorkflow RPC
+enum WaitPolicy {
+  WAIT_POLICY_UNSPECIFIED = 0;
+  WAIT_POLICY_ADMITTED = 1;
+  WAIT_POLICY_ACCEPTED = 2;
+  WAIT_POLICY_COMPLETED = 3;
 }
 
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
@@ -182,10 +237,15 @@ message WorkflowOptions {
   IDReusePolicy id_reuse_policy = 6;
 
   // Specifies default namespace for child workflows
-  string namespace = 7;
+  string namespace = 7 [
+    deprecated = true
+  ];
 
   // Specifies a default parent close policy for child workflows
   ParentClosePolicy parent_close_policy = 8;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 18;
 
   // Specifies how to retry an Workflow if an error occurs
   RetryPolicy retry_policy = 9;
@@ -240,15 +300,6 @@ message WorkflowOptions {
     // XNS can be used to configure default activity options for xns workflow executions
     XNSActivityOptions xns = 2;
   }
-}
-
-// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
-// value from an UpdateWorkflow RPC
-enum WaitPolicy {
-  WAIT_POLICY_UNSPECIFIED = 0;
-  WAIT_POLICY_ADMITTED = 1;
-  WAIT_POLICY_ACCEPTED = 2;
-  WAIT_POLICY_COMPLETED = 3;
 }
 
 message XNSActivityOptions {

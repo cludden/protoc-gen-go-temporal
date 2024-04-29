@@ -30,8 +30,12 @@ service Simple {
   rpc SomeWorkflow2(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       name: 'mycompany.simple.SomeWorkflow2'
+      id: 'some-workflow-2/${! uuid_v4() }'
       signal: { ref: 'SomeSignal1', start: true }
       update: { ref: 'SomeUpdate1' }
+      patches: [
+        { version: PV_64, mode: PVM_REMOVED }
+      ]
     };
   }
 
@@ -44,10 +48,13 @@ service Simple {
       task_queue       : 'my-task-queue-2'
       id_reuse_policy  : WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       execution_timeout: { seconds: 3600 }
-      retry_policy {
+      retry_policy: {
         max_attempts: 2
       }
       signal: { ref: 'SomeSignal2', start: true }
+      patches: [
+        { version: PV_64, mode: PVM_DISABLED }
+      ]
     };
   }
 
@@ -203,6 +210,9 @@ message SomeUpdate1Response {
 service Other {
   option (temporal.v1.service) = {
     task_queue: 'other-task-queue'
+    patches: [
+      { version: PV_64, mode: PVM_MARKER }
+    ]
   };
 
   rpc OtherWorkflow(OtherWorkflowRequest) returns (OtherWorkflowResponse) {

@@ -56,6 +56,8 @@ type Manifest struct {
 	commands          map[protoreflect.FullName]*temporalv1.CommandOptions
 	files             map[protoreflect.FullName]*protogen.File
 	methods           map[protoreflect.FullName]*protogen.Method
+	patches           map[temporalv1.Patch_Version]temporalv1.Patch_Mode
+	patchesByRef      map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode
 	queriesOrdered    []protoreflect.FullName
 	queries           map[protoreflect.FullName]*temporalv1.QueryOptions
 	serviceOptions    map[protoreflect.FullName]*temporalv1.ServiceOptions
@@ -75,11 +77,30 @@ func parse(p *Plugin) (*Manifest, error) {
 		commands:       make(map[protoreflect.FullName]*temporalv1.CommandOptions),
 		files:          make(map[protoreflect.FullName]*protogen.File),
 		methods:        make(map[protoreflect.FullName]*protogen.Method),
+		patches:        make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
+		patchesByRef:   make(map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
 		queries:        make(map[protoreflect.FullName]*temporalv1.QueryOptions),
 		serviceOptions: make(map[protoreflect.FullName]*temporalv1.ServiceOptions),
 		signals:        make(map[protoreflect.FullName]*temporalv1.SignalOptions),
 		updates:        make(map[protoreflect.FullName]*temporalv1.UpdateOptions),
 		workflows:      make(map[protoreflect.FullName]*temporalv1.WorkflowOptions),
+	}
+
+	// index global patch settings
+	for _, p := range strings.Split(svc.cfg.Patches, ";") {
+		if p == "" {
+			continue
+		}
+		fields := strings.Split(p, "_")
+		if len(fields) > 2 {
+			return nil, fmt.Errorf("invalid patches option")
+		}
+		pv := temporalv1.Patch_Version(temporalv1.Patch_Version_value[fmt.Sprintf("PV_%s", fields[0])])
+		pvm := temporalv1.Patch_PVM_ENABLED
+		if len(fields) > 0 {
+			pvm = temporalv1.Patch_Mode(temporalv1.Patch_Mode_value[fmt.Sprintf("PVM_%s", fields[1])])
+		}
+		svc.patches[pv] = pvm
 	}
 
 	for _, file := range p.Files {
@@ -91,6 +112,15 @@ func parse(p *Plugin) (*Manifest, error) {
 			if opts, ok := proto.GetExtension(service.Desc.Options(), temporalv1.E_Service).(*temporalv1.ServiceOptions); ok && opts != nil {
 				svc.opts = opts
 				svc.serviceOptions[service.Desc.FullName()] = opts
+
+				// index service level patch settings
+				if len(opts.GetPatches()) > 0 {
+					patchIndex := make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode)
+					for _, p := range opts.GetPatches() {
+						patchIndex[p.GetVersion()] = p.GetMode()
+					}
+					svc.patchesByRef[service.Desc.FullName()] = patchIndex
+				}
 			}
 
 			for _, method := range service.Methods {
@@ -99,10 +129,12 @@ func parse(p *Plugin) (*Manifest, error) {
 				svc.files[name] = file
 
 				var mode int
+				var patches []*temporalv1.Patch
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
 					svc.workflows[name] = opts
 					svc.workflowsOrdered = append(svc.workflowsOrdered, name)
 					mode |= modeWorkflow
+					patches = opts.GetPatches()
 				}
 
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Activity).(*temporalv1.ActivityOptions); ok && opts != nil {
@@ -115,12 +147,14 @@ func parse(p *Plugin) (*Manifest, error) {
 					svc.queries[name] = opts
 					svc.queriesOrdered = append(svc.queriesOrdered, name)
 					mode |= modeQuery
+					patches = opts.GetPatches()
 				}
 
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Signal).(*temporalv1.SignalOptions); ok && opts != nil {
 					svc.signals[name] = opts
 					svc.signalsOrdered = append(svc.signalsOrdered, name)
 					mode |= modeSignal
+					patches = opts.GetPatches()
 				}
 
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
@@ -130,12 +164,14 @@ func parse(p *Plugin) (*Manifest, error) {
 					svc.updates[name] = opts
 					svc.updatesOrdered = append(svc.updatesOrdered, name)
 					mode |= modeUpdate
+					patches = opts.GetPatches()
 				}
 
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Command).(*temporalv1.CommandOptions); ok && opts != nil {
 					svc.commands[name] = opts
 				}
 
+				// validate method option combinations
 				switch mode {
 				case 0:
 				case modeActivity:
@@ -145,6 +181,15 @@ func parse(p *Plugin) (*Manifest, error) {
 				case modeWorkflow, modeWorkflow | modeActivity:
 				default:
 					p.Error(fmt.Errorf("invalid method options for method %q", method.Desc.FullName()))
+				}
+
+				// index method level patch settings
+				if len(patches) > 0 {
+					patchIndex := make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode)
+					for _, p := range patches {
+						patchIndex[p.GetVersion()] = p.GetMode()
+					}
+					svc.patchesByRef[method.Desc.FullName()] = patchIndex
 				}
 			}
 		}
@@ -465,6 +510,18 @@ func (svc *Manifest) getMessageName(msg *protogen.Message) string {
 		}
 	}
 	return name
+}
+
+func (svc *Manifest) patchMode(pv temporalv1.Patch_Version, ref protoreflect.FullName) temporalv1.Patch_Mode {
+	patchIndex, ok := svc.patchesByRef[ref]
+	if ok {
+		return patchIndex[pv]
+	}
+	patchIndex, ok = svc.patchesByRef[ref.Parent()]
+	if ok {
+		return patchIndex[pv]
+	}
+	return svc.patches[pv]
 }
 
 func (svc *Manifest) render() error {

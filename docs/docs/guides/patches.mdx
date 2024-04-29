@@ -1,0 +1,57 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Patches
+
+Occasionally, bugs are identified that require non-deterministic changes to generated code. In order to prevent breaking existing workflow histories, these changes are introduced to the generated code behind [Workflow Versioning](https://docs.temporal.io/workflows#patching).
+
+```go title="example_temporal.pb.go"
+func BuggyChild(ctx workflow.Context) error {
+    if workflow.GetVersion(ctx, "cludden_protoc-gen-go-temporal_ID_short-desc", workflow.DefaultVersion, 1) == 1 {
+        // non-deterministic bug fix
+    } else {
+        // previous buggy logic
+    }
+}
+```
+
+Once the updated generated code containing the fix has been rolled out to workers and previous workflow histories started before the version change was introduced have closed and are no longer at risk of replay, the old code can be removed and the version check can be converted into a benign marker. This is done by updating the configuration for a particular patch in the plugin's or service's patches setting.
+
+<Tabs>
+<TabItem value="completed-fix-version-go" label="Go">
+```go title="example_temporal.pb.go"
+func BuggyChild(ctx workflow.Context) error {
+    workflow.GetVersion(ctx, "cludden_protoc-gen-go-temporal_ID_short-desc", workflow.DefaultVersion, 1)
+    // non-deterministic bug fix
+}
+```
+</TabItem>
+<TabItem value="completed-fix-version-schema" label="Schema">
+```protobuf title="example.proto"
+service Example {
+  option (temporal.v1.service) = {
+    patches: [
+      { version: PV_64, mode: PVM_MARKER },
+      { version: PV_62, mode: PVM_REMOVED },
+    ]
+  };
+
+  rpc Buggy(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Patch Mode
+
+By default, patches are introduced in `PVM_ENABLED` mode, where both the patch code and prior code are present, gated by a workflow version check. Once a patch rollout has been completed, the prior code can be removed using `PVM_MARKER` (which leaves the version check as a marker only, recommended) or `PVM_REMOVED`, which also removes the version marker. The patch code introduction can also be disabled entirely using `PVM_DISABLED`. See [Workflow Versioning](https://docs.temporal.io/dev-guide/go/versioning) for more info.
+
+## Reference
+
+### PV_64 Expression Evaluation Local Activity
+
+[protoc-gen-go-temporal#64](https://github.com/cludden/protoc-gen-go-temporal/issues/64)
+
+Wraps expression evaluation in local activities within workflow contexts (i.e. child workflow helpers). This prevents non-determinism errors when an expression contains non-deterministic statements and is evaluated in a long-running workflow that is rescheduled onto a different worker.
