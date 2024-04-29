@@ -38,49 +38,81 @@ export let cli_fragments = [
   },
 ];
 
-export let xns_example = `package xns
+export let xns_example = `package main
 
 import (
-    "fmt"
+	"fmt"
+	"log"
 
-    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-    "github.com/cludden/protoc-gen-go-temporal/gen/example/v1/examplev1xns"
-    "go.temporal.io/sdk/workflow"
+	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+	"github.com/cludden/protoc-gen-go-temporal/gen/example/v1/examplev1xns"
+	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
+func main() {
+	// initialize temporal client for current namespace
+	c, _ := client.Dial(client.Options{
+		Namespace: "default",
+	})
+	defer c.Close()
+
+	// initialize temporal worker in current namespace
+	w := worker.New(c, "my-task-queue", worker.Options{})
+	w.RegisterWorkflow(SomeWorkflow)
+
+	// initialize temporal client for proto service namespace
+	xnsc, _ := client.NewClientFromExisting(c, client.Options{
+		Namespace: "example",
+	})
+
+	// register generated cross-namespace activities using the appropriate
+	// temporal client
+	examplev1xns.RegisterExampleActivities(w, examplev1.NewExampleClient(xnsc))
+	
+	// start worker
+	_ = w.Run(w.InterruptCh())
+}
+
 func SomeWorkflow(ctx workflow.Context) error {
-    log := workflow.GetLogger(ctx)
+	log := workflow.GetLogger(ctx)
 
-    run, err := examplev1xns.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: w.Req.GetName()})
-    if err != nil {
-        return fmt.Errorf("error initializing CreateFoo workflow: %w", err)
-    }
+	// start workflow in target namespace
+	run, err := examplev1xns.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: w.Req.GetName()})
+	if err != nil {
+		return fmt.Errorf("error initializing CreateFoo workflow: %w", err)
+	}
 
-    if err := run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 5.7}); err != nil {
-        return fmt.Errorf("error signaling SetFooProgress: %w", err)
-    }
-    log.Info("SetFooProgress", "progress", 5.7)
+	// send signal
+	if err := run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 5.7}); err != nil {
+		return fmt.Errorf("error signaling SetFooProgress: %w", err)
+	}
+	log.Info("SetFooProgress", "progress", 5.7)
 
-    progress, err := run.GetFooProgress(ctx)
-    if err != nil {
-        return fmt.Errorf("error querying GetFooProgress: %w", err)
-    }
-    log.Info("GetFooProgress", "status", progress.GetStatus().String(), "progress", progress.GetProgress())
+	// execute query
+	progress, err := run.GetFooProgress(ctx)
+	if err != nil {
+		return fmt.Errorf("error querying GetFooProgress: %w", err)
+	}
+	log.Info("GetFooProgress", "status", progress.GetStatus().String(), "progress", progress.GetProgress())
 
-    update, err := run.UpdateFooProgressAsync(ctx, &examplev1.SetFooProgressRequest{Progress: 100})
-    if err != nil {
-        return fmt.Errorf("error initializing UpdateFooProgress: %w", err)
-    }
-    progress, err = update.Get(ctx)
-    if err != nil {
-        return fmt.Errorf("error updating UpdateFooProgress: %w", err)
-    }
-    log.Info("UpdateFooProgress", "status", progress.GetStatus().String(), "progress", progress.GetProgress())
+	// execute update
+	update, err := run.UpdateFooProgressAsync(ctx, &examplev1.SetFooProgressRequest{Progress: 100})
+	if err != nil {
+		return fmt.Errorf("error initializing UpdateFooProgress: %w", err)
+	}
+	progress, err = update.Get(ctx)
+	if err != nil {
+		return fmt.Errorf("error updating UpdateFooProgress: %w", err)
+	}
+	log.Info("UpdateFooProgress", "status", progress.GetStatus().String(), "progress", progress.GetProgress())
 
-    resp, err := run.Get(ctx)
-    if err != nil {
-        return err
-    }
-    return nil
+	// await workflow completion
+	resp, err := run.Get(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 `
