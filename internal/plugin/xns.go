@@ -2911,8 +2911,12 @@ func initializeXNSOptions(fn *g.Group, opts *temporalv1.XNSActivityOptions, defa
 		} else {
 			bl.Id("ao").Dot("HeartbeatTimeout").Op("=").Id("opt").Dot("HeartbeatInterval").Op("*").Lit(2)
 		}
-
 	})
+
+	fn.Comment("WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled")
+	fn.Id("ao").Dot("WaitForCancellation").Op("=").Lit(true)
+	fn.Line()
+
 	// set retry policy if defined
 	if v := opts.GetRetryPolicy(); v != nil {
 		fn.If(g.Id("ao").Dot("RetryPolicy").Op("==").Nil()).Block(

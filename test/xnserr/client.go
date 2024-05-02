@@ -28,8 +28,7 @@ func (w *CallSleepWorkflow) Execute(ctx workflow.Context) error {
 			xns.UnmarshalStartWorkflowOptions(w.Req.GetStartWorkflowOptions()),
 		).
 		WithActivityOptions(workflow.ActivityOptions{
-			RetryPolicy:         xns.UnmarshalRetryPolicy(w.Req.GetRetryPolicy()),
-			WaitForCancellation: true,
+			RetryPolicy: xns.UnmarshalRetryPolicy(w.Req.GetRetryPolicy()),
 		}),
 	)
 }
