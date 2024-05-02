@@ -174,10 +174,8 @@ func (s *XnsErrSuite) TestWorkflowExecutionError_ClientCanceled() {
 	err = run.Get(s.ctx)
 	s.require.Error(err)
 
-	terr := xns.Unwrap(err)
-	s.require.NotNil(terr)
-	s.require.Equal("CanceledError", xns.Code(terr))
-	s.require.True(xns.IsNonRetryable(err))
+	var cancelledErr *temporal.CanceledError
+	s.require.ErrorAs(err, &cancelledErr)
 
 	execs, err := s.sc.WorkflowService().ListClosedWorkflowExecutions(s.ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
 		Namespace: "xnserr-server",

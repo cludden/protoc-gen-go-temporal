@@ -65,12 +65,12 @@ func ErrorToApplicationError(err error) error {
 
 	var canceledErr *temporal.CanceledError
 	if errors.As(err, &canceledErr) {
-		return temporal.NewNonRetryableApplicationError(canceledErr.Error(), "CanceledError", errors.New(canceledErr.Error()))
+		return canceledErr
 	}
 
 	var terminatedErr *temporal.TerminatedError
 	if errors.As(err, &terminatedErr) {
-		return temporal.NewNonRetryableApplicationError(terminatedErr.Error(), "TerminatedError", terminatedErr)
+		return terminatedErr
 	}
 
 	var timeoutErr *temporal.TimeoutError
