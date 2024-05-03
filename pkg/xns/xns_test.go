@@ -27,12 +27,16 @@ func TestErrorToApplicationError(t *testing.T) {
 	require.True(IsNonRetryable(err))
 
 	err = &temporal.CanceledError{}
-	require.Equal(err, ErrorToApplicationError(err))
-	require.True(temporal.IsCanceledError(ErrorToApplicationError(err)))
+	require.NotNil(Unwrap(ErrorToApplicationError(err)))
+	err = ErrorToApplicationError(err)
+	require.Equal("CanceledError", Code(err))
+	require.True(IsNonRetryable(err))
 
 	err = &temporal.TerminatedError{}
-	require.Equal(err, ErrorToApplicationError(err))
-	require.True(temporal.IsTerminatedError(ErrorToApplicationError(err)))
+	require.NotNil(Unwrap(ErrorToApplicationError(err)))
+	err = ErrorToApplicationError(err)
+	require.Equal("TerminatedError", Code(err))
+	require.True(IsNonRetryable(err))
 
 	err = &temporal.ChildWorkflowExecutionError{}
 	require.NotNil(Unwrap(ErrorToApplicationError(err)))

@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#65](https://github.com/cludden/protoc-gen-go-temporal/pull/65) wrap expression evaluation in local activities inside workflow contexts ([Patch Version 64](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity))
 - [#66](https://github.com/cludden/protoc-gen-go-temporal/pull/66) fix cancellation propagation in xns activities
+
+## [1.13.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.13.0) - 2024-05-03
+
+### Added
+
+- [#62](https://github.com/cludden/protoc-gen-go-temporal/pull/62) add individual option override methods
+ 
+### Fixed
+
+- [#65](https://github.com/cludden/protoc-gen-go-temporal/pull/65) wrap expression evaluation in local activities inside workflow contexts ([Patch Version 64](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity))
+- [#66](https://github.com/cludden/protoc-gen-go-temporal/pull/66) fix cancellation propagation in xns activities
  
 ## [1.12.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.12.0) - 2024-04-19
  
