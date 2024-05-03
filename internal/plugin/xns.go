@@ -600,7 +600,9 @@ func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow protoref
 							if hasOutput {
 								returnVals.Nil()
 							}
-							returnVals.Qual(temporalPkg, "NewCanceledError").Call(g.Id("ctx").Dot("Err").Call().Dot("Error").Call())
+							returnVals.Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("convertError").Call(
+								g.Qual(temporalPkg, "NewCanceledError").Call(g.Id("ctx").Dot("Err").Call().Dot("Error").Call()),
+							)
 						}),
 					),
 					g.Case(g.Op("<-").Id("doneCh")).Block(
@@ -759,8 +761,10 @@ func (svc *Manifest) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow
 						g.Qual(activityPkg, "RecordHeartbeat").Call(g.Id("ctx"), g.Id("run").Dot("ID").Call()),
 					),
 					g.Case(g.Op("<-").Id("ctx").Dot("Done").Call()).Block(
+						g.List(g.Id("disconnectedCtx"), g.Id("cancel")).Op(":=").Qual("context", "WithTimeout").Call(g.Qual("context", "Background").Call(), g.Qual("time", "Second").Op("*").Lit(5)),
+						g.Defer().Id("cancel").Call(),
 						g.If(
-							g.Err().Op(":=").Id("run").Dot("Cancel").Call(g.Id("ctx")),
+							g.Err().Op(":=").Id("run").Dot("Cancel").Call(g.Id("disconnectedCtx")),
 							g.Err().Op("!=").Nil(),
 						).Block(
 							g.ReturnFunc(func(returnVals *g.Group) {
@@ -774,7 +778,9 @@ func (svc *Manifest) genXNSActivitiesWorkflowWithStartMethod(f *g.File, workflow
 							if hasOutput {
 								returnVals.Nil()
 							}
-							returnVals.Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("convertError").Call(g.Qual(workflowPkg, "ErrCanceled"))
+							returnVals.Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("convertError").Call(
+								g.Qual(temporalPkg, "NewCanceledError").Call(g.Id("ctx").Dot("Err").Call().Dot("Error").Call()),
+							)
 						}),
 					),
 					g.Case(g.Op("<-").Id("doneCh")).Block(
