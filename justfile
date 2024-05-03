@@ -48,12 +48,12 @@ install:
     goreleaser build --clean --single-target --snapshot
     if [ "{{ os() }}" = "macos" ]; then
         if [ "{{ arch() }}" = "aarch64" ]; then
-            cp ./dist/protoc-gen-go_temporal_darwin_arm64/protoc-gen-go_temporal /usr/local/bin
+            sudo cp ./dist/protoc-gen-go_temporal_darwin_arm64/protoc-gen-go_temporal /usr/local/bin
         else
-            cp ./dist/protoc-gen-go_temporal_darwin_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
+            sudo cp ./dist/protoc-gen-go_temporal_darwin_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
         fi
     else
-        cp ./dist/protoc-gen-go_temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
+        sudo cp ./dist/protoc-gen-go_temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
     fi
 
 # launch local temporal server
