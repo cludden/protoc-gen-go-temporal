@@ -5,41 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
  
-## Unreleased
+# Unreleased
  
 ### Added
-
-- [#62](https://github.com/cludden/protoc-gen-go-temporal/pull/62) add individual option override methods
  
 ### Changed
  
 ### Fixed
 
-- [#65](https://github.com/cludden/protoc-gen-go-temporal/pull/65) wrap expression evaluation in local activities inside workflow contexts ([Patch Version 64](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity))
-- [#66](https://github.com/cludden/protoc-gen-go-temporal/pull/66) fix cancellation propagation in xns activities
+- [#68](https://github.com/cludden/protoc-gen-go-temporal/pull/68) prevent xns cancellation propagation on worker close
 
-## [1.13.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.13.0) - 2024-05-03
 
-### Added
+
+# [1.13.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.13.0) - 2024-05-03
+
+## Added
 
 - [#62](https://github.com/cludden/protoc-gen-go-temporal/pull/62) add individual option override methods
  
-### Fixed
+## Fixed
 
 - [#65](https://github.com/cludden/protoc-gen-go-temporal/pull/65) wrap expression evaluation in local activities inside workflow contexts ([Patch Version 64](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity))
 - [#66](https://github.com/cludden/protoc-gen-go-temporal/pull/66) fix cancellation propagation in xns activities
  
-## [1.12.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.12.0) - 2024-04-19
+
+
+# [1.12.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.12.0) - 2024-04-19
  
-### Added
+## Added
 
 - [0182d7b](https://github.com/cludden/protoc-gen-go-temporal/commit/0182d7bec153fb71636592bbf3a266937fe8bc97) add generated WorkflowFunction helpers
 - [#57](https://github.com/cludden/protoc-gen-go-temporal/pull/57) add missing WaitForCancellation for activity options
  
-### Changed
+## Changed
   
 - [#60](https://github.com/cludden/protoc-gen-go-temporal/pull/60) add additional details to expression evaluation errors
  
-### Fixed
+## Fixed
  
 - [84342c6](https://github.com/cludden/protoc-gen-go-temporal/commit/84342c6e9d6907bf080666572b100561964a4715) support brackets in bloblang expressions

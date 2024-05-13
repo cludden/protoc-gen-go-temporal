@@ -4280,6 +4280,7 @@ go_name: Sleep</pre></td>
 <table>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE</code></pre></td></tr>
+<tr><td>parent_close_policy</td><td><pre><code>PARENT_CLOSE_POLICY_REQUEST_CANCEL</code></pre></td></tr>
 <tr><td>xns.heartbeat_interval</td><td>10 seconds</td></tr>
 <tr><td>xns.heartbeat_timeout</td><td>30 seconds</td></tr>
 </table>     

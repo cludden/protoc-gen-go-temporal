@@ -327,4 +327,7 @@ message XNSActivityOptions {
 
   // Specifies how to retry an Activity if an error occurs
   RetryPolicy retry_policy = 6;
+
+  // Specifies how activity cancellation is propagated for xns activities that support it
+  ParentClosePolicy parent_close_policy = 9;
 }

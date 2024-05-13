@@ -6,6 +6,7 @@ import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
+import "temporal/v1/temporal.proto";
 
 option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1";
 
@@ -14,13 +15,13 @@ enum IDReusePolicy {
   // Allow starting a workflow execution using the same workflow id.
   WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE = 1;
   // Allow starting a workflow execution using the same workflow id, only when the last
-    // execution's final state is one of [terminated, cancelled, timed out, failed].
+  // execution's final state is one of [terminated, cancelled, timed out, failed].
   WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY = 2;
   // Do not permit re-use of the workflow id for this workflow. Future start workflow requests
-    // could potentially change the policy, allowing re-use of the workflow id.
+  // could potentially change the policy, allowing re-use of the workflow id.
   WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE = 3;
   // If a workflow is running using the same workflow ID, terminate it and start a new one.
-    // If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
+  // If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
   WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
 }
 
@@ -106,4 +107,5 @@ message WorkflowRequest {
   google.protobuf.Any request = 3;
   bool detached = 4;
   google.protobuf.Any signal = 5;
+  temporal.v1.ParentClosePolicy parent_close_policy = 6;
 }
