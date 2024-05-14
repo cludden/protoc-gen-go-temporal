@@ -13,6 +13,7 @@ service Server {
   rpc Sleep(SleepRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
       xns: {
         heartbeat_interval: { seconds: 10 }
         heartbeat_timeout: { seconds: 30 }

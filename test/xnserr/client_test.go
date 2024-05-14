@@ -51,18 +51,18 @@ func TestXnsErrSuite(t *testing.T) {
 	suite.Run(t, new(XnsErrSuite))
 }
 
-func (s *XnsErrSuite) RegisterNamespaceIfNotExists() {
+func registerNamespaceIfNotExists(ctx context.Context, t *testing.T, c client.Client) {
 	retention := time.Hour * 24
 
 	// fetch all namespaces
 	var namespaces []*workflowservice.DescribeNamespaceResponse
-	res, err := s.c.WorkflowService().ListNamespaces(s.ctx, &workflowservice.ListNamespacesRequest{})
-	s.require.NoError(err)
+	res, err := c.WorkflowService().ListNamespaces(ctx, &workflowservice.ListNamespacesRequest{})
+	require.NoError(t, err)
 	namespaces = append(namespaces, res.Namespaces...)
 
 	for len(res.NextPageToken) > 0 {
-		res, err := s.c.WorkflowService().ListNamespaces(s.ctx, &workflowservice.ListNamespacesRequest{NextPageToken: res.NextPageToken})
-		s.require.NoError(err)
+		res, err := c.WorkflowService().ListNamespaces(ctx, &workflowservice.ListNamespacesRequest{NextPageToken: res.NextPageToken})
+		require.NoError(t, err)
 		namespaces = append(namespaces, res.Namespaces...)
 	}
 
@@ -74,8 +74,8 @@ func (s *XnsErrSuite) RegisterNamespaceIfNotExists() {
 	}
 
 	// since we don't have this ns let's create it
-	_, err = s.c.WorkflowService().RegisterNamespace(s.ctx, &workflowservice.RegisterNamespaceRequest{Namespace: "xnserr-server", WorkflowExecutionRetentionPeriod: &retention})
-	s.require.NoError(err)
+	_, err = c.WorkflowService().RegisterNamespace(ctx, &workflowservice.RegisterNamespaceRequest{Namespace: "xnserr-server", WorkflowExecutionRetentionPeriod: &retention})
+	require.NoError(t, err)
 }
 
 func (s *XnsErrSuite) SetupSuite() {
@@ -96,7 +96,7 @@ func (s *XnsErrSuite) SetupSuite() {
 
 	s.c = s.srv.Client()
 
-	s.RegisterNamespaceIfNotExists()
+	registerNamespaceIfNotExists(s.ctx, s.T(), s.c)
 
 	s.g = &run.Group{}
 	s.g.Add(
@@ -378,6 +378,128 @@ func (s *XnsErrSuite) TestWorkflowExecutionError_Application_Retryable() {
 	})
 	s.require.NoError(err)
 	s.require.Len(execs.GetExecutions(), 3)
+}
+
+func TestClientStopped(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	require, ctx := require.New(t), context.Background()
+
+	// start dev server
+	srv, err := testsuite.StartDevServer(ctx, testsuite.DevServerOptions{
+		ClientOptions: &client.Options{
+			HostPort: "0.0.0.0:7233",
+			Logger:   log.NewStructuredLogger(slog.New(slog.NewTextHandler(io.Discard, nil))),
+		},
+		EnableUI: true,
+		LogLevel: "error",
+	})
+	require.NoError(err)
+	t.Cleanup(func() {
+		srv.Stop()
+	})
+
+	// create server namespace
+	c := srv.Client()
+	t.Cleanup(func() {
+		c.Close()
+	})
+	registerNamespaceIfNotExists(ctx, t, c)
+
+	// create server namespace client
+	sc, err := client.NewClientFromExisting(c, client.Options{Namespace: "xnserr-server"})
+	require.NoError(err)
+
+	// initialize server worker
+	serverWorker := worker.New(sc, xnserrv1.ServerTaskQueue, worker.Options{})
+	xnserrv1.RegisterServerWorkflows(serverWorker, &ServerWorkflows{})
+	require.NoError(serverWorker.Start())
+	t.Cleanup(func() {
+		serverWorker.Stop()
+	})
+
+	// initialize client worker
+	clientWorker := worker.New(c, xnserrv1.ClientTaskQueue, worker.Options{})
+	xnserrv1.RegisterClientWorkflows(clientWorker, &ClientWorkflows{})
+	xnserrv1xns.RegisterServerActivities(clientWorker, xnserrv1.NewServerClient(sc))
+	clientClient := xnserrv1.NewClientClient(c)
+	require.NoError(clientWorker.Start())
+
+	// start xns workflow with long enough sleep
+	run, err := clientClient.CallSleepAsync(ctx, &xnserrv1.CallSleepRequest{
+		Sleep: durationpb.New(time.Second * 10),
+		StartWorkflowOptions: &xnsv1.StartWorkflowOptions{
+			Id: "TestClientStopped_Server",
+			RetryPolicy: &xnsv1.RetryPolicy{
+				MaxInterval: durationpb.New(time.Second),
+				MaxAttempts: 3,
+			},
+		},
+	}, xnserrv1.NewCallSleepOptions().WithStartWorkflowOptions(client.StartWorkflowOptions{
+		ID: "TestClientStopped_Client",
+	}))
+	require.NoError(err)
+
+	// sleep briefly and then stop client worker
+	<-time.After(time.Second * 3)
+	clientWorker.Stop()
+
+	// sleep briefly and then restart server worker
+	<-time.After(time.Second * 3)
+	clientWorker = worker.New(c, xnserrv1.ClientTaskQueue, worker.Options{})
+	xnserrv1.RegisterClientWorkflows(clientWorker, &ClientWorkflows{})
+	xnserrv1xns.RegisterServerActivities(clientWorker, xnserrv1.NewServerClient(sc))
+	require.NoError(clientWorker.Start())
+	t.Cleanup(func() {
+		clientWorker.Stop()
+	})
+
+	// await workflow completion
+	require.NoError(run.Get(ctx))
+
+	// verify server workflow status
+	execs, err := sc.WorkflowService().ListClosedWorkflowExecutions(ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
+		Namespace: "xnserr-server",
+		Filters: &workflowservice.ListClosedWorkflowExecutionsRequest_ExecutionFilter{
+			ExecutionFilter: &filter.WorkflowExecutionFilter{
+				WorkflowId: "TestClientStopped_Server",
+			},
+		},
+	})
+	require.NoError(err)
+	require.Len(execs.GetExecutions(), 1)
+	require.Equal(enums.WORKFLOW_EXECUTION_STATUS_COMPLETED, execs.GetExecutions()[0].GetStatus())
+
+	// verify client workflow status
+	execs, err = c.WorkflowService().ListClosedWorkflowExecutions(ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
+		Namespace: "default",
+		Filters: &workflowservice.ListClosedWorkflowExecutionsRequest_ExecutionFilter{
+			ExecutionFilter: &filter.WorkflowExecutionFilter{
+				WorkflowId: "TestClientStopped_Client",
+			},
+		},
+	})
+	require.NoError(err)
+	require.Len(execs.GetExecutions(), 1)
+	require.Equal(enums.WORKFLOW_EXECUTION_STATUS_COMPLETED, execs.GetExecutions()[0].GetStatus())
+
+	// verify "WorkerStopped" error as last failure for xns activity
+	var found bool
+	cursor := c.GetWorkflowHistory(ctx, "TestClientStopped_Client", execs.GetExecutions()[0].GetExecution().GetRunId(), false, enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
+	for cursor.HasNext() {
+		e, err := cursor.Next()
+		require.NoError(err)
+		if e.GetEventType() == enums.EVENT_TYPE_ACTIVITY_TASK_STARTED {
+			found = true
+			attrs := e.GetActivityTaskStartedEventAttributes()
+			require.Equal(int32(2), attrs.GetAttempt())
+			require.Equal("worker is stopping", attrs.GetLastFailure().GetMessage())
+			require.Equal("WorkerStopped", attrs.GetLastFailure().GetApplicationFailureInfo().GetType())
+			break
+		}
+	}
+	require.True(found, "expected to find %s event in workflow history", enums.EVENT_TYPE_ACTIVITY_TASK_STARTED.String())
 }
 
 func TestUnhandledError(t *testing.T) {
