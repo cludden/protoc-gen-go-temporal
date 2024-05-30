@@ -3,8 +3,10 @@
 package v1
 
 import (
-	mock "github.com/stretchr/testify/mock"
+	commonv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	internal "go.temporal.io/sdk/workflow"
+
+	mock "github.com/stretchr/testify/mock"
 
 	v1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 )
@@ -170,6 +172,65 @@ func (_c *MockSimpleWorkflowFunctions_SomeWorkflow3_Call) Return(_a0 error) *Moc
 }
 
 func (_c *MockSimpleWorkflowFunctions_SomeWorkflow3_Call) RunAndReturn(run func(internal.Context, *v1.SomeWorkflow3Request) error) *MockSimpleWorkflowFunctions_SomeWorkflow3_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SomeWorkflow4 provides a mock function with given fields: _a0, _a1
+func (_m *MockSimpleWorkflowFunctions) SomeWorkflow4(_a0 internal.Context, _a1 *commonv1.PaginatedRequest) (*commonv1.PaginatedResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SomeWorkflow4")
+	}
+
+	var r0 *commonv1.PaginatedResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(internal.Context, *commonv1.PaginatedRequest) (*commonv1.PaginatedResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(internal.Context, *commonv1.PaginatedRequest) *commonv1.PaginatedResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*commonv1.PaginatedResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(internal.Context, *commonv1.PaginatedRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSimpleWorkflowFunctions_SomeWorkflow4_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SomeWorkflow4'
+type MockSimpleWorkflowFunctions_SomeWorkflow4_Call struct {
+	*mock.Call
+}
+
+// SomeWorkflow4 is a helper method to define mock.On call
+//   - _a0 internal.Context
+//   - _a1 *commonv1.PaginatedRequest
+func (_e *MockSimpleWorkflowFunctions_Expecter) SomeWorkflow4(_a0 interface{}, _a1 interface{}) *MockSimpleWorkflowFunctions_SomeWorkflow4_Call {
+	return &MockSimpleWorkflowFunctions_SomeWorkflow4_Call{Call: _e.mock.On("SomeWorkflow4", _a0, _a1)}
+}
+
+func (_c *MockSimpleWorkflowFunctions_SomeWorkflow4_Call) Run(run func(_a0 internal.Context, _a1 *commonv1.PaginatedRequest)) *MockSimpleWorkflowFunctions_SomeWorkflow4_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(internal.Context), args[1].(*commonv1.PaginatedRequest))
+	})
+	return _c
+}
+
+func (_c *MockSimpleWorkflowFunctions_SomeWorkflow4_Call) Return(_a0 *commonv1.PaginatedResponse, _a1 error) *MockSimpleWorkflowFunctions_SomeWorkflow4_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSimpleWorkflowFunctions_SomeWorkflow4_Call) RunAndReturn(run func(internal.Context, *commonv1.PaginatedRequest) (*commonv1.PaginatedResponse, error)) *MockSimpleWorkflowFunctions_SomeWorkflow4_Call {
 	_c.Call.Return(run)
 	return _c
 }

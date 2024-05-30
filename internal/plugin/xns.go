@@ -148,7 +148,7 @@ func (svc *Manifest) genXNSActivitiesQueryMethod(f *g.File, query protoreflect.F
 		).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Id("resp").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Id("resp").Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Err().Error()
 		}).
@@ -158,7 +158,7 @@ func (svc *Manifest) genXNSActivitiesQueryMethod(f *g.File, query protoreflect.F
 			}
 			if hasInput {
 				fn.Comment("unmarshal query request")
-				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				fn.Var().Id("req").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 				fn.If(g.Err().Op(":=").Id("input").Dot("Request").Dot("UnmarshalTo").Call(g.Op("&").Id("req")), g.Err().Op("!=").Nil()).Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
 						if hasOutput {
@@ -168,7 +168,7 @@ func (svc *Manifest) genXNSActivitiesQueryMethod(f *g.File, query protoreflect.F
 							g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 								multiLineArgs,
 								g.Qual("fmt", "Sprintf").Call(
-									g.Lit(fmt.Sprintf("error unmarshalling query request of type %%s as %s.%s", string(svc.File.GoImportPath), svc.getMessageName(method.Input))),
+									g.Lit(fmt.Sprintf("error unmarshalling query request of type %%s as %s.%s", string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))),
 									g.Id("input").Dot("Request").Dot("GetTypeUrl").Call(),
 								),
 								g.Lit("InvalidArgument"),
@@ -256,13 +256,13 @@ func (svc *Manifest) genXNSActivitiesSignalMethod(f *g.File, signal protoreflect
 			}
 			if hasInput {
 				fn.Comment("unmarshal signal request")
-				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				fn.Var().Id("req").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 				fn.If(g.Err().Op(":=").Id("input").Dot("Request").Dot("UnmarshalTo").Call(g.Op("&").Id("req")), g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("convertError").Call(
 						g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 							multiLineArgs,
 							g.Qual("fmt", "Sprintf").Call(
-								g.Lit(fmt.Sprintf("error unmarshalling signal request of type %%s as %s.%s", string(svc.File.GoImportPath), svc.getMessageName(method.Input))),
+								g.Lit(fmt.Sprintf("error unmarshalling signal request of type %%s as %s.%s", string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))),
 								g.Id("input").Dot("Request").Dot("GetTypeUrl").Call(),
 							),
 							g.Lit("InvalidArgument"),
@@ -328,7 +328,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 		).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Id("resp").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Id("resp").Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Err().Error()
 		}).
@@ -373,7 +373,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 			).Else().BlockFunc(func(bl *g.Group) {
 				if hasInput {
 					bl.Comment("unmarshal update request")
-					bl.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+					bl.Var().Id("req").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 					bl.If(g.Err().Op(":=").Id("input").Dot("Request").Dot("UnmarshalTo").Call(g.Op("&").Id("req")), g.Err().Op("!=").Nil()).Block(
 						g.ReturnFunc(func(returnVals *g.Group) {
 							if hasOutput {
@@ -383,7 +383,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 								g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 									multiLineArgs,
 									g.Qual("fmt", "Sprintf").Call(
-										g.Lit(fmt.Sprintf("error unmarshalling update request of type %%s as %s.%s", string(svc.File.GoImportPath), svc.getMessageName(method.Input))),
+										g.Lit(fmt.Sprintf("error unmarshalling update request of type %%s as %s.%s", string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))),
 										g.Id("input").Dot("Request").Dot("GetTypeUrl").Call(),
 									),
 									g.Lit("InvalidArgument"),
@@ -507,7 +507,7 @@ func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow, signal 
 		).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Id("resp").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Id("resp").Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Err().Error()
 		}).
@@ -524,7 +524,7 @@ func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow, signal 
 
 			if hasInput {
 				fn.Comment("unmarshal workflow request")
-				fn.Var().Id("req").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				fn.Var().Id("req").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 				fn.If(g.Err().Op(":=").Id("input").Dot("Request").Dot("UnmarshalTo").Call(g.Op("&").Id("req")), g.Err().Op("!=").Nil()).Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
 						if hasOutput {
@@ -534,7 +534,7 @@ func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow, signal 
 							g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 								multiLineArgs,
 								g.Qual("fmt", "Sprintf").Call(
-									g.Lit(fmt.Sprintf("error unmarshalling workflow request of type %%s as %s.%s", string(svc.File.GoImportPath), svc.getMessageName(method.Input))),
+									g.Lit(fmt.Sprintf("error unmarshalling workflow request of type %%s as %s.%s", string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))),
 									g.Id("input").Dot("Request").Dot("GetTypeUrl").Call(),
 								),
 								g.Lit("InvalidArgument"),
@@ -547,7 +547,7 @@ func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow, signal 
 
 			if handlerInput {
 				fn.Comment("unmarshal signal request")
-				fn.Var().Id("signal").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+				fn.Var().Id("signal").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 				fn.If(g.Err().Op(":=").Id("input").Dot("Signal").Dot("UnmarshalTo").Call(g.Op("&").Id("signal")), g.Err().Op("!=").Nil()).Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
 						if hasOutput {
@@ -557,7 +557,7 @@ func (svc *Manifest) genXNSActivitiesWorkflowMethod(f *g.File, workflow, signal 
 							g.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
 								multiLineArgs,
 								g.Qual("fmt", "Sprintf").Call(
-									g.Lit(fmt.Sprintf("error unmarshalling signal request of type %%s as %s.%s", string(svc.File.GoImportPath), svc.getMessageName(handler.Input))),
+									g.Lit(fmt.Sprintf("error unmarshalling signal request of type %%s as %s.%s", string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))),
 									g.Id("input").Dot("Signal").Dot("GetTypeUrl").Call(),
 								),
 								g.Lit("InvalidArgument"),
@@ -982,13 +982,13 @@ func (svc *Manifest) genXNSQueryFunction(f *g.File, query protoreflect.FullName)
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sQueryOptions", query))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -1028,7 +1028,7 @@ func (svc *Manifest) genXNSQueryFunctionAsync(f *g.File, query protoreflect.Full
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sQueryOptions", query))
 		}).
@@ -1148,13 +1148,13 @@ func (svc *Manifest) genXNSQueryHandleImpl(f *g.File, query protoreflect.FullNam
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			fn.If(
 				g.Err().Op(":=").Id("r").Dot("future").Dot("Get").CallFunc(func(args *g.Group) {
@@ -1205,7 +1205,7 @@ func (svc *Manifest) genXNSQueryHandleInterface(f *g.File, query protoreflect.Fu
 			Params(g.Qual(workflowPkg, "Context")).
 			ParamsFunc(func(returnVals *g.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).
@@ -1277,7 +1277,7 @@ func (svc *Manifest) genXNSSignalFunction(f *g.File, signal protoreflect.FullNam
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sSignalOptions", signal))
 		}).
@@ -1313,7 +1313,7 @@ func (svc *Manifest) genXNSSignalFunctionAsync(f *g.File, signal protoreflect.Fu
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sSignalOptions", signal))
 		}).
@@ -1513,13 +1513,13 @@ func (svc *Manifest) genXNSUpdateFunction(f *g.File, update protoreflect.FullNam
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sUpdateOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -1559,7 +1559,7 @@ func (svc *Manifest) genXNSUpdateFunctionAsync(f *g.File, update protoreflect.Fu
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sUpdateOptions", update))
 		}).
@@ -1821,13 +1821,13 @@ func (svc *Manifest) genXNSUpdateHandleImpl(f *g.File, update protoreflect.FullN
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			fn.If(
 				g.Err().Op(":=").Id("r").Dot("future").Dot("Get").CallFunc(func(args *g.Group) {
@@ -1887,7 +1887,7 @@ func (svc *Manifest) genXNSUpdateHandleInterface(f *g.File, update protoreflect.
 			Params(g.Qual(workflowPkg, "Context")).
 			ParamsFunc(func(returnVals *g.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).
@@ -2055,13 +2055,13 @@ func (svc *Manifest) genXNSWorkflowRunImpl(f *g.File, workflow protoreflect.Full
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			fn.If(
 				g.Err().Op(":=").Id("r").Dot("future").Dot("Get").CallFunc(func(args *g.Group) {
@@ -2382,7 +2382,7 @@ func (svc *Manifest) genXNSWorkflowRunInterface(f *g.File, workflow protoreflect
 			Params(g.Qual(workflowPkg, "Context")).
 			ParamsFunc(func(returnVals *g.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).Line()
@@ -2544,16 +2544,16 @@ func (svc *Manifest) genXNSWorkflowFunction(f *g.File, workflow, signal protoref
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			if signal.IsValid() && handlerInput {
-				args.Id("signal").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sWorkflowOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -2604,10 +2604,10 @@ func (svc *Manifest) genXNSWorkflowFunctionAsync(f *g.File, workflow, signal pro
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			if handlerInput {
-				args.Id("signal").Op("*").Qual(string(svc.File.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sWorkflowOptions", workflow))
 		}).

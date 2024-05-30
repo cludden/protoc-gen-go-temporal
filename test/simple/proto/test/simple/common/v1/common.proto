@@ -1,0 +1,16 @@
+syntax="proto3";
+
+// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
+package mycompany.simple.common.v1;
+
+import "google/protobuf/any.proto";
+
+message PaginatedRequest {
+  uint32 limit = 1;
+  bytes cursor = 2;
+}
+
+message PaginatedResponse {
+  repeated google.protobuf.Any items = 1;
+  bytes next_cursor = 2;
+}

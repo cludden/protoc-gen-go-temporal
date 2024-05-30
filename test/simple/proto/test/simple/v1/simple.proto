@@ -8,6 +8,8 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
+import "test/simple/common/v1/common.proto";
+
 service Simple {
   option (temporal.v1.service) = {
     task_queue: 'my-task-queue'
@@ -55,6 +57,13 @@ service Simple {
       patches: [
         { version: PV_64, mode: PVM_DISABLED }
       ]
+    };
+  }
+
+  // SomeWorkflow4 retrieves a paginated list of items
+  rpc SomeWorkflow4(common.v1.PaginatedRequest) returns (common.v1.PaginatedResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'some-workflow-4/${! uuid_v4() }'
     };
   }
 
