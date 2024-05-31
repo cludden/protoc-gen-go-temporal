@@ -45,6 +45,13 @@ const (
 	modeUpdate
 )
 
+var aliases = map[string]string{
+	enumsPkg:      "enumsv1",
+	temporalv1Pkg: "temporalv1",
+	updatePkg:     "updatev1",
+	xnsv1Pkg:      "xnsv1",
+}
+
 // Manifest describes temporal artifacts parsed from source protos
 type Manifest struct {
 	*Plugin
@@ -533,6 +540,9 @@ func (svc *Manifest) render() error {
 
 		f := g.NewFilePathName(string(file.GoImportPath), string(file.GoPackageName))
 		genCodeGenerationHeader(svc.Plugin, f, file)
+		for pkg, alias := range aliases {
+			f.ImportAlias(pkg, alias)
+		}
 
 		var xns *g.File
 		var xnsGoPackageName, xnsFilePath string
@@ -542,6 +552,9 @@ func (svc *Manifest) render() error {
 			xnsGoImportPath := path.Join(string(file.GoImportPath), xnsGoPackageName)
 			xns = g.NewFilePathName(xnsGoImportPath, xnsGoPackageName)
 			genCodeGenerationHeader(svc.Plugin, xns, file)
+			for pkg, alias := range aliases {
+				xns.ImportAlias(pkg, alias)
+			}
 
 			prefixToSlash := filepath.ToSlash(file.GeneratedFilenamePrefix)
 			xnsFilePath = path.Join(

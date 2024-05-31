@@ -793,11 +793,11 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 	f.Func().Id(fnName).
 		Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).
 		Params(
-			g.Op("*").Id(name),
+			g.Op("*").Qual(string(msg.GoIdent.GoImportPath), name),
 			g.Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Var().Id("result").Id(name)
+			fn.Var().Id("result").Qual(string(msg.GoIdent.GoImportPath), name)
 			fn.Var().Id("hasValues").Bool()
 			fn.If(g.Id("cmd").Dot("IsSet").Call(g.Lit("input-file"))).Block(
 				g.List(g.Id("inputFile"), g.Err()).Op(":=").Qual(homedirPkg, "Expand").Call(g.Id("cmd").Dot("String").Call(g.Lit("input-file"))),

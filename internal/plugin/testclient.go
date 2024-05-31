@@ -62,12 +62,12 @@ func (svc *Manifest) genTestClientImplQueryMethod(f *g.File, query protoreflect.
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(handler.Output))
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).
@@ -96,7 +96,7 @@ func (svc *Manifest) genTestClientImplQueryMethod(f *g.File, query protoreflect.
 				if !hasOutput {
 					bl.Return(g.Nil())
 				} else {
-					bl.Var().Id("result").Id(svc.getMessageName(handler.Output))
+					bl.Var().Id("result").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 					bl.If(g.Err().Op(":=").Id("val").Dot("Get").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
 						g.Return(
 							g.Nil(),
@@ -123,7 +123,7 @@ func (svc *Manifest) genTestClientImplSignalMethod(f *g.File, signal protoreflec
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 		}).
 		Params(
@@ -158,13 +158,13 @@ func (svc *Manifest) genTestClientImplUpdateMethod(f *g.File, update protoreflec
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -215,7 +215,7 @@ func (svc *Manifest) genTestClientImplUpdateAsyncMethod(f *g.File, update protor
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
@@ -307,13 +307,13 @@ func (svc *Manifest) genTestClientImplWorkflowMethod(f *g.File, workflow protore
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -349,7 +349,7 @@ func (svc *Manifest) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow pr
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
@@ -456,16 +456,16 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalMethod(f *g.File, workfl
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -510,10 +510,10 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, w
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
 		}).
@@ -593,7 +593,7 @@ func (svc *Manifest) genTestClientUpdateHandleImpl(f *g.File, update protoreflec
 			fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
 			fields.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
 			if hasInput {
-				fields.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				fields.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			fields.Id("runID").String()
 			fields.Id("workflowID").String()
@@ -611,7 +611,7 @@ func (svc *Manifest) genTestClientUpdateHandleImplGetMethod(f *g.File, update pr
 		Params(g.Id("ctx").Qual("context", "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -636,7 +636,7 @@ func (svc *Manifest) genTestClientUpdateHandleImplGetMethod(f *g.File, update pr
 				Block(
 					g.ReturnFunc(func(returnVals *g.Group) {
 						if hasOutput {
-							returnVals.Id("resp").Op(".").Parens(g.Op("*").Id(svc.getMessageName(method.Output)))
+							returnVals.Id("resp").Op(".").Parens(g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output)))
 						}
 						returnVals.Nil()
 					}),
@@ -696,7 +696,7 @@ func (svc *Manifest) genTestClientWorkflowRunImpl(f *g.File, workflow protorefle
 		fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
 		fields.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 		if hasInput {
-			fields.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+			fields.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 		}
 		fields.Id("workflows").Id(svc.toCamel("%sWorkflows", svc.Service.GoName))
 	})
@@ -736,7 +736,7 @@ func (svc *Manifest) genTestClientWorkflowRunImplGetMethod(f *g.File, workflow p
 		Params(g.Qual("context", "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -768,7 +768,7 @@ func (svc *Manifest) genTestClientWorkflowRunImplGetMethod(f *g.File, workflow p
 			)
 			// return workflow result
 			if hasOutput {
-				fn.Var().Id("result").Id(svc.getMessageName(method.Output))
+				fn.Var().Id("result").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				fn.If(g.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowResult").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Nil(), g.Err()),
 				)
@@ -809,12 +809,12 @@ func (svc *Manifest) genTestClientWorkflowRunImplQueryMethod(f *g.File, workflow
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(handler.Output))
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).Block(
@@ -941,13 +941,13 @@ func (svc *Manifest) genTestClientWorkflowRunImplUpdateMethod(f *g.File, workflo
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(handler.Output))
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).
@@ -979,7 +979,7 @@ func (svc *Manifest) genTestClientWorkflowRunImplUpdateAsyncMethod(f *g.File, wo
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
 		}).

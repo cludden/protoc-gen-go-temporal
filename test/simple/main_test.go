@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	commonv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/patch"
@@ -22,6 +23,8 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func TestSomeWorkflow1WithTestClient(t *testing.T) {
@@ -171,7 +174,7 @@ func TestSomeWorkflow2WithTestClient(t *testing.T) {
 	require, ctx := require.New(t), context.Background()
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
-	client := simplepb.NewTestSimpleClient(env, &Workflows{simplepb.NewSimpleWorkflowFunctions()}, &Activities{})
+	client := simplepb.NewTestSimpleClient(env, &Workflows{simplepb.NewSimpleWorkflowFunctions(), nil}, &Activities{})
 
 	run, err := client.SomeWorkflow2Async(ctx)
 	require.NoError(err)
@@ -199,7 +202,7 @@ func TestSomeWorkflow2WithMock(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	fns := simplemocks.NewMockSimpleWorkflowFunctions(t)
 	fns.EXPECT().SomeWorkflow3(mock.Anything, mock.Anything).Return(nil)
-	client := simplepb.NewTestSimpleClient(env, &Workflows{fns}, &Activities{})
+	client := simplepb.NewTestSimpleClient(env, &Workflows{fns, nil}, &Activities{})
 
 	run, err := client.SomeWorkflow2Async(ctx)
 	require.NoError(err)
@@ -276,6 +279,30 @@ func TestSomeWorkflow3Child(t *testing.T) {
 	require.NoError(env.GetWorkflowError())
 	require.False(getVersionCalled)
 	require.False(localActivityCalled)
+}
+
+func TestSomeWorkflow4C(t *testing.T) {
+	require := require.New(t)
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	c := simplepb.NewTestSimpleClient(env, &Workflows{
+		items: []*simplepb.Foo{
+			{Foo: "foo"},
+			{Foo: "bar"},
+			{Foo: "baz"},
+			{Foo: "qux"},
+			{Foo: "quux"},
+		},
+	}, &Activities{})
+	resp, err := c.SomeWorkflow4(context.Background(), &commonv1.PaginatedRequest{Limit: 3, Cursor: []byte(`1`)})
+	require.NoError(err)
+	require.Equal("4", string(resp.GetNextCursor()))
+	require.Len(resp.GetItems(), 3)
+	for i, foo := range []string{"bar", "baz", "qux"} {
+		var f simplepb.Foo
+		require.NoError(anypb.UnmarshalTo(resp.GetItems()[i], &f, proto.UnmarshalOptions{}))
+		require.Equal(foo, f.GetFoo())
+	}
 }
 
 func TestCli(t *testing.T) {

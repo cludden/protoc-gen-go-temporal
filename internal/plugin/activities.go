@@ -27,12 +27,12 @@ func (svc *Manifest) genActivitiesInterface(f *g.File) {
 				ParamsFunc(func(args *g.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+						args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				}).
@@ -77,7 +77,7 @@ func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullNa
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(method.Input.GoIdent.GoName)
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			if local {
 				args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sLocalActivityOptions", activity))
@@ -90,7 +90,7 @@ func (svc *Manifest) genActivityFunction(f *g.File, activity protoreflect.FullNa
 				returnVals.Op("*").Id(fmt.Sprintf("%sFuture", method.GoName))
 			} else {
 				if hasOutput {
-					returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}
@@ -220,13 +220,13 @@ func (svc *Manifest) genActivityFutureGetMethod(f *g.File, activity protoreflect
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Id(method.Output.GoIdent.GoName)
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				fn.If(
 					g.Err().Op(":=").Id("f").Dot("Future").Dot("Get").Call(
 						g.Id("ctx"), g.Op("&").Id("resp"),
@@ -308,12 +308,12 @@ func (svc *Manifest) genActivityRegisterOneFunction(f *g.File, activity protoref
 				ParamsFunc(func(args *g.Group) {
 					args.Qual("context", "Context")
 					if hasInput {
-						args.Op("*").Id(method.Input.GoIdent.GoName)
+						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(method.Output.GoIdent.GoName)
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				}),
@@ -334,8 +334,9 @@ func (svc *Manifest) genActivityOptions(f *g.File, activity protoreflect.FullNam
 	if local {
 		optionType, typeName = "LocalActivityOptions", svc.toCamel("%sLocalActivityOptions", activity)
 	}
-	hasInput := !isEmpty(svc.methods[activity].Input)
-	hasOutput := !isEmpty(svc.methods[activity].Output)
+	method := svc.methods[activity]
+	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
 	opts := svc.activities[activity]
 
 	// generate type definition
@@ -351,12 +352,12 @@ func (svc *Manifest) genActivityOptions(f *g.File, activity protoreflect.FullNam
 				ParamsFunc(func(args *g.Group) {
 					args.Qual("context", "Context")
 					if hasInput {
-						args.Op("*").Id(svc.getMessageName(svc.methods[activity].Input))
+						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(svc.getMessageName(svc.methods[activity].Output))
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				})
@@ -519,12 +520,12 @@ func (svc *Manifest) genActivityOptions(f *g.File, activity protoreflect.FullNam
 					ParamsFunc(func(args *g.Group) {
 						args.Qual("context", "Context")
 						if hasInput {
-							args.Op("*").Id(svc.getMessageName(svc.methods[activity].Input))
+							args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 						}
 					}).
 					ParamsFunc(func(returnVals *g.Group) {
 						if hasOutput {
-							returnVals.Op("*").Id(svc.getMessageName(svc.methods[activity].Output))
+							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 						}
 						returnVals.Error()
 					}),

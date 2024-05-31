@@ -43,12 +43,12 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Id(svc.getMessageName(method.Input))
+						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(svc.getMessageName(method.Output))
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				}),
@@ -61,12 +61,12 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 					ParamsFunc(func(args *g.Group) {
 						args.Id("ctx").Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 						}
 					}).
 					ParamsFunc(func(returnVals *g.Group) {
 						if hasOutput {
-							returnVals.Op("*").Id(svc.getMessageName(method.Output))
+							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 						}
 						returnVals.Error()
 					}).
@@ -282,7 +282,7 @@ func (svc *Manifest) genWorkerSignalExternal(f *g.File, signal protoreflect.Full
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 		}).
 		Params(g.Error()).
@@ -313,7 +313,7 @@ func (svc *Manifest) genWorkerSignalExternalAsync(f *g.File, signal protoreflect
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 		}).
 		Params(g.Qual(workflowPkg, "Future")).
@@ -346,13 +346,13 @@ func (svc *Manifest) genWorkerSignalReceive(f *g.File, signal protoreflect.FullN
 		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasInput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Input))
+				returnVals.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			returnVals.Bool()
 		}).
 		BlockFunc(func(b *g.Group) {
 			if hasInput {
-				b.Var().Id("resp").Id(svc.getMessageName(method.Input))
+				b.Var().Id("resp").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			b.Id("more").Op(":=").Id("s").Dot("Channel").Dot("Receive").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
@@ -383,14 +383,14 @@ func (svc *Manifest) genWorkerSignalReceiveAsync(f *g.File, signal protoreflect.
 		Params().
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasInput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Input))
+				returnVals.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			} else {
 				returnVals.Bool()
 			}
 		}).
 		BlockFunc(func(b *g.Group) {
 			if hasInput {
-				b.Var().Id("resp").Id(svc.getMessageName(method.Input))
+				b.Var().Id("resp").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 				b.If(
 					g.Id("ok").Op(":=").Id("s").Dot("Channel").Dot("ReceiveAsync").Call(
 						g.Op("&").Id("resp"),
@@ -426,14 +426,14 @@ func (svc *Manifest) genWorkerSignalReceiveWithTimeout(f *g.File, signal protore
 		).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasInput {
-				returnVals.Id("resp").Op("*").Id(svc.getMessageName(method.Input))
+				returnVals.Id("resp").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			returnVals.Id("ok").Bool()
 			returnVals.Id("more").Bool()
 		}).
 		BlockFunc(func(b *g.Group) {
 			if hasInput {
-				b.Id("resp").Op("=").Op("&").Id(svc.getMessageName(method.Input)).Values()
+				b.Id("resp").Op("=").Op("&").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input)).Values()
 			}
 			b.If(
 				g.List(g.Id("ok"), g.Id("more")).Op("=").Id("s").Dot("Channel").Dot("ReceiveWithTimeout").CallFunc(func(args *g.Group) {
@@ -472,7 +472,7 @@ func (svc *Manifest) genWorkerSignalSelect(f *g.File, signal protoreflect.FullNa
 			g.Id("sel").Qual(workflowPkg, "Selector"),
 			g.Id("fn").Func().ParamsFunc(func(args *g.Group) {
 				if hasInput {
-					args.Op("*").Id(svc.getMessageName(method.Input))
+					args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 				}
 			}),
 		).
@@ -520,13 +520,13 @@ func (svc *Manifest) genWorkerWorkflowChild(f *g.File, workflow protoreflect.Ful
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sChildOptions", workflow))
 		}).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
@@ -564,7 +564,7 @@ func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflec
 		ParamsFunc(func(args *g.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 			}
 			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sChildOptions", workflow))
 		}).
@@ -639,13 +639,13 @@ func (svc *Manifest) genWorkerWorkflowChildRunGet(f *g.File, workflow protorefle
 		).
 		ParamsFunc(func(returnVals *g.Group) {
 			if hasOutput {
-				returnVals.Op("*").Id(svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *g.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Id(svc.getMessageName(method.Output))
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 			}
 			fn.If(
 				g.Err().Op(":=").Id("r").Dot("Future").Dot("Get").CallFunc(func(args *g.Group) {
@@ -845,12 +845,12 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 				ParamsFunc(func(args *g.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Id(svc.getMessageName(method.Input))
+						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 					}
 				}).
 				ParamsFunc(func(returnVals *g.Group) {
 					if hasOutput {
-						returnVals.Op("*").Id(svc.getMessageName(method.Output))
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				})
@@ -876,12 +876,12 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 					ParamsFunc(func(args *g.Group) {
 						args.Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Op("*").Id(svc.getMessageName(method.Input))
+							args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 						}
 					}).
 					ParamsFunc(func(returnVals *g.Group) {
 						if hasOutput {
-							returnVals.Op("*").Id(svc.getMessageName(method.Output))
+							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 						}
 						returnVals.Error()
 					})
@@ -912,12 +912,12 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 			ParamsFunc(func(args *g.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
-					args.Id("req").Op("*").Id(svc.getMessageName(method.Input))
+					args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 				}
 			}).
 			ParamsFunc(func(returnVals *g.Group) {
 				if hasOutput {
-					returnVals.Op("*").Id(svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).
@@ -953,7 +953,7 @@ func (svc *Manifest) genWorkerWorkflowInput(f *g.File, workflow protoreflect.Ful
 	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, svc.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).StructFunc(func(fields *g.Group) {
 		if hasInput {
-			fields.Id("Req").Op("*").Id(svc.getMessageName(method.Input))
+			fields.Id("Req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
 		}
 
 		// add workflow signals
@@ -994,7 +994,7 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 			).
 			ParamsFunc(func(returnVals *g.Group) {
 				if hasOutput {
-					returnVals.Op("*").Id(svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).

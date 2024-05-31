@@ -103,6 +103,7 @@
         - [mycompany.simple.SomeWorkflow1](#mycompany-simple-someworkflow1-workflow)
         - [mycompany.simple.SomeWorkflow2](#mycompany-simple-someworkflow2-workflow)
         - [mycompany.simple.Simple.SomeWorkflow3](#mycompany-simple-simple-someworkflow3-workflow)
+        - [mycompany.simple.Simple.SomeWorkflow4](#mycompany-simple-simple-someworkflow4-workflow)
       - [Queries](#mycompany-simple-simple-queries)
         - [mycompany.simple.Simple.SomeQuery1](#mycompany-simple-simple-somequery1-query)
         - [mycompany.simple.Simple.SomeQuery2](#mycompany-simple-simple-somequery2-query)
@@ -213,6 +214,7 @@
     - [test.xnserr.v1.SleepRequest](#test-xnserr-v1-sleeprequest)
 - [google.protobuf](#google-protobuf)
   - Messages
+    - [google.protobuf.Any](#google-protobuf-any)
     - [google.protobuf.Duration](#google-protobuf-duration)
     - [google.protobuf.ListValue](#google-protobuf-listvalue)
     - [google.protobuf.NullValue](#google-protobuf-nullvalue)
@@ -220,6 +222,10 @@
     - [google.protobuf.Struct.FieldsEntry](#google-protobuf-struct-fieldsentry)
     - [google.protobuf.Timestamp](#google-protobuf-timestamp)
     - [google.protobuf.Value](#google-protobuf-value)
+- [mycompany.simple.common.v1](#mycompany-simple-common-v1)
+  - Messages
+    - [mycompany.simple.common.v1.PaginatedRequest](#mycompany-simple-common-v1-paginatedrequest)
+    - [mycompany.simple.common.v1.PaginatedResponse](#mycompany-simple-common-v1-paginatedresponse)
 - [temporal.xns.v1](#temporal-xns-v1)
   - Messages
     - [temporal.xns.v1.IDReusePolicy](#temporal-xns-v1-idreusepolicy)
@@ -2160,6 +2166,68 @@ go_name: RequestVal</pre></td>
 <table>
 <tr><th>Signal</th><th>Start</th></tr>
 <tr><td><a href="#mycompany-simple-simple-somesignal2-signal">mycompany.simple.Simple.SomeSignal2</a></td><td>true</td></tr>
+</table>
+
+---
+<a name="mycompany-simple-simple-someworkflow4-workflow"></a>
+### mycompany.simple.Simple.SomeWorkflow4
+
+<pre>
+SomeWorkflow4 retrieves a paginated list of items
+</pre>
+
+**Input:** [mycompany.simple.common.v1.PaginatedRequest](#mycompany-simple-common-v1-paginatedrequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>cursor</td>
+<td>bytes</td>
+<td><pre>
+json_name: cursor
+go_name: Cursor</pre></td>
+</tr><tr>
+<td>limit</td>
+<td>uint32</td>
+<td><pre>
+json_name: limit
+go_name: Limit</pre></td>
+</tr>
+</table>
+
+**Output:** [mycompany.simple.common.v1.PaginatedResponse](#mycompany-simple-common-v1-paginatedresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>items</td>
+<td><a href="#google-protobuf-any">google.protobuf.Any</a></td>
+<td><pre>
+json_name: items
+go_name: Items</pre></td>
+</tr><tr>
+<td>next_cursor</td>
+<td>bytes</td>
+<td><pre>
+json_name: nextCursor
+go_name: NextCursor</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>some-workflow-4/${! uuid_v4() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
 </table>  
 
 <a name="mycompany-simple-simple-queries"></a>
@@ -4481,6 +4549,151 @@ go_name: Sleep</pre></td>
 <a name="google-protobuf-messages"></a>
 ## Messages
 
+<a name="google-protobuf-any"></a>
+### google.protobuf.Any
+
+<pre>
+`Any` contains an arbitrary serialized protocol buffer message along with a
+URL that describes the type of the serialized message.
+
+Protobuf library provides support to pack/unpack Any values in the form
+of utility functions or additional generated methods of the Any type.
+
+Example 1: Pack and unpack a message in C++.
+
+    Foo foo = ...;
+    Any any;
+    any.PackFrom(foo);
+    ...
+    if (any.UnpackTo(&foo)) {
+      ...
+    }
+
+Example 2: Pack and unpack a message in Java.
+
+    Foo foo = ...;
+    Any any = Any.pack(foo);
+    ...
+    if (any.is(Foo.class)) {
+      foo = any.unpack(Foo.class);
+    }
+    // or ...
+    if (any.isSameTypeAs(Foo.getDefaultInstance())) {
+      foo = any.unpack(Foo.getDefaultInstance());
+    }
+
+ Example 3: Pack and unpack a message in Python.
+
+    foo = Foo(...)
+    any = Any()
+    any.Pack(foo)
+    ...
+    if any.Is(Foo.DESCRIPTOR):
+      any.Unpack(foo)
+      ...
+
+ Example 4: Pack and unpack a message in Go
+
+     foo := &pb.Foo{...}
+     any, err := anypb.New(foo)
+     if err != nil {
+       ...
+     }
+     ...
+     foo := &pb.Foo{}
+     if err := any.UnmarshalTo(foo); err != nil {
+       ...
+     }
+
+The pack methods provided by protobuf library will by default use
+'type.googleapis.com/full.type.name' as the type URL and the unpack
+methods only use the fully qualified type name after the last '/'
+in the type URL, for example "foo.bar.com/x/y.z" will yield type
+name "y.z".
+
+JSON
+====
+The JSON representation of an `Any` value uses the regular
+representation of the deserialized, embedded message, with an
+additional field `@type` which contains the type URL. Example:
+
+    package google.profile;
+    message Person {
+      string first_name = 1;
+      string last_name = 2;
+    }
+
+    {
+      "@type": "type.googleapis.com/google.profile.Person",
+      "firstName": <string>,
+      "lastName": <string>
+    }
+
+If the embedded message type is well-known and has a custom JSON
+representation, that representation will be embedded adding a field
+`value` which holds the custom JSON in addition to the `@type`
+field. Example (for message [google.protobuf.Duration][]):
+
+    {
+      "@type": "type.googleapis.com/google.protobuf.Duration",
+      "value": "1.212s"
+    }
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>type_url</td>
+<td>string</td>
+<td><pre>
+A URL/resource name that uniquely identifies the type of the serialized
+protocol buffer message. This string must contain at least
+one "/" character. The last segment of the URL's path must represent
+the fully qualified name of the type (as in
+`path/google.protobuf.Duration`). The name should be in a canonical form
+(e.g., leading "." is not accepted).
+
+In practice, teams usually precompile into the binary all types that they
+expect it to use in the context of Any. However, for URLs which use the
+scheme `http`, `https`, or no scheme, one can optionally set up a type
+server that maps type URLs to message definitions as follows:
+
+* If no scheme is provided, `https` is assumed.
+* An HTTP GET on the URL must yield a [google.protobuf.Type][]
+  value in binary format, or produce an error.
+* Applications are allowed to cache lookup results based on the
+  URL, or have them precompiled into a binary to avoid any
+  lookup. Therefore, binary compatibility needs to be preserved
+  on changes to types. (Use versioned type names to manage
+  breaking changes.)
+
+Note: this functionality is not currently available in the official
+protobuf release, and it is not used for type URLs beginning with
+type.googleapis.com. As of May 2023, there are no widely used type server
+implementations and no plans to implement one.
+
+Schemes other than `http`, `https` (or the empty scheme) might be
+used with implementation specific semantics.<br>
+
+json_name: typeUrl
+go_name: TypeUrl</pre></td>
+</tr><tr>
+<td>value</td>
+<td>bytes</td>
+<td><pre>
+Must be a valid serialized protocol buffer of the above specified type.<br>
+
+json_name: value
+go_name: Value</pre></td>
+</tr>
+</table>
+
+
+
 <a name="google-protobuf-duration"></a>
 ### google.protobuf.Duration
 
@@ -4879,6 +5092,65 @@ Represents a structured value.<br>
 
 json_name: structValue
 go_name: StructValue</pre></td>
+</tr>
+</table>
+
+
+
+
+<a name="mycompany-simple-common-v1"></a>
+# mycompany.simple.common.v1
+
+<a name="mycompany-simple-common-v1-messages"></a>
+## Messages
+
+<a name="mycompany-simple-common-v1-paginatedrequest"></a>
+### mycompany.simple.common.v1.PaginatedRequest
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>cursor</td>
+<td>bytes</td>
+<td><pre>
+json_name: cursor
+go_name: Cursor</pre></td>
+</tr><tr>
+<td>limit</td>
+<td>uint32</td>
+<td><pre>
+json_name: limit
+go_name: Limit</pre></td>
+</tr>
+</table>
+
+
+
+<a name="mycompany-simple-common-v1-paginatedresponse"></a>
+### mycompany.simple.common.v1.PaginatedResponse
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>items</td>
+<td><a href="#google-protobuf-any">google.protobuf.Any</a></td>
+<td><pre>
+json_name: items
+go_name: Items</pre></td>
+</tr><tr>
+<td>next_cursor</td>
+<td>bytes</td>
+<td><pre>
+json_name: nextCursor
+go_name: NextCursor</pre></td>
 </tr>
 </table>
 

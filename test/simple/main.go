@@ -5,17 +5,22 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
+	commonv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	"github.com/urfave/cli/v2"
 	logger "go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type Workflows struct {
 	workflows simplepb.SimpleWorkflowFunctions
+	items     []*simplepb.Foo
 }
 
 // ============================================================================
@@ -27,7 +32,7 @@ type someWorkflow1 struct {
 }
 
 func Register(r worker.Registry) {
-	simplepb.RegisterSimpleWorkflows(r, &Workflows{simplepb.NewSimpleWorkflowFunctions()})
+	simplepb.RegisterSimpleWorkflows(r, &Workflows{simplepb.NewSimpleWorkflowFunctions(), nil})
 	simplepb.RegisterSimpleActivities(r, &Activities{})
 	simplepb.RegisterOnlyActivitiesActivities(r, &OnlyActivites{})
 }
@@ -145,6 +150,53 @@ func (w *Workflows) SomeWorkflow3(ctx workflow.Context, input *simplepb.SomeWork
 func (wf *someWorkflow3) Execute(ctx workflow.Context) error {
 	wf.SomeSignal2.Receive(ctx)
 	return nil
+}
+
+// ============================================================================
+
+type someWorkflow4 struct {
+	*Workflows
+	*simplepb.SomeWorkflow4WorkflowInput
+	log     logger.Logger
+	signals int
+	updates int
+}
+
+func (w *Workflows) SomeWorkflow4(ctx workflow.Context, input *simplepb.SomeWorkflow4WorkflowInput) (simplepb.SomeWorkflow4Workflow, error) {
+	return &someWorkflow4{w, input, workflow.GetLogger(ctx), 0, 0}, nil
+}
+
+func (wf *someWorkflow4) Execute(ctx workflow.Context) (resp *commonv1.PaginatedResponse, err error) {
+	limit := wf.Req.GetLimit()
+	if limit == 0 {
+		limit = 3
+	}
+
+	var start int
+	if cursor := wf.Req.GetCursor(); len(cursor) > 0 {
+		if start, err = strconv.Atoi(string(cursor)); err != nil {
+			return nil, temporal.NewNonRetryableApplicationError("invalid cursor", "InvalidArgument", err)
+		}
+	}
+
+	resp = &commonv1.PaginatedResponse{}
+	var n int
+	if start < len(wf.items) {
+		for _, i := range wf.items[start:] {
+			item, err := anypb.New(i)
+			if err != nil {
+				return nil, temporal.NewNonRetryableApplicationError("error serializing item", "Internal", err)
+			}
+			resp.Items, n = append(resp.Items, item), n+1
+			if uint32(n) >= limit {
+				break
+			}
+		}
+	}
+	if len(resp.Items) <= int(limit) {
+		resp.NextCursor = []byte(strconv.Itoa(start + int(limit)))
+	}
+	return resp, nil
 }
 
 // ============================================================================
