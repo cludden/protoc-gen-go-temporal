@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  
 ### Fixed
 
+
+
+# [1.13.2](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.13.2) - 2024-05-31
+ 
+### Fixed
+
 - [#69](https://github.com/cludden/protoc-gen-go-temporal/pull/69) support external messages as rpc parameters
 
 
