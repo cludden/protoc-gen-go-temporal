@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  
 ### Fixed
 
+
+
+# [1.13.3](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.13.3) - 2024-06-13
+ 
+### Fixed
+
 - [#71](https://github.com/cludden/protoc-gen-go-temporal/pull/71) fix activity non_retryable_error_types
 
 
