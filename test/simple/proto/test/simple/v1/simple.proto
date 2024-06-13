@@ -154,6 +154,10 @@ service Simple {
     };
     option (temporal.v1.activity) = {
       start_to_close_timeout: { seconds: 10 }
+      retry_policy: {
+        max_attempts: 3
+        non_retryable_error_types: ["something"]
+      }
     };
   }
 }

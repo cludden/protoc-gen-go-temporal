@@ -429,7 +429,11 @@ func (svc *Manifest) genActivityOptions(f *g.File, activity protoreflect.FullNam
 							fields.Id("MaximumAttempts").Op(":").Lit(n)
 						}
 						if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
-							fields.Id("NonRetryableErrorTypes").Op(":").Lit(errs)
+							fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *g.Group) {
+								for _, err := range errs {
+									vals.Lit(err)
+								}
+							})
 						}
 					}),
 				)
