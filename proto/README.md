@@ -2673,6 +2673,8 @@ go_name: ResponseVal</pre></td>
 
 <table>
 <tr><th>Name</th><th>Value</th></tr>
+<tr><td>retry_policy.max_attempts</td><td>3</td></tr>
+<tr><td>retry_policy.non_retryable_error_types</td><td>something</td></tr>
 <tr><td>start_to_close_timeout</td><td>10 seconds</td></tr>
 </table>   
 

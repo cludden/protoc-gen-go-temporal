@@ -1,3 +1,4 @@
+version: 2
 project_name: protoc-gen-go_temporal
 builds:
   - id: protoc-gen-go_temporal
@@ -54,5 +55,5 @@ brews:
       name: homebrew-formula
     homepage: https://github.com/cludden/protoc-gen-go-temporal
     description: protoc-gen-go_temporal - a protoc plugin for generating Temporal clients, workers, and clis in go from protobuf schemas
-    folder: Formula
+    directory: Formula
     license: MIT
