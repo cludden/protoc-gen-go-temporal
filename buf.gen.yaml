@@ -1,13 +1,25 @@
-version: v1
+version: v2
 managed:
   enabled: true
-  go_package_prefix:
-    default: github.com/cludden/protoc-gen-go-temporal/gen
+  override:
+    - file_option: go_package_prefix
+      value: github.com/cludden/protoc-gen-go-temporal/gen
 plugins:
-  - plugin: go-patch
+  - local: protoc-gen-go-patch
     out: gen
-    opt: plugin=go,paths=source_relative
-  - plugin: go_temporal
+    opt:
+      - paths=source_relative
+      - plugin=go
+  - local: protoc-gen-go_temporal
     out: gen
-    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,enable-patch-support=true,enable-xns=true,enable-codec=true,docs-out=./proto/README.md,patches=64_ENABLED
+    opt:
+      - cli-categories=true
+      - cli-enabled=true
+      - docs-out=./proto/README.md
+      - enable-codec=true
+      - enable-patch-support=true
+      - enable-xns=true
+      - patches=64_ENABLED
+      - paths=source_relative
+      - workflow-update-enabled=true
     strategy: all

@@ -3,13 +3,11 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 import Proto from '!!raw-loader!../../examples/example/proto/example/v1/example.proto';
-import Buf from '!!raw-loader!../../examples/example/proto/buf.yaml';
-import BufGen from '!!raw-loader!../../examples/example/buf.gen.yaml';
 import Implementation from '!!raw-loader!../../examples/example/example.go';
 import Entrypoint from '!!raw-loader!../../examples/example/cmd/example/main.go';
 import Client from '!!raw-loader!../../examples/example/cmd/client/main.go';
 
-import { cli_fragments, xns_example } from './how-it-works.tsx';
+import { buf_gen_yaml, buf_yaml, cli_fragments, xns_example } from './how-it-works.tsx';
 
 <Tabs>
   <TabItem value="annotate" label="Annotate">
@@ -18,8 +16,8 @@ import { cli_fragments, xns_example } from './how-it-works.tsx';
   </TabItem>
   <TabItem value="generate" label="Generate">
     Generate Go code for implementing Temporal Clients, Workers, and CLI applications.
-    <CodeBlock language="yaml" title="buf.yaml">{Buf}</CodeBlock>
-    <CodeBlock language="yaml" title="buf.gen.yaml">{BufGen}</CodeBlock>
+    <CodeBlock language="yaml" title="buf.yaml">{buf_yaml}</CodeBlock>
+    <CodeBlock language="yaml" title="buf.gen.yaml">{buf_gen_yaml}</CodeBlock>
     <CodeBlock language="sh">buf generate</CodeBlock>
   </TabItem>
   <TabItem value="implement" label="Implement">

@@ -1,4 +1,35 @@
 
+export let buf_gen_yaml = `version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: example/gen
+plugins:
+  - local: protoc-gen-go
+    out: gen
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-go_temporal
+    out: gen
+    strategy: all
+    opt:
+      - cli-categories=true
+      - cli-enabled=true
+      - docs-out=./proto/README.md
+      - workflow-update-enabled=true
+`
+
+export let buf_yaml = `version: v2
+modules:
+  - path: proto
+deps:
+  - buf.build/cludden/protoc-gen-go-temporal
+lint:
+  use:
+    - BASIC
+`
+
 export let cli_fragments = [
   {
     language: 'sh',
@@ -116,3 +147,4 @@ func SomeWorkflow(ctx workflow.Context) error {
 	return nil
 }
 `
+

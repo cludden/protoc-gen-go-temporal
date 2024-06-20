@@ -176,9 +176,7 @@ func (svc *Manifest) genTestClientImplUpdateMethod(f *g.File, update protoreflec
 			),
 
 			// override wait policy
-			g.Id("options").Dot("Options").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-				g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"),
-			),
+			g.Id("options").Dot("Options").Dot("WaitForStage").Op("=").Qual(clientPkg, "WorkflowUpdateStageCompleted"),
 			g.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(asyncName).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
@@ -591,7 +589,7 @@ func (svc *Manifest) genTestClientUpdateHandleImpl(f *g.File, update protoreflec
 		StructFunc(func(fields *g.Group) {
 			fields.Id("callbacks").Op("*").Qual(testutilPkg, "UpdateCallbacks")
 			fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
-			fields.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")
+			fields.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowOptions")
 			if hasInput {
 				fields.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
 			}

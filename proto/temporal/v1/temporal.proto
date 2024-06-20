@@ -191,7 +191,11 @@ message UpdateOptions {
   bool validate = 2;
 
   // Default wait policy if not specified
-  WaitPolicy wait_policy = 3;
+  WaitPolicy wait_for_stage = 7;
+
+  WaitPolicy wait_policy = 3 [
+    deprecated = true
+  ];
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 5;

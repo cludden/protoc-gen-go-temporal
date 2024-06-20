@@ -88,7 +88,10 @@ message UpdateWorkflowWithOptionsRequest {
   string workflow_id = 2;
   string run_id = 3;
   string first_execution_run_id = 4;
-  WaitPolicy wait_policy = 5;
+  WaitPolicy wait_policy = 5 [
+    deprecated = true
+  ];
+  WaitPolicy wait_for_stage = 6;
 }
 
 // WaitPolicy used to indicate to the server how long the client wishes to wait for a return 

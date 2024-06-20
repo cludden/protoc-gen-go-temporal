@@ -1,0 +1,28 @@
+version: v2
+modules:
+  - path: examples/example/proto
+  - path: examples/helloworld/proto
+  - path: examples/mutex/proto
+  - path: examples/searchattributes/proto
+  - path: examples/updatabletimer/proto
+  - path: examples/xns/proto
+  - path: proto
+    name: buf.build/cludden/protoc-gen-go-temporal
+  - path: test/expression/proto
+  - path: test/option/proto
+  - path: test/simple/proto
+  - path: test/xnserr/proto
+deps:
+  - buf.build/cludden/protoc-gen-go-temporal-example
+lint:
+  use:
+    - BASIC
+  except:
+    - FIELD_NOT_REQUIRED
+    - PACKAGE_NO_IMPORT_CYCLE
+breaking:
+  use:
+    - FILE
+  except:
+    - EXTENSION_NO_DELETE
+    - FIELD_SAME_DEFAULT

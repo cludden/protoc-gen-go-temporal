@@ -414,7 +414,7 @@ func (svc *Manifest) genClientImplUpdateMethod(f *g.File, update protoreflect.Fu
 			)
 
 			fn.Line()
-			fn.Comment("call sync update with UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED wait policy")
+			fn.Comment("call sync update with WorkflowUpdateStageCompleted wait policy")
 			fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
@@ -422,7 +422,7 @@ func (svc *Manifest) genClientImplUpdateMethod(f *g.File, update protoreflect.Fu
 				if hasInput {
 					args.Id("req")
 				}
-				args.Id("o").Dot("WithWaitPolicy").Call(g.Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"))
+				args.Id("o").Dot("WithWaitPolicy").Call(g.Qual(clientPkg, "WorkflowUpdateStageCompleted"))
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.ReturnFunc(func(returnVals *g.Group) {
@@ -479,7 +479,7 @@ func (svc *Manifest) genClientImplUpdateMethodAsync(f *g.File, update protorefle
 			)
 
 			fn.Line()
-			fn.Comment("build UpdateWorkflowWithOptionsRequest")
+			fn.Comment("build UpdateWorkflowOptions")
 			fn.List(g.Id("options"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
 				args.Id("workflowID")
 				args.Id("runID")
@@ -493,7 +493,7 @@ func (svc *Manifest) genClientImplUpdateMethodAsync(f *g.File, update protorefle
 
 			fn.Line()
 			fn.Comment("update workflow")
-			fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(g.Id("ctx"), g.Id("options"))
+			fn.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflow").Call(g.Id("ctx"), g.Op("*").Id("options"))
 			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Nil(), g.Err()),
 			)
@@ -1201,19 +1201,19 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 
 	f.Commentf("%s provides configuration for a %s update operation", typeName, svc.fqnForUpdate(update))
 	f.Type().Id(typeName).Struct(
-		g.Id("Options").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+		g.Id("Options").Op("*").Qual(clientPkg, "UpdateWorkflowOptions"),
 		g.Id("id").Op("*").String(),
-		g.Id("waitPolicy").Qual(enumsPkg, "UpdateWorkflowExecutionLifecycleStage"),
+		g.Id("waitPolicy").Qual(clientPkg, "WorkflowUpdateStage"),
 	)
 
 	f.Commentf("%s initializes a new %s value", constructorName, typeName)
 	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
 		g.Return(g.Op("&").Id(typeName).Values(
-			g.Id("Options").Op(":").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
+			g.Id("Options").Op(":").Op("&").Qual(clientPkg, "UpdateWorkflowOptions").Values(),
 		)),
 	)
 
-	f.Comment("Build initializes a new client.UpdateWorkflowWithOptionsRequest with defaults and overrides applied")
+	f.Comment("Build initializes a new client.UpdateWorkflowOptions with defaults and overrides applied")
 	f.Func().
 		Params(g.Id("o").Op("*").Id(typeName)).
 		Id("Build").
@@ -1225,15 +1225,15 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 			}
 		}).
 		Params(
-			g.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+			g.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowOptions"),
 			g.Err().Error(),
 		).
 		BlockFunc(func(fn *g.Group) {
-			fn.Comment("use user-provided UpdateWorkflowWithOptionsRequest if exists")
+			fn.Comment("use user-provided UpdateWorkflowOptions if exists")
 			fn.If(g.Id("o").Dot("Options").Op("!=").Nil()).Block(
 				g.Id("opts").Op("=").Id("o").Dot("Options"),
 			).Else().Block(
-				g.Id("opts").Op("=").Op("&").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values(),
+				g.Id("opts").Op("=").Op("&").Qual(clientPkg, "UpdateWorkflowOptions").Values(),
 			)
 
 			fn.Line()
@@ -1269,25 +1269,25 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 
 			fn.Line()
 			fn.Comment("set WaitPolicy")
-			waitPolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("waitPolicy"), g.Id("v").Op("!=").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
-				g.Id("opts").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-					g.Id("LifecycleStage").Op(":").Id("v"),
-				),
+			waitPolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("waitPolicy"), g.Id("v").Op("!=").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
+				g.Id("opts").Dot("WaitForStage").Op("=").Id("v"),
 			)
-			if wp := updateOpts.GetWaitPolicy(); wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
+			wp := updateOpts.GetWaitForStage()
+			if wp == temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED && updateOpts.GetWaitPolicy() != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
+				wp = updateOpts.GetWaitPolicy()
+			}
+			if wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
 				var stage string
 				switch wp {
 				case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
-					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED"
+					stage = "WorkflowUpdateStageAccepted"
 				case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
-					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"
+					stage = "WorkflowUpdateStageAdmitted"
 				case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
-					stage = "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED"
+					stage = "WorkflowUpdateStageCompleted"
 				}
-				waitPolicy.Else().If(g.Id("opts").Dot("WaitPolicy").Dot("GetLifecycleStage").Call().Op("==").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED")).Block(
-					g.Id("opts").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Values(
-						g.Id("LifecycleStage").Op(":").Qual(enumsPkg, stage),
-					),
+				waitPolicy.Else().If(g.Id("opts").Dot("WaitForStage").Op("==").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
+					g.Id("opts").Dot("WaitForStage").Op("=").Qual(clientPkg, stage),
 				)
 			}
 
@@ -1305,11 +1305,11 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 			g.Return(g.Id("o")),
 		)
 
-	f.Comment("WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowWithOptionsRequest")
+	f.Comment("WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowOptions")
 	f.Func().
 		Params(g.Id("o").Op("*").Id(typeName)).
 		Id("WithUpdateWorkflowOptions").
-		Params(g.Id("options").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest")).
+		Params(g.Id("options").Qual(clientPkg, "UpdateWorkflowOptions")).
 		Op("*").Id(typeName).
 		Block(
 			g.Id("o").Dot("Options").Op("=").Op("&").Id("options"),
@@ -1320,7 +1320,7 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 	f.Func().
 		Params(g.Id("o").Op("*").Id(typeName)).
 		Id("WithWaitPolicy").
-		Params(g.Id("policy").Qual(enumsPkg, "UpdateWorkflowExecutionLifecycleStage")).
+		Params(g.Id("policy").Qual(clientPkg, "WorkflowUpdateStage")).
 		Op("*").Id(typeName).
 		Block(
 			g.Id("o").Dot("waitPolicy").Op("=").Id("policy"),

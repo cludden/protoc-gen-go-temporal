@@ -25,7 +25,8 @@ service Test {
   rpc UpdateWithInput(UpdateWithInputRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.update) = {
       id: 'update-with-input:${! name.or(throw("name is required")) }'
-      wait_policy: WAIT_POLICY_COMPLETED
+      wait_policy: WAIT_POLICY_ADMITTED
+      wait_for_stage: WAIT_POLICY_COMPLETED
     };
   }
 
