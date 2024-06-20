@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠ BREAKING CHANGES
 
+### Added
+
+### Changed
+
+### Fixed
+
+
+
+# [1.14.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.0) - 2024-06-20
+
+### ⚠ BREAKING CHANGES
+
 - [#72](https://github.com/cludden/protoc-gen-go-temporal/pull/72) upgrade go.temporal.io/sdk to [v1.27.0](https://github.com/temporalio/sdk-go/releases/tag/v1.27.0)
  
 ### Added
