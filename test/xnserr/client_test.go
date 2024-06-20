@@ -74,7 +74,7 @@ func registerNamespaceIfNotExists(ctx context.Context, t *testing.T, c client.Cl
 	}
 
 	// since we don't have this ns let's create it
-	_, err = c.WorkflowService().RegisterNamespace(ctx, &workflowservice.RegisterNamespaceRequest{Namespace: "xnserr-server", WorkflowExecutionRetentionPeriod: &retention})
+	_, err = c.WorkflowService().RegisterNamespace(ctx, &workflowservice.RegisterNamespaceRequest{Namespace: "xnserr-server", WorkflowExecutionRetentionPeriod: durationpb.New(retention)})
 	require.NoError(t, err)
 }
 

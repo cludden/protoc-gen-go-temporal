@@ -398,10 +398,7 @@ func (svc *Manifest) genXNSActivitiesUpdateMethod(f *g.File, update protoreflect
 				bl.Id("uo").Op(":=").Qual(xnsPkg, "UnmarshalUpdateWorkflowOptions").Call(
 					g.Id("input").Dot("GetUpdateWorkflowOptions").Call(),
 				)
-				bl.Id("uo").Dot("WaitPolicy").Op("=").Op("&").Qual(updatePkg, "WaitPolicy").Custom(
-					multiLineValues,
-					g.Id("LifecycleStage").Op(":").Qual(enumsPkg, "UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED"),
-				).Line()
+				bl.Id("uo").Dot("WaitForStage").Op("=").Qual(clientPkg, "WorkflowUpdateStageAccepted").Line()
 
 				bl.Comment("initialize update execution")
 				bl.List(g.Id("handle"), g.Err()).Op("=").Id("a").Dot("client").Dot(svc.toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(args *g.Group) {
@@ -1597,7 +1594,7 @@ func (svc *Manifest) genXNSUpdateFunctionAsync(f *g.File, update protoreflect.Fu
 			initializeXNSOptions(fn, opts.GetXns(), time.Minute*5)
 
 			// build update options
-			fn.Id("uo").Op(":=").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest").Values()
+			fn.Id("uo").Op(":=").Qual(clientPkg, "UpdateWorkflowOptions").Values()
 			fn.If(g.Id("opt").Dot("UpdateWorkflowOptions").Op("!=").Nil()).Block(
 				g.Id("uo").Op("=").Op("*").Id("opt").Dot("UpdateWorkflowOptions"),
 			)
@@ -1710,7 +1707,7 @@ func (svc *Manifest) genXNSUpdateOptions(f *g.File, update protoreflect.FullName
 	f.Type().Id(typeName).Struct(
 		g.Id("ActivityOptions").Op("*").Qual(workflowPkg, "ActivityOptions"),
 		g.Id("HeartbeatInterval").Qual("time", "Duration"),
-		g.Id("UpdateWorkflowOptions").Op("*").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+		g.Id("UpdateWorkflowOptions").Op("*").Qual(clientPkg, "UpdateWorkflowOptions"),
 	)
 
 	f.Commentf("New%s initializes a new %s value", typeName, typeName)
@@ -1761,7 +1758,7 @@ func (svc *Manifest) genXNSUpdateOptions(f *g.File, update protoreflect.FullName
 		).
 		Id("WithUpdateWorkflowOptions").
 		Params(
-			g.Id("uwo").Qual(clientPkg, "UpdateWorkflowWithOptionsRequest"),
+			g.Id("uwo").Qual(clientPkg, "UpdateWorkflowOptions"),
 		).
 		Op("*").Id(typeName).
 		Block(

@@ -1,15 +1,17 @@
-version: v1
+version: v2
 managed:
   enabled: true
-  go_package_prefix:
-    default: example/gen
-    except:
-      - buf.build/cludden/protoc-gen-go-temporal
+  disable:
+    - file_option: go_package
+      module: buf.build/cludden/protoc-gen-go-temporal
+  override:
+    - file_option: go_package_prefix
+      value: example/gen
 plugins:
-  - plugin: go
+  - local: protoc-gen-go
     out: gen
     opt: paths=source_relative
-  - plugin: go_temporal
+  - local: protoc-gen-go_temporal
     out: gen
     opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,docs-out=./proto/README.md
     strategy: all

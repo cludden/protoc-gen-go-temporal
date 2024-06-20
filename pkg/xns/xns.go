@@ -6,7 +6,6 @@ import (
 
 	xnsv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
 	"go.temporal.io/api/enums/v1"
-	"go.temporal.io/api/update/v1"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -215,40 +214,44 @@ func UnmarshalRetryPolicy(rp *xnsv1.RetryPolicy) *temporal.RetryPolicy {
 	return result
 }
 
-func MarshalUpdateWorkflowOptions(o client.UpdateWorkflowWithOptionsRequest) (*xnsv1.UpdateWorkflowWithOptionsRequest, error) {
+func MarshalUpdateWorkflowOptions(o client.UpdateWorkflowOptions) (*xnsv1.UpdateWorkflowWithOptionsRequest, error) {
 	opts := &xnsv1.UpdateWorkflowWithOptionsRequest{
 		UpdateId:            o.UpdateID,
 		WorkflowId:          o.WorkflowID,
 		RunId:               o.RunID,
 		FirstExecutionRunId: o.FirstExecutionRunID,
 	}
-	if o.WaitPolicy != nil {
-		switch o.WaitPolicy.LifecycleStage {
-		case enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED:
-			opts.WaitPolicy = xnsv1.WaitPolicy_WAIT_POLICY_ACCEPTED
-		case enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED:
-			opts.WaitPolicy = xnsv1.WaitPolicy_WAIT_POLICY_ADMITTED
-		case enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED:
-			opts.WaitPolicy = xnsv1.WaitPolicy_WAIT_POLICY_COMPLETED
-		}
+	switch o.WaitForStage {
+	case client.WorkflowUpdateStageAccepted:
+		opts.WaitPolicy = xnsv1.WaitPolicy_WAIT_POLICY_ACCEPTED
+	case client.WorkflowUpdateStageAdmitted:
+		opts.WaitPolicy = xnsv1.WaitPolicy_WAIT_POLICY_ADMITTED
+	case client.WorkflowUpdateStageCompleted:
+		opts.WaitPolicy = xnsv1.WaitPolicy_WAIT_POLICY_COMPLETED
 	}
 	return opts, nil
 }
 
-func UnmarshalUpdateWorkflowOptions(o *xnsv1.UpdateWorkflowWithOptionsRequest) client.UpdateWorkflowWithOptionsRequest {
-	opts := client.UpdateWorkflowWithOptionsRequest{
+func UnmarshalUpdateWorkflowOptions(o *xnsv1.UpdateWorkflowWithOptionsRequest) client.UpdateWorkflowOptions {
+	opts := client.UpdateWorkflowOptions{
 		UpdateID:            o.GetUpdateId(),
 		WorkflowID:          o.GetWorkflowId(),
 		RunID:               o.GetRunId(),
 		FirstExecutionRunID: o.GetFirstExecutionRunId(),
 	}
-	switch o.WaitPolicy {
+
+	wp := o.GetWaitForStage()
+	if wp == xnsv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED && o.GetWaitPolicy() != xnsv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
+		wp = o.GetWaitPolicy()
+	}
+
+	switch wp {
 	case xnsv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
-		opts.WaitPolicy = &update.WaitPolicy{LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED}
+		opts.WaitForStage = client.WorkflowUpdateStageAccepted
 	case xnsv1.WaitPolicy_WAIT_POLICY_ADMITTED:
-		opts.WaitPolicy = &update.WaitPolicy{LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED}
+		opts.WaitForStage = client.WorkflowUpdateStageAdmitted
 	case xnsv1.WaitPolicy_WAIT_POLICY_COMPLETED:
-		opts.WaitPolicy = &update.WaitPolicy{LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED}
+		opts.WaitForStage = client.WorkflowUpdateStageCompleted
 	}
 	return opts
 }

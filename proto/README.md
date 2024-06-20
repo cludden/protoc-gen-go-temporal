@@ -4164,7 +4164,7 @@ go_name: Name</pre></td>
 
 <table>
 <tr><th>Name</th><th>Value</th></tr>
-<tr><td>wait_policy</td><td><pre>WAIT_POLICY_COMPLETED</pre></td></tr>
+<tr><td>wait_policy</td><td><pre>WAIT_POLICY_ADMITTED</pre></td></tr>
 </table>
 
 <a name="test-option-v1-test-activities"></a>

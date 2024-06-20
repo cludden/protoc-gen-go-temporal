@@ -8,7 +8,6 @@ import (
 	optionv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/option/v1"
 	"github.com/stretchr/testify/suite"
 	"go.temporal.io/api/enums/v1"
-	"go.temporal.io/api/update/v1"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
@@ -456,23 +455,21 @@ func (s *OptionSuite) TestLocalActivityOptions() {
 func (s *OptionSuite) TestUpdateOptions() {
 	cases := []struct {
 		desc     string
-		expected client.UpdateWorkflowWithOptionsRequest
+		expected client.UpdateWorkflowOptions
 		options  []*optionv1.UpdateWithInputOptions
 	}{
 		{
 			desc: "defaults",
-			expected: client.UpdateWorkflowWithOptionsRequest{
+			expected: client.UpdateWorkflowOptions{
 				Args: []any{
 					&optionv1.UpdateWithInputRequest{
 						Name: "bar",
 					},
 				},
-				WorkflowID: "foo",
-				RunID:      "",
-				UpdateID:   "update-with-input:bar",
-				WaitPolicy: &update.WaitPolicy{
-					LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED,
-				},
+				WorkflowID:   "foo",
+				RunID:        "",
+				UpdateID:     "update-with-input:bar",
+				WaitForStage: client.WorkflowUpdateStageCompleted,
 			},
 			options: []*optionv1.UpdateWithInputOptions{
 				optionv1.NewUpdateWithInputOptions(),
@@ -480,27 +477,25 @@ func (s *OptionSuite) TestUpdateOptions() {
 		},
 		{
 			desc: "overrides",
-			expected: client.UpdateWorkflowWithOptionsRequest{
+			expected: client.UpdateWorkflowOptions{
 				Args: []any{
 					&optionv1.UpdateWithInputRequest{
 						Name: "bar",
 					},
 				},
-				WorkflowID: "foo",
-				RunID:      "",
-				UpdateID:   "bar",
-				WaitPolicy: &update.WaitPolicy{
-					LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-				},
+				WorkflowID:   "foo",
+				RunID:        "",
+				UpdateID:     "bar",
+				WaitForStage: client.WorkflowUpdateStageAccepted,
 			},
 			options: []*optionv1.UpdateWithInputOptions{
 				optionv1.NewUpdateWithInputOptions().
-					WithUpdateWorkflowOptions(client.UpdateWorkflowWithOptionsRequest{
+					WithUpdateWorkflowOptions(client.UpdateWorkflowOptions{
 						WorkflowID: "FOO",
 						RunID:      "BAZ",
 					}).
 					WithUpdateID("bar").
-					WithWaitPolicy(enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED),
+					WithWaitPolicy(client.WorkflowUpdateStageAccepted),
 			},
 		},
 	}
@@ -516,7 +511,7 @@ func (s *OptionSuite) TestUpdateOptions() {
 				s.Require().Equal(c.expected.WorkflowID, actual.WorkflowID)
 				s.Require().Equal(c.expected.RunID, actual.RunID)
 				s.Require().Equal(c.expected.UpdateID, actual.UpdateID)
-				s.Require().Equal(c.expected.WaitPolicy.LifecycleStage.String(), actual.WaitPolicy.LifecycleStage.String())
+				s.Require().Equal(c.expected.WaitForStage, actual.WaitForStage)
 				s.Require().Len(actual.Args, len(c.expected.Args))
 				for j, arg := range c.expected.Args {
 					s.Require().True(proto.Equal(arg.(proto.Message), actual.Args[j].(proto.Message)))
