@@ -105,7 +105,7 @@ See examples for more usage:
 
 4. Initialize buf repository
   ```shell
-  mkdir proto && && buf config init
+  mkdir proto && buf config init
   ```
 
 5. Add dependency to `buf.yaml`
@@ -114,7 +114,7 @@ See examples for more usage:
   modules:
     - path: proto
   deps:
-    - buf.build/cludden/protoc-gen-go-temporal:v1.14.0
+    - buf.build/cludden/protoc-gen-go-temporal:<release>
   lint:
     use:
       - DEFAULT
@@ -324,7 +324,7 @@ See examples for more usage:
 
     // block until progress has reached 100 via signals and/or updates
     if err := workflow.Await(ctx, func() bool {
-      r eturn wf.status == examplev1.Foo_FOO_STATUS_READY
+        return wf.status == examplev1.Foo_FOO_STATUS_READY
     }); err != nil {
         return nil, fmt.Errorf("error awaiting ready status: %w", err)
     }
@@ -539,7 +539,7 @@ require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
 
 *__Experimental__*
 
-This plugin has experimental support for Temporal's experimental [Workflow Update](https://docs.temporal.io/workflows#update) capability. Note that this requires cluster support enabled with both of the following dynamic config values set to `true`
+This plugin has experimental support for Temporal's experimental [Workflow Update](https://docs.temporal.io/workflows#update) capability. Note that this requires the `workflow-update-enabled` plugin option to be set to `true` and cluster support enabled with both of the following dynamic config values set to `true`
 
 - `frontend.enableUpdateWorkflowExecution`
 - `frontend.enableUpdateWorkflowExecutionAsyncAccepted`
@@ -552,35 +552,35 @@ This plugin can optionally generate a configurable CLI using [github.com/urfave/
 package main
 
 import (
-  "log"
-  "os"
+    "log"
+    "os"
 
-  example "github.com/cludden/protoc-gen-go-temporal/example"
-  examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-  "github.com/urfave/cli/v2"
-  "go.temporal.io/sdk/client"
-  "go.temporal.io/sdk/worker"
+    example "github.com/cludden/protoc-gen-go-temporal/example"
+    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+    "github.com/urfave/cli/v2"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
 )
 
 func main() {
-  app, err := examplev1.NewExampleCli(
-    examplev1.NewExampleCliOptions().
-      WithClient(func(cmd *cli.Context) (client.Client, error) {
-        return client.Dial(client.Options{})
-      }).
-      WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-        w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-        examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
-        examplev1.RegisterExampleActivities(w, &example.Activities{})
-        return w, nil
-      }),
-  )
-  if err != nil {
-    log.Fatalf("error initializing cli: %v", err)
-  }
-  if err := app.Run(os.Args); err != nil {
-    log.Fatal(err)
-  }
+    app, err := examplev1.NewExampleCli(
+        examplev1.NewExampleCliOptions().
+            WithClient(func(cmd *cli.Context) (client.Client, error) {
+                return client.Dial(client.Options{})
+            }).
+            WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+                w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+                examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
+                examplev1.RegisterExampleActivities(w, &example.Activities{})
+                return w, nil
+            }),
+    )
+    if err != nil {
+        log.Fatalf("error initializing cli: %v", err)
+    }
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
