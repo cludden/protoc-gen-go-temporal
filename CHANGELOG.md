@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+
+
+# [1.14.1](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.1) - 2024-06-20
+
+### Fixed
+
 - [#73](https://github.com/cludden/protoc-gen-go-temporal/pull/73) default to WorkflowUpdateStageCompleted if update options WaitForStage unspecified
 
 
