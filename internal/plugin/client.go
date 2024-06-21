@@ -1276,20 +1276,18 @@ func (svc *Manifest) genClientUpdateOptions(f *g.File, update protoreflect.FullN
 			if wp == temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED && updateOpts.GetWaitPolicy() != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
 				wp = updateOpts.GetWaitPolicy()
 			}
-			if wp != temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED {
-				var stage string
-				switch wp {
-				case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
-					stage = "WorkflowUpdateStageAccepted"
-				case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
-					stage = "WorkflowUpdateStageAdmitted"
-				case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
-					stage = "WorkflowUpdateStageCompleted"
-				}
-				waitPolicy.Else().If(g.Id("opts").Dot("WaitForStage").Op("==").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
-					g.Id("opts").Dot("WaitForStage").Op("=").Qual(clientPkg, stage),
-				)
+			var stage string
+			switch wp {
+			case temporalv1.WaitPolicy_WAIT_POLICY_ACCEPTED:
+				stage = "WorkflowUpdateStageAccepted"
+			case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
+				stage = "WorkflowUpdateStageAdmitted"
+			case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED, temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED:
+				stage = "WorkflowUpdateStageCompleted"
 			}
+			waitPolicy.Else().If(g.Id("opts").Dot("WaitForStage").Op("==").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
+				g.Id("opts").Dot("WaitForStage").Op("=").Qual(clientPkg, stage),
+			)
 
 			fn.Return(g.Id("opts"), g.Nil())
 		})
