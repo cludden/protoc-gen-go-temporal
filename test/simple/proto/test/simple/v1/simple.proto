@@ -279,6 +279,7 @@ message OtherWorkflowRequest {
     google.protobuf.Empty example_empty = 22;
     google.protobuf.Timestamp example_timestamp = 23;
     OtherEnum example_enum = 24;
+    common.v1.Example common_enum = 25;
   }
   message Bar {
     string bar = 1;
