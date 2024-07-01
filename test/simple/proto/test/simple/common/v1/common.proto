@@ -5,6 +5,11 @@ package mycompany.simple.common.v1;
 
 import "google/protobuf/any.proto";
 
+enum Example {
+  EXAMPLE_UNSPECIFIED = 0;
+  EXAMPLE_FOO = 1;
+}
+
 message PaginatedRequest {
   uint32 limit = 1;
   bytes cursor = 2;

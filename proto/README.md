@@ -224,6 +224,7 @@
     - [google.protobuf.Value](#google-protobuf-value)
 - [mycompany.simple.common.v1](#mycompany-simple-common-v1)
   - Messages
+    - [mycompany.simple.common.v1.Example](#mycompany-simple-common-v1-example)
     - [mycompany.simple.common.v1.PaginatedRequest](#mycompany-simple-common-v1-paginatedrequest)
     - [mycompany.simple.common.v1.PaginatedResponse](#mycompany-simple-common-v1-paginatedresponse)
 - [temporal.xns.v1](#temporal-xns-v1)
@@ -2709,6 +2710,12 @@ go_name: Bar</pre></td>
 json_name: baz
 go_name: Baz</pre></td>
 </tr><tr>
+<td>common_enum</td>
+<td><a href="#mycompany-simple-common-v1-example">mycompany.simple.common.v1.Example</a></td>
+<td><pre>
+json_name: commonEnum
+go_name: CommonEnum</pre></td>
+</tr><tr>
 <td>example_bool</td>
 <td>bool</td>
 <td><pre>
@@ -2966,6 +2973,12 @@ go_name: Bar</pre></td>
 <td><pre>
 json_name: baz
 go_name: Baz</pre></td>
+</tr><tr>
+<td>common_enum</td>
+<td><a href="#mycompany-simple-common-v1-example">mycompany.simple.common.v1.Example</a></td>
+<td><pre>
+json_name: commonEnum
+go_name: CommonEnum</pre></td>
 </tr><tr>
 <td>example_bool</td>
 <td>bool</td>
@@ -3560,6 +3573,12 @@ go_name: Bar</pre></td>
 <td><pre>
 json_name: baz
 go_name: Baz</pre></td>
+</tr><tr>
+<td>common_enum</td>
+<td><a href="#mycompany-simple-common-v1-example">mycompany.simple.common.v1.Example</a></td>
+<td><pre>
+json_name: commonEnum
+go_name: CommonEnum</pre></td>
 </tr><tr>
 <td>example_bool</td>
 <td>bool</td>
@@ -5105,6 +5124,20 @@ go_name: StructValue</pre></td>
 
 <a name="mycompany-simple-common-v1-messages"></a>
 ## Messages
+
+<a name="mycompany-simple-common-v1-example"></a>
+### mycompany.simple.common.v1.Example
+
+<table>
+<tr><th>Value</th><th>Description</th></tr>
+<tr>
+<td>EXAMPLE_UNSPECIFIED</td>
+<td></td>
+</tr><tr>
+<td>EXAMPLE_FOO</td>
+<td></td>
+</tr>
+</table>
 
 <a name="mycompany-simple-common-v1-paginatedrequest"></a>
 ### mycompany.simple.common.v1.PaginatedRequest
