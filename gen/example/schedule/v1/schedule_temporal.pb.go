@@ -5,8 +5,8 @@
 //	go go1.22.2
 //	protoc (unknown)
 //
-// source: example/helloworld/v1/example.proto
-package helloworldv1
+// source: example/schedule/v1/schedule.proto
+package schedulev1
 
 import (
 	"bytes"
@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpers "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	scheme "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
 	gohomedir "github.com/mitchellh/go-homedir"
@@ -33,52 +32,39 @@ import (
 	"time"
 )
 
-// ExampleTaskQueue is the default task-queue for a example.helloworld.v1.Example worker
-const ExampleTaskQueue = "hello-world"
+// ExampleTaskQueue is the default task-queue for a example.schedule.v1.Example worker
+const ExampleTaskQueue = "schedule-v1"
 
-// example.helloworld.v1.Example workflow names
+// example.schedule.v1.Example workflow names
 const (
-	HelloWorkflowName = "example.v1.Hello"
+	ScheduleWorkflowName = "example.schedule.v1.Schedule"
 )
 
-// example.helloworld.v1.Example workflow id expressions
-var (
-	HelloIdexpression = expression.MustParseExpression("hello/${! name.or(\"World\") }")
-)
-
-// example.helloworld.v1.Example signal names
-const (
-	GoodbyeSignalName = "example.helloworld.v1.Example.Goodbye"
-)
-
-// ExampleClient describes a client for a(n) example.helloworld.v1.Example worker
+// ExampleClient describes a client for a(n) example.schedule.v1.Example worker
 type ExampleClient interface {
-	// Hello prints a friendly greeting and waits for goodbye
-	Hello(ctx context.Context, req *HelloRequest, opts ...*HelloOptions) (*HelloResponse, error)
+	// Schedule executes a(n) example.schedule.v1.Schedule workflow and blocks until error or response received
+	Schedule(ctx context.Context, req *ScheduleInput, opts ...*ScheduleOptions) (*ScheduleOutput, error)
 
-	// HelloAsync starts a(n) example.v1.Hello workflow and returns a handle to the workflow run
-	HelloAsync(ctx context.Context, req *HelloRequest, opts ...*HelloOptions) (HelloRun, error)
+	// ScheduleAsync starts a(n) example.schedule.v1.Schedule workflow and returns a handle to the workflow run
+	ScheduleAsync(ctx context.Context, req *ScheduleInput, opts ...*ScheduleOptions) (ScheduleRun, error)
 
-	// GetHello retrieves a handle to an existing example.v1.Hello workflow execution
-	GetHello(ctx context.Context, workflowID string, runID string) HelloRun
+	// GetSchedule retrieves a handle to an existing example.schedule.v1.Schedule workflow execution
+	GetSchedule(ctx context.Context, workflowID string, runID string) ScheduleRun
 
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
 
 	// TerminateWorkflow an existing workflow execution
 	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
-
-	// Goodbye signals a running workflow to exit
-	Goodbye(ctx context.Context, workflowID string, runID string, signal *GoodbyeRequest) error
 }
 
-// exampleClient implements a temporal client for a example.helloworld.v1.Example service
+// exampleClient implements a temporal client for a example.schedule.v1.Example service
 type exampleClient struct {
 	client client.Client
 	log    *slog.Logger
 }
 
-// NewExampleClient initializes a new example.helloworld.v1.Example client
+// NewExampleClient initializes a new example.schedule.v1.Example client
 func NewExampleClient(c client.Client, options ...*exampleClientOptions) ExampleClient {
 	var cfg *exampleClientOptions
 	if len(options) > 0 {
@@ -137,43 +123,43 @@ func (opts *exampleClientOptions) getLogger() *slog.Logger {
 	return slog.Default()
 }
 
-// Hello prints a friendly greeting and waits for goodbye
-func (c *exampleClient) Hello(ctx context.Context, req *HelloRequest, options ...*HelloOptions) (*HelloResponse, error) {
-	run, err := c.HelloAsync(ctx, req, options...)
+// example.schedule.v1.Example.Schedule executes a example.schedule.v1.Schedule workflow and blocks until error or response received
+func (c *exampleClient) Schedule(ctx context.Context, req *ScheduleInput, options ...*ScheduleOptions) (*ScheduleOutput, error) {
+	run, err := c.ScheduleAsync(ctx, req, options...)
 	if err != nil {
 		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// Hello prints a friendly greeting and waits for goodbye
-func (c *exampleClient) HelloAsync(ctx context.Context, req *HelloRequest, options ...*HelloOptions) (HelloRun, error) {
-	var o *HelloOptions
+// ScheduleAsync starts a(n) example.schedule.v1.Schedule workflow and returns a handle to the workflow run
+func (c *exampleClient) ScheduleAsync(ctx context.Context, req *ScheduleInput, options ...*ScheduleOptions) (ScheduleRun, error) {
+	var o *ScheduleOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewHelloOptions()
+		o = NewScheduleOptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	run, err := c.client.ExecuteWorkflow(ctx, opts, HelloWorkflowName, req)
+	run, err := c.client.ExecuteWorkflow(ctx, opts, ScheduleWorkflowName, req)
 	if err != nil {
 		return nil, err
 	}
 	if run == nil {
 		return nil, errors.New("execute workflow returned nil run")
 	}
-	return &helloRun{
+	return &scheduleRun{
 		client: c,
 		run:    run,
 	}, nil
 }
 
-// GetHello fetches an existing example.v1.Hello execution
-func (c *exampleClient) GetHello(ctx context.Context, workflowID string, runID string) HelloRun {
-	return &helloRun{
+// GetSchedule fetches an existing example.schedule.v1.Schedule execution
+func (c *exampleClient) GetSchedule(ctx context.Context, workflowID string, runID string) ScheduleRun {
+	return &scheduleRun{
 		client: c,
 		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}
@@ -189,13 +175,8 @@ func (c *exampleClient) TerminateWorkflow(ctx context.Context, workflowID string
 	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
 }
 
-// Goodbye signals a running workflow to exit
-func (c *exampleClient) Goodbye(ctx context.Context, workflowID string, runID string, signal *GoodbyeRequest) error {
-	return c.client.SignalWorkflow(ctx, workflowID, runID, GoodbyeSignalName, signal)
-}
-
-// HelloOptions provides configuration for a example.v1.Hello workflow operation
-type HelloOptions struct {
+// ScheduleOptions provides configuration for a example.schedule.v1.Schedule workflow operation
+type ScheduleOptions struct {
 	options          client.StartWorkflowOptions
 	executionTimeout *time.Duration
 	id               *string
@@ -207,22 +188,16 @@ type HelloOptions struct {
 	taskTimeout      *time.Duration
 }
 
-// NewHelloOptions initializes a new HelloOptions value
-func NewHelloOptions() *HelloOptions {
-	return &HelloOptions{}
+// NewScheduleOptions initializes a new ScheduleOptions value
+func NewScheduleOptions() *ScheduleOptions {
+	return &ScheduleOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *HelloOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ScheduleOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.ID = *v
-	} else if opts.ID == "" {
-		id, err := expression.EvalExpression(HelloIdexpression, req)
-		if err != nil {
-			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", HelloWorkflowName, err)
-		}
-		opts.ID = id
 	}
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
@@ -251,61 +226,61 @@ func (o *HelloOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 }
 
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
-func (o *HelloOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *HelloOptions {
+func (o *ScheduleOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ScheduleOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *HelloOptions) WithExecutionTimeout(d time.Duration) *HelloOptions {
+func (o *ScheduleOptions) WithExecutionTimeout(d time.Duration) *ScheduleOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the ID value
-func (o *HelloOptions) WithID(id string) *HelloOptions {
+func (o *ScheduleOptions) WithID(id string) *ScheduleOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *HelloOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *HelloOptions {
+func (o *ScheduleOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ScheduleOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *HelloOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *HelloOptions {
+func (o *ScheduleOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ScheduleOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *HelloOptions) WithRunTimeout(d time.Duration) *HelloOptions {
+func (o *ScheduleOptions) WithRunTimeout(d time.Duration) *ScheduleOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *HelloOptions) WithSearchAttributes(sa map[string]any) *HelloOptions {
+func (o *ScheduleOptions) WithSearchAttributes(sa map[string]any) *ScheduleOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *HelloOptions) WithTaskTimeout(d time.Duration) *HelloOptions {
+func (o *ScheduleOptions) WithTaskTimeout(d time.Duration) *ScheduleOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *HelloOptions) WithTaskQueue(tq string) *HelloOptions {
+func (o *ScheduleOptions) WithTaskQueue(tq string) *ScheduleOptions {
 	o.taskQueue = &tq
 	return o
 }
 
-// HelloRun describes a(n) example.v1.Hello workflow run
-type HelloRun interface {
+// ScheduleRun describes a(n) example.schedule.v1.Schedule workflow run
+type ScheduleRun interface {
 	// ID returns the workflow ID
 	ID() string
 
@@ -316,47 +291,44 @@ type HelloRun interface {
 	Run() client.WorkflowRun
 
 	// Get blocks until the workflow is complete and returns the result
-	Get(ctx context.Context) (*HelloResponse, error)
+	Get(ctx context.Context) (*ScheduleOutput, error)
 
 	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
 	Cancel(ctx context.Context) error
 
 	// Terminate terminates a workflow in execution, returning an error if applicable
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
-
-	// Goodbye signals a running workflow to exit
-	Goodbye(ctx context.Context, req *GoodbyeRequest) error
 }
 
-// helloRun provides an internal implementation of a(n) HelloRunRun
-type helloRun struct {
+// scheduleRun provides an internal implementation of a(n) ScheduleRunRun
+type scheduleRun struct {
 	client *exampleClient
 	run    client.WorkflowRun
 }
 
 // ID returns the workflow ID
-func (r *helloRun) ID() string {
+func (r *scheduleRun) ID() string {
 	return r.run.GetID()
 }
 
 // Run returns the inner client.WorkflowRun
-func (r *helloRun) Run() client.WorkflowRun {
+func (r *scheduleRun) Run() client.WorkflowRun {
 	return r.run
 }
 
 // RunID returns the execution ID
-func (r *helloRun) RunID() string {
+func (r *scheduleRun) RunID() string {
 	return r.run.GetRunID()
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *helloRun) Cancel(ctx context.Context) error {
+func (r *scheduleRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
 // Get blocks until the workflow is complete, returning the result if applicable
-func (r *helloRun) Get(ctx context.Context) (*HelloResponse, error) {
-	var resp HelloResponse
+func (r *scheduleRun) Get(ctx context.Context) (*ScheduleOutput, error) {
+	var resp ScheduleOutput
 	if err := r.run.Get(ctx, &resp); err != nil {
 		return nil, err
 	}
@@ -364,27 +336,22 @@ func (r *helloRun) Get(ctx context.Context) (*HelloResponse, error) {
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *helloRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *scheduleRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
-}
-
-// Goodbye signals a running workflow to exit
-func (r *helloRun) Goodbye(ctx context.Context, req *GoodbyeRequest) error {
-	return r.client.Goodbye(ctx, r.ID(), "", req)
 }
 
 // Reference to generated workflow functions
 var (
-	// Hello prints a friendly greeting and waits for goodbye
-	HelloFunction func(workflow.Context, *HelloRequest) (*HelloResponse, error)
+	// ScheduleFunction implements a "example.schedule.v1.Schedule" workflow
+	ScheduleFunction func(workflow.Context, *ScheduleInput) (*ScheduleOutput, error)
 )
 
 // ExampleWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 type (
 	// ExampleWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 	ExampleWorkflowFunctions interface {
-		// Hello prints a friendly greeting and waits for goodbye
-		Hello(workflow.Context, *HelloRequest) (*HelloResponse, error)
+		// Schedule executes a "example.schedule.v1.Schedule" workflow inline
+		Schedule(workflow.Context, *ScheduleInput) (*ScheduleOutput, error)
 	}
 	// exampleWorkflowFunctions provides an internal ExampleWorkflowFunctions implementation
 	exampleWorkflowFunctions struct{}
@@ -394,39 +361,36 @@ func NewExampleWorkflowFunctions() ExampleWorkflowFunctions {
 	return &exampleWorkflowFunctions{}
 }
 
-// Hello prints a friendly greeting and waits for goodbye
-func (f *exampleWorkflowFunctions) Hello(ctx workflow.Context, req *HelloRequest) (*HelloResponse, error) {
-	if HelloFunction == nil {
-		return nil, errors.New("Hello requires workflow registration via RegisterExampleWorkflows or RegisterHelloWorkflow")
+// Schedule executes a "example.schedule.v1.Schedule" workflow inline
+func (f *exampleWorkflowFunctions) Schedule(ctx workflow.Context, req *ScheduleInput) (*ScheduleOutput, error) {
+	if ScheduleFunction == nil {
+		return nil, errors.New("Schedule requires workflow registration via RegisterExampleWorkflows or RegisterScheduleWorkflow")
 	}
-	return HelloFunction(ctx, req)
+	return ScheduleFunction(ctx, req)
 }
 
-// ExampleWorkflows provides methods for initializing new example.helloworld.v1.Example workflow values
+// ExampleWorkflows provides methods for initializing new example.schedule.v1.Example workflow values
 type ExampleWorkflows interface {
-	// Hello prints a friendly greeting and waits for goodbye
-	Hello(ctx workflow.Context, input *HelloWorkflowInput) (HelloWorkflow, error)
+	// Schedule initializes a new a(n) ScheduleWorkflow implementation
+	Schedule(ctx workflow.Context, input *ScheduleWorkflowInput) (ScheduleWorkflow, error)
 }
 
-// RegisterExampleWorkflows registers example.helloworld.v1.Example workflows with the given worker
+// RegisterExampleWorkflows registers example.schedule.v1.Example workflows with the given worker
 func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkflows) {
-	RegisterHelloWorkflow(r, workflows.Hello)
+	RegisterScheduleWorkflow(r, workflows.Schedule)
 }
 
-// RegisterHelloWorkflow registers a example.helloworld.v1.Example.Hello workflow with the given worker
-func RegisterHelloWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *HelloWorkflowInput) (HelloWorkflow, error)) {
-	HelloFunction = buildHello(wf)
-	r.RegisterWorkflowWithOptions(HelloFunction, workflow.RegisterOptions{Name: HelloWorkflowName})
+// RegisterScheduleWorkflow registers a example.schedule.v1.Example.Schedule workflow with the given worker
+func RegisterScheduleWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ScheduleWorkflowInput) (ScheduleWorkflow, error)) {
+	ScheduleFunction = buildSchedule(wf)
+	r.RegisterWorkflowWithOptions(ScheduleFunction, workflow.RegisterOptions{Name: ScheduleWorkflowName})
 }
 
-// buildHello converts a Hello workflow struct into a valid workflow function
-func buildHello(ctor func(workflow.Context, *HelloWorkflowInput) (HelloWorkflow, error)) func(workflow.Context, *HelloRequest) (*HelloResponse, error) {
-	return func(ctx workflow.Context, req *HelloRequest) (*HelloResponse, error) {
-		input := &HelloWorkflowInput{
+// buildSchedule converts a Schedule workflow struct into a valid workflow function
+func buildSchedule(ctor func(workflow.Context, *ScheduleWorkflowInput) (ScheduleWorkflow, error)) func(workflow.Context, *ScheduleInput) (*ScheduleOutput, error) {
+	return func(ctx workflow.Context, req *ScheduleInput) (*ScheduleOutput, error) {
+		input := &ScheduleWorkflowInput{
 			Req: req,
-			Goodbye: &GoodbyeSignal{
-				Channel: workflow.GetSignalChannel(ctx, GoodbyeSignalName),
-			},
 		}
 		wf, err := ctor(ctx, input)
 		if err != nil {
@@ -441,47 +405,44 @@ func buildHello(ctor func(workflow.Context, *HelloWorkflowInput) (HelloWorkflow,
 	}
 }
 
-// HelloWorkflowInput describes the input to a(n) example.v1.Hello workflow constructor
-type HelloWorkflowInput struct {
-	Req     *HelloRequest
-	Goodbye *GoodbyeSignal
+// ScheduleWorkflowInput describes the input to a(n) example.schedule.v1.Schedule workflow constructor
+type ScheduleWorkflowInput struct {
+	Req *ScheduleInput
 }
 
-// Hello prints a friendly greeting and waits for goodbye
-//
-// workflow details: (name: "example.v1.Hello", id: "hello/${! name.or("World") }")
-type HelloWorkflow interface {
-	// Execute defines the entrypoint to a(n) example.v1.Hello workflow
-	Execute(ctx workflow.Context) (*HelloResponse, error)
+// ScheduleWorkflow describes a(n) example.schedule.v1.Schedule workflow implementation
+type ScheduleWorkflow interface {
+	// Execute defines the entrypoint to a(n) example.schedule.v1.Schedule workflow
+	Execute(ctx workflow.Context) (*ScheduleOutput, error)
 }
 
-// Hello prints a friendly greeting and waits for goodbye
-func HelloChild(ctx workflow.Context, req *HelloRequest, options ...*HelloChildOptions) (*HelloResponse, error) {
-	childRun, err := HelloChildAsync(ctx, req, options...)
+// ScheduleChild executes a child example.schedule.v1.Schedule workflow and blocks until error or response received
+func ScheduleChild(ctx workflow.Context, req *ScheduleInput, options ...*ScheduleChildOptions) (*ScheduleOutput, error) {
+	childRun, err := ScheduleChildAsync(ctx, req, options...)
 	if err != nil {
 		return nil, err
 	}
 	return childRun.Get(ctx)
 }
 
-// Hello prints a friendly greeting and waits for goodbye
-func HelloChildAsync(ctx workflow.Context, req *HelloRequest, options ...*HelloChildOptions) (*HelloChildRun, error) {
-	var o *HelloChildOptions
+// ScheduleChildAsync starts a child example.schedule.v1.Schedule workflow and returns a handle to the child workflow run
+func ScheduleChildAsync(ctx workflow.Context, req *ScheduleInput, options ...*ScheduleChildOptions) (*ScheduleChildRun, error) {
+	var o *ScheduleChildOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewHelloChildOptions()
+		o = NewScheduleChildOptions()
 	}
 	opts, err := o.Build(ctx, req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
-	return &HelloChildRun{Future: workflow.ExecuteChildWorkflow(ctx, HelloWorkflowName, req)}, nil
+	return &ScheduleChildRun{Future: workflow.ExecuteChildWorkflow(ctx, ScheduleWorkflowName, req)}, nil
 }
 
-// HelloChildOptions provides configuration for a child example.v1.Hello workflow operation
-type HelloChildOptions struct {
+// ScheduleChildOptions provides configuration for a child example.schedule.v1.Schedule workflow operation
+type ScheduleChildOptions struct {
 	options             workflow.ChildWorkflowOptions
 	executionTimeout    *time.Duration
 	id                  *string
@@ -495,38 +456,16 @@ type HelloChildOptions struct {
 	waitForCancellation *bool
 }
 
-// NewHelloChildOptions initializes a new HelloChildOptions value
-func NewHelloChildOptions() *HelloChildOptions {
-	return &HelloChildOptions{}
+// NewScheduleChildOptions initializes a new ScheduleChildOptions value
+func NewScheduleChildOptions() *ScheduleChildOptions {
+	return &ScheduleChildOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
-func (o *HelloChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+func (o *ScheduleChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
-	} else if opts.WorkflowID == "" {
-		// wrap expression evaluation in local activity
-		// more info: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity
-		if workflow.GetVersion(ctx, "cludden_protoc-gen-go-temporal_64_expression-evaluation-local-activity", workflow.DefaultVersion, 1) == 1 {
-			lao := workflow.GetLocalActivityOptions(ctx)
-			lao.ScheduleToCloseTimeout = time.Second * 10
-			if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
-				id, err := expression.EvalExpression(HelloIdexpression, req)
-				if err != nil {
-					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", HelloWorkflowName, err)
-				}
-				return id, nil
-			}).Get(ctx, &opts.WorkflowID); err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", HelloWorkflowName, err)
-			}
-		} else {
-			id, err := expression.EvalExpression(HelloIdexpression, req)
-			if err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", HelloWorkflowName, err)
-			}
-			opts.WorkflowID = id
-		}
 	}
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
@@ -561,79 +500,79 @@ func (o *HelloChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 }
 
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
-func (o *HelloChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ScheduleChildOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *HelloChildOptions) WithExecutionTimeout(d time.Duration) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithExecutionTimeout(d time.Duration) *ScheduleChildOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the WorkflowID value
-func (o *HelloChildOptions) WithID(id string) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithID(id string) *ScheduleChildOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *HelloChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ScheduleChildOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
-func (o *HelloChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ScheduleChildOptions {
 	o.parentClosePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *HelloChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ScheduleChildOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *HelloChildOptions) WithRunTimeout(d time.Duration) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithRunTimeout(d time.Duration) *ScheduleChildOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *HelloChildOptions) WithSearchAttributes(sa map[string]any) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithSearchAttributes(sa map[string]any) *ScheduleChildOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *HelloChildOptions) WithTaskTimeout(d time.Duration) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithTaskTimeout(d time.Duration) *ScheduleChildOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *HelloChildOptions) WithTaskQueue(tq string) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithTaskQueue(tq string) *ScheduleChildOptions {
 	o.taskQueue = &tq
 	return o
 }
 
 // WithWaitForCancellation sets the WaitForCancellation value
-func (o *HelloChildOptions) WithWaitForCancellation(wait bool) *HelloChildOptions {
+func (o *ScheduleChildOptions) WithWaitForCancellation(wait bool) *ScheduleChildOptions {
 	o.waitForCancellation = &wait
 	return o
 }
 
-// HelloChildRun describes a child Hello workflow run
-type HelloChildRun struct {
+// ScheduleChildRun describes a child Schedule workflow run
+type ScheduleChildRun struct {
 	Future workflow.ChildWorkflowFuture
 }
 
 // Get blocks until the workflow is completed, returning the response value
-func (r *HelloChildRun) Get(ctx workflow.Context) (*HelloResponse, error) {
-	var resp HelloResponse
+func (r *ScheduleChildRun) Get(ctx workflow.Context) (*ScheduleOutput, error) {
+	var resp ScheduleOutput
 	if err := r.Future.Get(ctx, &resp); err != nil {
 		return nil, err
 	}
@@ -641,7 +580,7 @@ func (r *HelloChildRun) Get(ctx workflow.Context) (*HelloResponse, error) {
 }
 
 // Select adds this completion to the selector. Callback can be nil.
-func (r *HelloChildRun) Select(sel workflow.Selector, fn func(*HelloChildRun)) workflow.Selector {
+func (r *ScheduleChildRun) Select(sel workflow.Selector, fn func(*ScheduleChildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future, func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -650,7 +589,7 @@ func (r *HelloChildRun) Select(sel workflow.Selector, fn func(*HelloChildRun)) w
 }
 
 // SelectStart adds waiting for start to the selector. Callback can be nil.
-func (r *HelloChildRun) SelectStart(sel workflow.Selector, fn func(*HelloChildRun)) workflow.Selector {
+func (r *ScheduleChildRun) SelectStart(sel workflow.Selector, fn func(*ScheduleChildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -659,80 +598,12 @@ func (r *HelloChildRun) SelectStart(sel workflow.Selector, fn func(*HelloChildRu
 }
 
 // WaitStart waits for the child workflow to start
-func (r *HelloChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+func (r *ScheduleChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
 	var exec workflow.Execution
 	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
 		return nil, err
 	}
 	return &exec, nil
-}
-
-// Goodbye sends a(n) "example.helloworld.v1.Example.Goodbye" signal request to the child workflow
-func (r *HelloChildRun) Goodbye(ctx workflow.Context, input *GoodbyeRequest) error {
-	return r.GoodbyeAsync(ctx, input).Get(ctx, nil)
-}
-
-// GoodbyeAsync sends a(n) "example.helloworld.v1.Example.Goodbye" signal request to the child workflow
-func (r *HelloChildRun) GoodbyeAsync(ctx workflow.Context, input *GoodbyeRequest) workflow.Future {
-	return r.Future.SignalChildWorkflow(ctx, GoodbyeSignalName, input)
-}
-
-// GoodbyeSignal describes a(n) example.helloworld.v1.Example.Goodbye signal
-type GoodbyeSignal struct {
-	Channel workflow.ReceiveChannel
-}
-
-// NewGoodbyeSignal initializes a new example.helloworld.v1.Example.Goodbye signal wrapper
-func NewGoodbyeSignal(ctx workflow.Context) *GoodbyeSignal {
-	return &GoodbyeSignal{Channel: workflow.GetSignalChannel(ctx, GoodbyeSignalName)}
-}
-
-// Receive blocks until a(n) example.helloworld.v1.Example.Goodbye signal is received
-func (s *GoodbyeSignal) Receive(ctx workflow.Context) (*GoodbyeRequest, bool) {
-	var resp GoodbyeRequest
-	more := s.Channel.Receive(ctx, &resp)
-	return &resp, more
-}
-
-// ReceiveAsync checks for a example.helloworld.v1.Example.Goodbye signal without blocking
-func (s *GoodbyeSignal) ReceiveAsync() *GoodbyeRequest {
-	var resp GoodbyeRequest
-	if ok := s.Channel.ReceiveAsync(&resp); !ok {
-		return nil
-	}
-	return &resp
-}
-
-// ReceiveWithTimeout blocks until a(n) example.helloworld.v1.Example.Goodbye signal is received or timeout expires.
-// Returns more value of false when Channel is closed.
-// Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.
-// resp will be nil if ok is false.
-func (s *GoodbyeSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (resp *GoodbyeRequest, ok bool, more bool) {
-	resp = &GoodbyeRequest{}
-	if ok, more = s.Channel.ReceiveWithTimeout(ctx, timeout, &resp); !ok {
-		return nil, false, more
-	}
-	return
-}
-
-// Select checks for a(n) example.helloworld.v1.Example.Goodbye signal without blocking
-func (s *GoodbyeSignal) Select(sel workflow.Selector, fn func(*GoodbyeRequest)) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		req := s.ReceiveAsync()
-		if fn != nil {
-			fn(req)
-		}
-	})
-}
-
-// Goodbye signals a running workflow to exit
-func GoodbyeExternal(ctx workflow.Context, workflowID string, runID string, req *GoodbyeRequest) error {
-	return GoodbyeExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
-}
-
-// Goodbye signals a running workflow to exit
-func GoodbyeExternalAsync(ctx workflow.Context, workflowID string, runID string, req *GoodbyeRequest) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, GoodbyeSignalName, req)
 }
 
 // ExampleActivities describes available worker activities
@@ -760,33 +631,33 @@ func NewTestExampleClient(env *testsuite.TestWorkflowEnvironment, workflows Exam
 	return &TestExampleClient{env, workflows}
 }
 
-// Hello executes a(n) example.v1.Hello workflow in the test environment
-func (c *TestExampleClient) Hello(ctx context.Context, req *HelloRequest, opts ...*HelloOptions) (*HelloResponse, error) {
-	run, err := c.HelloAsync(ctx, req, opts...)
+// Schedule executes a(n) example.schedule.v1.Schedule workflow in the test environment
+func (c *TestExampleClient) Schedule(ctx context.Context, req *ScheduleInput, opts ...*ScheduleOptions) (*ScheduleOutput, error) {
+	run, err := c.ScheduleAsync(ctx, req, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// HelloAsync executes a(n) example.v1.Hello workflow in the test environment
-func (c *TestExampleClient) HelloAsync(ctx context.Context, req *HelloRequest, options ...*HelloOptions) (HelloRun, error) {
-	var o *HelloOptions
+// ScheduleAsync executes a(n) example.schedule.v1.Schedule workflow in the test environment
+func (c *TestExampleClient) ScheduleAsync(ctx context.Context, req *ScheduleInput, options ...*ScheduleOptions) (ScheduleRun, error) {
+	var o *ScheduleOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewHelloOptions()
+		o = NewScheduleOptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	return &testHelloRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+	return &testScheduleRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
 }
 
-// GetHello is a noop
-func (c *TestExampleClient) GetHello(ctx context.Context, workflowID string, runID string) HelloRun {
-	return &testHelloRun{env: c.env, workflows: c.workflows}
+// GetSchedule is a noop
+func (c *TestExampleClient) GetSchedule(ctx context.Context, workflowID string, runID string) ScheduleRun {
+	return &testScheduleRun{env: c.env, workflows: c.workflows}
 }
 
 // CancelWorkflow requests cancellation of an existing workflow execution
@@ -800,46 +671,40 @@ func (c *TestExampleClient) TerminateWorkflow(ctx context.Context, workflowID st
 	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
-// Goodbye executes a example.helloworld.v1.Example.Goodbye signal
-func (c *TestExampleClient) Goodbye(ctx context.Context, workflowID string, runID string, req *GoodbyeRequest) error {
-	c.env.SignalWorkflow(GoodbyeSignalName, req)
-	return nil
-}
+var _ ScheduleRun = &testScheduleRun{}
 
-var _ HelloRun = &testHelloRun{}
-
-// testHelloRun provides convenience methods for interacting with a(n) example.v1.Hello workflow in the test environment
-type testHelloRun struct {
+// testScheduleRun provides convenience methods for interacting with a(n) example.schedule.v1.Schedule workflow in the test environment
+type testScheduleRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
 	opts      *client.StartWorkflowOptions
-	req       *HelloRequest
+	req       *ScheduleInput
 	workflows ExampleWorkflows
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *testHelloRun) Cancel(ctx context.Context) error {
+func (r *testScheduleRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
-// Get retrieves a test example.v1.Hello workflow result
-func (r *testHelloRun) Get(context.Context) (*HelloResponse, error) {
-	r.env.ExecuteWorkflow(HelloWorkflowName, r.req)
+// Get retrieves a test example.schedule.v1.Schedule workflow result
+func (r *testScheduleRun) Get(context.Context) (*ScheduleOutput, error) {
+	r.env.ExecuteWorkflow(ScheduleWorkflowName, r.req)
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
 	if err := r.env.GetWorkflowError(); err != nil {
 		return nil, err
 	}
-	var result HelloResponse
+	var result ScheduleOutput
 	if err := r.env.GetWorkflowResult(&result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// ID returns a test example.v1.Hello workflow run's workflow ID
-func (r *testHelloRun) ID() string {
+// ID returns a test example.schedule.v1.Schedule workflow run's workflow ID
+func (r *testScheduleRun) ID() string {
 	if r.opts != nil {
 		return r.opts.ID
 	}
@@ -847,26 +712,21 @@ func (r *testHelloRun) ID() string {
 }
 
 // Run noop implementation
-func (r *testHelloRun) Run() client.WorkflowRun {
+func (r *testScheduleRun) Run() client.WorkflowRun {
 	return nil
 }
 
 // RunID noop implementation
-func (r *testHelloRun) RunID() string {
+func (r *testScheduleRun) RunID() string {
 	return ""
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *testHelloRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *testScheduleRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// Goodbye executes a example.helloworld.v1.Example.Goodbye signal against a test example.v1.Hello workflow
-func (r *testHelloRun) Goodbye(ctx context.Context, req *GoodbyeRequest) error {
-	return r.client.Goodbye(ctx, r.ID(), r.RunID(), req)
-}
-
-// ExampleCliOptions describes runtime configuration for example.helloworld.v1.Example cli
+// ExampleCliOptions describes runtime configuration for example.schedule.v1.Example cli
 type ExampleCliOptions struct {
 	after            func(*v2.Context) error
 	before           func(*v2.Context) error
@@ -903,7 +763,7 @@ func (opts *ExampleCliOptions) WithWorker(fn func(*v2.Context, client.Client) (w
 	return opts
 }
 
-// NewExampleCli initializes a cli for a(n) example.helloworld.v1.Example service
+// NewExampleCli initializes a cli for a(n) example.schedule.v1.Example service
 func NewExampleCli(options ...*ExampleCliOptions) (*v2.App, error) {
 	commands, err := newExampleCommands(options...)
 	if err != nil {
@@ -915,7 +775,7 @@ func NewExampleCli(options ...*ExampleCliOptions) (*v2.App, error) {
 	}, nil
 }
 
-// NewExampleCliCommand initializes a cli command for a example.helloworld.v1.Example service with subcommands for each query, signal, update, and workflow
+// NewExampleCliCommand initializes a cli command for a example.schedule.v1.Example service with subcommands for each query, signal, update, and workflow
 func NewExampleCliCommand(options ...*ExampleCliOptions) (*v2.Command, error) {
 	subcommands, err := newExampleCommands(options...)
 	if err != nil {
@@ -927,7 +787,7 @@ func NewExampleCliCommand(options ...*ExampleCliOptions) (*v2.Command, error) {
 	}, nil
 }
 
-// newExampleCommands initializes (sub)commands for a example.helloworld.v1.Example cli or command
+// newExampleCommands initializes (sub)commands for a example.schedule.v1.Example cli or command
 func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 	opts := &ExampleCliOptions{}
 	if len(options) > 0 {
@@ -940,56 +800,8 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 	}
 	commands := []*v2.Command{
 		{
-			Name:                   "goodbye",
-			Usage:                  "Goodbye signals a running workflow to exit",
-			Category:               "SIGNALS",
-			UseShortOptionHandling: true,
-			Before:                 opts.before,
-			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.StringFlag{
-					Name:     "workflow-id",
-					Usage:    "workflow id",
-					Required: true,
-					Aliases:  []string{"w"},
-				},
-				&v2.StringFlag{
-					Name:    "run-id",
-					Usage:   "run id",
-					Aliases: []string{"r"},
-				},
-				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
-				},
-				&v2.StringFlag{
-					Name:     "message",
-					Usage:    "set the value of the operation's \"Message\" parameter",
-					Category: "INPUT",
-				},
-			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
-				if err != nil {
-					return fmt.Errorf("error initializing client for command: %w", err)
-				}
-				defer c.Close()
-				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToGoodbyeRequest(cmd)
-				if err != nil {
-					return fmt.Errorf("error unmarshalling request: %w", err)
-				}
-				if err := client.Goodbye(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
-					return fmt.Errorf("error sending %q signal: %w", GoodbyeSignalName, err)
-				}
-				fmt.Println("success")
-				return nil
-			},
-		},
-		{
-			Name:                   "hello",
-			Usage:                  "Hello prints a friendly greeting and waits for goodbye",
+			Name:                   "schedule",
+			Usage:                  "executes a(n) example.schedule.v1.Schedule workflow",
 			Category:               "WORKFLOWS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1005,17 +817,12 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Usage:   "task queue name",
 					Aliases: []string{"t"},
 					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
-					Value:   "hello-world",
+					Value:   "schedule-v1",
 				},
 				&v2.StringFlag{
 					Name:    "input-file",
 					Usage:   "path to json-formatted input file",
 					Aliases: []string{"f"},
-				},
-				&v2.StringFlag{
-					Name:     "name",
-					Usage:    "set the value of the operation's \"Name\" parameter",
-					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -1025,7 +832,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToHelloRequest(cmd)
+				req, err := UnmarshalCliFlagsToScheduleInput(cmd)
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1033,9 +840,9 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				if tq := cmd.String("task-queue"); tq != "" {
 					opts.TaskQueue = tq
 				}
-				run, err := c.HelloAsync(cmd.Context, req, NewHelloOptions().WithStartWorkflowOptions(opts))
+				run, err := c.ScheduleAsync(cmd.Context, req, NewScheduleOptions().WithStartWorkflowOptions(opts))
 				if err != nil {
-					return fmt.Errorf("error starting %s workflow: %w", HelloWorkflowName, err)
+					return fmt.Errorf("error starting %s workflow: %w", ScheduleWorkflowName, err)
 				}
 				if cmd.Bool("detach") {
 					fmt.Println("success")
@@ -1064,7 +871,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 		commands = append(commands, []*v2.Command{
 			{
 				Name:                   "worker",
-				Usage:                  "runs a example.helloworld.v1.Example worker process",
+				Usage:                  "runs a example.schedule.v1.Example worker process",
 				UseShortOptionHandling: true,
 				Before:                 opts.before,
 				After:                  opts.after,
@@ -1096,9 +903,9 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 	return commands, nil
 }
 
-// UnmarshalCliFlagsToGoodbyeRequest unmarshals a GoodbyeRequest from command line flags
-func UnmarshalCliFlagsToGoodbyeRequest(cmd *v2.Context) (*GoodbyeRequest, error) {
-	var result GoodbyeRequest
+// UnmarshalCliFlagsToScheduleInput unmarshals a ScheduleInput from command line flags
+func UnmarshalCliFlagsToScheduleInput(cmd *v2.Context) (*ScheduleInput, error) {
+	var result ScheduleInput
 	var hasValues bool
 	if cmd.IsSet("input-file") {
 		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
@@ -1113,38 +920,6 @@ func UnmarshalCliFlagsToGoodbyeRequest(cmd *v2.Context) (*GoodbyeRequest, error)
 			return nil, fmt.Errorf("error parsing input-file json: %w", err)
 		}
 		hasValues = true
-	}
-	if cmd.IsSet("message") {
-		hasValues = true
-		result.Message = cmd.String("message")
-	}
-	if !hasValues {
-		return nil, nil
-	}
-	return &result, nil
-}
-
-// UnmarshalCliFlagsToHelloRequest unmarshals a HelloRequest from command line flags
-func UnmarshalCliFlagsToHelloRequest(cmd *v2.Context) (*HelloRequest, error) {
-	var result HelloRequest
-	var hasValues bool
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
-		if err != nil {
-			inputFile = cmd.String("input-file")
-		}
-		b, err := os.ReadFile(inputFile)
-		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
-		}
-		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
-		}
-		hasValues = true
-	}
-	if cmd.IsSet("name") {
-		hasValues = true
-		result.Name = cmd.String("name")
 	}
 	if !hasValues {
 		return nil, nil
@@ -1155,8 +930,7 @@ func UnmarshalCliFlagsToHelloRequest(cmd *v2.Context) (*HelloRequest, error) {
 // WithExampleSchemeTypes registers all Example protobuf types with the given scheme
 func WithExampleSchemeTypes() scheme.Option {
 	return func(s *scheme.Scheme) {
-		s.RegisterType(File_example_helloworld_v1_example_proto.Messages().ByName("GoodbyeRequest"))
-		s.RegisterType(File_example_helloworld_v1_example_proto.Messages().ByName("HelloRequest"))
-		s.RegisterType(File_example_helloworld_v1_example_proto.Messages().ByName("HelloResponse"))
+		s.RegisterType(File_example_schedule_v1_schedule_proto.Messages().ByName("ScheduleInput"))
+		s.RegisterType(File_example_schedule_v1_schedule_proto.Messages().ByName("ScheduleOutput"))
 	}
 }

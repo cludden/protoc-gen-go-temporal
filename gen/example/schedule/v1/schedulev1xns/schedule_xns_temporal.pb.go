@@ -5,17 +5,16 @@
 //	go go1.22.2
 //	protoc (unknown)
 //
-// source: example/searchattributes/v1/searchattributes.proto
-package searchattributesv1xns
+// source: example/schedule/v1/schedule.proto
+package schedulev1xns
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	v1 "github.com/cludden/protoc-gen-go-temporal/gen/example/searchattributes/v1"
+	v1 "github.com/cludden/protoc-gen-go-temporal/gen/example/schedule/v1"
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	xnsv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
-	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	xns "github.com/cludden/protoc-gen-go-temporal/pkg/xns"
 	uuid "github.com/google/uuid"
 	enumsv1 "go.temporal.io/api/enums/v1"
@@ -29,7 +28,7 @@ import (
 	"time"
 )
 
-// ExampleOptions is used to configure example.searchattributes.v1.Example xns activity registration
+// ExampleOptions is used to configure example.schedule.v1.Example xns activity registration
 type ExampleOptions struct {
 	// errorConverter is used to customize error
 	errorConverter func(error) error
@@ -80,22 +79,22 @@ func (opts *ExampleOptions) filterActivity(name string) string {
 // exampleOptions is a reference to the ExampleOptions initialized at registration
 var exampleOptions *ExampleOptions
 
-// RegisterExampleActivities registers example.searchattributes.v1.Example cross-namespace activities
+// RegisterExampleActivities registers example.schedule.v1.Example cross-namespace activities
 func RegisterExampleActivities(r worker.ActivityRegistry, c v1.ExampleClient, options ...*ExampleOptions) {
 	if exampleOptions == nil && len(options) > 0 && options[0] != nil {
 		exampleOptions = options[0]
 	}
 	a := &exampleActivities{c}
-	if name := exampleOptions.filterActivity("example.searchattributes.v1.Example.CancelWorkflow"); name != "" {
+	if name := exampleOptions.filterActivity("example.schedule.v1.Example.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
-	if name := exampleOptions.filterActivity(v1.SearchAttributesWorkflowName); name != "" {
-		r.RegisterActivityWithOptions(a.SearchAttributes, activity.RegisterOptions{Name: name})
+	if name := exampleOptions.filterActivity(v1.ScheduleWorkflowName); name != "" {
+		r.RegisterActivityWithOptions(a.Schedule, activity.RegisterOptions{Name: name})
 	}
 }
 
-// SearchAttributesWorkflowOptions are used to configure a(n) example.searchattributes.v1.Example.SearchAttributes workflow execution
-type SearchAttributesWorkflowOptions struct {
+// ScheduleWorkflowOptions are used to configure a(n) example.schedule.v1.Schedule workflow execution
+type ScheduleWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
@@ -103,43 +102,43 @@ type SearchAttributesWorkflowOptions struct {
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
 
-// NewSearchAttributesWorkflowOptions initializes a new SearchAttributesWorkflowOptions value
-func NewSearchAttributesWorkflowOptions() *SearchAttributesWorkflowOptions {
-	return &SearchAttributesWorkflowOptions{}
+// NewScheduleWorkflowOptions initializes a new ScheduleWorkflowOptions value
+func NewScheduleWorkflowOptions() *ScheduleWorkflowOptions {
+	return &ScheduleWorkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
-func (opts *SearchAttributesWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *SearchAttributesWorkflowOptions {
+func (opts *ScheduleWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *ScheduleWorkflowOptions {
 	opts.ActivityOptions = &ao
 	return opts
 }
 
 // WithDetached can be used to start a workflow execution and exit immediately
-func (opts *SearchAttributesWorkflowOptions) WithDetached(d bool) *SearchAttributesWorkflowOptions {
+func (opts *ScheduleWorkflowOptions) WithDetached(d bool) *ScheduleWorkflowOptions {
 	opts.Detached = d
 	return opts
 }
 
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *SearchAttributesWorkflowOptions) WithHeartbeatInterval(d time.Duration) *SearchAttributesWorkflowOptions {
+func (opts *ScheduleWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ScheduleWorkflowOptions {
 	opts.HeartbeatInterval = d
 	return opts
 }
 
 // WithParentClosePolicy can be used to customize the cancellation propagation behavior
-func (opts *SearchAttributesWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *SearchAttributesWorkflowOptions {
+func (opts *ScheduleWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ScheduleWorkflowOptions {
 	opts.ParentClosePolicy = policy
 	return opts
 }
 
 // WithStartWorkflowOptions can be used to customize the start workflow options
-func (opts *SearchAttributesWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *SearchAttributesWorkflowOptions {
+func (opts *ScheduleWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *ScheduleWorkflowOptions {
 	opts.StartWorkflowOptions = &swo
 	return opts
 }
 
-// SearchAttributesRun provides a handle to a example.searchattributes.v1.Example.SearchAttributes workflow execution
-type SearchAttributesRun interface {
+// ScheduleRun provides a handle to a example.schedule.v1.Schedule workflow execution
+type ScheduleRun interface {
 	// Cancel cancels the workflow
 	Cancel(workflow.Context) error
 
@@ -147,24 +146,24 @@ type SearchAttributesRun interface {
 	Future() workflow.Future
 
 	// Get returns the inner workflow.Future
-	Get(workflow.Context) error
+	Get(workflow.Context) (*v1.ScheduleOutput, error)
 
 	// ID returns the workflow id
 	ID() string
 }
 
-// searchAttributesRun provides a(n) SearchAttributesRun implementation
-type searchAttributesRun struct {
+// scheduleRun provides a(n) ScheduleRun implementation
+type scheduleRun struct {
 	cancel func()
 	future workflow.Future
 	id     string
 }
 
 // Cancel the underlying workflow execution
-func (r *searchAttributesRun) Cancel(ctx workflow.Context) error {
+func (r *scheduleRun) Cancel(ctx workflow.Context) error {
 	if r.cancel != nil {
 		r.cancel()
-		if err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
+		if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
 			return err
 		}
 		return nil
@@ -173,44 +172,45 @@ func (r *searchAttributesRun) Cancel(ctx workflow.Context) error {
 }
 
 // Future returns the underlying activity future
-func (r *searchAttributesRun) Future() workflow.Future {
+func (r *scheduleRun) Future() workflow.Future {
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
-func (r *searchAttributesRun) Get(ctx workflow.Context) error {
-	if err := r.future.Get(ctx, nil); err != nil {
-		return err
+func (r *scheduleRun) Get(ctx workflow.Context) (*v1.ScheduleOutput, error) {
+	var resp v1.ScheduleOutput
+	if err := r.future.Get(ctx, &resp); err != nil {
+		return nil, err
 	}
-	return nil
+	return &resp, nil
 }
 
 // ID returns the underlying workflow id
-func (r *searchAttributesRun) ID() string {
+func (r *scheduleRun) ID() string {
 	return r.id
 }
 
-// SearchAttributes executes a(n) example.searchattributes.v1.Example.SearchAttributes workflow and blocks until error or response is received
-func SearchAttributes(ctx workflow.Context, req *v1.SearchAttributesInput, opts ...*SearchAttributesWorkflowOptions) error {
-	run, err := SearchAttributesAsync(ctx, req, opts...)
+// Schedule executes a(n) example.schedule.v1.Schedule workflow and blocks until error or response is received
+func Schedule(ctx workflow.Context, req *v1.ScheduleInput, opts ...*ScheduleWorkflowOptions) (*v1.ScheduleOutput, error) {
+	run, err := ScheduleAsync(ctx, req, opts...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// SearchAttributesAsync executes a(n) example.searchattributes.v1.Example.SearchAttributes workflow and returns a handle to the underlying activity
-func SearchAttributesAsync(ctx workflow.Context, req *v1.SearchAttributesInput, opts ...*SearchAttributesWorkflowOptions) (SearchAttributesRun, error) {
-	activityName := exampleOptions.filterActivity(v1.SearchAttributesWorkflowName)
+// ScheduleAsync executes a(n) example.schedule.v1.Schedule workflow and returns a handle to the underlying activity
+func ScheduleAsync(ctx workflow.Context, req *v1.ScheduleInput, opts ...*ScheduleWorkflowOptions) (ScheduleRun, error) {
+	activityName := exampleOptions.filterActivity(v1.ScheduleWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.SearchAttributesWorkflowName),
+			fmt.Sprintf("no activity registered for %s", v1.ScheduleWorkflowName),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &SearchAttributesWorkflowOptions{}
+	opt := &ScheduleWorkflowOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -238,18 +238,6 @@ func SearchAttributesAsync(ctx workflow.Context, req *v1.SearchAttributesInput, 
 	wo := client.StartWorkflowOptions{}
 	if opt.StartWorkflowOptions != nil {
 		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.SearchAttributesIdexpression, req.ProtoReflect())
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.searchattributes.v1.Example.SearchAttributes\" workflow", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
 	}
 	if wo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
@@ -290,7 +278,7 @@ func SearchAttributesAsync(ctx workflow.Context, req *v1.SearchAttributesInput, 
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &searchAttributesRun{
+	return &scheduleRun{
 		cancel: cancel,
 		id:     wo.ID,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
@@ -310,11 +298,11 @@ func CancelExampleWorkflow(ctx workflow.Context, workflowID string, runID string
 
 // CancelExampleWorkflowAsync cancels an existing workflow
 func CancelExampleWorkflowAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
-	activityName := exampleOptions.filterActivity("example.searchattributes.v1.Example.CancelWorkflow")
+	activityName := exampleOptions.filterActivity("example.schedule.v1.Example.CancelWorkflow")
 	if activityName == "" {
 		f, s := workflow.NewFuture(ctx)
 		s.SetError(temporal.NewNonRetryableApplicationError(
-			"no activity registered for example.searchattributes.v1.Example.CancelWorkflow",
+			"no activity registered for example.schedule.v1.Example.CancelWorkflow",
 			"Unimplemented",
 			nil,
 		))
@@ -338,36 +326,36 @@ func (a *exampleActivities) CancelWorkflow(ctx context.Context, workflowID strin
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
-// SearchAttributes executes a(n) example.searchattributes.v1.Example.SearchAttributes workflow via an activity
-func (a *exampleActivities) SearchAttributes(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
+// Schedule executes a(n) example.schedule.v1.Schedule workflow via an activity
+func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.ScheduleOutput, err error) {
 	// unmarshal workflow request
-	var req v1.SearchAttributesInput
+	var req v1.ScheduleInput
 	if err := input.Request.UnmarshalTo(&req); err != nil {
-		return exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/searchattributes/v1.SearchAttributesInput", input.Request.GetTypeUrl()),
+		return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/schedule/v1.ScheduleInput", input.Request.GetTypeUrl()),
 			"InvalidArgument",
 			err,
 		))
 	}
 
 	// initialize workflow execution
-	var run v1.SearchAttributesRun
-	run, err = a.client.SearchAttributesAsync(ctx, &req, v1.NewSearchAttributesOptions().WithStartWorkflowOptions(
+	var run v1.ScheduleRun
+	run, err = a.client.ScheduleAsync(ctx, &req, v1.NewScheduleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
-		return exampleOptions.convertError(err)
+		return nil, exampleOptions.convertError(err)
 	}
 
 	// exit early if detached enabled
 	if input.GetDetached() {
-		return nil
+		return nil, nil
 	}
 
 	// otherwise, wait for execution to complete in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = run.Get(ctx)
+		resp, err = run.Get(ctx)
 		close(doneCh)
 	}()
 
@@ -385,7 +373,7 @@ func (a *exampleActivities) SearchAttributes(ctx context.Context, input *xnsv1.W
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
+			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
 		// server-sent cancellation, but there's a non-zero possibility that this cancellation
@@ -396,7 +384,7 @@ func (a *exampleActivities) SearchAttributes(ctx context.Context, input *xnsv1.W
 		case <-ctx.Done():
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
+				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
@@ -408,15 +396,15 @@ func (a *exampleActivities) SearchAttributes(ctx context.Context, input *xnsv1.W
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
-						return exampleOptions.convertError(err)
+						return nil, exampleOptions.convertError(err)
 					}
 				}
-				return exampleOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+				return nil, exampleOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
 			}
 
 		// handle workflow completion
 		case <-doneCh:
-			return exampleOptions.convertError(err)
+			return resp, exampleOptions.convertError(err)
 		}
 	}
 }
