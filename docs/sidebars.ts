@@ -165,6 +165,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'examples/schedule',
+      label: 'Schedule'
+    },
+    {
+      type: 'doc',
       id: 'examples/searchattributes',
       label: 'Search Attributes'
     },

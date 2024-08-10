@@ -1,0 +1,32 @@
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../../examples/schedule/proto/example/schedule/v1/schedule.proto';
+import Implementation from '!!raw-loader!../../../examples/schedule/main.go';
+
+
+# Schedule
+
+A simple example showcasing usage of proto workflwos with Temporal [schedules](https://temporal.io/blog/temporal-schedules-reliable-scalable-and-more-flexible-than-cron-jobs).
+
+<CodeBlock language="protobuf" title="example.proto">{Proto}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Implementation}</CodeBlock>
+
+
+## Run this example
+
+1. Clone the examples
+    ```sh
+    git clone https://github.com/cludden/protoc-gen-go-temporal && cd protoc-gen-go-temporal
+    ```
+2. Start temporal
+    ```shell
+    temporal server start-dev
+    ```
+3. In a different terminal, run the worker
+    ```shell
+    go run ./examples/schedule/... worker
+    ```
+4. In a different terminal, create a schedule
+    ```shell
+    go run ./examples/schedule/... create-schedule
+    ```
