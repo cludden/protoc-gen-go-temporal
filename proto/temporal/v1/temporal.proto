@@ -49,6 +49,9 @@ message ActivityOptions {
 
   // Specifies how to retry an Activity if an error occurs
   RetryPolicy retry_policy = 6;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 9;
 }
 
 // CLIFeature enumerates cli feature statuses 
@@ -110,6 +113,10 @@ message Patch {
     // wraps expression evaluation in local activities within workflow contexts
     // details: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/fix-versions#fix_version_64_expression_evaluation_local_activity
     PV_64 = 1;
+
+    // uses parent workflow task queue for child workflows, instead of service default
+    // details: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/fix-versions#fix_version_77_use_parent_task_queue
+    PV_77 = 2;
   }
 
   // enumerates all supported patch configurations

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -55,7 +56,7 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 		).
 		Block(
 			g.Return(
-				//g.Parens(g.Op("&").Id(workerName).Values(g.Id("wf"))).Dot(method.GoName),
+				// g.Parens(g.Op("&").Id(workerName).Values(g.Id("wf"))).Dot(method.GoName),
 				// generate <Workflow> method for worker struct
 				g.Func().
 					ParamsFunc(func(args *g.Group) {
@@ -89,6 +90,20 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 								).Op(",")
 							}
 						})
+
+						if pvm := svc.patchMode(temporalv1.Patch_PV_77, workflow); pvm != temporalv1.Patch_PVM_DISABLED {
+							var taskQueueVar g.Code
+							if tq := opts.GetTaskQueue(); tq != "" {
+								taskQueueVar = g.Lit(tq)
+							}
+							if taskQueueVar == nil && svc.opts.GetTaskQueue() != "" {
+								taskQueueVar = g.Id(svc.toCamel("%sTaskQueue", svc.GoName))
+							}
+							if taskQueueVar != nil {
+								fn.Comment("inject default task queue and override into workflow context")
+								fn.Id("ctx").Op("=").Qual(patchPkg, "WithDefaultTaskQueue").Call(g.Qual(workflowPkg, "WithValue"), g.Id("ctx"), taskQueueVar, g.Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName"))
+							}
+						}
 
 						// call constructor to get workflow implementation
 						fn.List(g.Id("wf"), g.Err()).Op(":=").Id("ctor").Call(

@@ -11,6 +11,7 @@ modules:
     name: buf.build/cludden/protoc-gen-go-temporal
   - path: test/expression/proto
   - path: test/option/proto
+  - path: test/patch/proto
   - path: test/simple/proto
   - path: test/xnserr/proto
 deps:

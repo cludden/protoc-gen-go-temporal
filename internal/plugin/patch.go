@@ -23,6 +23,11 @@ var patches = map[temporalv1.Patch_Version]patchDetail{
 		comment: "wrap expression evaluation in local activity",
 		link:    "https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity",
 	},
+	temporalv1.Patch_PV_77: {
+		id:      patch.PV_77_UseParentTaskQueue,
+		comment: "use parent workflow task queue for child workflows and activities",
+		link:    "https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_77-use-parent-task-queue",
+	},
 }
 
 func patchComment(b *g.Group, pv temporalv1.Patch_Version) {

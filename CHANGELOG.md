@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠ BREAKING CHANGES
 
 ### Added
+- [#77](https://github.com/cludden/protoc-gen-go-temporal/pull/77) use parent task queue for child workflows and activities ([Patch Version 77](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_77-use-parent-task-queue))
 
 ### Changed
 

@@ -26,6 +26,7 @@ const (
 	enumsPkg        = "go.temporal.io/api/enums/v1"
 	expressionPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpersPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	patchPkg        = "github.com/cludden/protoc-gen-go-temporal/pkg/patch"
 	protoreflectPkg = "google.golang.org/protobuf/reflect/protoreflect"
 	serviceerrorPkg = "go.temporal.io/api/serviceerror"
 	temporalPkg     = "go.temporal.io/sdk/temporal"

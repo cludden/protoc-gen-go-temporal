@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
 	"github.com/hako/durafmt"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -476,25 +477,59 @@ func (svc *Manifest) genActivityOptions(f *g.File, activity protoreflect.FullNam
 
 			// set TaskQueue
 			if !local {
-				fn.If(g.Id("v").Op(":=").Id("o").Dot("taskQueue"), g.Id("v").Op("!=").Nil()).
+				var defaultTaskQueue g.Code
+				if tq := opts.GetTaskQueue(); tq != "" {
+					defaultTaskQueue = g.Lit(tq)
+				} else if tq := svc.opts.GetTaskQueue(); tq != "" {
+					defaultTaskQueue = g.Id(svc.toCamel("%sTaskQueue", svc.GoName))
+				}
+				origFn := func(b *g.Group) {
+					if defaultTaskQueue != nil {
+						b.Id("opts").Dot("TaskQueue").Op("=").Add(defaultTaskQueue)
+					} else {
+						b.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
+					}
+				}
+				fixFn := func(b *g.Group) {
+					if defaultTaskQueue != nil {
+						b.
+							IfFunc(func(b *g.Group) {
+								b.Id("tq").Op(":=").Qual(patchPkg, "DefaultTaskQueue").Call(g.Id("ctx"), defaultTaskQueue)
+								b.Id("tq").Op("!=").Lit("").Op("&&").Id("tq").Op("!=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
+							}).
+							BlockFunc(func(b *g.Group) {
+								b.Id("opts").Dot("TaskQueue").Op("=").Id("tq")
+							})
+					}
+				}
+
+				fn.
+					If(g.Id("v").Op(":=").Id("o").Dot("taskQueue"), g.Id("v").Op("!=").Nil()).
 					Block(
 						g.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
-					).Else().
-					If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).
+					).
+					Else().If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).
 					BlockFunc(func(bl *g.Group) {
-						var taskQueue g.Code
-						if tq := opts.GetTaskQueue(); tq != "" {
-							taskQueue = g.Lit(tq)
-						}
-						if tq := svc.opts.GetTaskQueue(); taskQueue == nil && tq != "" {
-							taskQueue = g.Id(svc.toCamel("%sTaskQueue", svc.GoName))
-						}
-						if taskQueue != nil {
-							bl.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueue)
-						} else {
-							bl.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
+						switch pvm := svc.patchMode(temporalv1.Patch_PV_77, activity); pvm {
+						case temporalv1.Patch_PVM_DISABLED:
+							origFn(bl)
+						case temporalv1.Patch_PVM_ENABLED:
+							patchComment(bl, temporalv1.Patch_PV_77)
+							bl.
+								If(g.Add(patchVersion(temporalv1.Patch_PV_77, pvm)).Op("==").Lit(1)).
+								BlockFunc(fixFn).
+								Else().
+								BlockFunc(origFn)
+						case temporalv1.Patch_PVM_MARKER:
+							patchComment(bl, temporalv1.Patch_PV_77)
+							patchVersion(temporalv1.Patch_PV_77, pvm)
+							fixFn(bl)
+						case temporalv1.Patch_PVM_REMOVED:
+							patchComment(bl, temporalv1.Patch_PV_77)
+							fixFn(bl)
 						}
 					})
+
 			}
 
 			// set WaitForCancellation

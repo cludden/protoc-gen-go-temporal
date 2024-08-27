@@ -38,7 +38,7 @@ import (
 )
 
 type FooWorkflow struct {
-    examplev1.FooWorkflowInput
+    *examplev1.FooWorkflowInput
 }
 
 func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {

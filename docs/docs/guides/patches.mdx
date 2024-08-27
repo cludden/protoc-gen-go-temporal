@@ -55,3 +55,13 @@ By default, patches are introduced in `PVM_ENABLED` mode, where both the patch c
 [protoc-gen-go-temporal#64](https://github.com/cludden/protoc-gen-go-temporal/issues/64)
 
 Wraps expression evaluation in local activities within workflow contexts (i.e. child workflow helpers). This prevents non-determinism errors when an expression contains non-deterministic statements and is evaluated in a long-running workflow that is rescheduled onto a different worker.
+
+### PV_77 Use Parent Task Queue
+
+[protoc-gen-go-temporal#77](https://github.com/cludden/protoc-gen-go-temporal/pulls/77)
+
+Defaults to using to the parent workflow task queue for child workflows and activities when the default task queue for the parent workflow matches the default task queue of the child workflow or activity. This allows for non-default task queue overrides to be honored by child workflows and activities.
+
+:::note
+If child workflows and/or activities cross service boundaries, they will revert back to the previous behavior (i.e. using the configured default) unless the client is configured to use [patch.NewContextPropagator](https://pkg.go.dev/github.com/cludden/protoc-gen-go-temporal/pkg/patch#NewContextPropagator)
+:::

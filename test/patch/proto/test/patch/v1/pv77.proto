@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package test.patch.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Pv77FooService {
+  option (temporal.v1.service) = {
+    task_queue: "pv77-v1"
+    patches: [
+      { version: PV_77, mode: PVM_ENABLED }
+    ]
+  };
+
+  rpc Pv77Foo(Pv77FooInput) returns (Pv77FooOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      name: "test.patch.v1.Pv77FooActivity"
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+}
+
+service Pv77BarService {
+  option (temporal.v1.service) = {
+    task_queue: "pv77-v1"
+    patches: [
+      { version: PV_77, mode: PVM_MARKER }
+    ]
+  };
+
+  rpc Pv77Bar(Pv77BarInput) returns (Pv77BarOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      name: "test.patch.v1.Pv77BarActivity"
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+}
+
+service Pv77BazService {
+  option (temporal.v1.service) = {
+    task_queue: "pv77-v3"
+    patches: [
+      { version: PV_77, mode: PVM_REMOVED }
+    ]
+  };
+
+  rpc Pv77Baz(Pv77BazInput) returns (Pv77BazOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      name: "test.patch.v1.Pv77BazActivity"
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+}
+
+service Pv77QuxService {
+  option (temporal.v1.service) = {
+    task_queue: "pv77-v2"
+    patches: [
+      { version: PV_77, mode: PVM_DISABLED }
+    ]
+  };
+
+  rpc Pv77Qux(Pv77QuxInput) returns (Pv77QuxOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      name: "test.patch.v1.Pv77QuxActivity"
+      start_to_close_timeout: { seconds: 5 }
+    };
+  }
+}
+
+
+message Pv77Input {
+  repeated string next = 1;
+}
+
+message Pv77Output {
+  repeated string task_queues = 1;
+  map<string, string> defaults = 2;
+}
+
+message Pv77FooInput {
+  repeated string next = 1;
+}
+
+message Pv77FooOutput {
+  repeated string task_queues = 1;
+  map<string, string> defaults = 2;
+}
+
+message Pv77BarInput {
+  repeated string next = 1;
+}
+
+message Pv77BarOutput {
+  repeated string task_queues = 1;
+  map<string, string> defaults = 2;
+}
+
+message Pv77BazInput {
+  repeated string next = 1;
+}
+
+message Pv77BazOutput {
+  repeated string task_queues = 1;
+  map<string, string> defaults = 2;
+}
+
+message Pv77QuxInput {
+  repeated string next = 1;
+}
+
+message Pv77QuxOutput {
+  repeated string task_queues = 1;
+  map<string, string> defaults = 2;
+}

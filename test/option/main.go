@@ -8,16 +8,16 @@ import (
 )
 
 type (
-	Workflows struct{}
+	TestWorkflows struct{}
 
-	Activities struct{}
+	TestActivities struct{}
 
 	WorkflowWithInputWorkflow struct {
 		*optionv1.WorkflowWithInputWorkflowInput
 	}
 )
 
-func (w *Workflows) WorkflowWithInput(ctx workflow.Context, input *optionv1.WorkflowWithInputWorkflowInput) (optionv1.WorkflowWithInputWorkflow, error) {
+func (w *TestWorkflows) WorkflowWithInput(ctx workflow.Context, input *optionv1.WorkflowWithInputWorkflowInput) (optionv1.WorkflowWithInputWorkflow, error) {
 	return &WorkflowWithInputWorkflow{input}, nil
 }
 
@@ -29,6 +29,6 @@ func (w *WorkflowWithInputWorkflow) UpdateWithInput(ctx workflow.Context, input 
 	return nil
 }
 
-func (a *Activities) ActivityWithInput(ctx context.Context, input *optionv1.ActivityWithInputRequest) (*optionv1.ActivityWithInputResponse, error) {
+func (a *TestActivities) ActivityWithInput(ctx context.Context, input *optionv1.ActivityWithInputRequest) (*optionv1.ActivityWithInputResponse, error) {
 	return nil, nil
 }

@@ -6,7 +6,9 @@ import "google/protobuf/empty.proto";
 import "temporal/v1/temporal.proto";
 
 service Test {
-  option (temporal.v1.service).task_queue = "option-v1";
+  option (temporal.v1.service) = {
+    task_queue: "option-v1"
+  };
 
   rpc ActivityWithInput(ActivityWithInputRequest) returns (ActivityWithInputResponse) {
     option (temporal.v1.activity) = {

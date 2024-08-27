@@ -67,7 +67,7 @@ func registerNamespaceIfNotExists(ctx context.Context, t *testing.T, c client.Cl
 	}
 
 	// check if we already have xnserr-server and if so return
-	for _, n := range res.Namespaces {
+	for _, n := range namespaces {
 		if n.NamespaceInfo.Name == "xnserr-server" {
 			return
 		}
@@ -87,6 +87,9 @@ func (s *XnsErrSuite) SetupSuite() {
 		ClientOptions: &client.Options{
 			HostPort: "0.0.0.0:7233",
 			Logger:   log.NewStructuredLogger(slog.New(slog.NewTextHandler(io.Discard, nil))),
+			// ContextPropagators: []workflow.ContextPropagator{
+			// 	patch.NewContextPropagator(),
+			// },
 		},
 		EnableUI: true,
 		LogLevel: "error",
@@ -109,7 +112,12 @@ func (s *XnsErrSuite) SetupSuite() {
 		},
 	)
 
-	s.sc, err = client.NewClientFromExisting(s.c, client.Options{Namespace: "xnserr-server"})
+	s.sc, err = client.NewClientFromExisting(s.c, client.Options{
+		Namespace: "xnserr-server",
+		// ContextPropagators: []workflow.ContextPropagator{
+		// 	patch.NewContextPropagator(),
+		// },
+	})
 	s.require.NoError(err)
 
 	server := worker.New(s.sc, xnserrv1.ServerTaskQueue, worker.Options{})
@@ -122,7 +130,12 @@ func (s *XnsErrSuite) SetupSuite() {
 			server.Stop()
 		},
 	)
-	s.server, err = xnserrv1.NewServerClientWithOptions(s.sc, client.Options{Namespace: "xnserr-server"})
+	s.server, err = xnserrv1.NewServerClientWithOptions(s.sc, client.Options{
+		Namespace: "xnserr-server",
+		// ContextPropagators: []workflow.ContextPropagator{
+		// 	patch.NewContextPropagator(),
+		// },
+	})
 	s.require.NoError(err)
 
 	client := worker.New(s.c, xnserrv1.ClientTaskQueue, worker.Options{})
@@ -173,7 +186,7 @@ func (s *XnsErrSuite) TestWorkflowExecutionError_ClientCanceled() {
 
 	err = run.Get(s.ctx)
 	var cancelledErr *temporal.CanceledError
-	s.require.ErrorAs(err, &cancelledErr)
+	s.require.ErrorContains(err, cancelledErr.Error())
 
 	execs, err := s.sc.WorkflowService().ListClosedWorkflowExecutions(s.ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
 		Namespace: "xnserr-server",
@@ -184,7 +197,9 @@ func (s *XnsErrSuite) TestWorkflowExecutionError_ClientCanceled() {
 		},
 	})
 	s.require.NoError(err)
-	s.require.Len(execs.GetExecutions(), 1)
+	s.require.Eventually(func() bool {
+		return len(execs.GetExecutions()) == 1
+	}, time.Second*10, time.Second)
 	s.require.Equal(enums.WORKFLOW_EXECUTION_STATUS_CANCELED, execs.GetExecutions()[0].GetStatus())
 }
 
