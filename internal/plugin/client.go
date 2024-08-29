@@ -1468,23 +1468,60 @@ func (svc *Manifest) genWorkflowOptions(f *g.File, workflow protoreflect.FullNam
 			}
 
 			// set TaskQueue
-			fn.If(g.Id("v").Op(":=").Id("o").Dot("taskQueue"), g.Id("v").Op("!=").Nil()).Block(
-				g.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
-			).Else().If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(bl *g.Group) {
-				var taskQueueVar g.Code
+			{
+				var defaultTaskQueue g.Code
 				if tq := opts.GetTaskQueue(); tq != "" {
-					taskQueueVar = g.Lit(tq)
+					defaultTaskQueue = g.Lit(tq)
 				} else if tq = svc.opts.GetTaskQueue(); tq != "" {
-					taskQueueVar = g.Id(svc.toCamel("%sTaskQueue", svc.Service.GoName))
+					defaultTaskQueue = g.Id(svc.toCamel("%sTaskQueue", svc.Service.GoName))
 				}
-				if taskQueueVar != nil {
-					bl.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueueVar)
-				} else if child {
-					bl.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
-				} else {
-					bl.Return(g.Id("opts"), g.Qual("errors", "New").Call(g.Lit("TaskQueue is required")))
+				origFn := func(b *g.Group) {
+					if defaultTaskQueue != nil { // use default if defined
+						b.Id("opts").Dot("TaskQueue").Op("=").Add(defaultTaskQueue)
+					} else if child { // otherwise, fallback to parent if child
+						b.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
+					} else { // otherwise error
+						b.Return(g.Id("opts"), g.Qual("errors", "New").Call(g.Lit("TaskQueue is required")))
+					}
 				}
-			})
+				fixFn := func(b *g.Group) {
+					if defaultTaskQueue != nil {
+						b.
+							IfFunc(func(b *g.Group) {
+								b.Id("tq").Op(":=").Qual(patchPkg, "DefaultTaskQueue").Call(g.Id("ctx"), defaultTaskQueue)
+								b.Id("tq").Op("!=").Lit("").Op("&&").Id("tq").Op("!=").Qual(workflowPkg, "GetInfo").Call(g.Id("ctx")).Dot("TaskQueueName")
+							}).
+							BlockFunc(func(b *g.Group) {
+								b.Id("opts").Dot("TaskQueue").Op("=").Id("tq")
+							})
+					}
+				}
+
+				fn.
+					If(g.Id("v").Op(":=").Id("o").Dot("taskQueue"), g.Id("v").Op("!=").Nil()).
+					Block(
+						g.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
+					).Else().If(g.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(b *g.Group) {
+					switch pvm := svc.patchMode(temporalv1.Patch_PV_77, workflow); true {
+					case !child || pvm == temporalv1.Patch_PVM_DISABLED:
+						origFn(b)
+					case pvm == temporalv1.Patch_PVM_ENABLED:
+						patchComment(b, temporalv1.Patch_PV_77)
+						b.
+							If(g.Add(patchVersion(temporalv1.Patch_PV_77, pvm)).Op("==").Lit(1)).
+							BlockFunc(fixFn).
+							Else().
+							BlockFunc(origFn)
+					case pvm == temporalv1.Patch_PVM_MARKER:
+						patchComment(b, temporalv1.Patch_PV_77)
+						patchVersion(temporalv1.Patch_PV_77, pvm)
+						fixFn(b)
+					case pvm == temporalv1.Patch_PVM_REMOVED:
+						patchComment(b, temporalv1.Patch_PV_77)
+						fixFn(b)
+					}
+				})
+			}
 
 			// set RetryPolicy
 			retryPolicy := fn.If(g.Id("v").Op(":=").Id("o").Dot("retryPolicy"), g.Id("v").Op("!=").Nil()).Block(

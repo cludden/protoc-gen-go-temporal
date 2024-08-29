@@ -3,6 +3,151 @@ import TabItem from '@theme/TabItem';
 
 # Clients
 
-**Coming Soon...**
+The plugin generates a typed client sdk for each protobuf service with temporal annotations. The client exposes synchronous and asynchronous methods for executing workflows, signals, queries, and updates.
 
-## Workflow Run
+## Constructors
+
+### NewClient
+
+A client can be initialized with an already configured [client.Client](https://pkg.go.dev/go.temporal.io/sdk/client#Client) instance using the `New{Service}Client` constructor function.
+
+<Tabs>
+<TabItem value="constructor-new-schema" label="Schema">
+```protobuf title="example.proto"
+syntax = "proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'example.v1.Hello/${! subject.or("world") }'
+      execution_timeout: {seconds: 30}
+    };
+  }
+}
+
+message HelloInput {
+  string subject = 1;
+}
+
+message HelloOutput {
+  string greeting = 1;
+}
+```
+</TabItem>
+<TabItem value="constructor-new-client" label="Client">
+```go title="main.go"
+package main
+
+import (
+    "fmt"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // initialize temporal client
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer c.Close()
+
+    // initialize generated service client
+    example := examplev1.NewExampleClient(c)
+
+    // execute synchronous workflow method
+    output, err := example.Hello(context.Background(), &examplev1.HelloInput{
+        Subject: "World",
+    })
+    if err != nil {
+        log.Fatalf("error executing %s workflow: %v", examplev1.HelloWorkflowName, err)
+    }
+    fmt.Println(output.String())
+}
+```
+</TabItem>
+</Tabs>
+
+### NewClientWithOptions
+
+It's also possible to initialize a client with explicit [client.Options](https://pkg.go.dev/go.temporal.io/sdk/client#Options) and an existing [client.Client](https://pkg.go.dev/go.temporal.io/sdk/client#Client) instance using the `New{Service}ClientWithOptions` constructor function.
+
+:::note
+Options provided to this constructor will *completely* replace the existing client's options, so things like namespace must always be specified.
+:::
+
+```go title="main.go"
+package main
+
+import (
+    "fmt"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // initialize temporal client
+    c, err := client.Dial(client.Options{
+        Namespace: "default"
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer c.Close()
+
+    // initialize generated service client for a different namespace
+    example, err := examplev1.NewExampleClientWithOptions(c, client.Options{
+        Namespace: "example",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // execute synchronous workflow method
+    output, err := example.Hello(context.Background(), &examplev1.HelloInput{
+        Subject: "World",
+    })
+    if err != nil {
+        log.Fatalf("error executing %s workflow: %v", examplev1.HelloWorkflowName, err)
+    }
+    fmt.Println(output.String())
+}
+```
+
+## Workflows
+
+### Synchronous
+
+### Asynchronous
+
+### Workflow Run
+
+### Get
+
+### Cancel
+
+### Terminate
+
+## Queries
+
+## Signals
+
+### WithStart
+
+## Updates
+
+### Synchronous
+
+### Asynchronous

@@ -23,12 +23,13 @@ type OptionSuite struct {
 }
 
 func TestOptionSuite(t *testing.T) {
+	t.Setenv("TEMPORAL_DEBUG", "true")
 	suite.Run(t, new(OptionSuite))
 }
 
 func (s *OptionSuite) SetupTest() {
 	s.env = s.NewTestWorkflowEnvironment()
-	s.client = optionv1.NewTestTestClient(s.env, &Workflows{}, &Activities{})
+	s.client = optionv1.NewTestTestClient(s.env, &TestWorkflows{}, &TestActivities{})
 }
 
 func (s *OptionSuite) SetupSubTest() {

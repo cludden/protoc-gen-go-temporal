@@ -207,6 +207,41 @@
     - [test.option.v1.ActivityWithInputResponse](#test-option-v1-activitywithinputresponse)
     - [test.option.v1.UpdateWithInputRequest](#test-option-v1-updatewithinputrequest)
     - [test.option.v1.WorkflowWithInputRequest](#test-option-v1-workflowwithinputrequest)
+- [test.patch.v1](#test-patch-v1)
+  - Services
+    - [test.patch.v1.Pv77FooService](#test-patch-v1-pv77fooservice)
+      - [Workflows](#test-patch-v1-pv77fooservice-workflows)
+        - [test.patch.v1.Pv77FooService.Pv77Foo](#test-patch-v1-pv77fooservice-pv77foo-workflow)
+      - [Activities](#test-patch-v1-pv77fooservice-activities)
+        - [test.patch.v1.Pv77FooActivity](#test-patch-v1-pv77fooactivity-activity)
+    - [test.patch.v1.Pv77BarService](#test-patch-v1-pv77barservice)
+      - [Workflows](#test-patch-v1-pv77barservice-workflows)
+        - [test.patch.v1.Pv77BarService.Pv77Bar](#test-patch-v1-pv77barservice-pv77bar-workflow)
+      - [Activities](#test-patch-v1-pv77barservice-activities)
+        - [test.patch.v1.Pv77BarActivity](#test-patch-v1-pv77baractivity-activity)
+    - [test.patch.v1.Pv77BazService](#test-patch-v1-pv77bazservice)
+      - [Workflows](#test-patch-v1-pv77bazservice-workflows)
+        - [test.patch.v1.Pv77BazService.Pv77Baz](#test-patch-v1-pv77bazservice-pv77baz-workflow)
+      - [Activities](#test-patch-v1-pv77bazservice-activities)
+        - [test.patch.v1.Pv77BazActivity](#test-patch-v1-pv77bazactivity-activity)
+    - [test.patch.v1.Pv77QuxService](#test-patch-v1-pv77quxservice)
+      - [Workflows](#test-patch-v1-pv77quxservice-workflows)
+        - [test.patch.v1.Pv77QuxService.Pv77Qux](#test-patch-v1-pv77quxservice-pv77qux-workflow)
+      - [Activities](#test-patch-v1-pv77quxservice-activities)
+        - [test.patch.v1.Pv77QuxActivity](#test-patch-v1-pv77quxactivity-activity)
+  - Messages
+    - [test.patch.v1.Pv77BarInput](#test-patch-v1-pv77barinput)
+    - [test.patch.v1.Pv77BarOutput](#test-patch-v1-pv77baroutput)
+    - [test.patch.v1.Pv77BarOutput.DefaultsEntry](#test-patch-v1-pv77baroutput-defaultsentry)
+    - [test.patch.v1.Pv77BazInput](#test-patch-v1-pv77bazinput)
+    - [test.patch.v1.Pv77BazOutput](#test-patch-v1-pv77bazoutput)
+    - [test.patch.v1.Pv77BazOutput.DefaultsEntry](#test-patch-v1-pv77bazoutput-defaultsentry)
+    - [test.patch.v1.Pv77FooInput](#test-patch-v1-pv77fooinput)
+    - [test.patch.v1.Pv77FooOutput](#test-patch-v1-pv77foooutput)
+    - [test.patch.v1.Pv77FooOutput.DefaultsEntry](#test-patch-v1-pv77foooutput-defaultsentry)
+    - [test.patch.v1.Pv77QuxInput](#test-patch-v1-pv77quxinput)
+    - [test.patch.v1.Pv77QuxOutput](#test-patch-v1-pv77quxoutput)
+    - [test.patch.v1.Pv77QuxOutput.DefaultsEntry](#test-patch-v1-pv77quxoutput-defaultsentry)
 - [test.xnserr.v1](#test-xnserr-v1)
   - Services
     - [test.xnserr.v1.Server](#test-xnserr-v1-server)
@@ -4400,6 +4435,755 @@ go_name: Name</pre></td>
 <td><pre>
 json_name: name
 go_name: Name</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1"></a>
+# test.patch.v1
+
+<a name="test-patch-v1-services"></a>
+## Services
+
+<a name="test-patch-v1-pv77fooservice"></a>
+## test.patch.v1.Pv77FooService
+
+<a name="test-patch-v1-pv77fooservice-workflows"></a>
+### Workflows
+
+---
+<a name="test-patch-v1-pv77fooservice-pv77foo-workflow"></a>
+### test.patch.v1.Pv77FooService.Pv77Foo
+
+**Input:** [test.patch.v1.Pv77FooInput](#test-patch-v1-pv77fooinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77FooOutput](#test-patch-v1-pv77foooutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77foooutput-defaultsentry">test.patch.v1.Pv77FooOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>    
+
+<a name="test-patch-v1-pv77fooservice-activities"></a>
+### Activities
+
+---
+<a name="test-patch-v1-pv77fooactivity-activity"></a>
+### test.patch.v1.Pv77FooActivity
+
+
+
+**Input:** [test.patch.v1.Pv77FooInput](#test-patch-v1-pv77fooinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77FooOutput](#test-patch-v1-pv77foooutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77foooutput-defaultsentry">test.patch.v1.Pv77FooOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table>   
+
+<a name="test-patch-v1-pv77barservice"></a>
+## test.patch.v1.Pv77BarService
+
+<a name="test-patch-v1-pv77barservice-workflows"></a>
+### Workflows
+
+---
+<a name="test-patch-v1-pv77barservice-pv77bar-workflow"></a>
+### test.patch.v1.Pv77BarService.Pv77Bar
+
+**Input:** [test.patch.v1.Pv77BarInput](#test-patch-v1-pv77barinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77BarOutput](#test-patch-v1-pv77baroutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77baroutput-defaultsentry">test.patch.v1.Pv77BarOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>    
+
+<a name="test-patch-v1-pv77barservice-activities"></a>
+### Activities
+
+---
+<a name="test-patch-v1-pv77baractivity-activity"></a>
+### test.patch.v1.Pv77BarActivity
+
+
+
+**Input:** [test.patch.v1.Pv77BarInput](#test-patch-v1-pv77barinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77BarOutput](#test-patch-v1-pv77baroutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77baroutput-defaultsentry">test.patch.v1.Pv77BarOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table>   
+
+<a name="test-patch-v1-pv77bazservice"></a>
+## test.patch.v1.Pv77BazService
+
+<a name="test-patch-v1-pv77bazservice-workflows"></a>
+### Workflows
+
+---
+<a name="test-patch-v1-pv77bazservice-pv77baz-workflow"></a>
+### test.patch.v1.Pv77BazService.Pv77Baz
+
+**Input:** [test.patch.v1.Pv77BazInput](#test-patch-v1-pv77bazinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77BazOutput](#test-patch-v1-pv77bazoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77bazoutput-defaultsentry">test.patch.v1.Pv77BazOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>    
+
+<a name="test-patch-v1-pv77bazservice-activities"></a>
+### Activities
+
+---
+<a name="test-patch-v1-pv77bazactivity-activity"></a>
+### test.patch.v1.Pv77BazActivity
+
+
+
+**Input:** [test.patch.v1.Pv77BazInput](#test-patch-v1-pv77bazinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77BazOutput](#test-patch-v1-pv77bazoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77bazoutput-defaultsentry">test.patch.v1.Pv77BazOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table>   
+
+<a name="test-patch-v1-pv77quxservice"></a>
+## test.patch.v1.Pv77QuxService
+
+<a name="test-patch-v1-pv77quxservice-workflows"></a>
+### Workflows
+
+---
+<a name="test-patch-v1-pv77quxservice-pv77qux-workflow"></a>
+### test.patch.v1.Pv77QuxService.Pv77Qux
+
+**Input:** [test.patch.v1.Pv77QuxInput](#test-patch-v1-pv77quxinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77QuxOutput](#test-patch-v1-pv77quxoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77quxoutput-defaultsentry">test.patch.v1.Pv77QuxOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>    
+
+<a name="test-patch-v1-pv77quxservice-activities"></a>
+### Activities
+
+---
+<a name="test-patch-v1-pv77quxactivity-activity"></a>
+### test.patch.v1.Pv77QuxActivity
+
+
+
+**Input:** [test.patch.v1.Pv77QuxInput](#test-patch-v1-pv77quxinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+**Output:** [test.patch.v1.Pv77QuxOutput](#test-patch-v1-pv77quxoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77quxoutput-defaultsentry">test.patch.v1.Pv77QuxOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>5 seconds</td></tr>
+</table>   
+
+<a name="test-patch-v1-messages"></a>
+## Messages
+
+<a name="test-patch-v1-pv77barinput"></a>
+### test.patch.v1.Pv77BarInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77baroutput"></a>
+### test.patch.v1.Pv77BarOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77baroutput-defaultsentry">test.patch.v1.Pv77BarOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77baroutput-defaultsentry"></a>
+### test.patch.v1.Pv77BarOutput.DefaultsEntry
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>key</td>
+<td>string</td>
+<td><pre>
+json_name: key
+go_name: Key</pre></td>
+</tr><tr>
+<td>value</td>
+<td>string</td>
+<td><pre>
+json_name: value
+go_name: Value</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77bazinput"></a>
+### test.patch.v1.Pv77BazInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77bazoutput"></a>
+### test.patch.v1.Pv77BazOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77bazoutput-defaultsentry">test.patch.v1.Pv77BazOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77bazoutput-defaultsentry"></a>
+### test.patch.v1.Pv77BazOutput.DefaultsEntry
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>key</td>
+<td>string</td>
+<td><pre>
+json_name: key
+go_name: Key</pre></td>
+</tr><tr>
+<td>value</td>
+<td>string</td>
+<td><pre>
+json_name: value
+go_name: Value</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77fooinput"></a>
+### test.patch.v1.Pv77FooInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77foooutput"></a>
+### test.patch.v1.Pv77FooOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77foooutput-defaultsentry">test.patch.v1.Pv77FooOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77foooutput-defaultsentry"></a>
+### test.patch.v1.Pv77FooOutput.DefaultsEntry
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>key</td>
+<td>string</td>
+<td><pre>
+json_name: key
+go_name: Key</pre></td>
+</tr><tr>
+<td>value</td>
+<td>string</td>
+<td><pre>
+json_name: value
+go_name: Value</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77quxinput"></a>
+### test.patch.v1.Pv77QuxInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>next</td>
+<td>string</td>
+<td><pre>
+json_name: next
+go_name: Next</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77quxoutput"></a>
+### test.patch.v1.Pv77QuxOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>defaults</td>
+<td><a href="#test-patch-v1-pv77quxoutput-defaultsentry">test.patch.v1.Pv77QuxOutput.DefaultsEntry</a></td>
+<td><pre>
+json_name: defaults
+go_name: Defaults</pre></td>
+</tr><tr>
+<td>task_queues</td>
+<td>string</td>
+<td><pre>
+json_name: taskQueues
+go_name: TaskQueues</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-patch-v1-pv77quxoutput-defaultsentry"></a>
+### test.patch.v1.Pv77QuxOutput.DefaultsEntry
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>key</td>
+<td>string</td>
+<td><pre>
+json_name: key
+go_name: Key</pre></td>
+</tr><tr>
+<td>value</td>
+<td>string</td>
+<td><pre>
+json_name: value
+go_name: Value</pre></td>
 </tr>
 </table>
 
