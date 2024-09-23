@@ -12,6 +12,7 @@ const (
 )
 
 func (svc *Manifest) renderCodec(f *g.File) {
+	svc.genSectionHeader(f, "Codec")
 	optName := svc.toCamel("With%sSchemeTypes", svc.GoName)
 
 	f.Commentf("%s registers all %s protobuf types with the given scheme", optName, svc.GoName)

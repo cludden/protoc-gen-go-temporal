@@ -20,21 +20,25 @@ import (
 
 // imported packages
 const (
-	activityPkg     = "go.temporal.io/sdk/activity"
-	clientPkg       = "go.temporal.io/sdk/client"
-	durationpbPkg   = "google.golang.org/protobuf/types/known/durationpb"
-	enumsPkg        = "go.temporal.io/api/enums/v1"
-	expressionPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
-	helpersPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
-	protoreflectPkg = "google.golang.org/protobuf/reflect/protoreflect"
-	serviceerrorPkg = "go.temporal.io/api/serviceerror"
-	temporalPkg     = "go.temporal.io/sdk/temporal"
-	temporalv1Pkg   = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
-	timestamppbPkg  = "google.golang.org/protobuf/types/known/timestamppb"
-	updatePkg       = "go.temporal.io/api/update/v1"
-	uuidPkg         = "github.com/google/uuid"
-	workflowPkg     = "go.temporal.io/sdk/workflow"
-	workerPkg       = "go.temporal.io/sdk/worker"
+	activityPkg      = "go.temporal.io/sdk/activity"
+	clientPkg        = "go.temporal.io/sdk/client"
+	durationpbPkg    = "google.golang.org/protobuf/types/known/durationpb"
+	enumsPkg         = "go.temporal.io/api/enums/v1"
+	errsPkg          = "github.com/cludden/protoc-gen-go-temporal/pkg/errs"
+	emptypbPkg       = "google.golang.org/protobuf/types/known/emptypb"
+	expressionPkg    = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	helpersPkg       = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	nexusPkg         = "github.com/nexus-rpc/sdk-go/nexus"
+	protoreflectPkg  = "google.golang.org/protobuf/reflect/protoreflect"
+	serviceerrorPkg  = "go.temporal.io/api/serviceerror"
+	temporalPkg      = "go.temporal.io/sdk/temporal"
+	temporalnexusPkg = "go.temporal.io/sdk/temporalnexus"
+	temporalv1Pkg    = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
+	timestamppbPkg   = "google.golang.org/protobuf/types/known/timestamppb"
+	updatePkg        = "go.temporal.io/api/update/v1"
+	uuidPkg          = "github.com/google/uuid"
+	workflowPkg      = "go.temporal.io/sdk/workflow"
+	workerPkg        = "go.temporal.io/sdk/worker"
 )
 
 const (
@@ -593,7 +597,9 @@ func (svc *Manifest) render() error {
 				continue
 			}
 
-			svc.renderService(f, file, service)
+			svc.File, svc.Service = file, service
+			svc.opts = svc.serviceOptions[service.Desc.FullName()]
+			svc.renderService(f)
 			svc.renderTestClient(f)
 			if svc.cfg.CliEnabled {
 				svc.renderCLI(f)
@@ -604,6 +610,9 @@ func (svc *Manifest) render() error {
 			}
 			if svc.cfg.EnableCodec {
 				svc.renderCodec(f)
+			}
+			if svc.opts.GetNexus().GetEnabled() {
+				svc.renderNexus(f)
 			}
 			hasContent = true
 		}
@@ -637,12 +646,13 @@ func (svc *Manifest) render() error {
 }
 
 // renderService writes the temporal service to the given File
-func (svc *Manifest) renderService(f *g.File, file *protogen.File, service *protogen.Service) {
-	svc.File, svc.Service = file, service
-	svc.opts = svc.serviceOptions[service.Desc.FullName()]
+func (svc *Manifest) renderService(f *g.File) {
+	svc.genSectionHeader(f, "Constants")
+
 	svc.genConstants(f)
 
 	// generate client interface and implementation
+	svc.genSectionHeader(f, "Client")
 	svc.genClientInterface(f)
 	svc.genClientImpl(f)
 	svc.genClientImplConstructor(f)

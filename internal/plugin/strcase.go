@@ -24,3 +24,19 @@ func (svc *Manifest) toLowerCamel(format string, args ...any) string {
 	}
 	return strcase.ToLowerCamel(fmt.Sprintf(format, args...))
 }
+
+func (svc *Manifest) getNexusWorkflowOperationFutureIfaceName(workflow protoreflect.FullName) string {
+	return svc.toCamel("%sWorkflowOperationFuture", workflow)
+}
+
+func (svc *Manifest) getNexusWorkflowOperationFutureImplName(workflow protoreflect.FullName) string {
+	return svc.toLowerCamel("%sWorkflowOperationFuture", workflow)
+}
+
+func (svc *Manifest) getNexusWorkflowOperationName(workflow protoreflect.FullName) string {
+	return svc.toCamel("%sWorkflowOperation", workflow)
+}
+
+func (svc *Manifest) getNexusWorkflowOperationNameConstName(workflow protoreflect.FullName) string {
+	return svc.toCamel("%sWorkflowOperatioName", workflow)
+}

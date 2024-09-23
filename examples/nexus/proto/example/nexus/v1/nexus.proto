@@ -1,0 +1,90 @@
+syntax="proto3";
+
+package example.nexus.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "temporal/v1/temporal.proto";
+
+service Orders {
+  option (temporal.v1.service) = {
+    task_queue: "orders-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc CreateOrder(CreateOrderInput) returns (CreateOrderOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 30}
+    };
+  }
+}
+
+service Billing {
+  option (temporal.v1.service) = {
+    task_queue: "billing-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc Charge(ChargeInput) returns (ChargeOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 3600}
+    }; 
+  }
+}
+
+service Shipping {
+  option (temporal.v1.service) = {
+    task_queue: "shipping-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc Shipment(ShipmentInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 3600}
+    }; 
+  }
+}
+
+message ChargeInput {
+  Order order = 1;
+}
+
+message ChargeOutput {
+  Order order = 1;
+}
+
+message CreateOrderInput {
+  string customer_id = 1;
+  repeated Item items = 2;
+}
+
+message CreateOrderOutput {
+  Order order = 1;
+}
+
+message Item {
+  string sku = 1;
+  uint32 quantity = 2;
+}
+
+message Order {
+  string id = 1;
+  string customer_id = 2;
+  repeated Item items = 3;
+  google.protobuf.Timestamp received_at = 4;
+  OrderStatus status = 5;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_PENDING = 0;
+  ORDER_STATUS_IN_TRANSIT = 1;
+  ORDER_STATUS_COMPLETED = 2;
+}
+
+message ShipmentInput {
+  Order order = 1;
+}
+
+message ShipmentOutput {
+  Order order = 1;
+}

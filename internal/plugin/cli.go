@@ -36,12 +36,27 @@ var (
 		Open:      "{",
 		Separator: ",",
 	}
+
+	multiLineTypeParams = g.Options{
+		Open:      "[",
+		Close:     "]",
+		Separator: ",",
+		Multi:     true,
+	}
+
+	typeParams = g.Options{
+		Open:      "[",
+		Close:     "]",
+		Separator: ",",
+	}
 )
 
 type Cli struct{}
 
 // renderCLI generates cli resources
 func (svc *Manifest) renderCLI(f *g.File) {
+	svc.genSectionHeader(f, "CLI")
+
 	opts := proto.GetExtension(svc.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
 	if opts != nil && opts.GetIgnore() {
 		return

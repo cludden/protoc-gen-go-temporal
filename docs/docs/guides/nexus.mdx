@@ -1,0 +1,296 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Nexus
+
+:::info
+Nexus code generation is considered <b><i>EXPERIMENTAL</i></b>
+:::
+
+## Service
+
+### RegisterService
+
+Initializes a nexus service, registers all supported operations, and registers the service with the given worker.
+
+<Tabs>
+<TabItem value="register-service-go" label="Go">
+```go
+package main
+
+import (
+    "log"
+
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/workflow"
+
+    examplev1 "path/to/exmaple/v1"
+)
+
+func main() {
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatalf("failure initializing temporal client: %q", err)
+    }
+    defer c.Close()
+
+    w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+    examplev1.RegisterExampleWorkflows(w, &Workflows{})
+
+    // register nexus service
+    if err := examplev1.RegisterExampleService(w); err != nil {
+        log.Fatalf("failure registering example nexus service: %v", err)
+    }
+    
+    if err := w.Run(worker.InterruptCh()); err != nil {
+        log.Fatalf("worker encountered unexpected error: %v", err)
+    }
+}
+
+type (
+    Workflows struct {}
+
+    FooWorkflow struct {
+        *examplev1.FooWorkflowInput
+    }
+)
+
+func (w *Workflows) Foo(ctx workflow.Context, input *examplev1.FooWorkflowInput) (examplev1.FooWorkflow, error) {
+    return &FooWorkflow{input}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="register-service-schema" label="Schema">
+```protobuf
+syntax = "proto3";
+
+package example.v1;
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 300}
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### RegisterOperations
+
+Registers all supported operations with the given nexus service.
+
+<Tabs>
+<TabItem value="register-operations-go" label="Go">
+```go
+package main
+
+import (
+    "log"
+
+    "github.com/nexus-rpc/sdk-go/nexus"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/workflow"
+
+    examplev1 "path/to/exmaple/v1"
+)
+
+func main() {
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatalf("failure initializing temporal client: %v", err)
+    }
+    defer c.Close()
+
+    w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+    examplev1.RegisterExampleWorkflows(w, &Workflows{})
+
+    // register nexus service
+    svc := nexus.NewService(examplev1.ExampleServiceName)
+    if err := svc.Register(examplev1.FooWorkflowOperation); err != nil {
+        log.Fatalf("failure registering operations with service: %v", err)
+    }
+    w.RegisterNexusService(svc)
+    
+    if err := w.Run(worker.InterruptCh()); err != nil {
+        log.Fatalf("worker encountered unexpected error: %v", err)
+    }
+}
+
+type (
+    Workflows struct {}
+
+    FooWorkflow struct {
+        *examplev1.FooWorkflowInput
+    }
+)
+
+func (w *Workflows) Foo(ctx workflow.Context, input *examplev1.FooWorkflowInput) (examplev1.FooWorkflow, error) {
+    return &FooWorkflow{input}, nil
+}
+
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    return &examplev1.FooOutput{}, nil
+}
+```
+</TabItem>
+<TabItem value="register-operations-schema" label="Schema">
+```protobuf
+syntax = "proto3";
+
+package example.v1;
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 300}
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Client
+
+The plugin generates typed nexus client interfaces that can be used to execute 
+nexus operations.
+
+### NewNexusClient
+
+<Tabs>
+<TabItem value="new-nexus-client-go" label="Go">
+```go
+package foo
+
+import (
+    "log"
+
+    "github.com/nexus-rpc/sdk-go/nexus"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+    "go.temporal.io/sdk/workflow"
+
+    billingv1 "path/to/gen/billing/v1"
+    shippingv1 "path/to/gen/shipping/v1"
+)
+
+type (
+    WorkflowParams struct {
+        BillingEndpoint string
+        ShippingEndpoint string
+    }
+
+    Workflows struct {
+        billing billingv1.BillingNexusClient
+        shipping shippingv1.ShippingNexusClient
+    }
+
+    OrderWorkflow struct {
+        *Workflows
+        *examplev1.OrderWorkflowInput
+    }
+)
+
+func NewWorkflows(params WorkflowParams) ordersv1.OrdersWorkflows {
+    return &Workflows{
+        billingv1.NewBillingNexusClient(w.BillingEndpoint), 
+        shippingv1.NewShippingNexusClient(w.ShippingEndpoint),
+    }
+}
+
+func (w *Workflows) Order(ctx workflow.Context, input *examplev1.OrderWorkflowInput) (ordersv1.OrderWorkflow, error) {
+    return &OrderWorkflow{w, input}, nil
+}
+
+func (w *OrderWorkflow) Execute(ctx workflow.Context) (*ordersv1.OrderOutput, error) {
+    payment, err := w.billing.ChargePayment(ctx, &billingv1.ChargePaymentInput{/* ... */})
+    if err != nil {
+        return nil, err
+    }
+
+    shipment, err := w.shipping.Shipment(ctx, &shippingv1.ShipmentInput{/* ... */})
+    if err != nil {
+        return nil, err
+    }
+    return &ordersv1.OrderOutput{/* ... */}, nil
+}
+```
+</TabItem>
+<TabItem value="new-nexus-client-orders-schema" label="Orders">
+```protobuf
+syntax = "proto3";
+
+package orders.v1;
+
+service Orders {
+  option (temporal.v1.service) = {
+    task_queue: "orders-v1"
+  };
+
+  rpc Order(OrderInput) returns (OrderOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 300}
+    };
+  }
+}
+```
+</TabItem>
+<TabItem value="new-nexus-client-billing-schema" label="Billing">
+```protobuf
+syntax = "proto3";
+
+package billing.v1;
+
+service Billing {
+  option (temporal.v1.service) = {
+    task_queue: "billing-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc ChargePayment(ChargePaymentInput) returns (ChargePaymentOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 3600}
+    };
+  }
+}
+```
+</TabItem>
+<TabItem value="new-nexus-client-shipping-schema" label="Shipping">
+```protobuf
+syntax = "proto3";
+
+package shipping.v1;
+
+service Shipping {
+  option (temporal.v1.service) = {
+    task_queue: "shipping-v1"
+    nexus: {enabled: true}
+  };
+
+  rpc Shipment(ShipmentInput) returns (ShipmentOutput) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: {seconds: 3600}
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
