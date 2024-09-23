@@ -29,6 +29,26 @@
     - [example.mutex.v1.MutexInput](#example-mutex-v1-mutexinput)
     - [example.mutex.v1.ReleaseLockInput](#example-mutex-v1-releaselockinput)
     - [example.mutex.v1.SampleWorkflowWithMutexInput](#example-mutex-v1-sampleworkflowwithmutexinput)
+- [example.nexus.v1](#example-nexus-v1)
+  - Services
+    - [example.nexus.v1.Orders](#example-nexus-v1-orders)
+      - [Workflows](#example-nexus-v1-orders-workflows)
+        - [example.nexus.v1.Orders.CreateOrder](#example-nexus-v1-orders-createorder-workflow)
+    - [example.nexus.v1.Billing](#example-nexus-v1-billing)
+      - [Workflows](#example-nexus-v1-billing-workflows)
+        - [example.nexus.v1.Billing.Charge](#example-nexus-v1-billing-charge-workflow)
+    - [example.nexus.v1.Shipping](#example-nexus-v1-shipping)
+      - [Workflows](#example-nexus-v1-shipping-workflows)
+        - [example.nexus.v1.Shipping.Shipment](#example-nexus-v1-shipping-shipment-workflow)
+  - Messages
+    - [example.nexus.v1.ChargeInput](#example-nexus-v1-chargeinput)
+    - [example.nexus.v1.ChargeOutput](#example-nexus-v1-chargeoutput)
+    - [example.nexus.v1.CreateOrderInput](#example-nexus-v1-createorderinput)
+    - [example.nexus.v1.CreateOrderOutput](#example-nexus-v1-createorderoutput)
+    - [example.nexus.v1.Item](#example-nexus-v1-item)
+    - [example.nexus.v1.Order](#example-nexus-v1-order)
+    - [example.nexus.v1.OrderStatus](#example-nexus-v1-orderstatus)
+    - [example.nexus.v1.ShipmentInput](#example-nexus-v1-shipmentinput)
 - [example.schedule.v1](#example-schedule-v1)
   - Services
     - [example.schedule.v1.Example](#example-schedule-v1-example)
@@ -725,6 +745,353 @@ go_name: ResourceId</pre></td>
 <td><pre>
 json_name: sleep
 go_name: Sleep</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1"></a>
+# example.nexus.v1
+
+<a name="example-nexus-v1-services"></a>
+## Services
+
+<a name="example-nexus-v1-orders"></a>
+## example.nexus.v1.Orders
+
+<a name="example-nexus-v1-orders-workflows"></a>
+### Workflows
+
+---
+<a name="example-nexus-v1-orders-createorder-workflow"></a>
+### example.nexus.v1.Orders.CreateOrder
+
+**Input:** [example.nexus.v1.CreateOrderInput](#example-nexus-v1-createorderinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>customer_id</td>
+<td>string</td>
+<td><pre>
+json_name: customerId
+go_name: CustomerId</pre></td>
+</tr><tr>
+<td>items</td>
+<td><a href="#example-nexus-v1-item">example.nexus.v1.Item</a></td>
+<td><pre>
+json_name: items
+go_name: Items</pre></td>
+</tr>
+</table>
+
+**Output:** [example.nexus.v1.CreateOrderOutput](#example-nexus-v1-createorderoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>execution_timeout</td><td>30 seconds</td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
+
+<a name="example-nexus-v1-billing"></a>
+## example.nexus.v1.Billing
+
+<a name="example-nexus-v1-billing-workflows"></a>
+### Workflows
+
+---
+<a name="example-nexus-v1-billing-charge-workflow"></a>
+### example.nexus.v1.Billing.Charge
+
+**Input:** [example.nexus.v1.ChargeInput](#example-nexus-v1-chargeinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+**Output:** [example.nexus.v1.ChargeOutput](#example-nexus-v1-chargeoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>execution_timeout</td><td>1 hour</td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
+
+<a name="example-nexus-v1-shipping"></a>
+## example.nexus.v1.Shipping
+
+<a name="example-nexus-v1-shipping-workflows"></a>
+### Workflows
+
+---
+<a name="example-nexus-v1-shipping-shipment-workflow"></a>
+### example.nexus.v1.Shipping.Shipment
+
+**Input:** [example.nexus.v1.ShipmentInput](#example-nexus-v1-shipmentinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>execution_timeout</td><td>1 hour</td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
+
+<a name="example-nexus-v1-messages"></a>
+## Messages
+
+<a name="example-nexus-v1-chargeinput"></a>
+### example.nexus.v1.ChargeInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1-chargeoutput"></a>
+### example.nexus.v1.ChargeOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1-createorderinput"></a>
+### example.nexus.v1.CreateOrderInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>customer_id</td>
+<td>string</td>
+<td><pre>
+json_name: customerId
+go_name: CustomerId</pre></td>
+</tr><tr>
+<td>items</td>
+<td><a href="#example-nexus-v1-item">example.nexus.v1.Item</a></td>
+<td><pre>
+json_name: items
+go_name: Items</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1-createorderoutput"></a>
+### example.nexus.v1.CreateOrderOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1-item"></a>
+### example.nexus.v1.Item
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>quantity</td>
+<td>uint32</td>
+<td><pre>
+json_name: quantity
+go_name: Quantity</pre></td>
+</tr><tr>
+<td>sku</td>
+<td>string</td>
+<td><pre>
+json_name: sku
+go_name: Sku</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1-order"></a>
+### example.nexus.v1.Order
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>customer_id</td>
+<td>string</td>
+<td><pre>
+json_name: customerId
+go_name: CustomerId</pre></td>
+</tr><tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr><tr>
+<td>items</td>
+<td><a href="#example-nexus-v1-item">example.nexus.v1.Item</a></td>
+<td><pre>
+json_name: items
+go_name: Items</pre></td>
+</tr><tr>
+<td>received_at</td>
+<td><a href="#google-protobuf-timestamp">google.protobuf.Timestamp</a></td>
+<td><pre>
+json_name: receivedAt
+go_name: ReceivedAt</pre></td>
+</tr><tr>
+<td>status</td>
+<td><a href="#example-nexus-v1-orderstatus">example.nexus.v1.OrderStatus</a></td>
+<td><pre>
+json_name: status
+go_name: Status</pre></td>
+</tr>
+</table>
+
+
+
+<a name="example-nexus-v1-orderstatus"></a>
+### example.nexus.v1.OrderStatus
+
+<table>
+<tr><th>Value</th><th>Description</th></tr>
+<tr>
+<td>ORDER_STATUS_PENDING</td>
+<td></td>
+</tr><tr>
+<td>ORDER_STATUS_IN_TRANSIT</td>
+<td></td>
+</tr><tr>
+<td>ORDER_STATUS_COMPLETED</td>
+<td></td>
+</tr>
+</table>
+
+<a name="example-nexus-v1-shipmentinput"></a>
+### example.nexus.v1.ShipmentInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>order</td>
+<td><a href="#example-nexus-v1-order">example.nexus.v1.Order</a></td>
+<td><pre>
+json_name: order
+go_name: Order</pre></td>
 </tr>
 </table>
 

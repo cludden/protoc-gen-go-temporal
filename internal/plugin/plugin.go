@@ -150,3 +150,10 @@ func isEmpty(m *protogen.Message) bool {
 func methodSet(methods ...*protogen.Method) []*protogen.Method {
 	return methods
 }
+
+func (svc *Manifest) genSectionHeader(f *g.File, name string) {
+	f.Comment("=============================================================================")
+	f.Commentf("%s (%s)", name, svc.Service.Desc.FullName())
+	f.Comment("=============================================================================")
+	f.Line()
+}

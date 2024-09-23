@@ -1001,6 +1001,8 @@ func (svc *Manifest) genTestClientWorkflowRunImplUpdateAsyncMethod(f *g.File, wo
 }
 
 func (svc *Manifest) renderTestClient(f *g.File) {
+	svc.genSectionHeader(f, "Test Client")
+
 	// generate test client
 	svc.genTestClientImpl(f)
 	svc.genTestClientImplNewMethod(f)

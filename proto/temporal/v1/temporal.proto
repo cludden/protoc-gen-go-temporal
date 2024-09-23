@@ -83,6 +83,21 @@ enum IDReusePolicy {
   WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
 }
 
+message NexusOperationOptions {
+  // boolean flag to disable nexus operation generation for parent
+  bool disabled = 1;
+
+  // fully-qualified nexus operation name
+  string name = 2;
+}
+
+message NexusServiceOptions {
+  bool enabled = 1;
+
+  // fully-qualified nexus operation name
+  string name = 2;
+}
+
 //Defines how child workflows will react to their parent completing 
 enum ParentClosePolicy {
   PARENT_CLOSE_POLICY_UNSPECIFIED = 0;
@@ -127,6 +142,7 @@ message Patch {
 
 // QueryOptions identifies an rpc method as a Temporal query definition, and describes
 // available query configuration options
+// next: 4
 message QueryOptions {
   // Fully-qualified query name
   string name = 1;
@@ -150,13 +166,18 @@ message RetryPolicy {
 // ServiceOptions provides options that can be used to define common configuration
 // shared by all methods
 message ServiceOptions {
-  // Configure patches, by default, patches are introduced in enabled mode
-  repeated Patch patches = 3;
+  // Fully-qualified nexus service name
+  string name = 4;
 
   // Default namespace for child workflows, activities
   string namespace = 2 [
     deprecated = true
   ];
+
+  NexusServiceOptions nexus = 5;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
 
   // Default task queue for all workflows, activities
   string task_queue = 1;
@@ -164,6 +185,7 @@ message ServiceOptions {
 
 // SignalOptions identifies an rpc method as a Temporal singal definition, and describes
 // available signal configuration options
+// next: 4
 message SignalOptions {
   // Fully-qualified signal name
   string name = 1;
@@ -177,6 +199,7 @@ message SignalOptions {
 
 // UpdateOptions identifies an rpc method as a Temporal update definition, and describes
 // available update configuration options
+// next: 8
 message UpdateOptions {
   // ID expression
   string id = 1;
@@ -212,6 +235,7 @@ enum WaitPolicy {
 
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
 // available workflow configuration options
+// next: 20
 message WorkflowOptions {
   // Fully-qualified workflow name
   string name = 14;
@@ -244,6 +268,9 @@ message WorkflowOptions {
   string namespace = 7 [
     deprecated = true
   ];
+
+  // Nexus operation options
+  NexusOperationOptions nexus = 19;
 
   // Specifies a default parent close policy for child workflows
   ParentClosePolicy parent_close_policy = 8;

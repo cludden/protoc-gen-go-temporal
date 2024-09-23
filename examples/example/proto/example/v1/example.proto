@@ -7,6 +7,7 @@ import "temporal/v1/temporal.proto";
 
 service Example {
   option (temporal.v1.service) = {
+    nexus: {enabled: true}
     task_queue: "example-v1"
   };
 
