@@ -68,6 +68,7 @@ type Manifest struct {
 	patchesByRef      map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode
 	queriesOrdered    []protoreflect.FullName
 	queries           map[protoreflect.FullName]*temporalv1.QueryOptions
+	serviceFiles      map[protoreflect.FullName]*protogen.File
 	serviceOptions    map[protoreflect.FullName]*temporalv1.ServiceOptions
 	signalsOrdered    []protoreflect.FullName
 	signals           map[protoreflect.FullName]*temporalv1.SignalOptions
@@ -88,6 +89,7 @@ func parse(p *Plugin) (*Manifest, error) {
 		patches:        make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
 		patchesByRef:   make(map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
 		queries:        make(map[protoreflect.FullName]*temporalv1.QueryOptions),
+		serviceFiles:   make(map[protoreflect.FullName]*protogen.File),
 		serviceOptions: make(map[protoreflect.FullName]*temporalv1.ServiceOptions),
 		signals:        make(map[protoreflect.FullName]*temporalv1.SignalOptions),
 		updates:        make(map[protoreflect.FullName]*temporalv1.UpdateOptions),
@@ -117,6 +119,7 @@ func parse(p *Plugin) (*Manifest, error) {
 		}
 
 		for _, service := range file.Services {
+			svc.serviceFiles[service.Desc.FullName()] = file
 			if opts, ok := proto.GetExtension(service.Desc.Options(), temporalv1.E_Service).(*temporalv1.ServiceOptions); ok && opts != nil {
 				svc.opts = opts
 				svc.serviceOptions[service.Desc.FullName()] = opts
@@ -518,6 +521,15 @@ func (svc *Manifest) getMessageName(msg *protogen.Message) string {
 		}
 	}
 	return name
+}
+
+func (svc *Manifest) goImportPathForMethod(name protoreflect.FullName) string {
+	method := svc.methods[name]
+	file := svc.serviceFiles[method.Parent.Desc.FullName()]
+	if file == nil {
+		return ""
+	}
+	return string(file.GoImportPath)
 }
 
 func (svc *Manifest) patchMode(pv temporalv1.Patch_Version, ref protoreflect.FullName) temporalv1.Patch_Mode {

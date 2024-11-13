@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"io"
 	"runtime"
 	"strings"
 
@@ -36,6 +37,7 @@ type Plugin struct {
 	Version string
 	cfg     *Config
 	flags   *pflag.FlagSet
+	stderr  io.WriteCloser
 }
 
 func New(commit, version string) *Plugin {
@@ -44,13 +46,13 @@ func New(commit, version string) *Plugin {
 	flags := pflag.NewFlagSet("plugin", pflag.ExitOnError)
 	flags.BoolVar(&cfg.CliEnabled, "cli-enabled", false, "enable cli generation")
 	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
-	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
 	flags.BoolVar(&cfg.DisableWorkflowInputRename, "disable-workflow-input-rename", false, "disable renaming of \"<Workflow>WorkflowInput\"")
 	flags.StringVar(&cfg.DocsOut, "docs-out", "", "docs output path")
 	flags.StringVar(&cfg.DocsTemplate, "docs-template", "basic", "built-in template name or path to custom template file")
 	flags.BoolVar(&cfg.EnableCodec, "enable-codec", false, "enables experimental codec support")
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
+	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
 	return &Plugin{
@@ -67,7 +69,7 @@ func (p *Plugin) Param(key, value string) error {
 }
 
 // Run defines the plugin entrypoint
-func (p *Plugin) Run(plugin *protogen.Plugin) error {
+func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 	p.Plugin = plugin
 	services, err := parse(p)
 	if err != nil {
