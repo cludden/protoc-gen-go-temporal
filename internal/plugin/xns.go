@@ -902,11 +902,11 @@ func (svc *Manifest) genXNSRegisterActivities(f *g.File) {
 						continue
 					}
 					fn.If(
-						g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filterActivity").Call(g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), svc.toCamel("%sWith%s", workflow, signal.GetRef())))),
+						g.Id("name").Op(":=").Id(svc.toLowerCamel("%sOptions", svc.GoName)).Dot("filterActivity").Call(g.Lit(fmt.Sprintf("%s.%s", string(svc.Service.Desc.FullName()), svc.toCamel("%sWith%s", workflow, getFullyQualifiedRef(workflow, signal.GetRef()))))),
 						g.Id("name").Op("!=").Lit(""),
 					).Block(
 						g.Id("r").Dot("RegisterActivityWithOptions").Call(
-							g.Id("a").Dot(svc.toCamel("%sWith%s", workflow, signal.GetRef())),
+							g.Id("a").Dot(svc.toCamel("%sWith%s", workflow, getFullyQualifiedRef(workflow, signal.GetRef()))),
 							g.Qual(activityPkg, "RegisterOptions").Values(
 								g.Id("Name").Op(":").Id("name"),
 							),

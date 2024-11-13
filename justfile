@@ -46,14 +46,22 @@ install:
     #!/usr/bin/env bash
     set -euo pipefail
     goreleaser build --clean --single-target --snapshot
+
+    executable=""
     if [ "{{ os() }}" = "macos" ]; then
         if [ "{{ arch() }}" = "aarch64" ]; then
-            sudo cp ./dist/protoc-gen-go_temporal_darwin_arm64/protoc-gen-go_temporal /usr/local/bin
+            executable="./dist/protoc-gen-go_temporal_darwin_arm64_v8.0/protoc-gen-go_temporal"
         else
-            sudo cp ./dist/protoc-gen-go_temporal_darwin_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
+            executable="./dist/protoc-gen-go_temporal_darwin_amd64_v1/protoc-gen-go_temporal"
         fi
     else
-        sudo cp ./dist/protoc-gen-go_temporal_linux_amd64_v1/protoc-gen-go_temporal /usr/local/bin/
+        executable="./dist/protoc-gen-go_temporal_linux_amd64_v1/protoc-gen-go_temporal"
+    fi
+
+    if [ -w /usr/local/bin ]; then
+        cp $executable /usr/local/bin/
+    else
+        sudo cp $executable /usr/local/bin/
     fi
 
 # launch local temporal server

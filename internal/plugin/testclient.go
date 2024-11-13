@@ -471,7 +471,7 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalMethod(f *g.File, workfl
 			g.Id("c").Dot("env").Dot("RegisterDelayedCallback").Call(
 				g.Func().Params().Block(
 					g.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
-						args.Id(svc.toCamel("%sSignalName", signal))
+						args.Qual(string(handler.Input.GoIdent.GoImportPath), svc.toCamel("%sSignalName", signal))
 						if hasSignalInput {
 							args.Id("signal")
 						} else {
@@ -522,12 +522,12 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, w
 		Block(
 			g.Id("c").Dot("env").Dot("RegisterDelayedCallback").Call(
 				g.Func().Params().Block(
-					g.Id("_").Op("=").Id("c").Dot(svc.methods[signal].GoName).CallFunc(func(args *g.Group) {
-						args.Id("ctx")
-						args.Lit("")
-						args.Lit("")
-						if hasInput {
+					g.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
+						args.Qual(string(handler.Input.GoIdent.GoImportPath), svc.toCamel("%sSignalName", signal))
+						if hasSignalInput {
 							args.Id("signal")
+						} else {
+							args.Nil()
 						}
 					}),
 				),
