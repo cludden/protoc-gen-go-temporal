@@ -1187,7 +1187,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 			if hasInput {
 				inputName := svc.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", svc.toCamel(inputName))
-				fn.List(g.Id("req"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
+				fn.List(g.Id("req"), g.Err()).Op(":=").Qual(string(method.Input.GoIdent.GoImportPath), unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
 				)
@@ -1197,7 +1197,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 			if hasSignalInput {
 				inputName := svc.getMessageName(handler.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", svc.toCamel(inputName))
-				fn.List(g.Id("signal"), g.Err()).Op(":=").Id(unmarshaller).Call(g.Id("cmd"))
+				fn.List(g.Id("signal"), g.Err()).Op(":=").Qual(string(handler.Input.GoIdent.GoImportPath), unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling signal: %w"), g.Err())),
 				)
@@ -1214,7 +1214,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 				}
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow with %s signal: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Id(svc.toCamel("%sSignalName", signal)), g.Err())),
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow with %s signal: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Qual(string(handler.Input.GoIdent.GoImportPath), svc.toCamel("%sSignalName", signal)), g.Err())),
 			)
 
 			// handle async invocation

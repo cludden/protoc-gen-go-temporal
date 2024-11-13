@@ -255,7 +255,7 @@ func (svc *Manifest) genClientImplSignalWithStartAsyncMethod(f *g.File, workflow
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *g.Group) {
 				args.Id("ctx")
 				args.Id("opts").Dot("ID")
-				args.Id(svc.toCamel("%sSignalName", signal))
+				args.Qual(string(handler.Input.GoIdent.GoImportPath), svc.toCamel("%sSignalName", signal))
 				if hasSignalInput {
 					args.Id("signal")
 				} else {
