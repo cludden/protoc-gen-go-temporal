@@ -207,6 +207,16 @@
     - [test.option.v1.ActivityWithInputResponse](#test-option-v1-activitywithinputresponse)
     - [test.option.v1.UpdateWithInputRequest](#test-option-v1-updatewithinputrequest)
     - [test.option.v1.WorkflowWithInputRequest](#test-option-v1-workflowwithinputrequest)
+- [test.proto3optional](#test-proto3optional)
+  - Services
+    - [test.proto3optional.FooService](#test-proto3optional-fooservice)
+      - [Workflows](#test-proto3optional-fooservice-workflows)
+        - [test.proto3optional.FooService.Foo](#test-proto3optional-fooservice-foo-workflow)
+      - [Activities](#test-proto3optional-fooservice-activities)
+        - [test.proto3optional.FooService.Foo](#test-proto3optional-fooservice-foo-activity)
+  - Messages
+    - [test.proto3optional.FooInput](#test-proto3optional-fooinput)
+    - [test.proto3optional.FooOutput](#test-proto3optional-foooutput)
 - [test.xnserr.v1](#test-xnserr-v1)
   - Services
     - [test.xnserr.v1.Server](#test-xnserr-v1-server)
@@ -4400,6 +4410,156 @@ go_name: Name</pre></td>
 <td><pre>
 json_name: name
 go_name: Name</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-proto3optional"></a>
+# test.proto3optional
+
+<a name="test-proto3optional-services"></a>
+## Services
+
+<a name="test-proto3optional-fooservice"></a>
+## test.proto3optional.FooService
+
+<a name="test-proto3optional-fooservice-workflows"></a>
+### Workflows
+
+---
+<a name="test-proto3optional-fooservice-foo-workflow"></a>
+### test.proto3optional.FooService.Foo
+
+**Input:** [test.proto3optional.FooInput](#test-proto3optional-fooinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bar</td>
+<td>string</td>
+<td><pre>
+json_name: bar
+go_name: Bar</pre></td>
+</tr>
+</table>
+
+**Output:** [test.proto3optional.FooOutput](#test-proto3optional-foooutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bar</td>
+<td>string</td>
+<td><pre>
+json_name: bar
+go_name: Bar</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>    
+
+<a name="test-proto3optional-fooservice-activities"></a>
+### Activities
+
+---
+<a name="test-proto3optional-fooservice-foo-activity"></a>
+### test.proto3optional.FooService.Foo
+
+
+
+**Input:** [test.proto3optional.FooInput](#test-proto3optional-fooinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bar</td>
+<td>string</td>
+<td><pre>
+json_name: bar
+go_name: Bar</pre></td>
+</tr>
+</table>
+
+**Output:** [test.proto3optional.FooOutput](#test-proto3optional-foooutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bar</td>
+<td>string</td>
+<td><pre>
+json_name: bar
+go_name: Bar</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>start_to_close_timeout</td><td>2 seconds</td></tr>
+</table>   
+
+<a name="test-proto3optional-messages"></a>
+## Messages
+
+<a name="test-proto3optional-fooinput"></a>
+### test.proto3optional.FooInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bar</td>
+<td>string</td>
+<td><pre>
+json_name: bar
+go_name: Bar</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-proto3optional-foooutput"></a>
+### test.proto3optional.FooOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>bar</td>
+<td>string</td>
+<td><pre>
+json_name: bar
+go_name: Bar</pre></td>
 </tr>
 </table>
 

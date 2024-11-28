@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package test.proto3optional;
+
+import "temporal/v1/temporal.proto";
+
+service FooService {
+    option (temporal.v1.service) = {
+        task_queue: "foo-queue"
+    };
+
+    rpc Foo (FooInput) returns (FooOutput) {
+        option (temporal.v1.workflow) = {};
+        option (temporal.v1.activity) = {
+            start_to_close_timeout: {seconds: 2}
+        };
+    }
+}
+
+message FooInput {
+    optional string bar = 1;
+}
+
+message FooOutput {
+    optional string bar = 1;
+}

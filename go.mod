@@ -18,7 +18,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.2
 	go.temporal.io/api v1.34.0
 	go.temporal.io/sdk v1.27.0
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/protobuf v1.35.2
 )
 
 require (

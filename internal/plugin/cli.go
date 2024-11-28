@@ -847,8 +847,13 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 
 					switch field.Desc.Kind() {
 					case protoreflect.BoolKind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Bool").Call(g.Lit(flag)))
+							return
+						}
+						if field.Desc.HasOptionalKeyword() {
+							b.Id("v").Op(":=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
+							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
@@ -857,14 +862,19 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 						b.If(g.Err().Op("!=").Nil()).Block(
 							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error base64-decoding %q flag: %%w", flag)), g.Err())),
 						)
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("v"))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id("v")
 					case protoreflect.DoubleKind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Float64").Call(g.Lit(flag)))
+							return
+						}
+						if field.Desc.HasOptionalKeyword() {
+							b.Id("v").Op(":=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
+							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
@@ -873,37 +883,37 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 						b.If(g.Op("!").Id("ok")).Block(
 							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("unsupported enum value for %q flag: %%q", flag)), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
 						)
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Qual(string(field.Enum.GoIdent.GoImportPath), field.Enum.GoIdent.GoName).Call(g.Id("v")))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Qual(string(field.Enum.GoIdent.GoImportPath), field.Enum.GoIdent.GoName).Call(g.Id("v"))
 					case protoreflect.Fixed32Kind, protoreflect.Uint32Kind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag))))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
 					case protoreflect.Fixed64Kind, protoreflect.Uint64Kind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Uint64").Call(g.Lit(flag))
 					case protoreflect.FloatKind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag))))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag)))
 					case protoreflect.Int32Kind, protoreflect.Sfixed32Kind, protoreflect.Sint32Kind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag))))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag)))
 					case protoreflect.Int64Kind, protoreflect.Sfixed64Kind, protoreflect.Sint64Kind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Int64").Call(g.Lit(flag)))
 							return
 						}
@@ -934,14 +944,19 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 							)
 						}
 
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Add(val))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Add(val)
 					case protoreflect.StringKind:
-						if oneof != nil {
+						if isGenuineOneOf(field) {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
+							return
+						}
+						if field.Desc.HasOptionalKeyword() {
+							b.Id("v").Op(":=").Id("cmd").Dot("String").Call(g.Lit(flag))
+							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))
