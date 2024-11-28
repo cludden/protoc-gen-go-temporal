@@ -1,0 +1,38 @@
+edition = "2023";
+
+package test.editions;
+
+import "temporal/v1/temporal.proto";
+
+option features.field_presence = EXPLICIT;
+
+service FooService {
+  option (temporal.v1.service) = {task_queue: "foo-queue"};
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 2}
+    };
+  }
+}
+
+message FooInput {
+  bytes optional_bytes = 1;
+  bool optional_bool = 2;
+  double optional_double = 3;
+  fixed32 optional_fixed32 = 4;
+  fixed64 optional_fixed64 = 5;
+  float optional_float = 6;
+  int32 optional_int32 = 7;
+  int64 optional_int64 = 8;
+  sfixed32 optional_sfixed32 = 9;
+  sfixed64 optional_sfixed64 = 10;
+  sint32 optional_sint32 = 11;
+  sint64 optional_sint64 = 12;
+  string optional_string = 13;
+  uint32 optional_uint32 = 14;
+  uint64 optional_uint64 = 15;
+}
+
+message FooOutput {}

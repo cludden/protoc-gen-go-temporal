@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package test.xnserr.v1;
 
@@ -15,8 +15,8 @@ service Server {
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE
       parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
       xns: {
-        heartbeat_interval: { seconds: 10 }
-        heartbeat_timeout: { seconds: 30 }
+        heartbeat_interval: {seconds: 10}
+        heartbeat_timeout: {seconds: 30}
       }
     };
   }

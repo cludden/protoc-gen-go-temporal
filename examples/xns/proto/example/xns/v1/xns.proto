@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package example.xns.v1;
 
@@ -6,36 +6,33 @@ import "google/protobuf/empty.proto";
 import "temporal/v1/temporal.proto";
 
 service Xns {
-  option (temporal.v1.service) = {
-    task_queue: "xns-v1"
-  };
+  option (temporal.v1.service) = {task_queue: "xns-v1"};
 
   rpc ProvisionFoo(ProvisionFooRequest) returns (ProvisionFooResponse) {
-    option (temporal.v1.workflow) = {
-      id: 'provision-foo/${! name.slug() }'
-    };
+    option (temporal.v1.workflow) = {id: 'provision-foo/${! name.slug() }'};
   }
 }
 
 service Example {
-  option (temporal.v1.service) = {
-    task_queue: "example-v1"
-  };
+  option (temporal.v1.service) = {task_queue: "example-v1"};
 
   // CreateFoo creates a new foo operation
   rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
     option (temporal.v1.workflow) = {
-      execution_timeout: { seconds: 3600 }
+      execution_timeout: {seconds: 3600}
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
       id: 'create-foo/${! name.slug() }'
       xns: {
-        heartbeat_interval: { seconds: 10 }
-        heartbeat_timeout: { seconds: 20 }
-        start_to_close_timeout: { seconds: 3630 }
+        heartbeat_interval: {seconds: 10}
+        heartbeat_timeout: {seconds: 20}
+        start_to_close_timeout: {seconds: 3630}
       }
-      query: { ref: 'GetFooProgress' }
-      signal: { ref: 'SetFooProgress', start: true }
-      update: { ref: 'UpdateFooProgress' }
+      query: {ref: 'GetFooProgress'}
+      signal: {
+        ref: 'SetFooProgress'
+        start: true
+      }
+      update: {ref: 'UpdateFooProgress'}
     };
   }
 
@@ -43,9 +40,9 @@ service Example {
   rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
     option (temporal.v1.query) = {
       xns: {
-        heartbeat_interval: { seconds: 10 }
-        heartbeat_timeout: { seconds: 20 }
-        start_to_close_timeout: { seconds: 60 }
+        heartbeat_interval: {seconds: 10}
+        heartbeat_timeout: {seconds: 20}
+        start_to_close_timeout: {seconds: 60}
       }
     };
   }
@@ -53,10 +50,8 @@ service Example {
   // Notify sends a notification
   rpc Notify(NotifyRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 30 }
-      retry_policy: {
-        max_attempts: 3
-      }
+      start_to_close_timeout: {seconds: 30}
+      retry_policy: {max_attempts: 3}
     };
   }
 
@@ -64,9 +59,9 @@ service Example {
   rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {
       xns: {
-        heartbeat_interval: { seconds: 10 }
-        heartbeat_timeout: { seconds: 20 }
-        start_to_close_timeout: { seconds: 60 }
+        heartbeat_interval: {seconds: 10}
+        heartbeat_timeout: {seconds: 20}
+        start_to_close_timeout: {seconds: 60}
       }
     };
   }
@@ -74,11 +69,11 @@ service Example {
   // UpdateFooProgress sets the current status of a CreateFoo operation
   rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
     option (temporal.v1.update) = {
-      id: 'update-progress/${! progress.string() }',
+      id: 'update-progress/${! progress.string() }'
       xns: {
-        heartbeat_interval: { seconds: 10 }
-        heartbeat_timeout: { seconds: 20 }
-        start_to_close_timeout: { seconds: 60 }
+        heartbeat_interval: {seconds: 10}
+        heartbeat_timeout: {seconds: 20}
+        start_to_close_timeout: {seconds: 60}
       }
     };
   }
@@ -92,7 +87,7 @@ message CreateFooRequest {
 
 // SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow
 message CreateFooResponse {
-  Foo foo = 1; 
+  Foo foo = 1;
 }
 
 // Foo describes an illustrative foo resource
@@ -126,7 +121,7 @@ message ProvisionFooRequest {
 
 // SampleWorkflowWithMutexResponse describes the output from a ProvisionFoo workflow
 message ProvisionFooResponse {
-  Foo foo = 1; 
+  Foo foo = 1;
 }
 
 // SetFooProgressRequest describes the input to a SetFooProgress signal

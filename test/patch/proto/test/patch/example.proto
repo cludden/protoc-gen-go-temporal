@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package test.patch;
+
+import "patch/go.proto";
+import "temporal/v1/temporal.proto";
+
+option (go.lint).all = true;
+
+service FooService {
+  option (temporal.v1.service) = {task_queue: "foo-queue"};
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 2}
+    };
+  }
+}
+
+message FooInput {
+  string foo_id = 1 [
+    json_name = "fooID",
+    (go.field).tags = 'json:"fooID"'
+  ];
+}
+
+message FooOutput {}

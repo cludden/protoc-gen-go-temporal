@@ -9,12 +9,16 @@ modules:
   - path: examples/xns/proto
   - path: proto
     name: buf.build/cludden/protoc-gen-go-temporal
+  - path: test/editions/proto
   - path: test/expression/proto
   - path: test/option/proto
+  - path: test/patch/proto
+  - path: test/proto3optional/proto
   - path: test/simple/proto
   - path: test/xnserr/proto
 deps:
-  - buf.build/cludden/protoc-gen-go-temporal-example
+  - buf.build/alta/protopatch
+  - buf.build/cludden/protoc-gen-go-temporal
 lint:
   use:
     - BASIC

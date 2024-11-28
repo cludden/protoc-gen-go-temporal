@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/pluginpb"
 )
 
 const (
@@ -73,6 +74,9 @@ func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 	if err != nil {
 		return err
 	}
+	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
+	plugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO3
+	plugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2023
 	return services.render()
 }
 
@@ -145,6 +149,10 @@ func isDeprecated(method *protogen.Method) bool {
 // isEmpty checks if the message is a google.protobuf.Empty message
 func isEmpty(m *protogen.Message) bool {
 	return m.Desc.FullName() == "google.protobuf.Empty"
+}
+
+func isGenuineOneOf(field *protogen.Field) bool {
+	return field.Oneof != nil && !field.Desc.HasOptionalKeyword()
 }
 
 func methodSet(methods ...*protogen.Method) []*protogen.Method {

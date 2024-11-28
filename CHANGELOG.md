@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠ BREAKING CHANGES
 
 ### Added
+- [#87] add support for [Editions](https://protobuf.dev/programming-guides/editions/) and [Proto3 optional](https://protobuf.dev/programming-guides/editions/#field-labels)
 
 ### Changed
 

@@ -25,7 +25,7 @@ enum IDReusePolicy {
   WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
 }
 
-//Defines how child workflows will react to their parent completing 
+//Defines how child workflows will react to their parent completing
 enum ParentClosePolicy {
   PARENT_CLOSE_POLICY_UNSPECIFIED = 0;
   // The child workflow will also terminate
@@ -88,13 +88,11 @@ message UpdateWorkflowWithOptionsRequest {
   string workflow_id = 2;
   string run_id = 3;
   string first_execution_run_id = 4;
-  WaitPolicy wait_policy = 5 [
-    deprecated = true
-  ];
+  WaitPolicy wait_policy = 5 [deprecated = true];
   WaitPolicy wait_for_stage = 6;
 }
 
-// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return
 // value from an UpdateWorkflow RPC
 enum WaitPolicy {
   WAIT_POLICY_UNSPECIFIED = 0;

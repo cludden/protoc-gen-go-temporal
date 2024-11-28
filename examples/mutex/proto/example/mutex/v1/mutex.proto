@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package example.mutex.v1;
 
@@ -7,9 +7,7 @@ import "google/protobuf/empty.proto";
 import "temporal/v1/temporal.proto";
 
 service Example {
-  option (temporal.v1.service) = {
-    task_queue: "mutex"
-  };
+  option (temporal.v1.service) = {task_queue: "mutex"};
 
   rpc AcquireLock(AcquireLockInput) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
@@ -23,16 +21,19 @@ service Example {
     option (temporal.v1.workflow) = {
       id: 'mutex:${! resourceId }'
       retry_policy: {
-        initial_interval: { seconds: 1 }
+        initial_interval: {seconds: 1}
         backoff_coefficient: 2.0
-        max_interval: { seconds: 60 }
+        max_interval: {seconds: 60}
         max_attempts: 5
       }
-      signal: { ref: 'AcquireLock', start: true }
-      signal: { ref: 'ReleaseLock' }
+      signal: {
+        ref: 'AcquireLock'
+        start: true
+      }
+      signal: {ref: 'ReleaseLock'}
     };
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
     };
   }
 
@@ -43,7 +44,7 @@ service Example {
   rpc SampleWorkflowWithMutex(SampleWorkflowWithMutexInput) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       id: 'SampleWorkflow1WithMutex_${! uuid_v4() }'
-      signal: { ref: 'LockAcquired' }
+      signal: {ref: 'LockAcquired'}
     };
   }
 }

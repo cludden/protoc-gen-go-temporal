@@ -51,7 +51,7 @@ message ActivityOptions {
   RetryPolicy retry_policy = 6;
 }
 
-// CLIFeature enumerates cli feature statuses 
+// CLIFeature enumerates cli feature statuses
 enum CLIFeature {
   CLI_FEATURE_DISALBED = 0;
   CLI_FEATURE_ENABLED = 1;
@@ -65,25 +65,25 @@ message CommandOptions {
   bool ignore = 1;
 }
 
-// IDReusePolicy defines how new runs of a workflow with a particular ID may or 
-// may not be allowed. Note that it is *never* valid to have two actively 
+// IDReusePolicy defines how new runs of a workflow with a particular ID may or
+// may not be allowed. Note that it is *never* valid to have two actively
 // running instances of the same workflow id.
 enum IDReusePolicy {
   WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED = 0;
   // Allow starting a workflow execution using the same workflow id.
   WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE = 1;
   // Allow starting a workflow execution using the same workflow id, only when the last
-	// execution's final state is one of [terminated, cancelled, timed out, failed].
+  // execution's final state is one of [terminated, cancelled, timed out, failed].
   WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY = 2;
   // Do not permit re-use of the workflow id for this workflow. Future start workflow requests
-	// could potentially change the policy, allowing re-use of the workflow id.
+  // could potentially change the policy, allowing re-use of the workflow id.
   WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE = 3;
   // If a workflow is running using the same workflow ID, terminate it and start a new one.
-	// If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
+  // If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
   WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
 }
 
-//Defines how child workflows will react to their parent completing 
+//Defines how child workflows will react to their parent completing
 enum ParentClosePolicy {
   PARENT_CLOSE_POLICY_UNSPECIFIED = 0;
   // The child workflow will also terminate
@@ -96,7 +96,7 @@ enum ParentClosePolicy {
 
 // Patch describes how a nondeterministic fix/feature introduced to generated
 // code is implemented. By default, all patches are introduced in PVM_ENABLED
-// mode. Once rollout of updated code has been completed and old workflows have 
+// mode. Once rollout of updated code has been completed and old workflows have
 // closed and retention window passed (or certain that replay is no longer a risk),
 // the prior code can be removed by switching to PVM_MARKER or removed entirely
 // with PVM_REMOVED. Patch code can also be disabled explicitly using PVM_DISABLED.
@@ -116,7 +116,7 @@ message Patch {
   enum Mode {
     // both patch and prior code present behind workflow versioning
     PVM_ENABLED = 0;
-    // only patch code present, workflow version marker present 
+    // only patch code present, workflow version marker present
     PVM_MARKER = 1;
     // only patch code present, workflow version marker removed
     PVM_REMOVED = 2;
@@ -154,9 +154,7 @@ message ServiceOptions {
   repeated Patch patches = 3;
 
   // Default namespace for child workflows, activities
-  string namespace = 2 [
-    deprecated = true
-  ];
+  string namespace = 2 [deprecated = true];
 
   // Default task queue for all workflows, activities
   string task_queue = 1;
@@ -193,15 +191,13 @@ message UpdateOptions {
   // Default wait policy if not specified
   WaitPolicy wait_for_stage = 7;
 
-  WaitPolicy wait_policy = 3 [
-    deprecated = true
-  ];
+  WaitPolicy wait_policy = 3 [deprecated = true];
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 5;
 }
 
-// WaitPolicy used to indicate to the server how long the client wishes to wait for a return 
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return
 // value from an UpdateWorkflow RPC
 enum WaitPolicy {
   WAIT_POLICY_UNSPECIFIED = 0;
@@ -228,7 +224,7 @@ message WorkflowOptions {
 
   // Updates supported by this workflow
   repeated Update update = 3;
-  
+
   // The timeout for duration of workflow execution.
   // It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
   // of a single workflow run.
@@ -241,9 +237,7 @@ message WorkflowOptions {
   IDReusePolicy id_reuse_policy = 6;
 
   // Specifies default namespace for child workflows
-  string namespace = 7 [
-    deprecated = true
-  ];
+  string namespace = 7 [deprecated = true];
 
   // Specifies a default parent close policy for child workflows
   ParentClosePolicy parent_close_policy = 8;
@@ -260,7 +254,7 @@ message WorkflowOptions {
   // Bloblang mapping defining default workflow search attributes
   string search_attributes = 15;
 
-  // Override service task queeu
+  // Override service task queue
   string task_queue = 11;
 
   // The timeout for processing workflow task from the time the worker

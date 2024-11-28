@@ -7,11 +7,9 @@ import "temporal/v1/temporal.proto";
 
 service Example {
   option (temporal.v1.service).task_queue = "schedule-v1";
-  
+
   rpc Schedule(ScheduleInput) returns (ScheduleOutput) {
-    option (temporal.v1.workflow) = {
-      name: "example.schedule.v1.Schedule"
-    };
+    option (temporal.v1.workflow) = {name: "example.schedule.v1.Schedule"};
   }
 }
 

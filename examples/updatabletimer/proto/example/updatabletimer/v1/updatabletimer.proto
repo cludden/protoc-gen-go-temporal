@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package example.updatabletimer.v1;
 
@@ -7,9 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
 service Example {
-  option (temporal.v1.service) = {
-    task_queue: "updatable-timer"
-  };
+  option (temporal.v1.service) = {task_queue: "updatable-timer"};
 
   // GetWakeUpTime retrieves the current timer expiration timestamp
   rpc GetWakeUpTime(google.protobuf.Empty) returns (GetWakeUpTimeOutput) {
@@ -21,8 +19,8 @@ service Example {
     option (temporal.v1.workflow) = {
       name: "UpdatableTimer"
       id: 'updatable-timer/${! name.or(uuid_v4()) }'
-      query: { ref: "GetWakeUpTime" }
-      signal: { ref: "UpdateWakeUpTime" }
+      query: {ref: "GetWakeUpTime"}
+      signal: {ref: "UpdateWakeUpTime"}
     };
   }
 
