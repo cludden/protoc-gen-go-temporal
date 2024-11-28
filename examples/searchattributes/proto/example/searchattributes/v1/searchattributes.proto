@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package example.searchattributes.v1;
 
@@ -7,9 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
 service Example {
-  option (temporal.v1.service) = {
-    task_queue: "searchattributes"
-  };
+  option (temporal.v1.service) = {task_queue: "searchattributes"};
 
   rpc SearchAttributes(SearchAttributesInput) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {

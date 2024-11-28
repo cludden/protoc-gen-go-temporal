@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package example.v1;
 
@@ -6,19 +6,20 @@ import "google/protobuf/empty.proto";
 import "temporal/v1/temporal.proto";
 
 service Example {
-  option (temporal.v1.service) = {
-    task_queue: "example-v1"
-  };
+  option (temporal.v1.service) = {task_queue: "example-v1"};
 
   // CreateFoo creates a new foo operation
   rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
     option (temporal.v1.workflow) = {
-      execution_timeout: { seconds: 3600 }
+      execution_timeout: {seconds: 3600}
       id: 'create-foo/${! name.slug() }'
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-      query: { ref: "GetFooProgress" }
-      signal: { ref: "SetFooProgress", start: true }
-      update: { ref: "UpdateFooProgress" }
+      query: {ref: "GetFooProgress"}
+      signal: {
+        ref: "SetFooProgress"
+        start: true
+      }
+      update: {ref: "UpdateFooProgress"}
     };
   }
 
@@ -30,10 +31,8 @@ service Example {
   // Notify sends a notification
   rpc Notify(NotifyRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 30 }
-      retry_policy: {
-        max_attempts: 3
-      }
+      start_to_close_timeout: {seconds: 30}
+      retry_policy: {max_attempts: 3}
     };
   }
 
@@ -44,9 +43,7 @@ service Example {
 
   // UpdateFooProgress sets the current status of a CreateFoo operation
   rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
-    option (temporal.v1.update) = {
-      id: 'update-progress/${! progress.string() }'
-    };
+    option (temporal.v1.update) = {id: 'update-progress/${! progress.string() }'};
   }
 }
 
@@ -58,7 +55,7 @@ message CreateFooRequest {
 
 // SampleWorkflowWithMutexResponse describes the output from a CreateFoo workflow
 message CreateFooResponse {
-  Foo foo = 1; 
+  Foo foo = 1;
 }
 
 // Foo describes an illustrative foo resource

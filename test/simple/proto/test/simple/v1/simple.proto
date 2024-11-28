@@ -7,13 +7,10 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
-
 import "test/simple/common/v1/common.proto";
 
 service Simple {
-  option (temporal.v1.service) = {
-    task_queue: 'my-task-queue'
-  };
+  option (temporal.v1.service) = {task_queue: 'my-task-queue'};
 
   // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {
@@ -21,10 +18,10 @@ service Simple {
       id: 'some-workflow-1/${! id }/${! uuid_v4() }'
       name: 'mycompany.simple.SomeWorkflow1'
       aliases: ['mycompany.SomeWorkflow1']
-      query : { ref: 'SomeQuery1' }
-      query : { ref: 'SomeQuery2' }
-      signal: { ref: 'SomeSignal1' }
-      signal: { ref: 'SomeSignal2' }
+      query: {ref: 'SomeQuery1'}
+      query: {ref: 'SomeQuery2'}
+      signal: {ref: 'SomeSignal1'}
+      signal: {ref: 'SomeSignal2'}
     };
   }
 
@@ -33,10 +30,16 @@ service Simple {
     option (temporal.v1.workflow) = {
       name: 'mycompany.simple.SomeWorkflow2'
       id: 'some-workflow-2/${! uuid_v4() }'
-      signal: { ref: 'SomeSignal1', start: true }
-      update: { ref: 'SomeUpdate1' }
+      signal: {
+        ref: 'SomeSignal1'
+        start: true
+      }
+      update: {ref: 'SomeUpdate1'}
       patches: [
-        { version: PV_64, mode: PVM_REMOVED }
+        {
+          version: PV_64
+          mode: PVM_REMOVED
+        }
       ]
     };
   }
@@ -47,40 +50,40 @@ service Simple {
     option deprecated = true;
     option (temporal.v1.workflow) = {
       id: 'some-workflow-3/${! id }/${! requestVal }'
-      task_queue       : 'my-task-queue-2'
-      id_reuse_policy  : WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-      execution_timeout: { seconds: 3600 }
-      retry_policy: {
-        max_attempts: 2
+      task_queue: 'my-task-queue-2'
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      execution_timeout: {seconds: 3600}
+      retry_policy: {max_attempts: 2}
+      signal: {
+        ref: 'SomeSignal2'
+        start: true
       }
-      signal: { ref: 'SomeSignal2', start: true }
       patches: [
-        { version: PV_64, mode: PVM_DISABLED }
+        {
+          version: PV_64
+          mode: PVM_DISABLED
+        }
       ]
     };
   }
 
   // SomeWorkflow4 retrieves a paginated list of items
   rpc SomeWorkflow4(common.v1.PaginatedRequest) returns (common.v1.PaginatedResponse) {
-    option (temporal.v1.workflow) = {
-      id: 'some-workflow-4/${! uuid_v4() }'
-    };
+    option (temporal.v1.workflow) = {id: 'some-workflow-4/${! uuid_v4() }'};
   }
 
   // SomeActivity1 does some activity thing.
   rpc SomeActivity1(google.protobuf.Empty) returns (google.protobuf.Empty) {
-    option (temporal.v1.activity) = {
-      name: 'mycompany.simple.SomeActivity1'
-    };
+    option (temporal.v1.activity) = {name: 'mycompany.simple.SomeActivity1'};
   }
 
   // SomeActivity2 does some activity thing.
   rpc SomeActivity2(SomeActivity2Request) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
       wait_for_cancellation: true
-      retry_policy {
-        max_interval: { seconds: 30 }
+      retry_policy: {
+        max_interval: {seconds: 30}
       }
     };
   }
@@ -88,24 +91,20 @@ service Simple {
   // SomeActivity3 does some activity thing.
   rpc SomeActivity3(SomeActivity3Request) returns (SomeActivity3Response) {
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
       task_queue: 'some-other-task-queue'
-      retry_policy {
-        max_attempts: 5
-      }
+      retry_policy: {max_attempts: 5}
     };
   }
 
   // SomeActivity4 does some activity thing.
   rpc SomeActivity4(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
-      heartbeat_timeout: { seconds: 30 }
-      retry_policy: {
-        max_attempts: 5
-      }
-      schedule_to_close_timeout: { seconds: 300 }
-      schedule_to_start_timeout: { seconds: 5 }
-      start_to_close_timeout: { seconds: 60 }
+      heartbeat_timeout: {seconds: 30}
+      retry_policy: {max_attempts: 5}
+      schedule_to_close_timeout: {seconds: 300}
+      schedule_to_start_timeout: {seconds: 5}
+      start_to_close_timeout: {seconds: 60}
       task_queue: 'some-other-task-queue'
       wait_for_cancellation: true
     };
@@ -113,35 +112,35 @@ service Simple {
 
   // SomeQuery1 queries some thing.
   rpc SomeQuery1(google.protobuf.Empty) returns (SomeQuery1Response) {
-    option (temporal.v1.query) = { };
+    option (temporal.v1.query) = {};
   }
 
   // SomeQuery2 queries some thing.
   rpc SomeQuery2(SomeQuery2Request) returns (SomeQuery2Response) {
-    option (temporal.v1.query) = { };
+    option (temporal.v1.query) = {};
   }
 
   // SomeSignal1 is a signal.
   rpc SomeSignal1(google.protobuf.Empty) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = { };
+    option (temporal.v1.signal) = {};
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
     };
   }
 
   // SomeSignal2 is a signal.
   rpc SomeSignal2(SomeSignal2Request) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = { };
+    option (temporal.v1.signal) = {};
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
     };
   }
 
   // SomeSignal3 is a signal.
   rpc SomeSignal3(SomeSignal3Request) returns (SomeSignal3Response) {
-    option (temporal.v1.signal) = { };
+    option (temporal.v1.signal) = {};
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
     };
   }
 
@@ -153,7 +152,7 @@ service Simple {
       wait_policy: WAIT_POLICY_COMPLETED
     };
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 10 }
+      start_to_close_timeout: {seconds: 10}
       retry_policy: {
         max_attempts: 3
         non_retryable_error_types: ["something"]
@@ -172,7 +171,7 @@ message SomeWorkflow1Response {
 }
 
 message SomeWorkflow3Request {
-  string id          = 1;
+  string id = 1;
   string request_val = 2;
 }
 
@@ -224,16 +223,17 @@ service Other {
   option (temporal.v1.service) = {
     task_queue: 'other-task-queue'
     patches: [
-      { version: PV_64, mode: PVM_MARKER }
+      {
+        version: PV_64
+        mode: PVM_MARKER
+      }
     ]
   };
 
   rpc OtherWorkflow(OtherWorkflowRequest) returns (OtherWorkflowResponse) {
-    option (temporal.v1.workflow) = {
-      id: 'other-workflow/${!uuid_v4()}'
-    };
+    option (temporal.v1.workflow) = {id: 'other-workflow/${!uuid_v4()}'};
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 30 }
+      start_to_close_timeout: {seconds: 30}
     };
   }
 
@@ -242,14 +242,12 @@ service Other {
   }
 
   rpc OtherSignal(OtherSignalRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.command) = { ignore: true };
+    option (temporal.v1.command) = {ignore: true};
     option (temporal.v1.signal) = {};
   }
 
   rpc OtherUpdate(OtherUpdateRequest) returns (OtherUpdateResponse) {
-    option (temporal.v1.update) = {
-      id: 'other-update/${!uuid_v4()}'
-    };
+    option (temporal.v1.update) = {id: 'other-update/${!uuid_v4()}'};
   }
 }
 
@@ -323,12 +321,10 @@ service Nothing {
 }
 
 service Ignored {
-  option (temporal.v1.cli) = { ignore: true };
+  option (temporal.v1.cli) = {ignore: true};
 
   rpc What(WhatRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.workflow) = {
-      id: 'what/${!ksuid()}'
-    };
+    option (temporal.v1.workflow) = {id: 'what/${!ksuid()}'};
   }
 }
 
@@ -339,7 +335,7 @@ message WhatRequest {
 service OnlyActivities {
   rpc LonelyActivity1(LonelyActivity1Request) returns (LonelyActivity1Response) {
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 5 }
+      start_to_close_timeout: {seconds: 5}
     };
   }
 }
@@ -353,9 +349,12 @@ service Deprecated {
   rpc SomeDeprecatedWorkflow1(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
     option deprecated = true;
     option (temporal.v1.workflow) = {
-      query: { ref: 'SomeDeprecatedQuery1' }
-      signal: { ref: 'SomeDeprecatedSignal1', start: true }
-      update: { ref: 'SomeDeprecatedUpdate1' }
+      query: {ref: 'SomeDeprecatedQuery1'}
+      signal: {
+        ref: 'SomeDeprecatedSignal1'
+        start: true
+      }
+      update: {ref: 'SomeDeprecatedUpdate1'}
     };
   }
 
@@ -365,9 +364,12 @@ service Deprecated {
   rpc SomeDeprecatedWorkflow2(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
     option deprecated = true;
     option (temporal.v1.workflow) = {
-      query: { ref: 'SomeDeprecatedQuery2' }
-      signal: { ref: 'SomeDeprecatedSignal2', start: true }
-      update: { ref: 'SomeDeprecatedUpdate2' }
+      query: {ref: 'SomeDeprecatedQuery2'}
+      signal: {
+        ref: 'SomeDeprecatedSignal2'
+        start: true
+      }
+      update: {ref: 'SomeDeprecatedUpdate2'}
     };
   }
 
@@ -375,7 +377,7 @@ service Deprecated {
   rpc SomeDeprecatedActivity1(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
     option deprecated = true;
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 5 }
+      start_to_close_timeout: {seconds: 5}
     };
   }
 
@@ -385,7 +387,7 @@ service Deprecated {
   rpc SomeDeprecatedActivity2(SomeDeprecatedMessage) returns (SomeDeprecatedMessage) {
     option deprecated = true;
     option (temporal.v1.activity) = {
-      start_to_close_timeout: { seconds: 5 }
+      start_to_close_timeout: {seconds: 5}
     };
   }
 

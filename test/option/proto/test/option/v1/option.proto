@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package test.option.v1;
 
@@ -10,13 +10,13 @@ service Test {
 
   rpc ActivityWithInput(ActivityWithInputRequest) returns (ActivityWithInputResponse) {
     option (temporal.v1.activity) = {
-      heartbeat_timeout: { seconds: 30 }
+      heartbeat_timeout: {seconds: 30}
       retry_policy: {
-        max_interval: { seconds: 5 }
+        max_interval: {seconds: 5}
       }
-      schedule_to_close_timeout: { seconds: 120 }
-      schedule_to_start_timeout: { seconds: 10 }
-      start_to_close_timeout: { seconds: 60 }
+      schedule_to_close_timeout: {seconds: 120}
+      schedule_to_start_timeout: {seconds: 10}
+      start_to_close_timeout: {seconds: 60}
       task_queue: "option-v2"
       wait_for_cancellation: true
     };
@@ -32,21 +32,18 @@ service Test {
 
   rpc WorkflowWithInput(WorkflowWithInputRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
-      execution_timeout: { seconds: 600 }
+      execution_timeout: {seconds: 600}
       id: 'workflow-with-input:${! name.or(throw("name is required")) }'
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
       parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
-      retry_policy: {
-        max_attempts: 5
-      }
-      run_timeout: { seconds: 300 }
-      search_attributes:
-        'name = name \n'
+      retry_policy: {max_attempts: 5}
+      run_timeout: {seconds: 300}
+      search_attributes: 'name = name \n'
       task_queue: "option-v2"
-      task_timeout: { seconds: 10 }
+      task_timeout: {seconds: 10}
       wait_for_cancellation: true
 
-      update: { ref: 'UpdateWithInput' }
+      update: {ref: 'UpdateWithInput'}
     };
   }
 }

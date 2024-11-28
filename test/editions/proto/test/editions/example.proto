@@ -1,0 +1,24 @@
+edition = "2023";
+
+package test.editions;
+
+import "temporal/v1/temporal.proto";
+
+option features.field_presence = EXPLICIT;
+
+service FooService {
+  option (temporal.v1.service) = {task_queue: "foo-queue"};
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 2}
+    };
+  }
+}
+
+message FooInput {
+  string foo = 1;
+}
+
+message FooOutput {}

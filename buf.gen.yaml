@@ -5,11 +5,10 @@ managed:
     - file_option: go_package_prefix
       value: github.com/cludden/protoc-gen-go-temporal/gen
 plugins:
-  - local: protoc-gen-go-patch
+  - local: protoc-gen-go
     out: gen
     opt:
       - paths=source_relative
-      - plugin=go
   - local: protoc-gen-go_temporal
     out: gen
     opt:
@@ -23,3 +22,9 @@ plugins:
       - paths=source_relative
       - workflow-update-enabled=true
     strategy: all
+inputs:
+  - directory: examples
+  - directory: proto
+  - directory: test
+    exclude_paths:
+      - test/patch/proto/test/patch

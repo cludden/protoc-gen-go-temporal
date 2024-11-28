@@ -30,8 +30,11 @@ gen:
     rm -rf {{ justfile_directory() }}/test/simple/gen/*.pb.go
     rm -rf {{ justfile_directory() }}/example/gen/*.pb.go
     rm -rf {{ justfile_directory() }}/mocks/*
+    buf lint
+    buf format -w
     buf generate
-    mockery --quiet
+    buf generate --template buf.patch.gen.yaml
+    mockery --log-level=error
     go mod tidy
 
 # generate temporal
