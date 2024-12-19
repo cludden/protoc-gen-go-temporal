@@ -828,10 +828,10 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 					oneof := field.Oneof
 
 					switch {
-					case field.Desc.IsList():
+					case field.Desc.IsList() && field.Desc.Kind() != protoreflect.StringKind:
 						fallthrough
 					case field.Desc.IsMap():
-						b.Var().Id("tmp").Id(name)
+						b.Var().Id("tmp").Qual(string(msg.GoIdent.GoImportPath), name)
 						b.If(
 							g.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(
 								g.Index().Byte().Call(g.Qual("fmt", "Sprintf").Call(g.Lit(fmt.Sprintf(`{"%s":%%s}`, field.Desc.JSONName())), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
@@ -942,6 +942,10 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 					case protoreflect.StringKind:
 						if oneof != nil {
 							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
+							return
+						}
+						if field.Desc.IsList() {
+							b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("StringSlice").Call(g.Lit(flag))
 							return
 						}
 						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))

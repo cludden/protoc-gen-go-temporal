@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"io"
 	"runtime"
 	"strings"
 
@@ -37,7 +36,6 @@ type Plugin struct {
 	Version string
 	cfg     *Config
 	flags   *pflag.FlagSet
-	stderr  io.WriteCloser
 }
 
 func New(commit, version string) *Plugin {
