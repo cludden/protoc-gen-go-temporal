@@ -15,12 +15,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+
+
+# [1.14.4](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.4) - 2024-12-19
+
+### Fixed
+
 - [#80](https://github.com/cludden/protoc-gen-go-temporal/pull/80) fix cross-package signal-with-start
-- [#84](https://github.com/cludden/protoc-gen-go-temporal/pull/84) q
+- [#84](https://github.com/cludden/protoc-gen-go-temporal/pull/84) fix cross-package cli imports, repeated string flags 
 
 
 
-# [1.14.3](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.2) - 2024-08-09
+# [1.14.3](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.3) - 2024-08-09
 
 ### Fixed
 - [#76](https://github.com/cludden/protoc-gen-go-temporal/pull/76) add schedule example
