@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - [#80](https://github.com/cludden/protoc-gen-go-temporal/pull/80) fix cross-package signal-with-start
+- [#84](https://github.com/cludden/protoc-gen-go-temporal/pull/84) q
 
 
 
