@@ -1297,8 +1297,13 @@ func (c *TestTestClient) UpdateWithInputAsync(ctx context.Context, workflowID st
 	if err != nil {
 		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
 	uc := testutil.NewUpdateCallbacks()
-	c.env.UpdateWorkflow(UpdateWithInputUpdateName, workflowID, uc, req)
+	c.env.UpdateWorkflow(UpdateWithInputUpdateName, options.UpdateID, uc, req)
 	return &testUpdateWithInputHandle{
 		callbacks:  uc,
 		env:        c.env,

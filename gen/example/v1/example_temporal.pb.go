@@ -1418,8 +1418,13 @@ func (c *TestExampleClient) UpdateFooProgressAsync(ctx context.Context, workflow
 	if err != nil {
 		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
 	uc := testutil.NewUpdateCallbacks()
-	c.env.UpdateWorkflow(UpdateFooProgressUpdateName, workflowID, uc, req)
+	c.env.UpdateWorkflow(UpdateFooProgressUpdateName, options.UpdateID, uc, req)
 	return &testUpdateFooProgressHandle{
 		callbacks:  uc,
 		env:        c.env,

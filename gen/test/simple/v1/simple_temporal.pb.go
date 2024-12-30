@@ -5009,8 +5009,13 @@ func (c *TestSimpleClient) SomeUpdate1Async(ctx context.Context, workflowID stri
 	if err != nil {
 		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
 	uc := testutil.NewUpdateCallbacks()
-	c.env.UpdateWorkflow(SomeUpdate1UpdateName, workflowID, uc, req)
+	c.env.UpdateWorkflow(SomeUpdate1UpdateName, options.UpdateID, uc, req)
 	return &testSomeUpdate1Handle{
 		callbacks:  uc,
 		env:        c.env,
@@ -7588,8 +7593,13 @@ func (c *TestOtherClient) OtherUpdateAsync(ctx context.Context, workflowID strin
 	if err != nil {
 		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
 	uc := testutil.NewUpdateCallbacks()
-	c.env.UpdateWorkflow(OtherUpdateUpdateName, workflowID, uc, req)
+	c.env.UpdateWorkflow(OtherUpdateUpdateName, options.UpdateID, uc, req)
 	return &testOtherUpdateHandle{
 		callbacks:  uc,
 		env:        c.env,
@@ -12223,8 +12233,13 @@ func (c *TestDeprecatedClient) SomeDeprecatedUpdate1Async(ctx context.Context, w
 	if err != nil {
 		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
 	uc := testutil.NewUpdateCallbacks()
-	c.env.UpdateWorkflow(SomeDeprecatedUpdate1UpdateName, workflowID, uc, req)
+	c.env.UpdateWorkflow(SomeDeprecatedUpdate1UpdateName, options.UpdateID, uc, req)
 	return &testSomeDeprecatedUpdate1Handle{
 		callbacks:  uc,
 		env:        c.env,
@@ -12305,8 +12320,13 @@ func (c *TestDeprecatedClient) SomeDeprecatedUpdate2Async(ctx context.Context, w
 	if err != nil {
 		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
 	uc := testutil.NewUpdateCallbacks()
-	c.env.UpdateWorkflow(SomeDeprecatedUpdate2UpdateName, workflowID, uc, req)
+	c.env.UpdateWorkflow(SomeDeprecatedUpdate2UpdateName, options.UpdateID, uc, req)
 	return &testSomeDeprecatedUpdate2Handle{
 		callbacks:  uc,
 		env:        c.env,
