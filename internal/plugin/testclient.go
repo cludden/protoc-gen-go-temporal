@@ -240,13 +240,17 @@ func (svc *Manifest) genTestClientImplUpdateAsyncMethod(f *g.File, update protor
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
 				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing UpdateWorkflowWithOptions: %w"), g.Err())),
-			)
+			).Line()
+
+			fn.If(g.Id("options").Dot("UpdateID").Op("==").Lit("")).Block(
+				g.Id("options").Dot("UpdateID").Op("=").Id("workflowID"),
+			).Line()
 
 			// update workflow
 			fn.Id("uc").Op(":=").Qual(testutilPkg, "NewUpdateCallbacks").Call()
 			fn.Id("c").Dot("env").Dot("UpdateWorkflow").CallFunc(func(args *g.Group) {
 				args.Id(svc.toCamel("%sUpdateName", update))
-				args.Id("workflowID")
+				args.Id("options").Dot("UpdateID")
 				args.Id("uc")
 				if hasInput {
 					args.Id("req")
