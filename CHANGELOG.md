@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠ BREAKING CHANGES
 
 ### Added
+
+### Changed
+
+### Fixed
+
+
+
+# [1.15.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.15.0) - 2025-01-28
+
+### ⚠ BREAKING CHANGES
+
+### Added
 - [#87] add support for [Editions](https://protobuf.dev/programming-guides/editions/) and [Proto3 optional](https://protobuf.dev/programming-guides/editions/#field-labels)
 
 ### Changed
@@ -18,12 +30,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
 
-
 # [1.14.5](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.5) - 2025-01-06
 
 ### Fixed
 
 - [#85](https://github.com/cludden/protoc-gen-go-temporal/pull/85) ensure updateID is passed through test client (@nishkrishnan)
+
 
 
 # [1.14.4](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.14.4) - 2024-12-19
