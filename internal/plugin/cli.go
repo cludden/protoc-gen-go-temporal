@@ -789,6 +789,7 @@ func (svc *Manifest) genCliUpdateCommand(f *g.Group, update protoreflect.FullNam
 func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 	name := svc.getMessageName(msg)
 	fnName := fmt.Sprintf("UnmarshalCliFlagsTo%s", svc.toCamel("%s", name))
+	opaque := isOpaque(svc.File)
 	f.Commentf("%s unmarshals a %s from command line flags", fnName, name)
 	f.Func().Id(fnName).
 		Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).
@@ -826,6 +827,18 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 					b.Id("hasValues").Op("=").True()
 
 					oneof := field.Oneof
+
+					set := func(result *g.Statement) {
+						fieldName := goName
+						if isGenuineOneOf(field) {
+							fieldName = oneof.GoName
+						}
+						if opaque {
+							b.Id("result").Dot(svc.toCamel("Set%s", fieldName)).Call(result)
+						} else {
+							b.Id("result").Dot(fieldName).Op("=").Add(result)
+						}
+					}
 
 					switch {
 					case field.Desc.IsList() && field.Desc.Kind() != protoreflect.StringKind:
@@ -976,19 +989,19 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 						b.Id("result").Dot(goName).Op("=").Add(val)
 					case protoreflect.StringKind:
 						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
+							set(g.Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag))))
 							return
 						}
 						if field.Desc.IsList() {
-							b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("StringSlice").Call(g.Lit(flag))
+							set(g.Id("cmd").Dot("StringSlice").Call(g.Lit(flag)))
 							return
 						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
+						if !opaque && (field.Desc.HasOptionalKeyword() || field.Desc.HasPresence()) {
 							b.Id("v").Op(":=").Id("cmd").Dot("String").Call(g.Lit(flag))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
+							set(g.Op("&").Id("v"))
 							return
 						}
-						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))
+						set(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
 					}
 				})
 			}

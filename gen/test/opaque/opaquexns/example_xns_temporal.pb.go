@@ -5,16 +5,16 @@
 //	go go1.23.4
 //	protoc (unknown)
 //
-// source: example/v1/example.proto
-package examplev1xns
+// source: test/opaque/example.proto
+package opaquexns
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	v1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	xnsv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
+	opaque "github.com/cludden/protoc-gen-go-temporal/gen/test/opaque"
 	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	xns "github.com/cludden/protoc-gen-go-temporal/pkg/xns"
 	uuid "github.com/google/uuid"
@@ -29,7 +29,7 @@ import (
 	"time"
 )
 
-// ExampleOptions is used to configure example.v1.Example xns activity registration
+// ExampleOptions is used to configure test.opaque.Example xns activity registration
 type ExampleOptions struct {
 	// errorConverter is used to customize error
 	errorConverter func(error) error
@@ -80,34 +80,34 @@ func (opts *ExampleOptions) filterActivity(name string) string {
 // exampleOptions is a reference to the ExampleOptions initialized at registration
 var exampleOptions *ExampleOptions
 
-// RegisterExampleActivities registers example.v1.Example cross-namespace activities
-func RegisterExampleActivities(r worker.ActivityRegistry, c v1.ExampleClient, options ...*ExampleOptions) {
+// RegisterExampleActivities registers test.opaque.Example cross-namespace activities
+func RegisterExampleActivities(r worker.ActivityRegistry, c opaque.ExampleClient, options ...*ExampleOptions) {
 	if exampleOptions == nil && len(options) > 0 && options[0] != nil {
 		exampleOptions = options[0]
 	}
 	a := &exampleActivities{c}
-	if name := exampleOptions.filterActivity("example.v1.Example.CancelWorkflow"); name != "" {
+	if name := exampleOptions.filterActivity("test.opaque.Example.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
-	if name := exampleOptions.filterActivity(v1.CreateFooWorkflowName); name != "" {
-		r.RegisterActivityWithOptions(a.CreateFoo, activity.RegisterOptions{Name: name})
+	if name := exampleOptions.filterActivity(opaque.SomeWorkflowWorkflowName); name != "" {
+		r.RegisterActivityWithOptions(a.SomeWorkflow, activity.RegisterOptions{Name: name})
 	}
-	if name := exampleOptions.filterActivity("example.v1.Example.CreateFooWithSetFooProgress"); name != "" {
-		r.RegisterActivityWithOptions(a.CreateFooWithSetFooProgress, activity.RegisterOptions{Name: name})
+	if name := exampleOptions.filterActivity("test.opaque.Example.SomeWorkflowWithSomeSignal"); name != "" {
+		r.RegisterActivityWithOptions(a.SomeWorkflowWithSomeSignal, activity.RegisterOptions{Name: name})
 	}
-	if name := exampleOptions.filterActivity(v1.GetFooProgressQueryName); name != "" {
-		r.RegisterActivityWithOptions(a.GetFooProgress, activity.RegisterOptions{Name: name})
+	if name := exampleOptions.filterActivity(opaque.SomeQueryQueryName); name != "" {
+		r.RegisterActivityWithOptions(a.SomeQuery, activity.RegisterOptions{Name: name})
 	}
-	if name := exampleOptions.filterActivity(v1.SetFooProgressSignalName); name != "" {
-		r.RegisterActivityWithOptions(a.SetFooProgress, activity.RegisterOptions{Name: name})
+	if name := exampleOptions.filterActivity(opaque.SomeSignalSignalName); name != "" {
+		r.RegisterActivityWithOptions(a.SomeSignal, activity.RegisterOptions{Name: name})
 	}
-	if name := exampleOptions.filterActivity(v1.UpdateFooProgressUpdateName); name != "" {
-		r.RegisterActivityWithOptions(a.UpdateFooProgress, activity.RegisterOptions{Name: name})
+	if name := exampleOptions.filterActivity(opaque.SomeUpdateUpdateName); name != "" {
+		r.RegisterActivityWithOptions(a.SomeUpdate, activity.RegisterOptions{Name: name})
 	}
 }
 
-// CreateFooWorkflowOptions are used to configure a(n) example.v1.Example.CreateFoo workflow execution
-type CreateFooWorkflowOptions struct {
+// SomeWorkflowWorkflowOptions are used to configure a(n) test.opaque.SomeWorkflow workflow execution
+type SomeWorkflowWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
@@ -115,43 +115,43 @@ type CreateFooWorkflowOptions struct {
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
 
-// NewCreateFooWorkflowOptions initializes a new CreateFooWorkflowOptions value
-func NewCreateFooWorkflowOptions() *CreateFooWorkflowOptions {
-	return &CreateFooWorkflowOptions{}
+// NewSomeWorkflowWorkflowOptions initializes a new SomeWorkflowWorkflowOptions value
+func NewSomeWorkflowWorkflowOptions() *SomeWorkflowWorkflowOptions {
+	return &SomeWorkflowWorkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
-func (opts *CreateFooWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *CreateFooWorkflowOptions {
+func (opts *SomeWorkflowWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *SomeWorkflowWorkflowOptions {
 	opts.ActivityOptions = &ao
 	return opts
 }
 
 // WithDetached can be used to start a workflow execution and exit immediately
-func (opts *CreateFooWorkflowOptions) WithDetached(d bool) *CreateFooWorkflowOptions {
+func (opts *SomeWorkflowWorkflowOptions) WithDetached(d bool) *SomeWorkflowWorkflowOptions {
 	opts.Detached = d
 	return opts
 }
 
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *CreateFooWorkflowOptions) WithHeartbeatInterval(d time.Duration) *CreateFooWorkflowOptions {
+func (opts *SomeWorkflowWorkflowOptions) WithHeartbeatInterval(d time.Duration) *SomeWorkflowWorkflowOptions {
 	opts.HeartbeatInterval = d
 	return opts
 }
 
 // WithParentClosePolicy can be used to customize the cancellation propagation behavior
-func (opts *CreateFooWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *CreateFooWorkflowOptions {
+func (opts *SomeWorkflowWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *SomeWorkflowWorkflowOptions {
 	opts.ParentClosePolicy = policy
 	return opts
 }
 
 // WithStartWorkflowOptions can be used to customize the start workflow options
-func (opts *CreateFooWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *CreateFooWorkflowOptions {
+func (opts *SomeWorkflowWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *SomeWorkflowWorkflowOptions {
 	opts.StartWorkflowOptions = &swo
 	return opts
 }
 
-// CreateFooRun provides a handle to a example.v1.Example.CreateFoo workflow execution
-type CreateFooRun interface {
+// SomeWorkflowRun provides a handle to a test.opaque.SomeWorkflow workflow execution
+type SomeWorkflowRun interface {
 	// Cancel cancels the workflow
 	Cancel(workflow.Context) error
 
@@ -159,39 +159,39 @@ type CreateFooRun interface {
 	Future() workflow.Future
 
 	// Get returns the inner workflow.Future
-	Get(workflow.Context) (*v1.CreateFooResponse, error)
+	Get(workflow.Context) (*opaque.SomeWorkflowOutput, error)
 
 	// ID returns the workflow id
 	ID() string
 
-	// GetFooProgress returns the status of a CreateFoo operation
-	GetFooProgress(workflow.Context, ...*GetFooProgressQueryOptions) (*v1.GetFooProgressResponse, error)
+	// SomeQuery executes a(n) test.opaque.SomeQuery query and blocks until completion
+	SomeQuery(workflow.Context, *opaque.SomeQueryInput, ...*SomeQueryQueryOptions) (*opaque.SomeQueryOutput, error)
 
-	// GetFooProgress returns the status of a CreateFoo operation
-	GetFooProgressAsync(workflow.Context, ...*GetFooProgressQueryOptions) (GetFooProgressQueryHandle, error)
+	// SomeQueryAsync executes a(n) test.opaque.SomeQuery query and returns a handle to the underlying activity
+	SomeQueryAsync(workflow.Context, *opaque.SomeQueryInput, ...*SomeQueryQueryOptions) (SomeQueryQueryHandle, error)
 
-	// SetFooProgress sets the current status of a CreateFoo operation
-	SetFooProgress(workflow.Context, *v1.SetFooProgressRequest, ...*SetFooProgressSignalOptions) error
+	// SomeSignal executes a(n) test.opaque.SomeSignal signal and blocks until completion
+	SomeSignal(workflow.Context, *opaque.SomeSignalInput, ...*SomeSignalSignalOptions) error
 
-	// SetFooProgress sets the current status of a CreateFoo operation
-	SetFooProgressAsync(workflow.Context, *v1.SetFooProgressRequest, ...*SetFooProgressSignalOptions) (SetFooProgressSignalHandle, error)
+	// SomeSignalAsync executes a(n) test.opaque.SomeSignal signal and returns a handle to the underlying activity
+	SomeSignalAsync(workflow.Context, *opaque.SomeSignalInput, ...*SomeSignalSignalOptions) (SomeSignalSignalHandle, error)
 
-	// UpdateFooProgress sets the current status of a CreateFoo operation
-	UpdateFooProgress(workflow.Context, *v1.SetFooProgressRequest, ...*UpdateFooProgressUpdateOptions) (*v1.GetFooProgressResponse, error)
+	// SomeUpdate executes a(n) test.opaque.SomeQuery update and blocks until completion
+	SomeUpdate(workflow.Context, *opaque.SomeUpdateInput, ...*SomeUpdateUpdateOptions) (*opaque.SomeUpdateOutput, error)
 
-	// UpdateFooProgress sets the current status of a CreateFoo operation
-	UpdateFooProgressAsync(workflow.Context, *v1.SetFooProgressRequest, ...*UpdateFooProgressUpdateOptions) (UpdateFooProgressHandle, error)
+	// SomeUpdateAsync executes a(n) test.opaque.SomeQuery update and returns a handle to the underlying activity
+	SomeUpdateAsync(workflow.Context, *opaque.SomeUpdateInput, ...*SomeUpdateUpdateOptions) (SomeUpdateHandle, error)
 }
 
-// createFooRun provides a(n) CreateFooRun implementation
-type createFooRun struct {
+// someWorkflowRun provides a(n) SomeWorkflowRun implementation
+type someWorkflowRun struct {
 	cancel func()
 	future workflow.Future
 	id     string
 }
 
 // Cancel the underlying workflow execution
-func (r *createFooRun) Cancel(ctx workflow.Context) error {
+func (r *someWorkflowRun) Cancel(ctx workflow.Context) error {
 	if r.cancel != nil {
 		r.cancel()
 		if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
@@ -203,13 +203,13 @@ func (r *createFooRun) Cancel(ctx workflow.Context) error {
 }
 
 // Future returns the underlying activity future
-func (r *createFooRun) Future() workflow.Future {
+func (r *someWorkflowRun) Future() workflow.Future {
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
-func (r *createFooRun) Get(ctx workflow.Context) (*v1.CreateFooResponse, error) {
-	var resp v1.CreateFooResponse
+func (r *someWorkflowRun) Get(ctx workflow.Context) (*opaque.SomeWorkflowOutput, error) {
+	var resp opaque.SomeWorkflowOutput
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
 	}
@@ -217,61 +217,61 @@ func (r *createFooRun) Get(ctx workflow.Context) (*v1.CreateFooResponse, error) 
 }
 
 // ID returns the underlying workflow id
-func (r *createFooRun) ID() string {
+func (r *someWorkflowRun) ID() string {
 	return r.id
 }
 
-// GetFooProgress returns the status of a CreateFoo operation
-func (r *createFooRun) GetFooProgress(ctx workflow.Context, opts ...*GetFooProgressQueryOptions) (*v1.GetFooProgressResponse, error) {
-	return GetFooProgress(ctx, r.ID(), "", opts...)
+// SomeQuery executes a(n) test.opaque.SomeQuery query and blocks until completion
+func (r *someWorkflowRun) SomeQuery(ctx workflow.Context, req *opaque.SomeQueryInput, opts ...*SomeQueryQueryOptions) (*opaque.SomeQueryOutput, error) {
+	return SomeQuery(ctx, r.ID(), "", req, opts...)
 }
 
-// GetFooProgress returns the status of a CreateFoo operation
-func (r *createFooRun) GetFooProgressAsync(ctx workflow.Context, opts ...*GetFooProgressQueryOptions) (GetFooProgressQueryHandle, error) {
-	return GetFooProgressAsync(ctx, r.ID(), "", opts...)
+// SomeQueryAsync executes a(n) test.opaque.SomeQuery query and returns a handle to the underlying activity
+func (r *someWorkflowRun) SomeQueryAsync(ctx workflow.Context, req *opaque.SomeQueryInput, opts ...*SomeQueryQueryOptions) (SomeQueryQueryHandle, error) {
+	return SomeQueryAsync(ctx, r.ID(), "", req, opts...)
 }
 
-// SetFooProgress sets the current status of a CreateFoo operation
-func (r *createFooRun) SetFooProgress(ctx workflow.Context, req *v1.SetFooProgressRequest, opts ...*SetFooProgressSignalOptions) error {
-	return SetFooProgress(ctx, r.ID(), "", req, opts...)
+// SomeSignal executes a(n) test.opaque.SomeSignal signal and blocks until the underlying activity completes
+func (r *someWorkflowRun) SomeSignal(ctx workflow.Context, req *opaque.SomeSignalInput, opts ...*SomeSignalSignalOptions) error {
+	return SomeSignal(ctx, r.ID(), "", req, opts...)
 }
 
-// SetFooProgress sets the current status of a CreateFoo operation
-func (r *createFooRun) SetFooProgressAsync(ctx workflow.Context, req *v1.SetFooProgressRequest, opts ...*SetFooProgressSignalOptions) (SetFooProgressSignalHandle, error) {
-	return SetFooProgressAsync(ctx, r.ID(), "", req, opts...)
+// SomeSignalAsync executes a(n) test.opaque.SomeSignal signal and returns a handle to the underlying activity
+func (r *someWorkflowRun) SomeSignalAsync(ctx workflow.Context, req *opaque.SomeSignalInput, opts ...*SomeSignalSignalOptions) (SomeSignalSignalHandle, error) {
+	return SomeSignalAsync(ctx, r.ID(), "", req, opts...)
 }
 
-// UpdateFooProgress sets the current status of a CreateFoo operation
-func (r *createFooRun) UpdateFooProgress(ctx workflow.Context, req *v1.SetFooProgressRequest, opts ...*UpdateFooProgressUpdateOptions) (*v1.GetFooProgressResponse, error) {
-	return UpdateFooProgress(ctx, r.ID(), "", req, opts...)
+// SomeUpdate executes a(n) test.opaque.SomeQuery update and blocks until completion
+func (r *someWorkflowRun) SomeUpdate(ctx workflow.Context, req *opaque.SomeUpdateInput, opts ...*SomeUpdateUpdateOptions) (*opaque.SomeUpdateOutput, error) {
+	return SomeUpdate(ctx, r.ID(), "", req, opts...)
 }
 
-// UpdateFooProgress sets the current status of a CreateFoo operation
-func (r *createFooRun) UpdateFooProgressAsync(ctx workflow.Context, req *v1.SetFooProgressRequest, opts ...*UpdateFooProgressUpdateOptions) (UpdateFooProgressHandle, error) {
-	return UpdateFooProgressAsync(ctx, r.ID(), "", req, opts...)
+// SomeUpdateAsync executes a(n) test.opaque.SomeQuery update and returns a handle to the underlying activity
+func (r *someWorkflowRun) SomeUpdateAsync(ctx workflow.Context, req *opaque.SomeUpdateInput, opts ...*SomeUpdateUpdateOptions) (SomeUpdateHandle, error) {
+	return SomeUpdateAsync(ctx, r.ID(), "", req, opts...)
 }
 
-// CreateFoo creates a new foo operation
-func CreateFoo(ctx workflow.Context, req *v1.CreateFooRequest, opts ...*CreateFooWorkflowOptions) (*v1.CreateFooResponse, error) {
-	run, err := CreateFooAsync(ctx, req, opts...)
+// SomeWorkflow executes a(n) test.opaque.SomeWorkflow workflow and blocks until error or response is received
+func SomeWorkflow(ctx workflow.Context, req *opaque.SomeWorkflowInput, opts ...*SomeWorkflowWorkflowOptions) (*opaque.SomeWorkflowOutput, error) {
+	run, err := SomeWorkflowAsync(ctx, req, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// CreateFoo creates a new foo operation
-func CreateFooAsync(ctx workflow.Context, req *v1.CreateFooRequest, opts ...*CreateFooWorkflowOptions) (CreateFooRun, error) {
-	activityName := exampleOptions.filterActivity(v1.CreateFooWorkflowName)
+// SomeWorkflowAsync executes a(n) test.opaque.SomeWorkflow workflow and returns a handle to the underlying activity
+func SomeWorkflowAsync(ctx workflow.Context, req *opaque.SomeWorkflowInput, opts ...*SomeWorkflowWorkflowOptions) (SomeWorkflowRun, error) {
+	activityName := exampleOptions.filterActivity(opaque.SomeWorkflowWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.CreateFooWorkflowName),
+			fmt.Sprintf("no activity registered for %s", opaque.SomeWorkflowWorkflowName),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &CreateFooWorkflowOptions{}
+	opt := &SomeWorkflowWorkflowOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -291,7 +291,7 @@ func CreateFooAsync(ctx workflow.Context, req *v1.CreateFooRequest, opts ...*Cre
 	ao.WaitForCancellation = true
 
 	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 3600000000000 // 1 hour
+		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
@@ -302,9 +302,9 @@ func CreateFooAsync(ctx workflow.Context, req *v1.CreateFooRequest, opts ...*Cre
 	}
 	if wo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.CreateFooIdexpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(opaque.SomeWorkflowIdexpression, req.ProtoReflect())
 			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.v1.Example.CreateFoo\" workflow", "error", err)
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.opaque.Example.SomeWorkflow\" workflow", "error", err)
 				return nil
 			}
 			return id
@@ -351,7 +351,7 @@ func CreateFooAsync(ctx workflow.Context, req *v1.CreateFooRequest, opts ...*Cre
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &createFooRun{
+	return &someWorkflowRun{
 		cancel: cancel,
 		id:     wo.ID,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
@@ -364,27 +364,27 @@ func CreateFooAsync(ctx workflow.Context, req *v1.CreateFooRequest, opts ...*Cre
 	}, nil
 }
 
-// CreateFooWithSetFooProgress sends a(n) example.v1.Example.SetFooProgress signal to a example.v1.Example.CreateFoo workflow, starting it if necessary, and blocks until the workflow completes
-func CreateFooWithSetFooProgress(ctx workflow.Context, req *v1.CreateFooRequest, signal *v1.SetFooProgressRequest, opts ...*CreateFooWorkflowOptions) (*v1.CreateFooResponse, error) {
-	run, err := CreateFooWithSetFooProgressAsync(ctx, req, signal, opts...)
+// SomeWorkflowWithSomeSignal sends a(n) test.opaque.SomeSignal signal to a test.opaque.SomeWorkflow workflow, starting it if necessary, and blocks until the workflow completes
+func SomeWorkflowWithSomeSignal(ctx workflow.Context, req *opaque.SomeWorkflowInput, signal *opaque.SomeSignalInput, opts ...*SomeWorkflowWorkflowOptions) (*opaque.SomeWorkflowOutput, error) {
+	run, err := SomeWorkflowWithSomeSignalAsync(ctx, req, signal, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// CreateFooWithSetFooProgressAsync sends a(n) example.v1.Example.SetFooProgress signal to a(n) example.v1.Example.CreateFoo workflow, starting it if necessary, and returns a handle to the underlying activity
-func CreateFooWithSetFooProgressAsync(ctx workflow.Context, req *v1.CreateFooRequest, signal *v1.SetFooProgressRequest, opts ...*CreateFooWorkflowOptions) (CreateFooRun, error) {
-	activityName := exampleOptions.filterActivity("example.v1.Example.CreateFooWithSetFooProgress")
+// SomeWorkflowWithSomeSignalAsync sends a(n) test.opaque.SomeSignal signal to a(n) test.opaque.SomeWorkflow workflow, starting it if necessary, and returns a handle to the underlying activity
+func SomeWorkflowWithSomeSignalAsync(ctx workflow.Context, req *opaque.SomeWorkflowInput, signal *opaque.SomeSignalInput, opts ...*SomeWorkflowWorkflowOptions) (SomeWorkflowRun, error) {
+	activityName := exampleOptions.filterActivity("test.opaque.Example.SomeWorkflowWithSomeSignal")
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", "example.v1.Example.CreateFooWithSetFooProgress"),
+			fmt.Sprintf("no activity registered for %s", "test.opaque.Example.SomeWorkflowWithSomeSignal"),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &CreateFooWorkflowOptions{}
+	opt := &SomeWorkflowWorkflowOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -404,7 +404,7 @@ func CreateFooWithSetFooProgressAsync(ctx workflow.Context, req *v1.CreateFooReq
 	ao.WaitForCancellation = true
 
 	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 3600000000000 // 1 hour
+		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
@@ -415,9 +415,9 @@ func CreateFooWithSetFooProgressAsync(ctx workflow.Context, req *v1.CreateFooReq
 	}
 	if wo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.CreateFooIdexpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(opaque.SomeWorkflowIdexpression, req.ProtoReflect())
 			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.v1.Example.CreateFoo\" workflow", "error", err)
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.opaque.Example.SomeWorkflow\" workflow", "error", err)
 				return nil
 			}
 			return id
@@ -470,7 +470,7 @@ func CreateFooWithSetFooProgressAsync(ctx workflow.Context, req *v1.CreateFooReq
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &createFooRun{
+	return &someWorkflowRun{
 		cancel: cancel,
 		id:     wo.ID,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
@@ -484,31 +484,31 @@ func CreateFooWithSetFooProgressAsync(ctx workflow.Context, req *v1.CreateFooReq
 	}, nil
 }
 
-// GetFooProgressQueryOptions are used to configure a(n) example.v1.Example.GetFooProgress query execution
-type GetFooProgressQueryOptions struct {
+// SomeQueryQueryOptions are used to configure a(n) test.opaque.SomeQuery query execution
+type SomeQueryQueryOptions struct {
 	ActivityOptions   *workflow.ActivityOptions
 	HeartbeatInterval time.Duration
 }
 
-// NewGetFooProgressQueryOptions initializes a new GetFooProgressQueryOptions value
-func NewGetFooProgressQueryOptions() *GetFooProgressQueryOptions {
-	return &GetFooProgressQueryOptions{}
+// NewSomeQueryQueryOptions initializes a new SomeQueryQueryOptions value
+func NewSomeQueryQueryOptions() *SomeQueryQueryOptions {
+	return &SomeQueryQueryOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
-func (opts *GetFooProgressQueryOptions) WithActivityOptions(ao workflow.ActivityOptions) *GetFooProgressQueryOptions {
+func (opts *SomeQueryQueryOptions) WithActivityOptions(ao workflow.ActivityOptions) *SomeQueryQueryOptions {
 	opts.ActivityOptions = &ao
 	return opts
 }
 
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *GetFooProgressQueryOptions) WithHeartbeatInterval(d time.Duration) *GetFooProgressQueryOptions {
+func (opts *SomeQueryQueryOptions) WithHeartbeatInterval(d time.Duration) *SomeQueryQueryOptions {
 	opts.HeartbeatInterval = d
 	return opts
 }
 
-// GetFooProgressQueryHandle provides a handle for a example.v1.Example.GetFooProgress query activity
-type GetFooProgressQueryHandle interface {
+// SomeQueryQueryHandle provides a handle for a test.opaque.Example.SomeQuery query activity
+type SomeQueryQueryHandle interface {
 	// Cancel cancels the workflow
 	Cancel(workflow.Context) error
 
@@ -516,17 +516,17 @@ type GetFooProgressQueryHandle interface {
 	Future() workflow.Future
 
 	// Get returns the inner workflow.Future
-	Get(workflow.Context) (*v1.GetFooProgressResponse, error)
+	Get(workflow.Context) (*opaque.SomeQueryOutput, error)
 }
 
-// getFooProgressQueryHandle provides a(n) GetFooProgressQueryHandle implementation
-type getFooProgressQueryHandle struct {
+// someQueryQueryHandle provides a(n) SomeQueryQueryHandle implementation
+type someQueryQueryHandle struct {
 	cancel func()
 	future workflow.Future
 }
 
 // Cancel the underlying query activity
-func (r *getFooProgressQueryHandle) Cancel(ctx workflow.Context) error {
+func (r *someQueryQueryHandle) Cancel(ctx workflow.Context) error {
 	r.cancel()
 	if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
 		return err
@@ -535,154 +535,40 @@ func (r *getFooProgressQueryHandle) Cancel(ctx workflow.Context) error {
 }
 
 // Future returns the underlying activity future
-func (r *getFooProgressQueryHandle) Future() workflow.Future {
+func (r *someQueryQueryHandle) Future() workflow.Future {
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying query result
-func (r *getFooProgressQueryHandle) Get(ctx workflow.Context) (*v1.GetFooProgressResponse, error) {
-	var resp v1.GetFooProgressResponse
+func (r *someQueryQueryHandle) Get(ctx workflow.Context) (*opaque.SomeQueryOutput, error) {
+	var resp opaque.SomeQueryOutput
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
 }
 
-// GetFooProgress returns the status of a CreateFoo operation
-func GetFooProgress(ctx workflow.Context, workflowID string, runID string, opts ...*GetFooProgressQueryOptions) (*v1.GetFooProgressResponse, error) {
-	handle, err := GetFooProgressAsync(ctx, workflowID, runID, opts...)
+// SomeQuery executes a(n) test.opaque.SomeQuery query and blocks until error or response received
+func SomeQuery(ctx workflow.Context, workflowID string, runID string, req *opaque.SomeQueryInput, opts ...*SomeQueryQueryOptions) (*opaque.SomeQueryOutput, error) {
+	handle, err := SomeQueryAsync(ctx, workflowID, runID, req, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return handle.Get(ctx)
 }
 
-// GetFooProgressAsync executes a(n) example.v1.Example.GetFooProgress query and returns a handle to the activity
-func GetFooProgressAsync(ctx workflow.Context, workflowID string, runID string, opts ...*GetFooProgressQueryOptions) (GetFooProgressQueryHandle, error) {
-	activityName := exampleOptions.filterActivity(v1.GetFooProgressQueryName)
+// SomeQueryAsync executes a(n) test.opaque.SomeQuery query and returns a handle to the activity
+func SomeQueryAsync(ctx workflow.Context, workflowID string, runID string, req *opaque.SomeQueryInput, opts ...*SomeQueryQueryOptions) (SomeQueryQueryHandle, error) {
+	activityName := exampleOptions.filterActivity(opaque.SomeQueryQueryName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.GetFooProgressQueryName),
+			fmt.Sprintf("no activity registered for %s", opaque.SomeQueryQueryName),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &GetFooProgressQueryOptions{}
-	if len(opts) > 0 && opts[0] != nil {
-		opt = opts[0]
-	}
-
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
-	}
-
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 60000000000 // 1 minute
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &getFooProgressQueryHandle{
-		cancel: cancel,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.QueryRequest{
-			HeartbeatInterval: durationpb.New(opt.HeartbeatInterval),
-			WorkflowId:        workflowID,
-			RunId:             runID,
-		}),
-	}, nil
-}
-
-// SetFooProgressSignalOptions are used to configure a(n) example.v1.Example.SetFooProgress signal execution
-type SetFooProgressSignalOptions struct {
-	ActivityOptions   *workflow.ActivityOptions
-	HeartbeatInterval time.Duration
-}
-
-// NewSetFooProgressSignalOptions initializes a new SetFooProgressSignalOptions value
-func NewSetFooProgressSignalOptions() *SetFooProgressSignalOptions {
-	return &SetFooProgressSignalOptions{}
-}
-
-// WithActivityOptions can be used to customize the activity options
-func (opts *SetFooProgressSignalOptions) WithActivityOptions(ao workflow.ActivityOptions) *SetFooProgressSignalOptions {
-	opts.ActivityOptions = &ao
-	return opts
-}
-
-// WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *SetFooProgressSignalOptions) WithHeartbeatInterval(d time.Duration) *SetFooProgressSignalOptions {
-	opts.HeartbeatInterval = d
-	return opts
-}
-
-// SetFooProgressSignalHandle provides a handle for a example.v1.Example.SetFooProgress signal activity
-type SetFooProgressSignalHandle interface {
-	// Cancel cancels the workflow
-	Cancel(workflow.Context) error
-	// Future returns the inner workflow.Future
-	Future() workflow.Future
-	// Get returns the inner workflow.Future
-	Get(workflow.Context) error
-}
-
-// setFooProgressSignalHandle provides a(n) SetFooProgressQueryHandle implementation
-type setFooProgressSignalHandle struct {
-	cancel func()
-	future workflow.Future
-}
-
-// Cancel the underlying signal activity
-func (r *setFooProgressSignalHandle) Cancel(ctx workflow.Context) error {
-	r.cancel()
-	if err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
-		return err
-	}
-	return nil
-}
-
-// Future returns the underlying activity future
-func (r *setFooProgressSignalHandle) Future() workflow.Future {
-	return r.future
-}
-
-// Get blocks on activity completion
-func (r *setFooProgressSignalHandle) Get(ctx workflow.Context) error {
-	return r.future.Get(ctx, nil)
-}
-
-// SetFooProgress sets the current status of a CreateFoo operation
-func SetFooProgress(ctx workflow.Context, workflowID string, runID string, req *v1.SetFooProgressRequest, opts ...*SetFooProgressSignalOptions) error {
-	handle, err := SetFooProgressAsync(ctx, workflowID, runID, req, opts...)
-	if err != nil {
-		return err
-	}
-	return handle.Get(ctx)
-}
-
-// SetFooProgressAsync executes a(n) example.v1.Example.SetFooProgress signal
-func SetFooProgressAsync(ctx workflow.Context, workflowID string, runID string, req *v1.SetFooProgressRequest, opts ...*SetFooProgressSignalOptions) (SetFooProgressSignalHandle, error) {
-	activityName := exampleOptions.filterActivity(v1.SetFooProgressSignalName)
-	if activityName == "" {
-		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.SetFooProgressSignalName),
-			"Unimplemented",
-			nil,
-		)
-	}
-
-	opt := &SetFooProgressSignalOptions{}
+	opt := &SomeQueryQueryOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -714,7 +600,128 @@ func SetFooProgressAsync(ctx workflow.Context, workflowID string, runID string, 
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &setFooProgressSignalHandle{
+	return &someQueryQueryHandle{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.QueryRequest{
+			HeartbeatInterval: durationpb.New(opt.HeartbeatInterval),
+			WorkflowId:        workflowID,
+			RunId:             runID,
+			Request:           wreq,
+		}),
+	}, nil
+}
+
+// SomeSignalSignalOptions are used to configure a(n) test.opaque.SomeSignal signal execution
+type SomeSignalSignalOptions struct {
+	ActivityOptions   *workflow.ActivityOptions
+	HeartbeatInterval time.Duration
+}
+
+// NewSomeSignalSignalOptions initializes a new SomeSignalSignalOptions value
+func NewSomeSignalSignalOptions() *SomeSignalSignalOptions {
+	return &SomeSignalSignalOptions{}
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (opts *SomeSignalSignalOptions) WithActivityOptions(ao workflow.ActivityOptions) *SomeSignalSignalOptions {
+	opts.ActivityOptions = &ao
+	return opts
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (opts *SomeSignalSignalOptions) WithHeartbeatInterval(d time.Duration) *SomeSignalSignalOptions {
+	opts.HeartbeatInterval = d
+	return opts
+}
+
+// SomeSignalSignalHandle provides a handle for a test.opaque.Example.SomeSignal signal activity
+type SomeSignalSignalHandle interface {
+	// Cancel cancels the workflow
+	Cancel(workflow.Context) error
+	// Future returns the inner workflow.Future
+	Future() workflow.Future
+	// Get returns the inner workflow.Future
+	Get(workflow.Context) error
+}
+
+// someSignalSignalHandle provides a(n) SomeSignalQueryHandle implementation
+type someSignalSignalHandle struct {
+	cancel func()
+	future workflow.Future
+}
+
+// Cancel the underlying signal activity
+func (r *someSignalSignalHandle) Cancel(ctx workflow.Context) error {
+	r.cancel()
+	if err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
+		return err
+	}
+	return nil
+}
+
+// Future returns the underlying activity future
+func (r *someSignalSignalHandle) Future() workflow.Future {
+	return r.future
+}
+
+// Get blocks on activity completion
+func (r *someSignalSignalHandle) Get(ctx workflow.Context) error {
+	return r.future.Get(ctx, nil)
+}
+
+// SomeSignal executes a(n) test.opaque.SomeSignal signal
+func SomeSignal(ctx workflow.Context, workflowID string, runID string, req *opaque.SomeSignalInput, opts ...*SomeSignalSignalOptions) error {
+	handle, err := SomeSignalAsync(ctx, workflowID, runID, req, opts...)
+	if err != nil {
+		return err
+	}
+	return handle.Get(ctx)
+}
+
+// SomeSignalAsync executes a(n) test.opaque.SomeSignal signal
+func SomeSignalAsync(ctx workflow.Context, workflowID string, runID string, req *opaque.SomeSignalInput, opts ...*SomeSignalSignalOptions) (SomeSignalSignalHandle, error) {
+	activityName := exampleOptions.filterActivity(opaque.SomeSignalSignalName)
+	if activityName == "" {
+		return nil, temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("no activity registered for %s", opaque.SomeSignalSignalName),
+			"Unimplemented",
+			nil,
+		)
+	}
+
+	opt := &SomeSignalSignalOptions{}
+	if len(opts) > 0 && opts[0] != nil {
+		opt = opts[0]
+	}
+
+	if opt.HeartbeatInterval == 0 {
+		opt.HeartbeatInterval = time.Second * 30
+	}
+
+	// configure activity options
+	ao := workflow.GetActivityOptions(ctx)
+	if opt.ActivityOptions != nil {
+		ao = *opt.ActivityOptions
+	}
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
+	}
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = 60000000000 // 1 minute
+	}
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	// marshal workflow request
+	wreq, err := anypb.New(req)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &someSignalSignalHandle{
 		cancel: cancel,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.SignalRequest{
 			HeartbeatInterval: durationpb.New(opt.HeartbeatInterval),
@@ -725,38 +732,38 @@ func SetFooProgressAsync(ctx workflow.Context, workflowID string, runID string, 
 	}, nil
 }
 
-// UpdateFooProgressUpdateOptions are used to configure a(n) example.v1.Example.UpdateFooProgress update execution
-type UpdateFooProgressUpdateOptions struct {
+// SomeUpdateUpdateOptions are used to configure a(n) test.opaque.SomeQuery update execution
+type SomeUpdateUpdateOptions struct {
 	ActivityOptions       *workflow.ActivityOptions
 	HeartbeatInterval     time.Duration
 	UpdateWorkflowOptions *client.UpdateWorkflowOptions
 }
 
-// NewUpdateFooProgressUpdateOptions initializes a new UpdateFooProgressUpdateOptions value
-func NewUpdateFooProgressUpdateOptions() *UpdateFooProgressUpdateOptions {
-	return &UpdateFooProgressUpdateOptions{}
+// NewSomeUpdateUpdateOptions initializes a new SomeUpdateUpdateOptions value
+func NewSomeUpdateUpdateOptions() *SomeUpdateUpdateOptions {
+	return &SomeUpdateUpdateOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
-func (opts *UpdateFooProgressUpdateOptions) WithActivityOptions(ao workflow.ActivityOptions) *UpdateFooProgressUpdateOptions {
+func (opts *SomeUpdateUpdateOptions) WithActivityOptions(ao workflow.ActivityOptions) *SomeUpdateUpdateOptions {
 	opts.ActivityOptions = &ao
 	return opts
 }
 
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *UpdateFooProgressUpdateOptions) WithHeartbeatInterval(d time.Duration) *UpdateFooProgressUpdateOptions {
+func (opts *SomeUpdateUpdateOptions) WithHeartbeatInterval(d time.Duration) *SomeUpdateUpdateOptions {
 	opts.HeartbeatInterval = d
 	return opts
 }
 
 // WithUpdateWorkflowOptions can be used to customize the update workflow options
-func (opts *UpdateFooProgressUpdateOptions) WithUpdateWorkflowOptions(uwo client.UpdateWorkflowOptions) *UpdateFooProgressUpdateOptions {
+func (opts *SomeUpdateUpdateOptions) WithUpdateWorkflowOptions(uwo client.UpdateWorkflowOptions) *SomeUpdateUpdateOptions {
 	opts.UpdateWorkflowOptions = &uwo
 	return opts
 }
 
-// UpdateFooProgressHandle provides a handle to a example.v1.Example.UpdateFooProgress workflow update
-type UpdateFooProgressHandle interface {
+// SomeUpdateHandle provides a handle to a test.opaque.Example.SomeUpdate workflow update
+type SomeUpdateHandle interface {
 	// Cancel cancels the update activity
 	Cancel(workflow.Context) error
 
@@ -764,21 +771,21 @@ type UpdateFooProgressHandle interface {
 	Future() workflow.Future
 
 	// Get blocks on update completion and returns the result
-	Get(workflow.Context) (*v1.GetFooProgressResponse, error)
+	Get(workflow.Context) (*opaque.SomeUpdateOutput, error)
 
 	// ID returns the update id
 	ID() string
 }
 
-// updateFooProgressHandle provides a(n) UpdateFooProgressHandle implementation
-type updateFooProgressHandle struct {
+// someUpdateHandle provides a(n) SomeUpdateHandle implementation
+type someUpdateHandle struct {
 	cancel func()
 	future workflow.Future
 	id     string
 }
 
 // Cancel the underlying workflow update
-func (r *updateFooProgressHandle) Cancel(ctx workflow.Context) error {
+func (r *someUpdateHandle) Cancel(ctx workflow.Context) error {
 	r.cancel()
 	if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
 		return err
@@ -787,13 +794,13 @@ func (r *updateFooProgressHandle) Cancel(ctx workflow.Context) error {
 }
 
 // Future returns the underlying activity future
-func (r *updateFooProgressHandle) Future() workflow.Future {
+func (r *someUpdateHandle) Future() workflow.Future {
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying update result
-func (r *updateFooProgressHandle) Get(ctx workflow.Context) (*v1.GetFooProgressResponse, error) {
-	var resp v1.GetFooProgressResponse
+func (r *someUpdateHandle) Get(ctx workflow.Context) (*opaque.SomeUpdateOutput, error) {
+	var resp opaque.SomeUpdateOutput
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
 	}
@@ -801,31 +808,31 @@ func (r *updateFooProgressHandle) Get(ctx workflow.Context) (*v1.GetFooProgressR
 }
 
 // ID returns the underlying workflow id
-func (r *updateFooProgressHandle) ID() string {
+func (r *someUpdateHandle) ID() string {
 	return r.id
 }
 
-// UpdateFooProgress sets the current status of a CreateFoo operation
-func UpdateFooProgress(ctx workflow.Context, workflowID string, runID string, req *v1.SetFooProgressRequest, opts ...*UpdateFooProgressUpdateOptions) (*v1.GetFooProgressResponse, error) {
-	run, err := UpdateFooProgressAsync(ctx, workflowID, runID, req, opts...)
+// SomeUpdate executes a(n) test.opaque.SomeQuery update and blocks until error or response received
+func SomeUpdate(ctx workflow.Context, workflowID string, runID string, req *opaque.SomeUpdateInput, opts ...*SomeUpdateUpdateOptions) (*opaque.SomeUpdateOutput, error) {
+	run, err := SomeUpdateAsync(ctx, workflowID, runID, req, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// UpdateFooProgressAsync executes a(n) example.v1.Example.UpdateFooProgress update and blocks until error or response received
-func UpdateFooProgressAsync(ctx workflow.Context, workflowID string, runID string, req *v1.SetFooProgressRequest, opts ...*UpdateFooProgressUpdateOptions) (UpdateFooProgressHandle, error) {
-	activityName := exampleOptions.filterActivity(v1.UpdateFooProgressUpdateName)
+// SomeUpdateAsync executes a(n) test.opaque.SomeQuery update and blocks until error or response received
+func SomeUpdateAsync(ctx workflow.Context, workflowID string, runID string, req *opaque.SomeUpdateInput, opts ...*SomeUpdateUpdateOptions) (SomeUpdateHandle, error) {
+	activityName := exampleOptions.filterActivity(opaque.SomeUpdateUpdateName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.UpdateFooProgressUpdateName),
+			fmt.Sprintf("no activity registered for %s", opaque.SomeUpdateUpdateName),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &UpdateFooProgressUpdateOptions{}
+	opt := &SomeUpdateUpdateOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -858,18 +865,6 @@ func UpdateFooProgressAsync(ctx workflow.Context, workflowID string, runID strin
 	uo.RunID = runID
 	if uo.UpdateID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.UpdateFooProgressIdexpression, req.ProtoReflect())
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.v1.Example.UpdateFooProgress\" update", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&uo.UpdateID); err != nil {
-			return nil, err
-		}
-	}
-	if uo.UpdateID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			id, err := uuid.NewRandom()
 			if err != nil {
 				workflow.GetLogger(ctx).Error("error generating update id", "error", err)
@@ -895,7 +890,7 @@ func UpdateFooProgressAsync(ctx workflow.Context, workflowID string, runID strin
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &updateFooProgressHandle{
+	return &someUpdateHandle{
 		cancel: cancel,
 		id:     uo.UpdateID,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.UpdateRequest{
@@ -913,11 +908,11 @@ func CancelExampleWorkflow(ctx workflow.Context, workflowID string, runID string
 
 // CancelExampleWorkflowAsync cancels an existing workflow
 func CancelExampleWorkflowAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
-	activityName := exampleOptions.filterActivity("example.v1.Example.CancelWorkflow")
+	activityName := exampleOptions.filterActivity("test.opaque.Example.CancelWorkflow")
 	if activityName == "" {
 		f, s := workflow.NewFuture(ctx)
 		s.SetError(temporal.NewNonRetryableApplicationError(
-			"no activity registered for example.v1.Example.CancelWorkflow",
+			"no activity registered for test.opaque.Example.CancelWorkflow",
 			"Unimplemented",
 			nil,
 		))
@@ -933,7 +928,7 @@ func CancelExampleWorkflowAsync(ctx workflow.Context, workflowID string, runID s
 
 // exampleActivities provides activities that can be used to interact with a(n) Example service's workflow, queries, signals, and updates across namespaces
 type exampleActivities struct {
-	client v1.ExampleClient
+	client opaque.ExampleClient
 }
 
 // CancelWorkflow cancels an existing workflow execution
@@ -941,21 +936,21 @@ func (a *exampleActivities) CancelWorkflow(ctx context.Context, workflowID strin
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
-// CreateFoo executes a(n) example.v1.Example.CreateFoo workflow via an activity
-func (a *exampleActivities) CreateFoo(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.CreateFooResponse, err error) {
+// SomeWorkflow executes a(n) test.opaque.SomeWorkflow workflow via an activity
+func (a *exampleActivities) SomeWorkflow(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *opaque.SomeWorkflowOutput, err error) {
 	// unmarshal workflow request
-	var req v1.CreateFooRequest
+	var req opaque.SomeWorkflowInput
 	if err := input.Request.UnmarshalTo(&req); err != nil {
 		return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/v1.CreateFooRequest", input.Request.GetTypeUrl()),
+			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/opaque.SomeWorkflowInput", input.Request.GetTypeUrl()),
 			"InvalidArgument",
 			err,
 		))
 	}
 
 	// initialize workflow execution
-	var run v1.CreateFooRun
-	run, err = a.client.CreateFooAsync(ctx, &req, v1.NewCreateFooOptions().WithStartWorkflowOptions(
+	var run opaque.SomeWorkflowRun
+	run, err = a.client.SomeWorkflowAsync(ctx, &req, opaque.NewSomeWorkflowOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1024,31 +1019,31 @@ func (a *exampleActivities) CreateFoo(ctx context.Context, input *xnsv1.Workflow
 	}
 }
 
-// CreateFooWithSetFooProgress sends a(n) example.v1.Example.SetFooProgress signal to a(n) example.v1.Example.CreateFoo workflow via an activity
-func (a *exampleActivities) CreateFooWithSetFooProgress(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.CreateFooResponse, err error) {
+// SomeWorkflowWithSomeSignal sends a(n) test.opaque.SomeSignal signal to a(n) test.opaque.SomeWorkflow workflow via an activity
+func (a *exampleActivities) SomeWorkflowWithSomeSignal(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *opaque.SomeWorkflowOutput, err error) {
 	// unmarshal workflow request
-	var req v1.CreateFooRequest
+	var req opaque.SomeWorkflowInput
 	if err := input.Request.UnmarshalTo(&req); err != nil {
 		return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/v1.CreateFooRequest", input.Request.GetTypeUrl()),
+			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/opaque.SomeWorkflowInput", input.Request.GetTypeUrl()),
 			"InvalidArgument",
 			err,
 		))
 	}
 
 	// unmarshal signal request
-	var signal v1.SetFooProgressRequest
+	var signal opaque.SomeSignalInput
 	if err := input.Signal.UnmarshalTo(&signal); err != nil {
 		return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("error unmarshalling signal request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/v1.SetFooProgressRequest", input.Signal.GetTypeUrl()),
+			fmt.Sprintf("error unmarshalling signal request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/opaque.SomeSignalInput", input.Signal.GetTypeUrl()),
 			"InvalidArgument",
 			err,
 		))
 	}
 
 	// initialize workflow execution
-	var run v1.CreateFooRun
-	run, err = a.client.CreateFooWithSetFooProgressAsync(ctx, &req, &signal, v1.NewCreateFooOptions().WithStartWorkflowOptions(
+	var run opaque.SomeWorkflowRun
+	run, err = a.client.SomeWorkflowWithSomeSignalAsync(ctx, &req, &signal, opaque.NewSomeWorkflowOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1117,12 +1112,21 @@ func (a *exampleActivities) CreateFooWithSetFooProgress(ctx context.Context, inp
 	}
 }
 
-// GetFooProgress executes a(n) example.v1.Example.GetFooProgress query via an activity
-func (a *exampleActivities) GetFooProgress(ctx context.Context, input *xnsv1.QueryRequest) (resp *v1.GetFooProgressResponse, err error) {
+// SomeQuery executes a(n) test.opaque.SomeQuery query via an activity
+func (a *exampleActivities) SomeQuery(ctx context.Context, input *xnsv1.QueryRequest) (resp *opaque.SomeQueryOutput, err error) {
+	// unmarshal query request
+	var req opaque.SomeQueryInput
+	if err := input.Request.UnmarshalTo(&req); err != nil {
+		return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("error unmarshalling query request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/opaque.SomeQueryInput", input.Request.GetTypeUrl()),
+			"InvalidArgument",
+			err,
+		))
+	}
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.GetFooProgress(ctx, input.GetWorkflowId(), input.GetRunId())
+		resp, err = a.client.SomeQuery(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -1144,13 +1148,13 @@ func (a *exampleActivities) GetFooProgress(ctx context.Context, input *xnsv1.Que
 	}
 }
 
-// SetFooProgress executes a(n) example.v1.Example.SetFooProgress signal via an activity
-func (a *exampleActivities) SetFooProgress(ctx context.Context, input *xnsv1.SignalRequest) (err error) {
+// SomeSignal executes a(n) test.opaque.SomeSignal signal via an activity
+func (a *exampleActivities) SomeSignal(ctx context.Context, input *xnsv1.SignalRequest) (err error) {
 	// unmarshal signal request
-	var req v1.SetFooProgressRequest
+	var req opaque.SomeSignalInput
 	if err := input.Request.UnmarshalTo(&req); err != nil {
 		return exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("error unmarshalling signal request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/v1.SetFooProgressRequest", input.Request.GetTypeUrl()),
+			fmt.Sprintf("error unmarshalling signal request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/opaque.SomeSignalInput", input.Request.GetTypeUrl()),
 			"InvalidArgument",
 			err,
 		))
@@ -1158,7 +1162,7 @@ func (a *exampleActivities) SetFooProgress(ctx context.Context, input *xnsv1.Sig
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SetFooProgress(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = a.client.SomeSignal(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -1180,9 +1184,9 @@ func (a *exampleActivities) SetFooProgress(ctx context.Context, input *xnsv1.Sig
 	}
 }
 
-// UpdateFooProgress executes a(n) example.v1.Example.UpdateFooProgress update via an activity
-func (a *exampleActivities) UpdateFooProgress(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.GetFooProgressResponse, err error) {
-	var handle v1.UpdateFooProgressHandle
+// SomeUpdate executes a(n) test.opaque.SomeQuery update via an activity
+func (a *exampleActivities) SomeUpdate(ctx context.Context, input *xnsv1.UpdateRequest) (resp *opaque.SomeUpdateOutput, err error) {
+	var handle opaque.SomeUpdateHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
 		var updateID string
@@ -1191,7 +1195,7 @@ func (a *exampleActivities) UpdateFooProgress(ctx context.Context, input *xnsv1.
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetUpdateFooProgress(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = a.client.GetSomeUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -1201,10 +1205,10 @@ func (a *exampleActivities) UpdateFooProgress(ctx context.Context, input *xnsv1.
 		}
 	} else {
 		// unmarshal update request
-		var req v1.SetFooProgressRequest
+		var req opaque.SomeUpdateInput
 		if err := input.Request.UnmarshalTo(&req); err != nil {
 			return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
-				fmt.Sprintf("error unmarshalling update request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/v1.SetFooProgressRequest", input.Request.GetTypeUrl()),
+				fmt.Sprintf("error unmarshalling update request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/opaque.SomeUpdateInput", input.Request.GetTypeUrl()),
 				"InvalidArgument",
 				err,
 			))
@@ -1214,12 +1218,12 @@ func (a *exampleActivities) UpdateFooProgress(ctx context.Context, input *xnsv1.
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.UpdateFooProgressAsync(
+		handle, err = a.client.SomeUpdateAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
 			&req,
-			v1.NewUpdateFooProgressOptions().WithUpdateWorkflowOptions(uo),
+			opaque.NewSomeUpdateOptions().WithUpdateWorkflowOptions(uo),
 		)
 		if err != nil {
 			return nil, exampleOptions.convertError(err)

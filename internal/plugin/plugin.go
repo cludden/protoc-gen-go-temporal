@@ -3,12 +3,14 @@ package plugin
 import (
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 
 	g "github.com/dave/jennifer/jen"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/gofeaturespb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
@@ -153,6 +155,16 @@ func isEmpty(m *protogen.Message) bool {
 
 func isGenuineOneOf(field *protogen.Field) bool {
 	return field.Oneof != nil && !field.Desc.HasOptionalKeyword()
+}
+
+func isOpaque(f *protogen.File) bool {
+	if f == nil {
+		return false
+	}
+	return slices.Contains([]gofeaturespb.GoFeatures_APILevel{
+		gofeaturespb.GoFeatures_API_HYBRID,
+		gofeaturespb.GoFeatures_API_OPAQUE,
+	}, f.APILevel)
 }
 
 func methodSet(methods ...*protogen.Method) []*protogen.Method {

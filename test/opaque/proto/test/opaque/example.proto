@@ -1,0 +1,85 @@
+edition = "2023";
+
+package test.opaque;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/go_features.proto";
+import "temporal/v1/temporal.proto";
+
+option features.(pb.go).api_level = API_OPAQUE;
+option features.field_presence = EXPLICIT;
+
+service Example {
+  option (temporal.v1.service) = {task_queue: "example"};
+
+  rpc SomeActivity(SomeActivityInput) returns (SomeActivityOutput) {
+    option (temporal.v1.activity) = {
+      name: "test.opaque.SomeActivity"
+      start_to_close_timeout: {seconds: 30}
+    };
+  }
+
+  rpc SomeQuery(SomeQueryInput) returns (SomeQueryOutput) {
+    option (temporal.v1.query) = {name: "test.opaque.SomeQuery"};
+  }
+
+  rpc SomeSignal(SomeSignalInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {name: "test.opaque.SomeSignal"};
+  }
+
+  rpc SomeUpdate(SomeUpdateInput) returns (SomeUpdateOutput) {
+    option (temporal.v1.update) = {
+      name: "test.opaque.SomeQuery"
+      validate: true
+    };
+  }
+
+  rpc SomeWorkflow(SomeWorkflowInput) returns (SomeWorkflowOutput) {
+    option (temporal.v1.workflow) = {
+      name: "test.opaque.SomeWorkflow"
+      id: 'test.opaque.SomeWorkflow/${! uuid_v4() }'
+      query: {ref: "SomeQuery"}
+      signal: {
+        ref: "SomeSignal"
+        start: true
+      }
+      update: {ref: "SomeUpdate"}
+    };
+  }
+}
+
+message SomeActivityInput {
+  string name = 1;
+}
+
+message SomeActivityOutput {
+  string result = 2;
+}
+
+message SomeQueryInput {
+  string name = 1;
+}
+
+message SomeQueryOutput {
+  string result = 2;
+}
+
+message SomeSignalInput {
+  string name = 1;
+}
+
+message SomeUpdateInput {
+  string name = 1;
+}
+
+message SomeUpdateOutput {
+  string result = 2;
+}
+
+message SomeWorkflowInput {
+  string name = 1;
+}
+
+message SomeWorkflowOutput {
+  string result = 2;
+}
