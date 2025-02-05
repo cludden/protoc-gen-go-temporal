@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package example.protocgengonexus;
+
+import "nexus/v1/options.proto";
+import "temporal/v1/temporal.proto";
+
+service Greeting {
+  option (nexus.v1.service) = {name: "example.protocgengonexus.Greeting"};
+  option (temporal.v1.service) = {task_queue: "example"};
+
+  rpc GenerateGreeting(GenerateGreetingInput) returns (GenerateGreetingOutput) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 10}
+    };
+  }
+
+  rpc Greet(GreetInput) returns (GreetOutput) {
+    option (nexus.v1.operation).name = "Greet";
+    option (temporal.v1.workflow) = {id: 'Greet/${! name.or("World") }'};
+  }
+}
+
+message GenerateGreetingInput {
+  string name = 1;
+}
+
+message GenerateGreetingOutput {
+  string greeting = 1;
+}
+
+message GreetInput {
+  string name = 1;
+}
+
+message GreetOutput {
+  string greeting = 1;
+}
+
+service Caller {
+  option (temporal.v1.service) = {task_queue: "example"};
+
+  rpc CallGreet(CallGreetInput) returns (CallGreetOutput) {
+    option (temporal.v1.workflow) = {id: 'CallGreet/${! name.or("World") }'};
+  }
+}
+
+message CallGreetInput {
+  string name = 1;
+}
+
+message CallGreetOutput {
+  string greeting = 1;
+}

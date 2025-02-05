@@ -1,0 +1,47 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/cludden/protoc-gen-go-temporal/gen
+  disable:
+    - file_option: go_package
+      module: buf.build/alta/protopatch
+    - file_option: go_package_prefix
+      module: buf.build/bergundy/nexus
+    - file_option: go_package
+      module: buf.build/cludden/protoc-gen-go-temporal
+plugins:
+  - local: protoc-gen-go
+    out: gen
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-go-nexus
+    out: gen
+    strategy: all
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-nexus-temporal
+    out: gen
+    strategy: all
+    opt:
+      - paths=source_relative
+      - lang=go
+  - local: protoc-gen-go_temporal
+    out: gen
+    opt:
+      - cli-categories=true
+      - cli-enabled=true
+      - docs-out=./proto/README.md
+      - enable-codec=true
+      - enable-patch-support=true
+      - enable-xns=true
+      - patches=64_ENABLED
+      - paths=source_relative
+      - protoc-gen-go-nexus-enabled=true
+      - workflow-update-enabled=true
+    strategy: all
+inputs:
+  - directory: examples
+    paths:
+      - examples/protoc-gen-go-nexus/proto/example/protocgengonexus

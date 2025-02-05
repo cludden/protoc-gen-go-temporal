@@ -3,6 +3,7 @@ modules:
   - path: examples/example/proto
   - path: examples/helloworld/proto
   - path: examples/mutex/proto
+  - path: examples/protoc-gen-go-nexus/proto
   - path: examples/schedule/proto
   - path: examples/searchattributes/proto
   - path: examples/updatabletimer/proto
@@ -18,6 +19,7 @@ modules:
   - path: test/xnserr/proto
 deps:
   - buf.build/alta/protopatch
+  - buf.build/bergundy/nexus
   - buf.build/cludden/protoc-gen-go-temporal
 lint:
   use:

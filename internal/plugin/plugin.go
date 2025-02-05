@@ -26,6 +26,7 @@ type Config struct {
 	EnablePatchSupport         bool
 	EnableXNS                  bool
 	Patches                    string
+	ProtocGenGoNexusEnabled    bool
 	WorkflowUpdateEnabled      bool
 }
 
@@ -52,6 +53,7 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
 	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
+	flags.BoolVar(&cfg.ProtocGenGoNexusEnabled, "protoc-gen-go-nexus-enabled", false, "enable experimental protoc-gen-go-nexus support")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
 	return &Plugin{

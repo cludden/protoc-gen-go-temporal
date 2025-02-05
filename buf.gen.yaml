@@ -27,4 +27,5 @@ inputs:
   - directory: proto
   - directory: test
     exclude_paths:
+      - examples/protoc-gen-go-nexus/proto/example/protocgengonexus
       - test/patch/proto/test/patch

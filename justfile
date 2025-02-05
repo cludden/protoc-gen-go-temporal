@@ -34,6 +34,7 @@ gen:
     buf format -w
     buf generate
     buf generate --template buf.patch.gen.yaml
+    buf generate --template buf.protocgengonexus.gen.yaml
     mockery --log-level=error
     go mod tidy
 

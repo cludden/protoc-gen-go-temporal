@@ -115,6 +115,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'guides/nexus',
+          label: 'Nexus'
+        },
+        {
+          type: 'doc',
           id: 'guides/xns',
           label: 'Cross-Namespace (XNS)'
         },

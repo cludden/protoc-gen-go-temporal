@@ -556,6 +556,23 @@ func (svc *Manifest) render() error {
 			f.ImportAlias(pkg, alias)
 		}
 
+		var temporalf *g.File
+		var temporalGoPackageName, temporalFilePath string
+		var hasTemporal bool
+		if svc.cfg.ProtocGenGoNexusEnabled {
+			temporalGoPackageName = fmt.Sprintf("%stemporal", file.GoPackageName)
+			temporalGoImportPath := path.Join(string(file.GoImportPath), temporalGoPackageName)
+			temporalf = g.NewFilePathName(temporalGoImportPath, temporalGoPackageName)
+			genCodeGenerationHeader(svc.Plugin, temporalf, file)
+
+			prefixToSlash := filepath.ToSlash(file.GeneratedFilenamePrefix)
+			temporalFilePath = path.Join(
+				path.Dir(prefixToSlash),
+				temporalGoPackageName,
+				path.Base(prefixToSlash),
+			)
+		}
+
 		var xns *g.File
 		var xnsGoPackageName, xnsFilePath string
 		var hasXNS bool
@@ -617,6 +634,10 @@ func (svc *Manifest) render() error {
 			if svc.cfg.EnableCodec {
 				svc.renderCodec(f)
 			}
+			if svc.cfg.ProtocGenGoNexusEnabled {
+				svc.renderProtocGenGoNexus(temporalf)
+				hasTemporal = true
+			}
 			hasContent = true
 		}
 
@@ -633,6 +654,17 @@ func (svc *Manifest) render() error {
 				protogen.GoImportPath(path.Join(
 					string(file.GoImportPath),
 					xnsGoPackageName,
+				)),
+			)); err != nil {
+				return fmt.Errorf("error rendering file: %w", err)
+			}
+		}
+		if hasTemporal {
+			if err := temporalf.Render(svc.Plugin.NewGeneratedFile(
+				fmt.Sprintf("%s_temporal.pb.go", temporalFilePath),
+				protogen.GoImportPath(path.Join(
+					string(file.GoImportPath),
+					temporalGoPackageName,
 				)),
 			)); err != nil {
 				return fmt.Errorf("error rendering file: %w", err)
