@@ -21,7 +21,6 @@ plugins:
       - patches=64_ENABLED
       - paths=source_relative
       - workflow-update-enabled=true
-      - ignore-strcase-initialisms=AWS
     strategy: all
 inputs:
   - directory: examples

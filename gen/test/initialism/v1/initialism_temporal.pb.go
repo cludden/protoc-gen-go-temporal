@@ -33,40 +33,40 @@ import (
 	"time"
 )
 
-// AWSTaskQueue is the default task-queue for a mycompany.initialism.AWS worker
-const AWSTaskQueue = "aws-task-queue"
+// AwstaskQueue is the default task-queue for a mycompany.initialism.AWS worker
+const AwstaskQueue = "aws-task-queue"
 
 // mycompany.initialism.AWS workflow names
 const (
-	ManageAWSWorkflowName         = "mycompany.initialism.AWS.ManageAWS"
-	ManageAWSResourceWorkflowName = "mycompany.initialism.AWS.ManageAWSResource"
+	ManageAwsworkflowName         = "mycompany.initialism.AWS.ManageAWS"
+	ManageAwsresourceWorkflowName = "mycompany.initialism.AWS.ManageAWSResource"
 )
 
 // mycompany.initialism.AWS workflow id expressions
 var (
-	ManageAWSIDExpression         = expression.MustParseExpression("some-workflow-1/${! id }/${! uuid_v4() }")
-	ManageAWSResourceIDExpression = expression.MustParseExpression("some-workflow-2/${! uuid_v4() }")
+	ManageAwsidexpression         = expression.MustParseExpression("some-workflow-1/${! id }/${! uuid_v4() }")
+	ManageAwsresourceIdexpression = expression.MustParseExpression("some-workflow-2/${! uuid_v4() }")
 )
 
-// AWSClient describes a client for a(n) mycompany.initialism.AWS worker
-type AWSClient interface {
+// Awsclient describes a client for a(n) mycompany.initialism.AWS worker
+type Awsclient interface {
 	// ManageAWS does some workflow thing.
-	ManageAWS(ctx context.Context, req *ManageAWSRequest, opts ...*ManageAWSOptions) (*ManageAWSResponse, error)
+	ManageAws(ctx context.Context, req *ManageAWSRequest, opts ...*ManageAwsoptions) (*ManageAWSResponse, error)
 
-	// ManageAWSAsync starts a(n) mycompany.initialism.AWS.ManageAWS workflow and returns a handle to the workflow run
-	ManageAWSAsync(ctx context.Context, req *ManageAWSRequest, opts ...*ManageAWSOptions) (ManageAWSRun, error)
+	// ManageAwsasync starts a(n) mycompany.initialism.AWS.ManageAWS workflow and returns a handle to the workflow run
+	ManageAwsasync(ctx context.Context, req *ManageAWSRequest, opts ...*ManageAwsoptions) (ManageAwsrun, error)
 
-	// GetManageAWS retrieves a handle to an existing mycompany.initialism.AWS.ManageAWS workflow execution
-	GetManageAWS(ctx context.Context, workflowID string, runID string) ManageAWSRun
+	// GetManageAws retrieves a handle to an existing mycompany.initialism.AWS.ManageAWS workflow execution
+	GetManageAws(ctx context.Context, workflowID string, runID string) ManageAwsrun
 
 	// ManageAWSResource does some workflow thing.
-	ManageAWSResource(ctx context.Context, req *ManageAWSResourceRequest, opts ...*ManageAWSResourceOptions) (*ManageAWSResourceResponse, error)
+	ManageAwsresource(ctx context.Context, req *ManageAWSResourceRequest, opts ...*ManageAwsresourceOptions) (*ManageAWSResourceResponse, error)
 
-	// ManageAWSResourceAsync starts a(n) mycompany.initialism.AWS.ManageAWSResource workflow and returns a handle to the workflow run
-	ManageAWSResourceAsync(ctx context.Context, req *ManageAWSResourceRequest, opts ...*ManageAWSResourceOptions) (ManageAWSResourceRun, error)
+	// ManageAwsresourceAsync starts a(n) mycompany.initialism.AWS.ManageAWSResource workflow and returns a handle to the workflow run
+	ManageAwsresourceAsync(ctx context.Context, req *ManageAWSResourceRequest, opts ...*ManageAwsresourceOptions) (ManageAwsresourceRun, error)
 
-	// GetManageAWSResource retrieves a handle to an existing mycompany.initialism.AWS.ManageAWSResource workflow execution
-	GetManageAWSResource(ctx context.Context, workflowID string, runID string) ManageAWSResourceRun
+	// GetManageAwsresource retrieves a handle to an existing mycompany.initialism.AWS.ManageAWSResource workflow execution
+	GetManageAwsresource(ctx context.Context, workflowID string, runID string) ManageAwsresourceRun
 
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
@@ -75,57 +75,57 @@ type AWSClient interface {
 	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
 }
 
-// aWSClient implements a temporal client for a mycompany.initialism.AWS service
-type aWSClient struct {
+// awsclient implements a temporal client for a mycompany.initialism.AWS service
+type awsclient struct {
 	client client.Client
 	log    *slog.Logger
 }
 
-// NewAWSClient initializes a new mycompany.initialism.AWS client
-func NewAWSClient(c client.Client, options ...*aWSClientOptions) AWSClient {
-	var cfg *aWSClientOptions
+// NewAwsclient initializes a new mycompany.initialism.AWS client
+func NewAwsclient(c client.Client, options ...*awsclientOptions) Awsclient {
+	var cfg *awsclientOptions
 	if len(options) > 0 {
 		cfg = options[0]
 	} else {
-		cfg = NewAWSClientOptions()
+		cfg = NewAwsclientOptions()
 	}
-	return &aWSClient{
+	return &awsclient{
 		client: c,
 		log:    cfg.getLogger(),
 	}
 }
 
-// NewAWSClientWithOptions initializes a new AWS client with the given options
-func NewAWSClientWithOptions(c client.Client, opts client.Options, options ...*aWSClientOptions) (AWSClient, error) {
+// NewAwsclientWithOptions initializes a new AWS client with the given options
+func NewAwsclientWithOptions(c client.Client, opts client.Options, options ...*awsclientOptions) (Awsclient, error) {
 	var err error
 	c, err = client.NewClientFromExisting(c, opts)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client with options: %w", err)
 	}
-	var cfg *aWSClientOptions
+	var cfg *awsclientOptions
 	if len(options) > 0 {
 		cfg = options[0]
 	} else {
-		cfg = NewAWSClientOptions()
+		cfg = NewAwsclientOptions()
 	}
-	return &aWSClient{
+	return &awsclient{
 		client: c,
 		log:    cfg.getLogger(),
 	}, nil
 }
 
-// aWSClientOptions describes optional runtime configuration for a AWSClient
-type aWSClientOptions struct {
+// awsclientOptions describes optional runtime configuration for a Awsclient
+type awsclientOptions struct {
 	log *slog.Logger
 }
 
-// NewAWSClientOptions initializes a new aWSClientOptions value
-func NewAWSClientOptions() *aWSClientOptions {
-	return &aWSClientOptions{}
+// NewAwsclientOptions initializes a new awsclientOptions value
+func NewAwsclientOptions() *awsclientOptions {
+	return &awsclientOptions{}
 }
 
 // WithLogger can be used to override the default logger
-func (opts *aWSClientOptions) WithLogger(l *slog.Logger) *aWSClientOptions {
+func (opts *awsclientOptions) WithLogger(l *slog.Logger) *awsclientOptions {
 	if l != nil {
 		opts.log = l
 	}
@@ -133,7 +133,7 @@ func (opts *aWSClientOptions) WithLogger(l *slog.Logger) *aWSClientOptions {
 }
 
 // getLogger returns the configured logger, or the default logger
-func (opts *aWSClientOptions) getLogger() *slog.Logger {
+func (opts *awsclientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
@@ -141,8 +141,8 @@ func (opts *aWSClientOptions) getLogger() *slog.Logger {
 }
 
 // ManageAWS does some workflow thing.
-func (c *aWSClient) ManageAWS(ctx context.Context, req *ManageAWSRequest, options ...*ManageAWSOptions) (*ManageAWSResponse, error) {
-	run, err := c.ManageAWSAsync(ctx, req, options...)
+func (c *awsclient) ManageAWS(ctx context.Context, req *ManageAWSRequest, options ...*ManageAwsoptions) (*ManageAWSResponse, error) {
+	run, err := c.ManageAwsasync(ctx, req, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -150,41 +150,41 @@ func (c *aWSClient) ManageAWS(ctx context.Context, req *ManageAWSRequest, option
 }
 
 // ManageAWS does some workflow thing.
-func (c *aWSClient) ManageAWSAsync(ctx context.Context, req *ManageAWSRequest, options ...*ManageAWSOptions) (ManageAWSRun, error) {
-	var o *ManageAWSOptions
+func (c *awsclient) ManageAwsasync(ctx context.Context, req *ManageAWSRequest, options ...*ManageAwsoptions) (ManageAwsrun, error) {
+	var o *ManageAwsoptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewManageAWSOptions()
+		o = NewManageAwsoptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	run, err := c.client.ExecuteWorkflow(ctx, opts, ManageAWSWorkflowName, req)
+	run, err := c.client.ExecuteWorkflow(ctx, opts, ManageAwsworkflowName, req)
 	if err != nil {
 		return nil, err
 	}
 	if run == nil {
 		return nil, errors.New("execute workflow returned nil run")
 	}
-	return &manageAWSRun{
+	return &manageAwsrun{
 		client: c,
 		run:    run,
 	}, nil
 }
 
-// GetManageAWS fetches an existing mycompany.initialism.AWS.ManageAWS execution
-func (c *aWSClient) GetManageAWS(ctx context.Context, workflowID string, runID string) ManageAWSRun {
-	return &manageAWSRun{
+// GetManageAws fetches an existing mycompany.initialism.AWS.ManageAWS execution
+func (c *awsclient) GetManageAws(ctx context.Context, workflowID string, runID string) ManageAwsrun {
+	return &manageAwsrun{
 		client: c,
 		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}
 }
 
 // ManageAWSResource does some workflow thing.
-func (c *aWSClient) ManageAWSResource(ctx context.Context, req *ManageAWSResourceRequest, options ...*ManageAWSResourceOptions) (*ManageAWSResourceResponse, error) {
-	run, err := c.ManageAWSResourceAsync(ctx, req, options...)
+func (c *awsclient) ManageAWSResource(ctx context.Context, req *ManageAWSResourceRequest, options ...*ManageAwsresourceOptions) (*ManageAWSResourceResponse, error) {
+	run, err := c.ManageAwsresourceAsync(ctx, req, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -192,50 +192,50 @@ func (c *aWSClient) ManageAWSResource(ctx context.Context, req *ManageAWSResourc
 }
 
 // ManageAWSResource does some workflow thing.
-func (c *aWSClient) ManageAWSResourceAsync(ctx context.Context, req *ManageAWSResourceRequest, options ...*ManageAWSResourceOptions) (ManageAWSResourceRun, error) {
-	var o *ManageAWSResourceOptions
+func (c *awsclient) ManageAwsresourceAsync(ctx context.Context, req *ManageAWSResourceRequest, options ...*ManageAwsresourceOptions) (ManageAwsresourceRun, error) {
+	var o *ManageAwsresourceOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewManageAWSResourceOptions()
+		o = NewManageAwsresourceOptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	run, err := c.client.ExecuteWorkflow(ctx, opts, ManageAWSResourceWorkflowName, req)
+	run, err := c.client.ExecuteWorkflow(ctx, opts, ManageAwsresourceWorkflowName, req)
 	if err != nil {
 		return nil, err
 	}
 	if run == nil {
 		return nil, errors.New("execute workflow returned nil run")
 	}
-	return &manageAWSResourceRun{
+	return &manageAwsresourceRun{
 		client: c,
 		run:    run,
 	}, nil
 }
 
-// GetManageAWSResource fetches an existing mycompany.initialism.AWS.ManageAWSResource execution
-func (c *aWSClient) GetManageAWSResource(ctx context.Context, workflowID string, runID string) ManageAWSResourceRun {
-	return &manageAWSResourceRun{
+// GetManageAwsresource fetches an existing mycompany.initialism.AWS.ManageAWSResource execution
+func (c *awsclient) GetManageAwsresource(ctx context.Context, workflowID string, runID string) ManageAwsresourceRun {
+	return &manageAwsresourceRun{
 		client: c,
 		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}
 }
 
 // CancelWorkflow requests cancellation of an existing workflow execution
-func (c *aWSClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+func (c *awsclient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	return c.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // TerminateWorkflow terminates an existing workflow execution
-func (c *aWSClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
+func (c *awsclient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
 	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
 }
 
-// ManageAWSOptions provides configuration for a mycompany.initialism.AWS.ManageAWS workflow operation
-type ManageAWSOptions struct {
+// ManageAwsoptions provides configuration for a mycompany.initialism.AWS.ManageAWS workflow operation
+type ManageAwsoptions struct {
 	options          client.StartWorkflowOptions
 	executionTimeout *time.Duration
 	id               *string
@@ -247,20 +247,20 @@ type ManageAWSOptions struct {
 	taskTimeout      *time.Duration
 }
 
-// NewManageAWSOptions initializes a new ManageAWSOptions value
-func NewManageAWSOptions() *ManageAWSOptions {
-	return &ManageAWSOptions{}
+// NewManageAwsoptions initializes a new ManageAwsoptions value
+func NewManageAwsoptions() *ManageAwsoptions {
+	return &ManageAwsoptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ManageAwsoptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
-		id, err := expression.EvalExpression(ManageAWSIDExpression, req)
+		id, err := expression.EvalExpression(ManageAwsidexpression, req)
 		if err != nil {
-			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSWorkflowName, err)
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsworkflowName, err)
 		}
 		opts.ID = id
 	}
@@ -270,7 +270,7 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = AwstaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -291,61 +291,61 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 }
 
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
-func (o *ManageAWSOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ManageAwsoptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *ManageAWSOptions) WithExecutionTimeout(d time.Duration) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithExecutionTimeout(d time.Duration) *ManageAwsoptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the ID value
-func (o *ManageAWSOptions) WithID(id string) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithID(id string) *ManageAwsoptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *ManageAWSOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAwsoptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *ManageAWSOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAwsoptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *ManageAWSOptions) WithRunTimeout(d time.Duration) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithRunTimeout(d time.Duration) *ManageAwsoptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *ManageAWSOptions) WithSearchAttributes(sa map[string]any) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithSearchAttributes(sa map[string]any) *ManageAwsoptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *ManageAWSOptions) WithTaskTimeout(d time.Duration) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithTaskTimeout(d time.Duration) *ManageAwsoptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *ManageAWSOptions) WithTaskQueue(tq string) *ManageAWSOptions {
+func (o *ManageAwsoptions) WithTaskQueue(tq string) *ManageAwsoptions {
 	o.taskQueue = &tq
 	return o
 }
 
-// ManageAWSRun describes a(n) mycompany.initialism.AWS.ManageAWS workflow run
-type ManageAWSRun interface {
+// ManageAwsrun describes a(n) mycompany.initialism.AWS.ManageAWS workflow run
+type ManageAwsrun interface {
 	// ID returns the workflow ID
 	ID() string
 
@@ -365,34 +365,34 @@ type ManageAWSRun interface {
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
 }
 
-// manageAWSRun provides an internal implementation of a(n) ManageAWSRunRun
-type manageAWSRun struct {
-	client *aWSClient
+// manageAwsrun provides an internal implementation of a(n) ManageAwsrunRun
+type manageAwsrun struct {
+	client *awsclient
 	run    client.WorkflowRun
 }
 
 // ID returns the workflow ID
-func (r *manageAWSRun) ID() string {
+func (r *manageAwsrun) ID() string {
 	return r.run.GetID()
 }
 
 // Run returns the inner client.WorkflowRun
-func (r *manageAWSRun) Run() client.WorkflowRun {
+func (r *manageAwsrun) Run() client.WorkflowRun {
 	return r.run
 }
 
 // RunID returns the execution ID
-func (r *manageAWSRun) RunID() string {
+func (r *manageAwsrun) RunID() string {
 	return r.run.GetRunID()
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *manageAWSRun) Cancel(ctx context.Context) error {
+func (r *manageAwsrun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
 // Get blocks until the workflow is complete, returning the result if applicable
-func (r *manageAWSRun) Get(ctx context.Context) (*ManageAWSResponse, error) {
+func (r *manageAwsrun) Get(ctx context.Context) (*ManageAWSResponse, error) {
 	var resp ManageAWSResponse
 	if err := r.run.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -401,12 +401,12 @@ func (r *manageAWSRun) Get(ctx context.Context) (*ManageAWSResponse, error) {
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *manageAWSRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *manageAwsrun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// ManageAWSResourceOptions provides configuration for a mycompany.initialism.AWS.ManageAWSResource workflow operation
-type ManageAWSResourceOptions struct {
+// ManageAwsresourceOptions provides configuration for a mycompany.initialism.AWS.ManageAWSResource workflow operation
+type ManageAwsresourceOptions struct {
 	options          client.StartWorkflowOptions
 	executionTimeout *time.Duration
 	id               *string
@@ -418,20 +418,20 @@ type ManageAWSResourceOptions struct {
 	taskTimeout      *time.Duration
 }
 
-// NewManageAWSResourceOptions initializes a new ManageAWSResourceOptions value
-func NewManageAWSResourceOptions() *ManageAWSResourceOptions {
-	return &ManageAWSResourceOptions{}
+// NewManageAwsresourceOptions initializes a new ManageAwsresourceOptions value
+func NewManageAwsresourceOptions() *ManageAwsresourceOptions {
+	return &ManageAwsresourceOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ManageAwsresourceOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
-		id, err := expression.EvalExpression(ManageAWSResourceIDExpression, req)
+		id, err := expression.EvalExpression(ManageAwsresourceIdexpression, req)
 		if err != nil {
-			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSResourceWorkflowName, err)
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsresourceWorkflowName, err)
 		}
 		opts.ID = id
 	}
@@ -441,7 +441,7 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = AwstaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -462,61 +462,61 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 }
 
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
-func (o *ManageAWSResourceOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ManageAwsresourceOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *ManageAWSResourceOptions) WithExecutionTimeout(d time.Duration) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithExecutionTimeout(d time.Duration) *ManageAwsresourceOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the ID value
-func (o *ManageAWSResourceOptions) WithID(id string) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithID(id string) *ManageAwsresourceOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *ManageAWSResourceOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAwsresourceOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *ManageAWSResourceOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAwsresourceOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *ManageAWSResourceOptions) WithRunTimeout(d time.Duration) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithRunTimeout(d time.Duration) *ManageAwsresourceOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *ManageAWSResourceOptions) WithSearchAttributes(sa map[string]any) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithSearchAttributes(sa map[string]any) *ManageAwsresourceOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *ManageAWSResourceOptions) WithTaskTimeout(d time.Duration) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithTaskTimeout(d time.Duration) *ManageAwsresourceOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *ManageAWSResourceOptions) WithTaskQueue(tq string) *ManageAWSResourceOptions {
+func (o *ManageAwsresourceOptions) WithTaskQueue(tq string) *ManageAwsresourceOptions {
 	o.taskQueue = &tq
 	return o
 }
 
-// ManageAWSResourceRun describes a(n) mycompany.initialism.AWS.ManageAWSResource workflow run
-type ManageAWSResourceRun interface {
+// ManageAwsresourceRun describes a(n) mycompany.initialism.AWS.ManageAWSResource workflow run
+type ManageAwsresourceRun interface {
 	// ID returns the workflow ID
 	ID() string
 
@@ -536,34 +536,34 @@ type ManageAWSResourceRun interface {
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
 }
 
-// manageAWSResourceRun provides an internal implementation of a(n) ManageAWSResourceRunRun
-type manageAWSResourceRun struct {
-	client *aWSClient
+// manageAwsresourceRun provides an internal implementation of a(n) ManageAwsresourceRunRun
+type manageAwsresourceRun struct {
+	client *awsclient
 	run    client.WorkflowRun
 }
 
 // ID returns the workflow ID
-func (r *manageAWSResourceRun) ID() string {
+func (r *manageAwsresourceRun) ID() string {
 	return r.run.GetID()
 }
 
 // Run returns the inner client.WorkflowRun
-func (r *manageAWSResourceRun) Run() client.WorkflowRun {
+func (r *manageAwsresourceRun) Run() client.WorkflowRun {
 	return r.run
 }
 
 // RunID returns the execution ID
-func (r *manageAWSResourceRun) RunID() string {
+func (r *manageAwsresourceRun) RunID() string {
 	return r.run.GetRunID()
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *manageAWSResourceRun) Cancel(ctx context.Context) error {
+func (r *manageAwsresourceRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
 // Get blocks until the workflow is complete, returning the result if applicable
-func (r *manageAWSResourceRun) Get(ctx context.Context) (*ManageAWSResourceResponse, error) {
+func (r *manageAwsresourceRun) Get(ctx context.Context) (*ManageAWSResourceResponse, error) {
 	var resp ManageAWSResourceResponse
 	if err := r.run.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -572,76 +572,76 @@ func (r *manageAWSResourceRun) Get(ctx context.Context) (*ManageAWSResourceRespo
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *manageAWSResourceRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *manageAwsresourceRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
 // Reference to generated workflow functions
 var (
 	// ManageAWS does some workflow thing.
-	ManageAWSFunction func(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error)
+	ManageAwsfunction func(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error)
 	// ManageAWSResource does some workflow thing.
-	ManageAWSResourceFunction func(workflow.Context, *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error)
+	ManageAwsresourceFunction func(workflow.Context, *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error)
 )
 
-// AWSWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
+// AwsworkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 type (
-	// AWSWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
-	AWSWorkflowFunctions interface {
+	// AwsworkflowFunctions describes a mockable dependency for inlining workflows within other workflows
+	AwsworkflowFunctions interface {
 		// ManageAWS does some workflow thing.
-		ManageAWS(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error)
+		ManageAws(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error)
 		// ManageAWSResource does some workflow thing.
-		ManageAWSResource(workflow.Context, *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error)
+		ManageAwsresource(workflow.Context, *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error)
 	}
-	// aWSWorkflowFunctions provides an internal AWSWorkflowFunctions implementation
-	aWSWorkflowFunctions struct{}
+	// awsworkflowFunctions provides an internal AwsworkflowFunctions implementation
+	awsworkflowFunctions struct{}
 )
 
-func NewAWSWorkflowFunctions() AWSWorkflowFunctions {
-	return &aWSWorkflowFunctions{}
+func NewAwsworkflowFunctions() AwsworkflowFunctions {
+	return &awsworkflowFunctions{}
 }
 
 // ManageAWS does some workflow thing.
-func (f *aWSWorkflowFunctions) ManageAWS(ctx workflow.Context, req *ManageAWSRequest) (*ManageAWSResponse, error) {
-	if ManageAWSFunction == nil {
-		return nil, errors.New("ManageAWS requires workflow registration via RegisterAWSWorkflows or RegisterManageAWSWorkflow")
+func (f *awsworkflowFunctions) ManageAws(ctx workflow.Context, req *ManageAWSRequest) (*ManageAWSResponse, error) {
+	if ManageAwsfunction == nil {
+		return nil, errors.New("ManageAws requires workflow registration via RegisterAwsworkflows or RegisterManageAwsworkflow")
 	}
-	return ManageAWSFunction(ctx, req)
+	return ManageAwsfunction(ctx, req)
 }
 
 // ManageAWSResource does some workflow thing.
-func (f *aWSWorkflowFunctions) ManageAWSResource(ctx workflow.Context, req *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error) {
-	if ManageAWSResourceFunction == nil {
-		return nil, errors.New("ManageAWSResource requires workflow registration via RegisterAWSWorkflows or RegisterManageAWSResourceWorkflow")
+func (f *awsworkflowFunctions) ManageAwsresource(ctx workflow.Context, req *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error) {
+	if ManageAwsresourceFunction == nil {
+		return nil, errors.New("ManageAwsresource requires workflow registration via RegisterAwsworkflows or RegisterManageAwsresourceWorkflow")
 	}
-	return ManageAWSResourceFunction(ctx, req)
+	return ManageAwsresourceFunction(ctx, req)
 }
 
-// AWSWorkflows provides methods for initializing new mycompany.initialism.AWS workflow values
-type AWSWorkflows interface {
+// Awsworkflows provides methods for initializing new mycompany.initialism.AWS workflow values
+type Awsworkflows interface {
 	// ManageAWS does some workflow thing.
-	ManageAWS(ctx workflow.Context, input *ManageAWSWorkflowInput) (ManageAWSWorkflow, error)
+	ManageAWS(ctx workflow.Context, input *ManageAwsworkflowInput) (ManageAwsworkflow, error)
 
 	// ManageAWSResource does some workflow thing.
-	ManageAWSResource(ctx workflow.Context, input *ManageAWSResourceWorkflowInput) (ManageAWSResourceWorkflow, error)
+	ManageAWSResource(ctx workflow.Context, input *ManageAwsresourceWorkflowInput) (ManageAwsresourceWorkflow, error)
 }
 
 // RegisterAWSWorkflows registers mycompany.initialism.AWS workflows with the given worker
-func RegisterAWSWorkflows(r worker.WorkflowRegistry, workflows AWSWorkflows) {
-	RegisterManageAWSWorkflow(r, workflows.ManageAWS)
-	RegisterManageAWSResourceWorkflow(r, workflows.ManageAWSResource)
+func RegisterAwsworkflows(r worker.WorkflowRegistry, workflows Awsworkflows) {
+	RegisterManageAwsworkflow(r, workflows.ManageAWS)
+	RegisterManageAwsresourceWorkflow(r, workflows.ManageAWSResource)
 }
 
 // RegisterManageAWSWorkflow registers a mycompany.initialism.AWS.ManageAWS workflow with the given worker
-func RegisterManageAWSWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ManageAWSWorkflowInput) (ManageAWSWorkflow, error)) {
-	ManageAWSFunction = buildManageAWS(wf)
-	r.RegisterWorkflowWithOptions(ManageAWSFunction, workflow.RegisterOptions{Name: ManageAWSWorkflowName})
+func RegisterManageAwsworkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ManageAwsworkflowInput) (ManageAwsworkflow, error)) {
+	ManageAwsfunction = buildManageAWS(wf)
+	r.RegisterWorkflowWithOptions(ManageAwsfunction, workflow.RegisterOptions{Name: ManageAwsworkflowName})
 }
 
 // buildManageAWS converts a ManageAWS workflow struct into a valid workflow function
-func buildManageAWS(ctor func(workflow.Context, *ManageAWSWorkflowInput) (ManageAWSWorkflow, error)) func(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error) {
+func buildManageAWS(ctor func(workflow.Context, *ManageAwsworkflowInput) (ManageAwsworkflow, error)) func(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error) {
 	return func(ctx workflow.Context, req *ManageAWSRequest) (*ManageAWSResponse, error) {
-		input := &ManageAWSWorkflowInput{
+		input := &ManageAwsworkflowInput{
 			Req: req,
 		}
 		wf, err := ctor(ctx, input)
@@ -657,22 +657,22 @@ func buildManageAWS(ctor func(workflow.Context, *ManageAWSWorkflowInput) (Manage
 	}
 }
 
-// ManageAWSWorkflowInput describes the input to a(n) mycompany.initialism.AWS.ManageAWS workflow constructor
-type ManageAWSWorkflowInput struct {
+// ManageAwsworkflowInput describes the input to a(n) mycompany.initialism.AWS.ManageAWS workflow constructor
+type ManageAwsworkflowInput struct {
 	Req *ManageAWSRequest
 }
 
 // ManageAWS does some workflow thing.
 //
 // workflow details: (name: "mycompany.initialism.AWS.ManageAWS", id: "some-workflow-1/${! id }/${! uuid_v4() }")
-type ManageAWSWorkflow interface {
+type ManageAwsworkflow interface {
 	// Execute defines the entrypoint to a(n) mycompany.initialism.AWS.ManageAWS workflow
 	Execute(ctx workflow.Context) (*ManageAWSResponse, error)
 }
 
 // ManageAWS does some workflow thing.
-func ManageAWSChild(ctx workflow.Context, req *ManageAWSRequest, options ...*ManageAWSChildOptions) (*ManageAWSResponse, error) {
-	childRun, err := ManageAWSChildAsync(ctx, req, options...)
+func ManageAwschild(ctx workflow.Context, req *ManageAWSRequest, options ...*ManageAwschildOptions) (*ManageAWSResponse, error) {
+	childRun, err := ManageAwschildAsync(ctx, req, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -680,23 +680,23 @@ func ManageAWSChild(ctx workflow.Context, req *ManageAWSRequest, options ...*Man
 }
 
 // ManageAWS does some workflow thing.
-func ManageAWSChildAsync(ctx workflow.Context, req *ManageAWSRequest, options ...*ManageAWSChildOptions) (*ManageAWSChildRun, error) {
-	var o *ManageAWSChildOptions
+func ManageAwschildAsync(ctx workflow.Context, req *ManageAWSRequest, options ...*ManageAwschildOptions) (*ManageAwschildRun, error) {
+	var o *ManageAwschildOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewManageAWSChildOptions()
+		o = NewManageAwschildOptions()
 	}
 	opts, err := o.Build(ctx, req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
-	return &ManageAWSChildRun{Future: workflow.ExecuteChildWorkflow(ctx, ManageAWSWorkflowName, req)}, nil
+	return &ManageAwschildRun{Future: workflow.ExecuteChildWorkflow(ctx, ManageAwsworkflowName, req)}, nil
 }
 
-// ManageAWSChildOptions provides configuration for a child mycompany.initialism.AWS.ManageAWS workflow operation
-type ManageAWSChildOptions struct {
+// ManageAwschildOptions provides configuration for a child mycompany.initialism.AWS.ManageAWS workflow operation
+type ManageAwschildOptions struct {
 	options             workflow.ChildWorkflowOptions
 	executionTimeout    *time.Duration
 	id                  *string
@@ -710,13 +710,13 @@ type ManageAWSChildOptions struct {
 	waitForCancellation *bool
 }
 
-// NewManageAWSChildOptions initializes a new ManageAWSChildOptions value
-func NewManageAWSChildOptions() *ManageAWSChildOptions {
-	return &ManageAWSChildOptions{}
+// NewManageAwschildOptions initializes a new ManageAwschildOptions value
+func NewManageAwschildOptions() *ManageAwschildOptions {
+	return &ManageAwschildOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
-func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+func (o *ManageAwschildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
@@ -727,18 +727,18 @@ func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 			lao := workflow.GetLocalActivityOptions(ctx)
 			lao.ScheduleToCloseTimeout = time.Second * 10
 			if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
-				id, err := expression.EvalExpression(ManageAWSIDExpression, req)
+				id, err := expression.EvalExpression(ManageAwsidexpression, req)
 				if err != nil {
-					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSWorkflowName, err)
+					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsworkflowName, err)
 				}
 				return id, nil
 			}).Get(ctx, &opts.WorkflowID); err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSWorkflowName, err)
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsworkflowName, err)
 			}
 		} else {
-			id, err := expression.EvalExpression(ManageAWSIDExpression, req)
+			id, err := expression.EvalExpression(ManageAwsidexpression, req)
 			if err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSWorkflowName, err)
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsworkflowName, err)
 			}
 			opts.WorkflowID = id
 		}
@@ -749,7 +749,7 @@ func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = AwstaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -776,78 +776,78 @@ func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 }
 
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
-func (o *ManageAWSChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ManageAwschildOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *ManageAWSChildOptions) WithExecutionTimeout(d time.Duration) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithExecutionTimeout(d time.Duration) *ManageAwschildOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the WorkflowID value
-func (o *ManageAWSChildOptions) WithID(id string) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithID(id string) *ManageAwschildOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *ManageAWSChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAwschildOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
-func (o *ManageAWSChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAwschildOptions {
 	o.parentClosePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *ManageAWSChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAwschildOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *ManageAWSChildOptions) WithRunTimeout(d time.Duration) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithRunTimeout(d time.Duration) *ManageAwschildOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *ManageAWSChildOptions) WithSearchAttributes(sa map[string]any) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithSearchAttributes(sa map[string]any) *ManageAwschildOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *ManageAWSChildOptions) WithTaskTimeout(d time.Duration) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithTaskTimeout(d time.Duration) *ManageAwschildOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *ManageAWSChildOptions) WithTaskQueue(tq string) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithTaskQueue(tq string) *ManageAwschildOptions {
 	o.taskQueue = &tq
 	return o
 }
 
 // WithWaitForCancellation sets the WaitForCancellation value
-func (o *ManageAWSChildOptions) WithWaitForCancellation(wait bool) *ManageAWSChildOptions {
+func (o *ManageAwschildOptions) WithWaitForCancellation(wait bool) *ManageAwschildOptions {
 	o.waitForCancellation = &wait
 	return o
 }
 
-// ManageAWSChildRun describes a child ManageAWS workflow run
-type ManageAWSChildRun struct {
+// ManageAwschildRun describes a child ManageAWS workflow run
+type ManageAwschildRun struct {
 	Future workflow.ChildWorkflowFuture
 }
 
 // Get blocks until the workflow is completed, returning the response value
-func (r *ManageAWSChildRun) Get(ctx workflow.Context) (*ManageAWSResponse, error) {
+func (r *ManageAwschildRun) Get(ctx workflow.Context) (*ManageAWSResponse, error) {
 	var resp ManageAWSResponse
 	if err := r.Future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -856,7 +856,7 @@ func (r *ManageAWSChildRun) Get(ctx workflow.Context) (*ManageAWSResponse, error
 }
 
 // Select adds this completion to the selector. Callback can be nil.
-func (r *ManageAWSChildRun) Select(sel workflow.Selector, fn func(*ManageAWSChildRun)) workflow.Selector {
+func (r *ManageAwschildRun) Select(sel workflow.Selector, fn func(*ManageAwschildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future, func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -865,7 +865,7 @@ func (r *ManageAWSChildRun) Select(sel workflow.Selector, fn func(*ManageAWSChil
 }
 
 // SelectStart adds waiting for start to the selector. Callback can be nil.
-func (r *ManageAWSChildRun) SelectStart(sel workflow.Selector, fn func(*ManageAWSChildRun)) workflow.Selector {
+func (r *ManageAwschildRun) SelectStart(sel workflow.Selector, fn func(*ManageAwschildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -874,7 +874,7 @@ func (r *ManageAWSChildRun) SelectStart(sel workflow.Selector, fn func(*ManageAW
 }
 
 // WaitStart waits for the child workflow to start
-func (r *ManageAWSChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+func (r *ManageAwschildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
 	var exec workflow.Execution
 	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
 		return nil, err
@@ -883,15 +883,15 @@ func (r *ManageAWSChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution
 }
 
 // RegisterManageAWSResourceWorkflow registers a mycompany.initialism.AWS.ManageAWSResource workflow with the given worker
-func RegisterManageAWSResourceWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ManageAWSResourceWorkflowInput) (ManageAWSResourceWorkflow, error)) {
-	ManageAWSResourceFunction = buildManageAWSResource(wf)
-	r.RegisterWorkflowWithOptions(ManageAWSResourceFunction, workflow.RegisterOptions{Name: ManageAWSResourceWorkflowName})
+func RegisterManageAwsresourceWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ManageAwsresourceWorkflowInput) (ManageAwsresourceWorkflow, error)) {
+	ManageAwsresourceFunction = buildManageAWSResource(wf)
+	r.RegisterWorkflowWithOptions(ManageAwsresourceFunction, workflow.RegisterOptions{Name: ManageAwsresourceWorkflowName})
 }
 
 // buildManageAWSResource converts a ManageAWSResource workflow struct into a valid workflow function
-func buildManageAWSResource(ctor func(workflow.Context, *ManageAWSResourceWorkflowInput) (ManageAWSResourceWorkflow, error)) func(workflow.Context, *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error) {
+func buildManageAWSResource(ctor func(workflow.Context, *ManageAwsresourceWorkflowInput) (ManageAwsresourceWorkflow, error)) func(workflow.Context, *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error) {
 	return func(ctx workflow.Context, req *ManageAWSResourceRequest) (*ManageAWSResourceResponse, error) {
-		input := &ManageAWSResourceWorkflowInput{
+		input := &ManageAwsresourceWorkflowInput{
 			Req: req,
 		}
 		wf, err := ctor(ctx, input)
@@ -907,22 +907,22 @@ func buildManageAWSResource(ctor func(workflow.Context, *ManageAWSResourceWorkfl
 	}
 }
 
-// ManageAWSResourceWorkflowInput describes the input to a(n) mycompany.initialism.AWS.ManageAWSResource workflow constructor
-type ManageAWSResourceWorkflowInput struct {
+// ManageAwsresourceWorkflowInput describes the input to a(n) mycompany.initialism.AWS.ManageAWSResource workflow constructor
+type ManageAwsresourceWorkflowInput struct {
 	Req *ManageAWSResourceRequest
 }
 
 // ManageAWSResource does some workflow thing.
 //
 // workflow details: (name: "mycompany.initialism.AWS.ManageAWSResource", id: "some-workflow-2/${! uuid_v4() }")
-type ManageAWSResourceWorkflow interface {
+type ManageAwsresourceWorkflow interface {
 	// Execute defines the entrypoint to a(n) mycompany.initialism.AWS.ManageAWSResource workflow
 	Execute(ctx workflow.Context) (*ManageAWSResourceResponse, error)
 }
 
 // ManageAWSResource does some workflow thing.
-func ManageAWSResourceChild(ctx workflow.Context, req *ManageAWSResourceRequest, options ...*ManageAWSResourceChildOptions) (*ManageAWSResourceResponse, error) {
-	childRun, err := ManageAWSResourceChildAsync(ctx, req, options...)
+func ManageAwsresourceChild(ctx workflow.Context, req *ManageAWSResourceRequest, options ...*ManageAwsresourceChildOptions) (*ManageAWSResourceResponse, error) {
+	childRun, err := ManageAwsresourceChildAsync(ctx, req, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -930,23 +930,23 @@ func ManageAWSResourceChild(ctx workflow.Context, req *ManageAWSResourceRequest,
 }
 
 // ManageAWSResource does some workflow thing.
-func ManageAWSResourceChildAsync(ctx workflow.Context, req *ManageAWSResourceRequest, options ...*ManageAWSResourceChildOptions) (*ManageAWSResourceChildRun, error) {
-	var o *ManageAWSResourceChildOptions
+func ManageAwsresourceChildAsync(ctx workflow.Context, req *ManageAWSResourceRequest, options ...*ManageAwsresourceChildOptions) (*ManageAwsresourceChildRun, error) {
+	var o *ManageAwsresourceChildOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewManageAWSResourceChildOptions()
+		o = NewManageAwsresourceChildOptions()
 	}
 	opts, err := o.Build(ctx, req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
-	return &ManageAWSResourceChildRun{Future: workflow.ExecuteChildWorkflow(ctx, ManageAWSResourceWorkflowName, req)}, nil
+	return &ManageAwsresourceChildRun{Future: workflow.ExecuteChildWorkflow(ctx, ManageAwsresourceWorkflowName, req)}, nil
 }
 
-// ManageAWSResourceChildOptions provides configuration for a child mycompany.initialism.AWS.ManageAWSResource workflow operation
-type ManageAWSResourceChildOptions struct {
+// ManageAwsresourceChildOptions provides configuration for a child mycompany.initialism.AWS.ManageAWSResource workflow operation
+type ManageAwsresourceChildOptions struct {
 	options             workflow.ChildWorkflowOptions
 	executionTimeout    *time.Duration
 	id                  *string
@@ -960,13 +960,13 @@ type ManageAWSResourceChildOptions struct {
 	waitForCancellation *bool
 }
 
-// NewManageAWSResourceChildOptions initializes a new ManageAWSResourceChildOptions value
-func NewManageAWSResourceChildOptions() *ManageAWSResourceChildOptions {
-	return &ManageAWSResourceChildOptions{}
+// NewManageAwsresourceChildOptions initializes a new ManageAwsresourceChildOptions value
+func NewManageAwsresourceChildOptions() *ManageAwsresourceChildOptions {
+	return &ManageAwsresourceChildOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
-func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+func (o *ManageAwsresourceChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
@@ -977,18 +977,18 @@ func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoref
 			lao := workflow.GetLocalActivityOptions(ctx)
 			lao.ScheduleToCloseTimeout = time.Second * 10
 			if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
-				id, err := expression.EvalExpression(ManageAWSResourceIDExpression, req)
+				id, err := expression.EvalExpression(ManageAwsresourceIdexpression, req)
 				if err != nil {
-					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSResourceWorkflowName, err)
+					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsresourceWorkflowName, err)
 				}
 				return id, nil
 			}).Get(ctx, &opts.WorkflowID); err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSResourceWorkflowName, err)
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsresourceWorkflowName, err)
 			}
 		} else {
-			id, err := expression.EvalExpression(ManageAWSResourceIDExpression, req)
+			id, err := expression.EvalExpression(ManageAwsresourceIdexpression, req)
 			if err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAWSResourceWorkflowName, err)
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ManageAwsresourceWorkflowName, err)
 			}
 			opts.WorkflowID = id
 		}
@@ -999,7 +999,7 @@ func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = AwstaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1026,78 +1026,78 @@ func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoref
 }
 
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
-func (o *ManageAWSResourceChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ManageAwsresourceChildOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *ManageAWSResourceChildOptions) WithExecutionTimeout(d time.Duration) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithExecutionTimeout(d time.Duration) *ManageAwsresourceChildOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the WorkflowID value
-func (o *ManageAWSResourceChildOptions) WithID(id string) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithID(id string) *ManageAwsresourceChildOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *ManageAWSResourceChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAwsresourceChildOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
-func (o *ManageAWSResourceChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAwsresourceChildOptions {
 	o.parentClosePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *ManageAWSResourceChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ManageAwsresourceChildOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *ManageAWSResourceChildOptions) WithRunTimeout(d time.Duration) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithRunTimeout(d time.Duration) *ManageAwsresourceChildOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *ManageAWSResourceChildOptions) WithSearchAttributes(sa map[string]any) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithSearchAttributes(sa map[string]any) *ManageAwsresourceChildOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *ManageAWSResourceChildOptions) WithTaskTimeout(d time.Duration) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithTaskTimeout(d time.Duration) *ManageAwsresourceChildOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *ManageAWSResourceChildOptions) WithTaskQueue(tq string) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithTaskQueue(tq string) *ManageAwsresourceChildOptions {
 	o.taskQueue = &tq
 	return o
 }
 
 // WithWaitForCancellation sets the WaitForCancellation value
-func (o *ManageAWSResourceChildOptions) WithWaitForCancellation(wait bool) *ManageAWSResourceChildOptions {
+func (o *ManageAwsresourceChildOptions) WithWaitForCancellation(wait bool) *ManageAwsresourceChildOptions {
 	o.waitForCancellation = &wait
 	return o
 }
 
-// ManageAWSResourceChildRun describes a child ManageAWSResource workflow run
-type ManageAWSResourceChildRun struct {
+// ManageAwsresourceChildRun describes a child ManageAWSResource workflow run
+type ManageAwsresourceChildRun struct {
 	Future workflow.ChildWorkflowFuture
 }
 
 // Get blocks until the workflow is completed, returning the response value
-func (r *ManageAWSResourceChildRun) Get(ctx workflow.Context) (*ManageAWSResourceResponse, error) {
+func (r *ManageAwsresourceChildRun) Get(ctx workflow.Context) (*ManageAWSResourceResponse, error) {
 	var resp ManageAWSResourceResponse
 	if err := r.Future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -1106,7 +1106,7 @@ func (r *ManageAWSResourceChildRun) Get(ctx workflow.Context) (*ManageAWSResourc
 }
 
 // Select adds this completion to the selector. Callback can be nil.
-func (r *ManageAWSResourceChildRun) Select(sel workflow.Selector, fn func(*ManageAWSResourceChildRun)) workflow.Selector {
+func (r *ManageAwsresourceChildRun) Select(sel workflow.Selector, fn func(*ManageAwsresourceChildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future, func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -1115,7 +1115,7 @@ func (r *ManageAWSResourceChildRun) Select(sel workflow.Selector, fn func(*Manag
 }
 
 // SelectStart adds waiting for start to the selector. Callback can be nil.
-func (r *ManageAWSResourceChildRun) SelectStart(sel workflow.Selector, fn func(*ManageAWSResourceChildRun)) workflow.Selector {
+func (r *ManageAwsresourceChildRun) SelectStart(sel workflow.Selector, fn func(*ManageAwsresourceChildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -1124,7 +1124,7 @@ func (r *ManageAWSResourceChildRun) SelectStart(sel workflow.Selector, fn func(*
 }
 
 // WaitStart waits for the child workflow to start
-func (r *ManageAWSResourceChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+func (r *ManageAwsresourceChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
 	var exec workflow.Execution
 	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
 		return nil, err
@@ -1136,30 +1136,30 @@ func (r *ManageAWSResourceChildRun) WaitStart(ctx workflow.Context) (*workflow.E
 type AWSActivities interface{}
 
 // RegisterAWSActivities registers activities with a worker
-func RegisterAWSActivities(r worker.ActivityRegistry, activities AWSActivities) {}
+func RegisterAWSActivities(r worker.ActivityRegistry, activities Awsactivities) {}
 
 // TestClient provides a testsuite-compatible Client
-type TestAWSClient struct {
+type TestAwsclient struct {
 	env       *testsuite.TestWorkflowEnvironment
-	workflows AWSWorkflows
+	workflows Awsworkflows
 }
 
-var _ AWSClient = &TestAWSClient{}
+var _ Awsclient = &TestAwsclient{}
 
-// NewTestAWSClient initializes a new TestAWSClient value
-func NewTestAWSClient(env *testsuite.TestWorkflowEnvironment, workflows AWSWorkflows, activities AWSActivities) *TestAWSClient {
+// NewTestAwsclient initializes a new TestAwsclient value
+func NewTestAwsclient(env *testsuite.TestWorkflowEnvironment, workflows Awsworkflows, activities Awsactivities) *TestAwsclient {
 	if workflows != nil {
-		RegisterAWSWorkflows(env, workflows)
+		RegisterAwsworkflows(env, workflows)
 	}
 	if activities != nil {
-		RegisterAWSActivities(env, activities)
+		RegisterAwsactivities(env, activities)
 	}
-	return &TestAWSClient{env, workflows}
+	return &TestAwsclient{env, workflows}
 }
 
 // ManageAWS executes a(n) mycompany.initialism.AWS.ManageAWS workflow in the test environment
-func (c *TestAWSClient) ManageAWS(ctx context.Context, req *ManageAWSRequest, opts ...*ManageAWSOptions) (*ManageAWSResponse, error) {
-	run, err := c.ManageAWSAsync(ctx, req, opts...)
+func (c *TestAwsclient) ManageAWS(ctx context.Context, req *ManageAWSRequest, opts ...*ManageAwsoptions) (*ManageAWSResponse, error) {
+	run, err := c.ManageAwsasync(ctx, req, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1167,28 +1167,28 @@ func (c *TestAWSClient) ManageAWS(ctx context.Context, req *ManageAWSRequest, op
 }
 
 // ManageAWSAsync executes a(n) mycompany.initialism.AWS.ManageAWS workflow in the test environment
-func (c *TestAWSClient) ManageAWSAsync(ctx context.Context, req *ManageAWSRequest, options ...*ManageAWSOptions) (ManageAWSRun, error) {
-	var o *ManageAWSOptions
+func (c *TestAwsclient) ManageAwsasync(ctx context.Context, req *ManageAWSRequest, options ...*ManageAwsoptions) (ManageAwsrun, error) {
+	var o *ManageAwsoptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewManageAWSOptions()
+		o = NewManageAwsoptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	return &testManageAWSRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+	return &testManageAwsrun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
 }
 
-// GetManageAWS is a noop
-func (c *TestAWSClient) GetManageAWS(ctx context.Context, workflowID string, runID string) ManageAWSRun {
-	return &testManageAWSRun{env: c.env, workflows: c.workflows}
+// GetManageAws is a noop
+func (c *TestAwsclient) GetManageAws(ctx context.Context, workflowID string, runID string) ManageAwsrun {
+	return &testManageAwsrun{env: c.env, workflows: c.workflows}
 }
 
 // ManageAWSResource executes a(n) mycompany.initialism.AWS.ManageAWSResource workflow in the test environment
-func (c *TestAWSClient) ManageAWSResource(ctx context.Context, req *ManageAWSResourceRequest, opts ...*ManageAWSResourceOptions) (*ManageAWSResourceResponse, error) {
-	run, err := c.ManageAWSResourceAsync(ctx, req, opts...)
+func (c *TestAwsclient) ManageAWSResource(ctx context.Context, req *ManageAWSResourceRequest, opts ...*ManageAwsresourceOptions) (*ManageAWSResourceResponse, error) {
+	run, err := c.ManageAwsresourceAsync(ctx, req, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1196,55 +1196,55 @@ func (c *TestAWSClient) ManageAWSResource(ctx context.Context, req *ManageAWSRes
 }
 
 // ManageAWSResourceAsync executes a(n) mycompany.initialism.AWS.ManageAWSResource workflow in the test environment
-func (c *TestAWSClient) ManageAWSResourceAsync(ctx context.Context, req *ManageAWSResourceRequest, options ...*ManageAWSResourceOptions) (ManageAWSResourceRun, error) {
-	var o *ManageAWSResourceOptions
+func (c *TestAwsclient) ManageAwsresourceAsync(ctx context.Context, req *ManageAWSResourceRequest, options ...*ManageAwsresourceOptions) (ManageAwsresourceRun, error) {
+	var o *ManageAwsresourceOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewManageAWSResourceOptions()
+		o = NewManageAwsresourceOptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	return &testManageAWSResourceRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+	return &testManageAwsresourceRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
 }
 
-// GetManageAWSResource is a noop
-func (c *TestAWSClient) GetManageAWSResource(ctx context.Context, workflowID string, runID string) ManageAWSResourceRun {
-	return &testManageAWSResourceRun{env: c.env, workflows: c.workflows}
+// GetManageAwsresource is a noop
+func (c *TestAwsclient) GetManageAwsresource(ctx context.Context, workflowID string, runID string) ManageAwsresourceRun {
+	return &testManageAwsresourceRun{env: c.env, workflows: c.workflows}
 }
 
 // CancelWorkflow requests cancellation of an existing workflow execution
-func (c *TestAWSClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+func (c *TestAwsclient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	c.env.CancelWorkflow()
 	return nil
 }
 
 // TerminateWorkflow terminates an existing workflow execution
-func (c *TestAWSClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
+func (c *TestAwsclient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
 	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
-var _ ManageAWSRun = &testManageAWSRun{}
+var _ ManageAwsrun = &testManageAwsrun{}
 
-// testManageAWSRun provides convenience methods for interacting with a(n) mycompany.initialism.AWS.ManageAWS workflow in the test environment
-type testManageAWSRun struct {
-	client    *TestAWSClient
+// testManageAwsrun provides convenience methods for interacting with a(n) mycompany.initialism.AWS.ManageAWS workflow in the test environment
+type testManageAwsrun struct {
+	client    *TestAwsclient
 	env       *testsuite.TestWorkflowEnvironment
 	opts      *client.StartWorkflowOptions
 	req       *ManageAWSRequest
-	workflows AWSWorkflows
+	workflows Awsworkflows
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *testManageAWSRun) Cancel(ctx context.Context) error {
+func (r *testManageAwsrun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
 // Get retrieves a test mycompany.initialism.AWS.ManageAWS workflow result
-func (r *testManageAWSRun) Get(context.Context) (*ManageAWSResponse, error) {
-	r.env.ExecuteWorkflow(ManageAWSWorkflowName, r.req)
+func (r *testManageAwsrun) Get(context.Context) (*ManageAWSResponse, error) {
+	r.env.ExecuteWorkflow(ManageAwsworkflowName, r.req)
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -1259,7 +1259,7 @@ func (r *testManageAWSRun) Get(context.Context) (*ManageAWSResponse, error) {
 }
 
 // ID returns a test mycompany.initialism.AWS.ManageAWS workflow run's workflow ID
-func (r *testManageAWSRun) ID() string {
+func (r *testManageAwsrun) ID() string {
 	if r.opts != nil {
 		return r.opts.ID
 	}
@@ -1267,39 +1267,39 @@ func (r *testManageAWSRun) ID() string {
 }
 
 // Run noop implementation
-func (r *testManageAWSRun) Run() client.WorkflowRun {
+func (r *testManageAwsrun) Run() client.WorkflowRun {
 	return nil
 }
 
 // RunID noop implementation
-func (r *testManageAWSRun) RunID() string {
+func (r *testManageAwsrun) RunID() string {
 	return ""
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *testManageAWSRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *testManageAwsrun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-var _ ManageAWSResourceRun = &testManageAWSResourceRun{}
+var _ ManageAwsresourceRun = &testManageAwsresourceRun{}
 
-// testManageAWSResourceRun provides convenience methods for interacting with a(n) mycompany.initialism.AWS.ManageAWSResource workflow in the test environment
-type testManageAWSResourceRun struct {
-	client    *TestAWSClient
+// testManageAwsresourceRun provides convenience methods for interacting with a(n) mycompany.initialism.AWS.ManageAWSResource workflow in the test environment
+type testManageAwsresourceRun struct {
+	client    *TestAwsclient
 	env       *testsuite.TestWorkflowEnvironment
 	opts      *client.StartWorkflowOptions
 	req       *ManageAWSResourceRequest
-	workflows AWSWorkflows
+	workflows Awsworkflows
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *testManageAWSResourceRun) Cancel(ctx context.Context) error {
+func (r *testManageAwsresourceRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
 // Get retrieves a test mycompany.initialism.AWS.ManageAWSResource workflow result
-func (r *testManageAWSResourceRun) Get(context.Context) (*ManageAWSResourceResponse, error) {
-	r.env.ExecuteWorkflow(ManageAWSResourceWorkflowName, r.req)
+func (r *testManageAwsresourceRun) Get(context.Context) (*ManageAWSResourceResponse, error) {
+	r.env.ExecuteWorkflow(ManageAwsresourceWorkflowName, r.req)
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -1314,7 +1314,7 @@ func (r *testManageAWSResourceRun) Get(context.Context) (*ManageAWSResourceRespo
 }
 
 // ID returns a test mycompany.initialism.AWS.ManageAWSResource workflow run's workflow ID
-func (r *testManageAWSResourceRun) ID() string {
+func (r *testManageAwsresourceRun) ID() string {
 	if r.opts != nil {
 		return r.opts.ID
 	}
@@ -1322,60 +1322,60 @@ func (r *testManageAWSResourceRun) ID() string {
 }
 
 // Run noop implementation
-func (r *testManageAWSResourceRun) Run() client.WorkflowRun {
+func (r *testManageAwsresourceRun) Run() client.WorkflowRun {
 	return nil
 }
 
 // RunID noop implementation
-func (r *testManageAWSResourceRun) RunID() string {
+func (r *testManageAwsresourceRun) RunID() string {
 	return ""
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *testManageAWSResourceRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *testManageAwsresourceRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// AWSCliOptions describes runtime configuration for mycompany.initialism.AWS cli
-type AWSCliOptions struct {
+// AwscliOptions describes runtime configuration for mycompany.initialism.AWS cli
+type AwscliOptions struct {
 	after            func(*v2.Context) error
 	before           func(*v2.Context) error
 	clientForCommand func(*v2.Context) (client.Client, error)
 	worker           func(*v2.Context, client.Client) (worker.Worker, error)
 }
 
-// NewAWSCliOptions initializes a new AWSCliOptions value
-func NewAWSCliOptions() *AWSCliOptions {
-	return &AWSCliOptions{}
+// NewAwscliOptions initializes a new AwscliOptions value
+func NewAwscliOptions() *AwscliOptions {
+	return &AwscliOptions{}
 }
 
 // WithAfter injects a custom After hook to be run after any command invocation
-func (opts *AWSCliOptions) WithAfter(fn func(*v2.Context) error) *AWSCliOptions {
+func (opts *AwscliOptions) WithAfter(fn func(*v2.Context) error) *AwscliOptions {
 	opts.after = fn
 	return opts
 }
 
 // WithBefore injects a custom Before hook to be run prior to any command invocation
-func (opts *AWSCliOptions) WithBefore(fn func(*v2.Context) error) *AWSCliOptions {
+func (opts *AwscliOptions) WithBefore(fn func(*v2.Context) error) *AwscliOptions {
 	opts.before = fn
 	return opts
 }
 
 // WithClient provides a Temporal client factory for use by commands
-func (opts *AWSCliOptions) WithClient(fn func(*v2.Context) (client.Client, error)) *AWSCliOptions {
+func (opts *AwscliOptions) WithClient(fn func(*v2.Context) (client.Client, error)) *AwscliOptions {
 	opts.clientForCommand = fn
 	return opts
 }
 
 // WithWorker provides an method for initializing a worker
-func (opts *AWSCliOptions) WithWorker(fn func(*v2.Context, client.Client) (worker.Worker, error)) *AWSCliOptions {
+func (opts *AwscliOptions) WithWorker(fn func(*v2.Context, client.Client) (worker.Worker, error)) *AwscliOptions {
 	opts.worker = fn
 	return opts
 }
 
-// NewAWSCli initializes a cli for a(n) mycompany.initialism.AWS service
-func NewAWSCli(options ...*AWSCliOptions) (*v2.App, error) {
-	commands, err := newAWSCommands(options...)
+// NewAwscli initializes a cli for a(n) mycompany.initialism.AWS service
+func NewAwscli(options ...*AwscliOptions) (*v2.App, error) {
+	commands, err := newAwscommands(options...)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing subcommands: %w", err)
 	}
@@ -1385,9 +1385,9 @@ func NewAWSCli(options ...*AWSCliOptions) (*v2.App, error) {
 	}, nil
 }
 
-// NewAWSCliCommand initializes a cli command for a mycompany.initialism.AWS service with subcommands for each query, signal, update, and workflow
-func NewAWSCliCommand(options ...*AWSCliOptions) (*v2.Command, error) {
-	subcommands, err := newAWSCommands(options...)
+// NewAwscliCommand initializes a cli command for a mycompany.initialism.AWS service with subcommands for each query, signal, update, and workflow
+func NewAwscliCommand(options ...*AwscliOptions) (*v2.Command, error) {
+	subcommands, err := newAwscommands(options...)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing subcommands: %w", err)
 	}
@@ -1397,9 +1397,9 @@ func NewAWSCliCommand(options ...*AWSCliOptions) (*v2.Command, error) {
 	}, nil
 }
 
-// newAWSCommands initializes (sub)commands for a mycompany.initialism.AWS cli or command
-func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
-	opts := &AWSCliOptions{}
+// newAwscommands initializes (sub)commands for a mycompany.initialism.AWS cli or command
+func newAwscommands(options ...*AwscliOptions) ([]*v2.Command, error) {
+	opts := &AwscliOptions{}
 	if len(options) > 0 {
 		opts = options[0]
 	}
@@ -1446,8 +1446,8 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer tc.Close()
-				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToManageAWSRequest(cmd)
+				c := NewAwsclient(tc)
+				req, err := UnmarshalCliFlagsToManageAwsrequest(cmd)
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1455,9 +1455,9 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				if tq := cmd.String("task-queue"); tq != "" {
 					opts.TaskQueue = tq
 				}
-				run, err := c.ManageAWSAsync(cmd.Context, req, NewManageAWSOptions().WithStartWorkflowOptions(opts))
+				run, err := c.ManageAwsasync(cmd.Context, req, NewManageAwsoptions().WithStartWorkflowOptions(opts))
 				if err != nil {
-					return fmt.Errorf("error starting %s workflow: %w", ManageAWSWorkflowName, err)
+					return fmt.Errorf("error starting %s workflow: %w", ManageAwsworkflowName, err)
 				}
 				if cmd.Bool("detach") {
 					fmt.Println("success")
@@ -1518,8 +1518,8 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer tc.Close()
-				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToManageAWSResourceRequest(cmd)
+				c := NewAwsclient(tc)
+				req, err := UnmarshalCliFlagsToManageAwsresourceRequest(cmd)
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1527,9 +1527,9 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				if tq := cmd.String("task-queue"); tq != "" {
 					opts.TaskQueue = tq
 				}
-				run, err := c.ManageAWSResourceAsync(cmd.Context, req, NewManageAWSResourceOptions().WithStartWorkflowOptions(opts))
+				run, err := c.ManageAwsresourceAsync(cmd.Context, req, NewManageAwsresourceOptions().WithStartWorkflowOptions(opts))
 				if err != nil {
-					return fmt.Errorf("error starting %s workflow: %w", ManageAWSResourceWorkflowName, err)
+					return fmt.Errorf("error starting %s workflow: %w", ManageAwsresourceWorkflowName, err)
 				}
 				if cmd.Bool("detach") {
 					fmt.Println("success")
@@ -1590,8 +1590,8 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 	return commands, nil
 }
 
-// UnmarshalCliFlagsToManageAWSRequest unmarshals a ManageAWSRequest from command line flags
-func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context) (*ManageAWSRequest, error) {
+// UnmarshalCliFlagsToManageAwsrequest unmarshals a ManageAWSRequest from command line flags
+func UnmarshalCliFlagsToManageAwsrequest(cmd *v2.Context) (*ManageAWSRequest, error) {
 	var result ManageAWSRequest
 	var hasValues bool
 	if cmd.IsSet("input-file") {
@@ -1618,8 +1618,8 @@ func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context) (*ManageAWSRequest, er
 	return &result, nil
 }
 
-// UnmarshalCliFlagsToManageAWSResourceRequest unmarshals a ManageAWSResourceRequest from command line flags
-func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context) (*ManageAWSResourceRequest, error) {
+// UnmarshalCliFlagsToManageAwsresourceRequest unmarshals a ManageAWSResourceRequest from command line flags
+func UnmarshalCliFlagsToManageAwsresourceRequest(cmd *v2.Context) (*ManageAWSResourceRequest, error) {
 	var result ManageAWSResourceRequest
 	var hasValues bool
 	if cmd.IsSet("input-file") {
@@ -1646,8 +1646,8 @@ func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context) (*ManageAWSRes
 	return &result, nil
 }
 
-// WithAWSSchemeTypes registers all AWS protobuf types with the given scheme
-func WithAWSSchemeTypes() scheme.Option {
+// WithAwsschemeTypes registers all AWS protobuf types with the given scheme
+func WithAwsschemeTypes() scheme.Option {
 	return func(s *scheme.Scheme) {
 		s.RegisterType(File_test_initialism_v1_initialism_proto.Messages().ByName("ManageAWSRequest"))
 		s.RegisterType(File_test_initialism_v1_initialism_proto.Messages().ByName("ManageAWSResponse"))

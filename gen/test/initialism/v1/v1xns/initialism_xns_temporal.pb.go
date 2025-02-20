@@ -29,8 +29,8 @@ import (
 	"time"
 )
 
-// AWSOptions is used to configure mycompany.initialism.AWS xns activity registration
-type AWSOptions struct {
+// Awsoptions is used to configure mycompany.initialism.AWS xns activity registration
+type Awsoptions struct {
 	// errorConverter is used to customize error
 	errorConverter func(error) error
 	// filter is used to filter xns activity registrations. It receives as
@@ -41,25 +41,25 @@ type AWSOptions struct {
 	filter func(string) string
 }
 
-// NewAWSOptions initializes a new AWSOptions value
-func NewAWSOptions() *AWSOptions {
-	return &AWSOptions{}
+// NewAwsoptions initializes a new Awsoptions value
+func NewAwsoptions() *Awsoptions {
+	return &Awsoptions{}
 }
 
 // WithErrorConverter overrides the default error converter applied to xns activity errors
-func (opts *AWSOptions) WithErrorConverter(errorConverter func(error) error) *AWSOptions {
+func (opts *Awsoptions) WithErrorConverter(errorConverter func(error) error) *Awsoptions {
 	opts.errorConverter = errorConverter
 	return opts
 }
 
 // Filter is used to filter registered xns activities or customize their name
-func (opts *AWSOptions) WithFilter(filter func(string) string) *AWSOptions {
+func (opts *Awsoptions) WithFilter(filter func(string) string) *Awsoptions {
 	opts.filter = filter
 	return opts
 }
 
 // convertError is applied to all xns activity errors
-func (opts *AWSOptions) convertError(err error) error {
+func (opts *Awsoptions) convertError(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -70,35 +70,35 @@ func (opts *AWSOptions) convertError(err error) error {
 }
 
 // filterActivity is used to filter xns activity registrations
-func (opts *AWSOptions) filterActivity(name string) string {
+func (opts *Awsoptions) filterActivity(name string) string {
 	if opts == nil || opts.filter == nil {
 		return name
 	}
 	return opts.filter(name)
 }
 
-// aWSOptions is a reference to the AWSOptions initialized at registration
-var aWSOptions *AWSOptions
+// awsoptions is a reference to the Awsoptions initialized at registration
+var awsoptions *Awsoptions
 
-// RegisterAWSActivities registers mycompany.initialism.AWS cross-namespace activities
-func RegisterAWSActivities(r worker.ActivityRegistry, c v1.AWSClient, options ...*AWSOptions) {
-	if aWSOptions == nil && len(options) > 0 && options[0] != nil {
-		aWSOptions = options[0]
+// RegisterAwsactivities registers mycompany.initialism.AWS cross-namespace activities
+func RegisterAwsactivities(r worker.ActivityRegistry, c v1.Awsclient, options ...*Awsoptions) {
+	if awsoptions == nil && len(options) > 0 && options[0] != nil {
+		awsoptions = options[0]
 	}
-	a := &aWSActivities{c}
-	if name := aWSOptions.filterActivity("mycompany.initialism.AWS.CancelWorkflow"); name != "" {
+	a := &awsactivities{c}
+	if name := awsoptions.filterActivity("mycompany.initialism.AWS.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
-	if name := aWSOptions.filterActivity(v1.ManageAWSWorkflowName); name != "" {
+	if name := awsoptions.filterActivity(v1.ManageAwsworkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.ManageAWS, activity.RegisterOptions{Name: name})
 	}
-	if name := aWSOptions.filterActivity(v1.ManageAWSResourceWorkflowName); name != "" {
+	if name := awsoptions.filterActivity(v1.ManageAwsresourceWorkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.ManageAWSResource, activity.RegisterOptions{Name: name})
 	}
 }
 
-// ManageAWSWorkflowOptions are used to configure a(n) mycompany.initialism.AWS.ManageAWS workflow execution
-type ManageAWSWorkflowOptions struct {
+// ManageAwsworkflowOptions are used to configure a(n) mycompany.initialism.AWS.ManageAWS workflow execution
+type ManageAwsworkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
@@ -106,43 +106,43 @@ type ManageAWSWorkflowOptions struct {
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
 
-// NewManageAWSWorkflowOptions initializes a new ManageAWSWorkflowOptions value
-func NewManageAWSWorkflowOptions() *ManageAWSWorkflowOptions {
-	return &ManageAWSWorkflowOptions{}
+// NewManageAwsworkflowOptions initializes a new ManageAwsworkflowOptions value
+func NewManageAwsworkflowOptions() *ManageAwsworkflowOptions {
+	return &ManageAwsworkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
-func (opts *ManageAWSWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *ManageAWSWorkflowOptions {
+func (opts *ManageAwsworkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *ManageAwsworkflowOptions {
 	opts.ActivityOptions = &ao
 	return opts
 }
 
 // WithDetached can be used to start a workflow execution and exit immediately
-func (opts *ManageAWSWorkflowOptions) WithDetached(d bool) *ManageAWSWorkflowOptions {
+func (opts *ManageAwsworkflowOptions) WithDetached(d bool) *ManageAwsworkflowOptions {
 	opts.Detached = d
 	return opts
 }
 
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *ManageAWSWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ManageAWSWorkflowOptions {
+func (opts *ManageAwsworkflowOptions) WithHeartbeatInterval(d time.Duration) *ManageAwsworkflowOptions {
 	opts.HeartbeatInterval = d
 	return opts
 }
 
 // WithParentClosePolicy can be used to customize the cancellation propagation behavior
-func (opts *ManageAWSWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAWSWorkflowOptions {
+func (opts *ManageAwsworkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAwsworkflowOptions {
 	opts.ParentClosePolicy = policy
 	return opts
 }
 
 // WithStartWorkflowOptions can be used to customize the start workflow options
-func (opts *ManageAWSWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *ManageAWSWorkflowOptions {
+func (opts *ManageAwsworkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *ManageAwsworkflowOptions {
 	opts.StartWorkflowOptions = &swo
 	return opts
 }
 
-// ManageAWSRun provides a handle to a mycompany.initialism.AWS.ManageAWS workflow execution
-type ManageAWSRun interface {
+// ManageAwsrun provides a handle to a mycompany.initialism.AWS.ManageAWS workflow execution
+type ManageAwsrun interface {
 	// Cancel cancels the workflow
 	Cancel(workflow.Context) error
 
@@ -156,15 +156,15 @@ type ManageAWSRun interface {
 	ID() string
 }
 
-// manageAWSRun provides a(n) ManageAWSRun implementation
-type manageAWSRun struct {
+// manageAwsrun provides a(n) ManageAwsrun implementation
+type manageAwsrun struct {
 	cancel func()
 	future workflow.Future
 	id     string
 }
 
 // Cancel the underlying workflow execution
-func (r *manageAWSRun) Cancel(ctx workflow.Context) error {
+func (r *manageAwsrun) Cancel(ctx workflow.Context) error {
 	if r.cancel != nil {
 		r.cancel()
 		if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
@@ -172,16 +172,16 @@ func (r *manageAWSRun) Cancel(ctx workflow.Context) error {
 		}
 		return nil
 	}
-	return CancelAWSWorkflow(ctx, r.id, "")
+	return CancelAwsworkflow(ctx, r.id, "")
 }
 
 // Future returns the underlying activity future
-func (r *manageAWSRun) Future() workflow.Future {
+func (r *manageAwsrun) Future() workflow.Future {
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
-func (r *manageAWSRun) Get(ctx workflow.Context) (*v1.ManageAWSResponse, error) {
+func (r *manageAwsrun) Get(ctx workflow.Context) (*v1.ManageAWSResponse, error) {
 	var resp v1.ManageAWSResponse
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -190,13 +190,13 @@ func (r *manageAWSRun) Get(ctx workflow.Context) (*v1.ManageAWSResponse, error) 
 }
 
 // ID returns the underlying workflow id
-func (r *manageAWSRun) ID() string {
+func (r *manageAwsrun) ID() string {
 	return r.id
 }
 
 // ManageAWS does some workflow thing.
-func ManageAWS(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAWSWorkflowOptions) (*v1.ManageAWSResponse, error) {
-	run, err := ManageAWSAsync(ctx, req, opts...)
+func ManageAWS(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAwsworkflowOptions) (*v1.ManageAWSResponse, error) {
+	run, err := ManageAwsasync(ctx, req, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -204,17 +204,17 @@ func ManageAWS(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAW
 }
 
 // ManageAWS does some workflow thing.
-func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAWSWorkflowOptions) (ManageAWSRun, error) {
-	activityName := aWSOptions.filterActivity(v1.ManageAWSWorkflowName)
+func ManageAwsasync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAwsworkflowOptions) (ManageAwsrun, error) {
+	activityName := awsoptions.filterActivity(v1.ManageAwsworkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.ManageAWSWorkflowName),
+			fmt.Sprintf("no activity registered for %s", v1.ManageAwsworkflowName),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &ManageAWSWorkflowOptions{}
+	opt := &ManageAwsworkflowOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -245,7 +245,7 @@ func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*Man
 	}
 	if wo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.ManageAWSIDExpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(v1.ManageAwsidexpression, req.ProtoReflect())
 			if err != nil {
 				workflow.GetLogger(ctx).Error("error evaluating id expression for \"mycompany.initialism.AWS.ManageAWS\" workflow", "error", err)
 				return nil
@@ -294,7 +294,7 @@ func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*Man
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &manageAWSRun{
+	return &manageAwsrun{
 		cancel: cancel,
 		id:     wo.ID,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
@@ -307,8 +307,8 @@ func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*Man
 	}, nil
 }
 
-// ManageAWSResourceWorkflowOptions are used to configure a(n) mycompany.initialism.AWS.ManageAWSResource workflow execution
-type ManageAWSResourceWorkflowOptions struct {
+// ManageAwsresourceWorkflowOptions are used to configure a(n) mycompany.initialism.AWS.ManageAWSResource workflow execution
+type ManageAwsresourceWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
@@ -316,43 +316,43 @@ type ManageAWSResourceWorkflowOptions struct {
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
 
-// NewManageAWSResourceWorkflowOptions initializes a new ManageAWSResourceWorkflowOptions value
-func NewManageAWSResourceWorkflowOptions() *ManageAWSResourceWorkflowOptions {
-	return &ManageAWSResourceWorkflowOptions{}
+// NewManageAwsresourceWorkflowOptions initializes a new ManageAwsresourceWorkflowOptions value
+func NewManageAwsresourceWorkflowOptions() *ManageAwsresourceWorkflowOptions {
+	return &ManageAwsresourceWorkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
-func (opts *ManageAWSResourceWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *ManageAWSResourceWorkflowOptions {
+func (opts *ManageAwsresourceWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *ManageAwsresourceWorkflowOptions {
 	opts.ActivityOptions = &ao
 	return opts
 }
 
 // WithDetached can be used to start a workflow execution and exit immediately
-func (opts *ManageAWSResourceWorkflowOptions) WithDetached(d bool) *ManageAWSResourceWorkflowOptions {
+func (opts *ManageAwsresourceWorkflowOptions) WithDetached(d bool) *ManageAwsresourceWorkflowOptions {
 	opts.Detached = d
 	return opts
 }
 
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
-func (opts *ManageAWSResourceWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ManageAWSResourceWorkflowOptions {
+func (opts *ManageAwsresourceWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ManageAwsresourceWorkflowOptions {
 	opts.HeartbeatInterval = d
 	return opts
 }
 
 // WithParentClosePolicy can be used to customize the cancellation propagation behavior
-func (opts *ManageAWSResourceWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAWSResourceWorkflowOptions {
+func (opts *ManageAwsresourceWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAwsresourceWorkflowOptions {
 	opts.ParentClosePolicy = policy
 	return opts
 }
 
 // WithStartWorkflowOptions can be used to customize the start workflow options
-func (opts *ManageAWSResourceWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *ManageAWSResourceWorkflowOptions {
+func (opts *ManageAwsresourceWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *ManageAwsresourceWorkflowOptions {
 	opts.StartWorkflowOptions = &swo
 	return opts
 }
 
-// ManageAWSResourceRun provides a handle to a mycompany.initialism.AWS.ManageAWSResource workflow execution
-type ManageAWSResourceRun interface {
+// ManageAwsresourceRun provides a handle to a mycompany.initialism.AWS.ManageAWSResource workflow execution
+type ManageAwsresourceRun interface {
 	// Cancel cancels the workflow
 	Cancel(workflow.Context) error
 
@@ -366,15 +366,15 @@ type ManageAWSResourceRun interface {
 	ID() string
 }
 
-// manageAWSResourceRun provides a(n) ManageAWSResourceRun implementation
-type manageAWSResourceRun struct {
+// manageAwsresourceRun provides a(n) ManageAwsresourceRun implementation
+type manageAwsresourceRun struct {
 	cancel func()
 	future workflow.Future
 	id     string
 }
 
 // Cancel the underlying workflow execution
-func (r *manageAWSResourceRun) Cancel(ctx workflow.Context) error {
+func (r *manageAwsresourceRun) Cancel(ctx workflow.Context) error {
 	if r.cancel != nil {
 		r.cancel()
 		if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
@@ -382,16 +382,16 @@ func (r *manageAWSResourceRun) Cancel(ctx workflow.Context) error {
 		}
 		return nil
 	}
-	return CancelAWSWorkflow(ctx, r.id, "")
+	return CancelAwsworkflow(ctx, r.id, "")
 }
 
 // Future returns the underlying activity future
-func (r *manageAWSResourceRun) Future() workflow.Future {
+func (r *manageAwsresourceRun) Future() workflow.Future {
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
-func (r *manageAWSResourceRun) Get(ctx workflow.Context) (*v1.ManageAWSResourceResponse, error) {
+func (r *manageAwsresourceRun) Get(ctx workflow.Context) (*v1.ManageAWSResourceResponse, error) {
 	var resp v1.ManageAWSResourceResponse
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -400,13 +400,13 @@ func (r *manageAWSResourceRun) Get(ctx workflow.Context) (*v1.ManageAWSResourceR
 }
 
 // ID returns the underlying workflow id
-func (r *manageAWSResourceRun) ID() string {
+func (r *manageAwsresourceRun) ID() string {
 	return r.id
 }
 
 // ManageAWSResource does some workflow thing.
-func ManageAWSResource(ctx workflow.Context, req *v1.ManageAWSResourceRequest, opts ...*ManageAWSResourceWorkflowOptions) (*v1.ManageAWSResourceResponse, error) {
-	run, err := ManageAWSResourceAsync(ctx, req, opts...)
+func ManageAWSResource(ctx workflow.Context, req *v1.ManageAWSResourceRequest, opts ...*ManageAwsresourceWorkflowOptions) (*v1.ManageAWSResourceResponse, error) {
+	run, err := ManageAwsresourceAsync(ctx, req, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -414,17 +414,17 @@ func ManageAWSResource(ctx workflow.Context, req *v1.ManageAWSResourceRequest, o
 }
 
 // ManageAWSResource does some workflow thing.
-func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceRequest, opts ...*ManageAWSResourceWorkflowOptions) (ManageAWSResourceRun, error) {
-	activityName := aWSOptions.filterActivity(v1.ManageAWSResourceWorkflowName)
+func ManageAwsresourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceRequest, opts ...*ManageAwsresourceWorkflowOptions) (ManageAwsresourceRun, error) {
+	activityName := awsoptions.filterActivity(v1.ManageAwsresourceWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("no activity registered for %s", v1.ManageAWSResourceWorkflowName),
+			fmt.Sprintf("no activity registered for %s", v1.ManageAwsresourceWorkflowName),
 			"Unimplemented",
 			nil,
 		)
 	}
 
-	opt := &ManageAWSResourceWorkflowOptions{}
+	opt := &ManageAwsresourceWorkflowOptions{}
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
 	}
@@ -455,7 +455,7 @@ func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceReque
 	}
 	if wo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.ManageAWSResourceIDExpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(v1.ManageAwsresourceIdexpression, req.ProtoReflect())
 			if err != nil {
 				workflow.GetLogger(ctx).Error("error evaluating id expression for \"mycompany.initialism.AWS.ManageAWSResource\" workflow", "error", err)
 				return nil
@@ -504,7 +504,7 @@ func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceReque
 	}
 
 	ctx, cancel := workflow.WithCancel(ctx)
-	return &manageAWSResourceRun{
+	return &manageAwsresourceRun{
 		cancel: cancel,
 		id:     wo.ID,
 		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
@@ -517,14 +517,14 @@ func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceReque
 	}, nil
 }
 
-// CancelAWSWorkflow cancels an existing workflow
-func CancelAWSWorkflow(ctx workflow.Context, workflowID string, runID string) error {
-	return CancelAWSWorkflowAsync(ctx, workflowID, runID).Get(ctx, nil)
+// CancelAwsworkflow cancels an existing workflow
+func CancelAwsworkflow(ctx workflow.Context, workflowID string, runID string) error {
+	return CancelAwsworkflowAsync(ctx, workflowID, runID).Get(ctx, nil)
 }
 
-// CancelAWSWorkflowAsync cancels an existing workflow
-func CancelAWSWorkflowAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
-	activityName := aWSOptions.filterActivity("mycompany.initialism.AWS.CancelWorkflow")
+// CancelAwsworkflowAsync cancels an existing workflow
+func CancelAwsworkflowAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
+	activityName := awsoptions.filterActivity("mycompany.initialism.AWS.CancelWorkflow")
 	if activityName == "" {
 		f, s := workflow.NewFuture(ctx)
 		s.SetError(temporal.NewNonRetryableApplicationError(
@@ -542,22 +542,22 @@ func CancelAWSWorkflowAsync(ctx workflow.Context, workflowID string, runID strin
 	return workflow.ExecuteActivity(ctx, activityName, workflowID, runID)
 }
 
-// aWSActivities provides activities that can be used to interact with a(n) AWS service's workflow, queries, signals, and updates across namespaces
-type aWSActivities struct {
-	client v1.AWSClient
+// awsactivities provides activities that can be used to interact with a(n) AWS service's workflow, queries, signals, and updates across namespaces
+type awsactivities struct {
+	client v1.Awsclient
 }
 
 // CancelWorkflow cancels an existing workflow execution
-func (a *aWSActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+func (a *awsactivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // ManageAWS executes a(n) mycompany.initialism.AWS.ManageAWS workflow via an activity
-func (a *aWSActivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.ManageAWSResponse, err error) {
+func (a *awsactivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.ManageAWSResponse, err error) {
 	// unmarshal workflow request
 	var req v1.ManageAWSRequest
 	if err := input.Request.UnmarshalTo(&req); err != nil {
-		return nil, aWSOptions.convertError(temporal.NewNonRetryableApplicationError(
+		return nil, awsoptions.convertError(temporal.NewNonRetryableApplicationError(
 			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/initialism/v1.ManageAWSRequest", input.Request.GetTypeUrl()),
 			"InvalidArgument",
 			err,
@@ -565,12 +565,12 @@ func (a *aWSActivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequ
 	}
 
 	// initialize workflow execution
-	var run v1.ManageAWSRun
-	run, err = a.client.ManageAWSAsync(ctx, &req, v1.NewManageAWSOptions().WithStartWorkflowOptions(
+	var run v1.ManageAwsrun
+	run, err = a.client.ManageAwsasync(ctx, &req, v1.NewManageAwsoptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
-		return nil, aWSOptions.convertError(err)
+		return nil, awsoptions.convertError(err)
 	}
 
 	// exit early if detached enabled
@@ -622,25 +622,25 @@ func (a *aWSActivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequ
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
-						return nil, aWSOptions.convertError(err)
+						return nil, awsoptions.convertError(err)
 					}
 				}
-				return nil, aWSOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+				return nil, awsoptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
 			}
 
 		// handle workflow completion
 		case <-doneCh:
-			return resp, aWSOptions.convertError(err)
+			return resp, awsoptions.convertError(err)
 		}
 	}
 }
 
 // ManageAWSResource executes a(n) mycompany.initialism.AWS.ManageAWSResource workflow via an activity
-func (a *aWSActivities) ManageAWSResource(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.ManageAWSResourceResponse, err error) {
+func (a *awsactivities) ManageAWSResource(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.ManageAWSResourceResponse, err error) {
 	// unmarshal workflow request
 	var req v1.ManageAWSResourceRequest
 	if err := input.Request.UnmarshalTo(&req); err != nil {
-		return nil, aWSOptions.convertError(temporal.NewNonRetryableApplicationError(
+		return nil, awsoptions.convertError(temporal.NewNonRetryableApplicationError(
 			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/initialism/v1.ManageAWSResourceRequest", input.Request.GetTypeUrl()),
 			"InvalidArgument",
 			err,
@@ -648,12 +648,12 @@ func (a *aWSActivities) ManageAWSResource(ctx context.Context, input *xnsv1.Work
 	}
 
 	// initialize workflow execution
-	var run v1.ManageAWSResourceRun
-	run, err = a.client.ManageAWSResourceAsync(ctx, &req, v1.NewManageAWSResourceOptions().WithStartWorkflowOptions(
+	var run v1.ManageAwsresourceRun
+	run, err = a.client.ManageAwsresourceAsync(ctx, &req, v1.NewManageAwsresourceOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
-		return nil, aWSOptions.convertError(err)
+		return nil, awsoptions.convertError(err)
 	}
 
 	// exit early if detached enabled
@@ -705,15 +705,15 @@ func (a *aWSActivities) ManageAWSResource(ctx context.Context, input *xnsv1.Work
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
-						return nil, aWSOptions.convertError(err)
+						return nil, awsoptions.convertError(err)
 					}
 				}
-				return nil, aWSOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+				return nil, awsoptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
 			}
 
 		// handle workflow completion
 		case <-doneCh:
-			return resp, aWSOptions.convertError(err)
+			return resp, awsoptions.convertError(err)
 		}
 	}
 }
