@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/iancoleman/strcase"
 	"runtime"
 	"strings"
 
@@ -27,6 +28,8 @@ type Config struct {
 	EnableXNS                  bool
 	Patches                    string
 	WorkflowUpdateEnabled      bool
+
+	InitialismsStrCase []string
 }
 
 // Plugin provides a protoc plugin for generating temporal workers and clients in go
@@ -54,6 +57,8 @@ func New(commit, version string) *Plugin {
 	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
+	flags.StringSliceVar(&cfg.InitialismsStrCase, "ignore-strcase-initialisms", []string{}, "ignore these initialisms when converting to camel case")
+
 	return &Plugin{
 		Commit:  commit,
 		Version: version,
@@ -70,10 +75,18 @@ func (p *Plugin) Param(key, value string) error {
 // Run defines the plugin entrypoint
 func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 	p.Plugin = plugin
+
+	if len(p.cfg.InitialismsStrCase) > 0 {
+		for _, initialism := range p.cfg.InitialismsStrCase {
+			strcase.ConfigureAcronym(initialism, initialism)
+		}
+	}
+
 	services, err := parse(p)
 	if err != nil {
 		return err
 	}
+
 	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 	plugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO3
 	plugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2023
