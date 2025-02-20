@@ -41,5 +41,5 @@ func (svc *Manifest) toLowerCamel(format string, args ...any) string {
 		}
 	}
 
-	return strcase.ToLowerCamel(fmt.Sprintf(format, args...))
+	return strcase.ToLowerCamel(s)
 }

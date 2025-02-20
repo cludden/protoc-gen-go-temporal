@@ -26,7 +26,7 @@ example:
 gen:
     #!/usr/bin/env bash
     set -euo pipefail
-    # rm -rf {{ justfile_directory() }}/gen/*
+    rm -rf {{ justfile_directory() }}/gen/*
     rm -rf {{ justfile_directory() }}/test/simple/gen/*.pb.go
     rm -rf {{ justfile_directory() }}/example/gen/*.pb.go
     rm -rf {{ justfile_directory() }}/mocks/*

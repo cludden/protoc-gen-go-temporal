@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/iancoleman/strcase"
 	"runtime"
 	"strings"
 
@@ -75,13 +74,6 @@ func (p *Plugin) Param(key, value string) error {
 // Run defines the plugin entrypoint
 func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 	p.Plugin = plugin
-
-	if len(p.cfg.InitialismsStrCase) > 0 {
-		for _, initialism := range p.cfg.InitialismsStrCase {
-			strcase.ConfigureAcronym(initialism, initialism)
-		}
-	}
-
 	services, err := parse(p)
 	if err != nil {
 		return err
