@@ -17,7 +17,7 @@ func (svc *Manifest) toCamel(format string, args ...any) string {
 
 	s := fmt.Sprintf(format, args...)
 
-	for _, initialism := range svc.cfg.InitialismsStrCase {
+	for _, initialism := range svc.cfg.IgnoreAcronyms {
 		if strings.Contains(s, initialism) {
 			strcase.ConfigureAcronym(s, s)
 		}
@@ -35,7 +35,7 @@ func (svc *Manifest) toLowerCamel(format string, args ...any) string {
 
 	s := fmt.Sprintf(format, args...)
 
-	for _, initialism := range svc.cfg.InitialismsStrCase {
+	for _, initialism := range svc.cfg.IgnoreAcronyms {
 		if strings.Contains(s, initialism) {
 			strcase.ConfigureAcronym(s, s)
 		}

@@ -27,8 +27,7 @@ type Config struct {
 	EnableXNS                  bool
 	Patches                    string
 	WorkflowUpdateEnabled      bool
-
-	InitialismsStrCase []string
+	IgnoreAcronyms             []string
 }
 
 // Plugin provides a protoc plugin for generating temporal workers and clients in go
@@ -53,10 +52,9 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnableCodec, "enable-codec", false, "enables experimental codec support")
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
+	flags.StringSliceVar(&cfg.IgnoreAcronyms, "ignore-acronyms", []string{}, "ignore these acronyms when converting generated output to camel case")
 	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
-
-	flags.StringSliceVar(&cfg.InitialismsStrCase, "ignore-strcase-initialisms", []string{}, "ignore these initialisms when converting to camel case")
 
 	return &Plugin{
 		Commit:  commit,
