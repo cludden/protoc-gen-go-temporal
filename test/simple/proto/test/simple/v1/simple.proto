@@ -72,6 +72,11 @@ service Simple {
     option (temporal.v1.workflow) = {id: 'some-workflow-4/${! uuid_v4() }'};
   }
 
+  // SomeWorkflow5 does some workflow thing.
+  rpc SomeWorkflow5(SomeWorkflow5Request) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {id: 'some-workflow-5/${! id }'};
+  }
+
   // SomeActivity1 does some activity thing.
   rpc SomeActivity1(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {name: 'mycompany.simple.SomeActivity1'};
@@ -173,6 +178,10 @@ message SomeWorkflow1Response {
 message SomeWorkflow3Request {
   string id = 1;
   string request_val = 2;
+}
+
+message SomeWorkflow5Request {
+  optional string id = 1;
 }
 
 message SomeActivity2Request {

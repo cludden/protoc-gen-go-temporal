@@ -51,6 +51,8 @@ func EvalExpression(expr *Expression, msg protoreflect.Message) (result string, 
 			switch v := x.(type) {
 			case string:
 				id.WriteString(v)
+			case *string:
+				id.WriteString(*v)
 			case []byte:
 				id.Write(v)
 			default:

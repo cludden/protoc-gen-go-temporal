@@ -201,6 +201,20 @@ func (wf *someWorkflow4) Execute(ctx workflow.Context) (resp *commonv1.Paginated
 
 // ============================================================================
 
+type someWorkflow5 struct {
+	*simplepb.SomeWorkflow5WorkflowInput
+}
+
+func (w *Workflows) SomeWorkflow5(ctx workflow.Context, input *simplepb.SomeWorkflow5WorkflowInput) (simplepb.SomeWorkflow5Workflow, error) {
+	return &someWorkflow5{input}, nil
+}
+
+func (wf *someWorkflow5) Execute(ctx workflow.Context) error {
+	return nil
+}
+
+// ============================================================================
+
 type Activities struct{}
 
 var ActivityEvents []string

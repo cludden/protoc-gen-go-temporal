@@ -305,6 +305,24 @@ func TestSomeWorkflow4C(t *testing.T) {
 	}
 }
 
+func TestSomeWorkflow5(t *testing.T) {
+	require := require.New(t)
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	c := simplepb.NewTestSimpleClient(env, &Workflows{}, &Activities{})
+	err := c.SomeWorkflow5(context.Background(), &simplepb.SomeWorkflow5Request{
+		Id: proto.String("foo"),
+	})
+	require.NoError(err)
+
+	env = suite.NewTestWorkflowEnvironment()
+	c = simplepb.NewTestSimpleClient(env, &Workflows{}, &Activities{})
+	err = c.SomeWorkflow5(context.Background(), &simplepb.SomeWorkflow5Request{
+		Id: nil,
+	})
+	require.ErrorContains(err, "expected string result")
+}
+
 func TestCli(t *testing.T) {
 	require := require.New(t)
 	app, err := newCli()
