@@ -10,12 +10,12 @@ service AWS {
 
   // ManageAWS does some workflow thing.
   rpc ManageAWS(ManageAWSRequest) returns (ManageAWSResponse) {
-    option (temporal.v1.workflow) = {id: 'some-workflow-1/${! id }/${! uuid_v4() }'};
+    option (temporal.v1.workflow) = {id: 'manage-aws/${! urn }/${! uuid_v4() }'};
   }
 
   // ManageAWSResource does some workflow thing.
   rpc ManageAWSResource(ManageAWSResourceRequest) returns (ManageAWSResourceResponse) {
-    option (temporal.v1.workflow) = {id: 'some-workflow-2/${! uuid_v4() }'};
+    option (temporal.v1.workflow) = {id: 'manage-aws-resource/${! uuid_v4() }'};
   }
 }
 
