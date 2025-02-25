@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package test.acronym.v1;
+
+import "temporal/v1/temporal.proto";
+
+service AWS {
+  option (temporal.v1.service) = {task_queue: 'aws-task-queue'};
+
+  // ManageAWS does some workflow thing.
+  rpc ManageAWS(ManageAWSRequest) returns (ManageAWSResponse) {
+    option (temporal.v1.workflow) = {id: 'manage-aws/${! urn }/${! uuid_v4() }'};
+  }
+
+  // ManageAWSResource does some workflow thing.
+  rpc ManageAWSResource(ManageAWSResourceRequest) returns (ManageAWSResourceResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'manage-aws-resource/${! urn }/${! uuid_v4() }'
+      cli: {ignore: true}
+    };
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 60}
+    };
+  }
+
+  // ManageAWSResourceURN does some workflow thing.
+  rpc ManageAWSResourceURN(ManageAWSResourceURNRequest) returns (ManageAWSResourceURNResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 60}
+    };
+  }
+
+  // SomethingV1FooBar does some workflow thing.
+  rpc SomethingV1FooBar(SomethingV1FooBarRequest) returns (SomethingV1FooBarResponse) {
+    option (temporal.v1.workflow) = {id: 'something-v1-foo-bar/${! urn }/${! uuid_v4() }'};
+  }
+
+  // SomethingV2FooBar does some workflow thing.
+  rpc SomethingV2FooBar(SomethingV2FooBarRequest) returns (SomethingV2FooBarResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'something-v2-foo-bar/${! urn }/${! uuid_v4() }'
+      cli: {
+        name: "something-foo-bar"
+        usage: "do something with foo bar"
+        aliases: [
+          "sfb",
+          "sfbv2"
+        ]
+      }
+    };
+  }
+}
+
+message ManageAWSRequest {
+  string urn = 1;
+}
+
+message ManageAWSResponse {
+  string urn = 1;
+}
+
+message ManageAWSResourceRequest {
+  string urn = 1;
+  string k8s_namespace = 2;
+}
+
+message ManageAWSResourceResponse {
+  string urn = 1;
+}
+
+message ManageAWSResourceURNRequest {
+  string urn = 1;
+}
+
+message ManageAWSResourceURNResponse {
+  string urn = 1;
+}
+
+message SomethingV1FooBarRequest {
+  string urn = 1;
+  string k8s_namespace = 2;
+}
+
+message SomethingV1FooBarResponse {
+  string urn = 1;
+}
+
+message SomethingV2FooBarRequest {
+  string urn = 1;
+  string k8s_namespace = 2 [(temporal.v1.field) = {
+    cli: {
+      name: "k8s-namespace"
+      usage: "kubernetes namespace name"
+      aliases: ["n"]
+    }
+  }];
+}
+
+message SomethingV2FooBarResponse {
+  string urn = 1;
+}

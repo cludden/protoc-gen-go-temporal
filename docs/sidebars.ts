@@ -61,6 +61,11 @@ const sidebars: SidebarsConfig = {
           type: 'doc',
           id: 'configuration/update',
           label: 'Update'
+        },
+        {
+          type: 'doc',
+          id: 'configuration/fields',
+          label: 'Fields'
         }
       ]
     },

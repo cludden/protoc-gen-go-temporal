@@ -2,9 +2,7 @@ package plugin
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -16,14 +14,7 @@ func (svc *Manifest) toCamel(format string, args ...any) string {
 	}
 
 	s := fmt.Sprintf(format, args...)
-
-	for _, initialism := range svc.cfg.IgnoreAcronyms {
-		if strings.Contains(s, initialism) {
-			strcase.ConfigureAcronym(s, s)
-		}
-	}
-
-	return strcase.ToCamel(s)
+	return svc.caser.ToCamel(s)
 }
 
 func (svc *Manifest) toLowerCamel(format string, args ...any) string {
@@ -34,12 +25,5 @@ func (svc *Manifest) toLowerCamel(format string, args ...any) string {
 	}
 
 	s := fmt.Sprintf(format, args...)
-
-	for _, initialism := range svc.cfg.IgnoreAcronyms {
-		if strings.Contains(s, initialism) {
-			strcase.ConfigureAcronym(s, s)
-		}
-	}
-
-	return strcase.ToLowerCamel(s)
+	return svc.caser.ToLowerCamel(s)
 }

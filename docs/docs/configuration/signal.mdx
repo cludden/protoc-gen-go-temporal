@@ -34,6 +34,70 @@ service Example {
 
 ## Options
 
+### cli.aliases
+
+`[]string`
+
+Adds additional aliases to the CLI command.
+
+```protobuf
+service Example {
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {
+      cli: {aliases: ["p"]}
+    };
+  }
+}
+```
+
+### cli.ignore
+
+`bool`
+
+Prevents the generation of CLI commands for the signal.
+
+```protobuf
+service Example {
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {
+      cli: {ignore: true}
+    };
+  }
+}
+```
+
+### cli.name
+
+`string`
+
+Overrides the default CLI command name for the signal.
+
+```protobuf
+service Example {
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {
+      cli: {name: "do-ping"}
+    };
+  }
+}
+```
+
+### cli.usage
+
+`string`
+
+Overrides the default CLI command usage for the signal.
+
+```protobuf
+service Example {
+  rpc Ping(PingInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {
+      cli: {usage: "send a ping"}
+    };
+  }
+}
+```
+
 ### name
 
 `string`
