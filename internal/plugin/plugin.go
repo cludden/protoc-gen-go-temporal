@@ -27,6 +27,7 @@ type Config struct {
 	EnableXNS                  bool
 	Patches                    string
 	WorkflowUpdateEnabled      bool
+	IgnoreAcronyms             []string
 }
 
 // Plugin provides a protoc plugin for generating temporal workers and clients in go
@@ -51,6 +52,7 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnableCodec, "enable-codec", false, "enables experimental codec support")
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
+	flags.StringSliceVar(&cfg.IgnoreAcronyms, "ignore-acronyms", []string{}, "ignore these acronyms when converting generated output to camel case")
 	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
@@ -74,6 +76,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 	if err != nil {
 		return err
 	}
+
 	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 	plugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO3
 	plugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2023

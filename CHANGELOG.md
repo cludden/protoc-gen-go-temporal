@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠ BREAKING CHANGES
 
 ### Added
+- [#89] add option to ignore camel case renames for specific acronyms
 
 ### Changed
 
