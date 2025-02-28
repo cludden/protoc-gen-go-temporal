@@ -14,11 +14,15 @@ extend google.protobuf.ServiceOptions {
 
 extend google.protobuf.MethodOptions {
   optional ActivityOptions activity = 7234;
-  optional CommandOptions command = 7238;
+  optional CommandOptions command = 7238 [deprecated = true];
   optional QueryOptions query = 7235;
   optional SignalOptions signal = 7236;
   optional UpdateOptions update = 7237;
   optional WorkflowOptions workflow = 7233;
+}
+
+extend google.protobuf.FieldOptions {
+  optional FieldOptions field = 7233;
 }
 
 // ActivityOptions identifies an rpc method as a Temporal activity definition, and describes
@@ -51,18 +55,29 @@ message ActivityOptions {
   RetryPolicy retry_policy = 6;
 }
 
-// CLIFeature enumerates cli feature statuses
-enum CLIFeature {
-  CLI_FEATURE_DISALBED = 0;
-  CLI_FEATURE_ENABLED = 1;
-}
-
 message CLIOptions {
   bool ignore = 1;
 }
 
+message CLICommandOptions {
+  bool ignore = 1;
+  string name = 2;
+  string usage = 3;
+  repeated string aliases = 4;
+}
+
+message CLIFlagOptions {
+  string name = 2;
+  string usage = 3;
+  repeated string aliases = 4;
+}
+
 message CommandOptions {
   bool ignore = 1;
+}
+
+message FieldOptions {
+  CLIFlagOptions cli = 1;
 }
 
 // IDReusePolicy defines how new runs of a workflow with a particular ID may or
@@ -128,6 +143,9 @@ message Patch {
 // QueryOptions identifies an rpc method as a Temporal query definition, and describes
 // available query configuration options
 message QueryOptions {
+  // cli command overrides
+  CLICommandOptions cli = 4;
+
   // Fully-qualified query name
   string name = 1;
 
@@ -163,6 +181,9 @@ message ServiceOptions {
 // SignalOptions identifies an rpc method as a Temporal singal definition, and describes
 // available signal configuration options
 message SignalOptions {
+  // cli command overrides
+  CLICommandOptions cli = 4;
+
   // Fully-qualified signal name
   string name = 1;
 
@@ -176,6 +197,9 @@ message SignalOptions {
 // UpdateOptions identifies an rpc method as a Temporal update definition, and describes
 // available update configuration options
 message UpdateOptions {
+  // cli command overrides
+  CLICommandOptions cli = 8;
+
   // ID expression
   string id = 1;
 
@@ -209,6 +233,9 @@ enum WaitPolicy {
 // WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
 // available workflow configuration options
 message WorkflowOptions {
+  // cli command overrides
+  CLICommandOptions cli = 19;
+
   // Fully-qualified workflow name
   string name = 14;
 
@@ -280,6 +307,8 @@ message WorkflowOptions {
 
   // Signal identifies a signal supported by the workflow
   message Signal {
+    CLICommandOptions cli = 4;
+
     // Signal name
     string ref = 1;
 

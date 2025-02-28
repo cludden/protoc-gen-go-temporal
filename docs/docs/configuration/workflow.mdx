@@ -45,6 +45,70 @@ service Example {
 }
 ```
 
+### cli.aliases
+
+`[]string`
+
+Adds additional aliases to the CLI command.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      cli: {aliases: ["h"]}
+    };
+  }
+}
+```
+
+### cli.ignore
+
+`bool`
+
+Prevents the generation of CLI commands for the workflow.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      cli: {ignore: true}
+    };
+  }
+}
+```
+
+### cli.name
+
+`string`
+
+Overrides the default CLI command name for the workflow.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      cli: {name: "start-hello"}
+    };
+  }
+}
+```
+
+### cli.usage
+
+`string`
+
+Overrides the default CLI command usage for the workflow.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      cli: {usage: "generate a friendly greeting"}
+    };
+  }
+}
+```
+
 ### execution_timeout
 
 [google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)

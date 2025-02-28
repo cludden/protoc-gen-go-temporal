@@ -33,6 +33,71 @@ service Example {
 
 ## Options
 
+### cli.aliases
+
+`[]string`
+
+Adds additional aliases to the CLI command.
+
+```protobuf
+service Example {
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      cli: {aliases: ["ghs", "hs"]}
+    };
+  }
+}
+```
+
+### cli.ignore
+
+`bool`
+
+Prevents the generation of CLI commands for the query.
+
+```protobuf
+service Example {
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      cli: {ignore: true}
+    };
+  }
+}
+```
+
+### cli.name
+
+`string`
+
+Overrides the default CLI command name for the query.
+
+```protobuf
+service Example {
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      cli: {name: "hello-status"}
+    };
+  }
+}
+```
+
+### cli.usage
+
+`string`
+
+Overrides the default CLI command usage for the query.
+
+```protobuf
+service Example {
+  // GetHelloStatus retrieves the status of an existing Hello workflow
+  rpc GetHelloStatus(GetHelloStatusInput) returns (GetHelloStatusOutput) {
+    option (temporal.v1.query) = {
+      cli: {usage: "get the status of a Hello workflow"}
+    };
+  }
+}
+```
+
 ### name
 
 `string`

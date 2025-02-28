@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/cludden/protoc-gen-go-temporal/pkg/strcase"
 	g "github.com/dave/jennifer/jen"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -27,7 +28,7 @@ type Config struct {
 	EnableXNS                  bool
 	Patches                    string
 	WorkflowUpdateEnabled      bool
-	IgnoreAcronyms             []string
+	IgnoreAcronyms             string
 }
 
 // Plugin provides a protoc plugin for generating temporal workers and clients in go
@@ -38,6 +39,7 @@ type Plugin struct {
 	Version string
 	cfg     *Config
 	flags   *pflag.FlagSet
+	caser   *strcase.Caser
 }
 
 func New(commit, version string) *Plugin {
@@ -52,8 +54,8 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnableCodec, "enable-codec", false, "enables experimental codec support")
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
-	flags.StringSliceVar(&cfg.IgnoreAcronyms, "ignore-acronyms", []string{}, "ignore these acronyms when converting generated output to camel case")
-	flags.StringVar(&cfg.Patches, "patches", "", "comma-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER,65_REMOVED)")
+	flags.StringVar(&cfg.IgnoreAcronyms, "ignore-acronyms", "", "semicolon-delimited string of acronyms to ignore when converting generated output to camel case")
+	flags.StringVar(&cfg.Patches, "patches", "", "semicolon-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER;65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
 
 	return &Plugin{
@@ -71,15 +73,24 @@ func (p *Plugin) Param(key, value string) error {
 
 // Run defines the plugin entrypoint
 func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
+	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
+	plugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO3
+	plugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2023
+
 	p.Plugin = plugin
 	services, err := parse(p)
 	if err != nil {
 		return err
 	}
 
-	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
-	plugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO3
-	plugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2023
+	var ignoreAcronyms []string
+	for _, a := range strings.Split(p.cfg.IgnoreAcronyms, ";") {
+		if aa := strings.TrimSpace(a); aa != "" {
+			ignoreAcronyms = append(ignoreAcronyms, aa)
+		}
+	}
+	p.caser = strcase.NewCaser(strcase.WithAcronyms(ignoreAcronyms...))
+
 	return services.render()
 }
 

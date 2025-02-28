@@ -7,7 +7,6 @@ import (
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
-	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -19,7 +18,6 @@ const (
 	cliPkg       = "github.com/urfave/cli/v2"
 	homedirPkg   = "github.com/mitchellh/go-homedir"
 	protojsonPkg = "google.golang.org/protobuf/encoding/protojson"
-	strcasePkg   = "github.com/iancoleman/strcase"
 )
 
 var (
@@ -131,8 +129,17 @@ func (svc *Manifest) renderCLI(f *g.File) {
 // genCliFlagForField generates a cli flag for a message field
 func (svc *Manifest) genCliFlagForField(flags *g.Group, field *protogen.Field, category, prefix string) {
 	name := svc.getFieldName(field)
-	flagName := prefix + strcase.ToKebab(name)
-	usage := strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(field.Comments.Leading.String(), "//"), "\n//", ""))
+	opts := proto.GetExtension(field.Desc.Options(), temporalv1.E_Field).(*temporalv1.FieldOptions)
+
+	flagName := opts.GetCli().GetName()
+	if flagName == "" {
+		flagName = prefix + svc.caser.ToKebab(name)
+	}
+
+	usage := opts.GetCli().GetUsage()
+	if usage == "" {
+		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(field.Comments.Leading.String(), "//"), "\n//", ""))
+	}
 	if usage == "" {
 		usage = fmt.Sprintf("set the value of the operation's %q parameter", name)
 	}
@@ -196,11 +203,18 @@ func (svc *Manifest) genCliFlagForField(flags *g.Group, field *protogen.Field, c
 	flagType += "Flag"
 
 	// generate flag
-	flags.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(fields *g.Group) {
-		fields.Id("Name").Op(":").Lit(flagName)
-		fields.Id("Usage").Op(":").Lit(strings.TrimSpace(usage))
+	flags.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(flag *g.Group) {
+		flag.Id("Name").Op(":").Lit(flagName)
+		flag.Id("Usage").Op(":").Lit(strings.TrimSpace(usage))
+		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
+			flag.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
+				for _, alias := range aliases {
+					g.Lit(alias)
+				}
+			})
+		}
 		if svc.cfg.CliCategories && category != "" {
-			fields.Id("Category").Op(":").Lit(category)
+			flag.Id("Category").Op(":").Lit(category)
 		}
 	})
 }
@@ -226,7 +240,7 @@ func (svc *Manifest) genCliNew(f *g.File) {
 			),
 			g.Return(
 				g.Op("&").Qual(cliPkg, "App").CustomFunc(multiLineValues, func(fields *g.Group) {
-					fields.Id("Name").Op(":").Lit(strcase.ToKebab(svc.Service.GoName))
+					fields.Id("Name").Op(":").Lit(svc.caser.ToKebab(svc.Service.GoName))
 					fields.Id("Commands").Op(":").Id("commands")
 				}),
 				g.Nil(),
@@ -255,7 +269,7 @@ func (svc *Manifest) genCliNewCommand(f *g.File) {
 			),
 			g.Return(
 				g.Op("&").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(fields *g.Group) {
-					fields.Id("Name").Op(":").Lit(strcase.ToKebab(svc.Service.GoName))
+					fields.Id("Name").Op(":").Lit(svc.caser.ToKebab(svc.Service.GoName))
 					fields.Id("Subcommands").Op(":").Id("subcommands")
 				}),
 				g.Nil(),
@@ -309,6 +323,9 @@ func (svc *Manifest) genCliNewCommands(f *g.File) {
 					if opts, ok := svc.commands[query]; ok && opts.GetIgnore() {
 						continue
 					}
+					if svc.queries[query].GetCli().GetIgnore() {
+						continue
+					}
 					svc.genCliQueryCommand(cmds, query)
 				}
 
@@ -318,6 +335,9 @@ func (svc *Manifest) genCliNewCommands(f *g.File) {
 						continue
 					}
 					if opts, ok := svc.commands[signal]; ok && opts.GetIgnore() {
+						continue
+					}
+					if svc.signals[signal].GetCli().GetIgnore() {
 						continue
 					}
 					svc.genCliSignalCommand(cmds, signal)
@@ -331,6 +351,9 @@ func (svc *Manifest) genCliNewCommands(f *g.File) {
 					if opts, ok := svc.commands[update]; ok && opts.GetIgnore() {
 						continue
 					}
+					if svc.updates[update].GetCli().GetIgnore() {
+						continue
+					}
 					svc.genCliUpdateCommand(cmds, update)
 				}
 
@@ -342,12 +365,18 @@ func (svc *Manifest) genCliNewCommands(f *g.File) {
 					if opts, ok := svc.commands[workflow]; ok && opts.GetIgnore() {
 						continue
 					}
+					if svc.workflows[workflow].GetCli().GetIgnore() {
+						continue
+					}
 					svc.genCliWorkflowCommand(cmds, workflow)
 					for _, signal := range svc.workflows[workflow].GetSignal() {
 						if !signal.GetStart() {
 							continue
 						}
-						svc.genCliWorkflowWithSignalCommand(cmds, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+						if signal.GetCli().GetIgnore() {
+							continue
+						}
+						svc.genCliWorkflowWithSignalCommand(cmds, workflow, getFullyQualifiedRef(workflow, signal.GetRef()), signal)
 					}
 				}
 			}),
@@ -481,17 +510,36 @@ func genCliPrintMessage(b *g.Group, varName string) {
 // genCliQueryCommand generates a <Query> command
 func (svc *Manifest) genCliQueryCommand(cmds *g.Group, query protoreflect.FullName) {
 	method := svc.methods[query]
+	opts := svc.queries[query]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	usage := method.Comments.Leading.String()
+
+	name := svc.caser.ToKebab(svc.methods[query].GoName)
+	if v := opts.GetCli().GetName(); v != "" {
+		name = v
+	}
+
+	usage := opts.GetCli().GetUsage()
+	if usage == "" {
+		usage = method.Comments.Leading.String()
+	}
+
 	if usage != "" {
 		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
 		usage = fmt.Sprintf("executes a %s query and blocks until error or response received", svc.fqnForQuery(query))
 	}
+
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
-		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[query].GoName))
+		cmd.Id("Name").Op(":").Lit(name)
 		cmd.Id("Usage").Op(":").Lit(usage)
+		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
+			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
+				for _, alias := range aliases {
+					g.Lit(alias)
+				}
+			})
+		}
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("QUERIES")
 		}
@@ -582,16 +630,35 @@ func (svc *Manifest) genCliQueryCommand(cmds *g.Group, query protoreflect.FullNa
 // genCliSignalCommand generates a <Signal> command
 func (svc *Manifest) genCliSignalCommand(cmds *g.Group, signal protoreflect.FullName) {
 	method := svc.methods[signal]
+	opts := svc.signals[signal]
 	hasInput := !isEmpty(method.Input)
-	usage := method.Comments.Leading.String()
+
+	name := svc.caser.ToKebab(svc.methods[signal].GoName)
+	if v := opts.GetCli().GetName(); v != "" {
+		name = v
+	}
+
+	usage := opts.GetCli().GetUsage()
+	if usage == "" {
+		usage = method.Comments.Leading.String()
+	}
+
 	if usage != "" {
 		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
 		usage = fmt.Sprintf("executes a %s signal", svc.fqnForSignal(signal))
 	}
+
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
-		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[signal].GoName))
+		cmd.Id("Name").Op(":").Lit(name)
 		cmd.Id("Usage").Op(":").Lit(usage)
+		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
+			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
+				for _, alias := range aliases {
+					g.Lit(alias)
+				}
+			})
+		}
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("SIGNALS")
 		}
@@ -668,17 +735,36 @@ func (svc *Manifest) genCliSignalCommand(cmds *g.Group, signal protoreflect.Full
 // genCliUpdateCommand generates an <Update> command
 func (svc *Manifest) genCliUpdateCommand(f *g.Group, update protoreflect.FullName) {
 	method := svc.methods[update]
+	opts := svc.updates[update]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	usage := method.Comments.Leading.String()
+
+	name := svc.caser.ToKebab(svc.methods[update].GoName)
+	if v := opts.GetCli().GetName(); v != "" {
+		name = v
+	}
+
+	usage := opts.GetCli().GetUsage()
+	if usage == "" {
+		usage = method.Comments.Leading.String()
+	}
+
 	if usage != "" {
 		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
 		usage = fmt.Sprintf("executes a(n) %s update", svc.fqnForUpdate(update))
 	}
+
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
-		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[update].GoName))
+		cmd.Id("Name").Op(":").Lit(name)
 		cmd.Id("Usage").Op(":").Lit(usage)
+		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
+			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
+				for _, alias := range aliases {
+					g.Lit(alias)
+				}
+			})
+		}
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("UPDATES")
 		}
@@ -819,7 +905,7 @@ func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
 
 			for _, field := range msg.Fields {
 				goName := svc.getFieldName(field)
-				flag := strcase.ToKebab(goName)
+				flag := svc.caser.ToKebab(goName)
 
 				fn.If(g.Id("cmd").Dot("IsSet").Call(g.Lit(flag))).BlockFunc(func(b *g.Group) {
 					// indicate presence of value
@@ -1037,17 +1123,36 @@ func (svc *Manifest) genCliWorkerCommand(f *g.Group) {
 // genCliWorkflowCommand generates a <Workflow> command
 func (svc *Manifest) genCliWorkflowCommand(f *g.Group, workflow protoreflect.FullName) {
 	method := svc.methods[workflow]
+	opts := svc.workflows[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	usage := method.Comments.Leading.String()
+
+	name := svc.caser.ToKebab(svc.methods[workflow].GoName)
+	if v := opts.GetCli().GetName(); v != "" {
+		name = v
+	}
+
+	usage := opts.GetCli().GetUsage()
+	if usage == "" {
+		usage = method.Comments.Leading.String()
+	}
+
 	if usage != "" {
 		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(usage, "//"), "\n//", ""))
 	} else {
 		usage = fmt.Sprintf("executes a(n) %s workflow", svc.fqnForWorkflow(workflow))
 	}
+
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
-		cmd.Id("Name").Op(":").Lit(strcase.ToKebab(svc.methods[workflow].GoName))
+		cmd.Id("Name").Op(":").Lit(name)
 		cmd.Id("Usage").Op(":").Lit(usage)
+		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
+			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
+				for _, alias := range aliases {
+					g.Lit(alias)
+				}
+			})
+		}
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
@@ -1159,20 +1264,42 @@ func (svc *Manifest) genCliWorkflowCommand(f *g.Group, workflow protoreflect.Ful
 }
 
 // genCliWorkflowWithSignalCommand generates a <Workflow>-with-<Signal> command
-func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, signal protoreflect.FullName) {
+func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, signal protoreflect.FullName, opts *temporalv1.WorkflowOptions_Signal) {
 	method := svc.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 	handler := svc.methods[signal]
 	hasSignalInput := !isEmpty(handler.Input)
 
-	cmdName := strcase.ToKebab(strings.Join([]string{svc.methods[workflow].GoName, "with", svc.methods[signal].GoName}, "-"))
-	desc := fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, workflow)
+	name := opts.GetCli().GetName()
+	if name == "" {
+		workflowName := svc.workflows[workflow].GetCli().GetName()
+		if workflowName == "" {
+			workflowName = svc.methods[workflow].GoName
+		}
+		signalName := svc.signals[signal].GetCli().GetName()
+		if signalName == "" {
+			signalName = svc.methods[signal].GoName
+		}
+		name = svc.caser.ToKebab(strings.Join([]string{workflowName, "with", signalName}, "-"))
+	}
 
-	cmds.Comment(desc)
+	usage := opts.GetCli().GetUsage()
+	if usage == "" {
+		usage = fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, workflow)
+	}
+
+	cmds.Comment(usage)
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
-		cmd.Id("Name").Op(":").Lit(cmdName)
-		cmd.Id("Usage").Op(":").Lit(desc)
+		cmd.Id("Name").Op(":").Lit(name)
+		cmd.Id("Usage").Op(":").Lit(usage)
+		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
+			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
+				for _, alias := range aliases {
+					g.Lit(alias)
+				}
+			})
+		}
 		if svc.cfg.CliCategories {
 			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
@@ -1212,7 +1339,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 				for _, field := range handler.Input.Fields {
 					var prefix string
 					if _, ok := fields[field.GoName]; ok {
-						prefix = fmt.Sprintf("%s-", strcase.ToKebab(handler.GoName))
+						prefix = fmt.Sprintf("%s-", svc.caser.ToKebab(handler.GoName))
 					}
 					svc.genCliFlagForField(flags, field, category, prefix)
 				}

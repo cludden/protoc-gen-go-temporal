@@ -37,6 +37,70 @@ service Example {
 
 ## Options
 
+### cli.aliases
+
+`[]string`
+
+Adds additional aliases to the CLI command.
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      cli: {aliases: ["uh"]}
+    };
+  }
+}
+```
+
+### cli.ignore
+
+`bool`
+
+Prevents the generation of CLI commands for the update.
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      cli: {ignore: true}
+    };
+  }
+}
+```
+
+### cli.name
+
+`string`
+
+Overrides the CLI command name.
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      cli: {name: "modify-hello"}
+    };
+  }
+}
+```
+
+### cli.usage
+
+`string`
+
+Specifies the CLI command usage.
+
+```protobuf
+service Example {
+  rpc UpdateHello(UpdateHelloInput) returns (UpdateHelloOutput) {
+    option (temporal.v1.update) = {
+      cli: {usage: "modify an existing greeting"}
+    };
+  }
+}
+```
+
 ### id
 
 `string`

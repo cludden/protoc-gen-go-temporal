@@ -218,39 +218,24 @@ protoc --go_temporal_opt=enable-xns=true
 
 ### ignore-acronyms
 
-`[]string`
+`string`
 
-Ignores CamelCase renaming of generated protobuf output for the given acronyms.
+Semicolon-delimited list of acronyms to ignore during CamelCase renaming.
 
 <Tabs>
-<TabItem value="ignore-acronyms-single" label="Buf">
+<TabItem value="ignore-acronyms-buf" label="Buf">
 ```yaml title="buf.gen.yaml"
 plugins:
   - plugin: go_temporal
     out: gen
-    opt: ignore-acronyms=AWS
+    opt: 
+      - ignore-acronyms=AWS;SQL
     strategy: all
 ```
 </TabItem>
-<TabItem value="ignore-acronyms-multiple" label="Buf">
-```yaml title="buf.gen.yaml"
-plugins:
-  - plugin: go_temporal
-    out: gen
-    opt:
-      - ignore-acronyms=AWS
-      - ignore-acronyms=SQL
-    strategy: all
-```
-</TabItem>
-<TabItem value="ignore-acronyms-single-protoc" label="Protoc">
+<TabItem value="ignore-acronyms-protoc" label="Protoc">
 ```sh
-protoc --go_temporal_opt=ignore-acronyms=AWS
-```
-</TabItem>
-<TabItem value="ignore-acronyms-single-protoc" label="Protoc">
-```sh
-protoc --go_temporal_opt=ignore-acronyms=AWS,ignore-acronyms=SQL
+protoc --go_temporal_opt=ignore-acronyms=AWS;SQL
 ```
 </TabItem>
 </Tabs>

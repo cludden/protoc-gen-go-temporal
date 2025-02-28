@@ -1,3 +1,4 @@
+disable-version-string: true
 issue-845-fix: true
 resolve-type-alias: false
 with-expecter: true

@@ -7,10 +7,10 @@ require (
 	github.com/alta/protopatch v0.5.3
 	github.com/cludden/benthos/v4 v4.24.0-no-otel.2
 	github.com/dave/jennifer v1.7.0
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.13.1
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
-	github.com/iancoleman/strcase v0.3.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/run v1.1.0
 	github.com/spf13/pflag v1.0.5
@@ -18,6 +18,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.2
 	go.temporal.io/api v1.34.0
 	go.temporal.io/sdk v1.27.0
+	golang.org/x/text v0.15.0
 	google.golang.org/protobuf v1.35.2
 )
 
@@ -75,7 +76,6 @@ require (
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240521202816-d264139d666e // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240521202816-d264139d666e // indirect

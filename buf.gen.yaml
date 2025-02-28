@@ -18,7 +18,7 @@ plugins:
       - enable-codec=true
       - enable-patch-support=true
       - enable-xns=true
-      - ignore-acronyms=AWS
+      - ignore-acronyms=AWS;URN
       - patches=64_ENABLED
       - paths=source_relative
       - workflow-update-enabled=true
