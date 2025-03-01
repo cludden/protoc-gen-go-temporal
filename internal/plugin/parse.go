@@ -178,7 +178,7 @@ func parse(p *Plugin) (*Manifest, error) {
 					patches = opts.GetPatches()
 				}
 
-				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Command).(*temporalv1.CommandOptions); ok && opts != nil {
+				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Command).(*temporalv1.CommandOptions); ok && opts != nil { //nolint
 					svc.commands[name] = opts
 				}
 

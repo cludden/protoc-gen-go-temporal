@@ -9,19 +9,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠ BREAKING CHANGES
 - The existing usage of the `iancoleman/strcase` third-party library has been
-  replaced with a first-party implementation with better support for ignoring
-  acronyms. This may lead to changes in generated cli command and flag names. To
-  compensate for any potential issues, the protobuf options for workflows,
-  queries, signals, updates, and message fields have been expanded to support
-  user-defined overrides.
+  replaced with a first-party implementation with better acronym handling. This 
+  may lead to changes in generated cli command and flag names. To compensate for
+  any potential issues, the protobuf options for workflows, queries, signals, 
+  updates, and message fields have been expanded to support user-defined 
+  overrides.
 
 ### Added
 - [#89](https://github.com/cludden/protoc-gen-go-temporal/pull/89) add option to ignore camel case renames for specific acronyms
 - [#94](https://github.com/cludden/protoc-gen-go-temporal/pull/94) improve acronym behavior, expand cli options
+- [#95](https://github.com/cludden/protoc-gen-go-temporal/pull/95) add support for opaque, hybrid apis
 
 ### Changed
 
 ### Fixed
+- [#95](https://github.com/cludden/protoc-gen-go-temporal/pull/95) fix unmarshal cli flag prefixing
 
 
 
