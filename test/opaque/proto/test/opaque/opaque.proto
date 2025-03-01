@@ -1,0 +1,85 @@
+edition = "2023";
+
+package test.opaque;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/go_features.proto";
+import "temporal/v1/temporal.proto";
+import "test/opaque/common.proto";
+
+option features.(pb.go).api_level = API_OPAQUE;
+option features.field_presence = EXPLICIT;
+
+service Opaque {
+  option (temporal.v1.service) = {task_queue: "opaque-opaque"};
+
+  rpc PutOpaqueExample(OpaqueExample) returns (OpaqueExample) {
+    option (temporal.v1.workflow) = {
+      signal: {
+        ref: "SignalOpaque"
+        start: true
+      }
+    };
+  }
+
+  rpc SignalOpaque(OpaqueExample) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+message OpaqueExample {
+  string name = 1;
+  double score = 2;
+  repeated double scores = 3;
+  float ratio = 4;
+  repeated float ratios = 5;
+  int32 age = 6;
+  repeated int32 ages = 7;
+  int64 id = 8;
+  repeated int64 ids = 9;
+  repeated string emails = 10;
+  map<string, string> extra = 11;
+  Status status = 12;
+  repeated Status statuses = 13;
+  uint32 size = 14;
+  repeated uint32 sizes = 15;
+  uint64 length = 16;
+  repeated uint64 lengths = 17;
+  sint32 connection_id = 18;
+  repeated sint32 connection_ids = 19;
+  sint64 session_id = 20;
+  repeated sint64 session_ids = 21;
+  fixed32 fixed_size = 22;
+  repeated fixed32 fixed_sizes = 23;
+  fixed64 fixed_length = 24;
+  repeated fixed64 fixed_lengths = 25;
+  sfixed32 sfixed_size = 26;
+  repeated sfixed32 sfixed_sizes = 27;
+  sfixed64 sfixed_length = 28;
+  repeated sfixed64 sfixed_lengths = 29;
+  bool is_active = 30;
+  repeated bool is_actives = 31;
+  bytes data = 32;
+  repeated bytes datas = 33;
+  Address address = 34;
+  repeated Address previous_addresses = 35;
+  oneof oneof_field {
+    string oneof_name = 36;
+    double oneof_score = 37;
+    float oneof_ratio = 38;
+    int32 oneof_age = 39;
+    int64 oneof_id = 40;
+    Status oneof_status = 41;
+    uint32 oneof_size = 42;
+    uint64 oneof_length = 43;
+    sint32 oneof_connection_id = 44;
+    sint64 oneof_session_id = 45;
+    fixed32 oneof_fixed_size = 46;
+    fixed64 oneof_fixed_length = 47;
+    sfixed32 oneof_sfixed_size = 48;
+    sfixed64 oneof_sfixed_length = 49;
+    bool oneof_is_active = 50;
+    bytes oneof_data = 51;
+    Address oneof_address = 52;
+  }
+}

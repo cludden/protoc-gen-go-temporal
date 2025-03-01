@@ -1,13 +1,12 @@
 package plugin
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	g "github.com/dave/jennifer/jen"
-	"google.golang.org/protobuf/compiler/protogen"
+	"go.temporal.io/sdk/workflow"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -126,99 +125,6 @@ func (svc *Manifest) renderCLI(f *g.File) {
 	}
 }
 
-// genCliFlagForField generates a cli flag for a message field
-func (svc *Manifest) genCliFlagForField(flags *g.Group, field *protogen.Field, category, prefix string) {
-	name := svc.getFieldName(field)
-	opts := proto.GetExtension(field.Desc.Options(), temporalv1.E_Field).(*temporalv1.FieldOptions)
-
-	flagName := opts.GetCli().GetName()
-	if flagName == "" {
-		flagName = prefix + svc.caser.ToKebab(name)
-	}
-
-	usage := opts.GetCli().GetUsage()
-	if usage == "" {
-		usage = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(field.Comments.Leading.String(), "//"), "\n//", ""))
-	}
-	if usage == "" {
-		usage = fmt.Sprintf("set the value of the operation's %q parameter", name)
-	}
-
-	// determine cli flag type
-	flagType := "String"
-	switch {
-	case field.Desc.IsMap():
-		field.Desc.MapKey()
-	default:
-		switch field.Desc.Kind() {
-		case protoreflect.BytesKind:
-			usage += " (base64-encoded)"
-		case protoreflect.BoolKind:
-			flagType = "Bool"
-		case protoreflect.DoubleKind, protoreflect.FloatKind:
-			flagType = "Float64"
-		case protoreflect.EnumKind:
-			var values []string
-			for _, v := range field.Enum.Values {
-				values = append(values, string(v.Desc.Name()))
-			}
-			usage += fmt.Sprintf(" (%s)", strings.Join(values, ", "))
-		case protoreflect.Fixed32Kind, protoreflect.Fixed64Kind, protoreflect.Uint32Kind, protoreflect.Uint64Kind:
-			flagType = "Uint64"
-		case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind:
-			flagType = "Int64"
-		case protoreflect.MessageKind:
-			additionalUsage := &bytes.Buffer{}
-			fmt.Fprint(additionalUsage, usage)
-			switch field.Message.Desc.FullName() {
-			case "google.protobuf.Timestamp":
-				fmt.Fprint(additionalUsage, " (e.g. \"2017-01-15T01:30:15.01Z\")")
-			case "google.protobuf.Duration":
-				fmt.Fprint(additionalUsage, " (e.g. \"3.000000001s\")")
-			default:
-				fmt.Fprint(additionalUsage, " (json-encoded: {")
-				var fieldDocs []string
-				for _, f := range field.Message.Fields {
-					kind := f.Desc.Kind().String()
-					if f.Message != nil {
-						kind = string(f.Message.Desc.FullName())
-					} else if f.Enum != nil {
-						kind = string(f.Enum.Desc.FullName())
-					}
-					fieldDocs = append(fieldDocs, fmt.Sprintf("%s: <%s>", f.Desc.JSONName(), kind))
-				}
-				fmt.Fprint(additionalUsage, strings.Join(fieldDocs, ", "))
-				fmt.Fprint(additionalUsage, "})")
-			}
-			usage = additionalUsage.String()
-		case protoreflect.StringKind:
-		default:
-			svc.Plugin.Error(fmt.Errorf("unable to generate cli flag for field with type %q", field.Desc.Kind().String()))
-			return
-		}
-	}
-	if field.Desc.IsList() {
-		flagType += "Slice"
-	}
-	flagType += "Flag"
-
-	// generate flag
-	flags.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(flag *g.Group) {
-		flag.Id("Name").Op(":").Lit(flagName)
-		flag.Id("Usage").Op(":").Lit(strings.TrimSpace(usage))
-		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
-			flag.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *g.Group) {
-				for _, alias := range aliases {
-					g.Lit(alias)
-				}
-			})
-		}
-		if svc.cfg.CliCategories && category != "" {
-			flag.Id("Category").Op(":").Lit(category)
-		}
-	})
-}
-
 // genCliNew generates a New<Service>Cli constructor function
 func (svc *Manifest) genCliNew(f *g.File) {
 	functionName := svc.toCamel("New%sCli", svc.Service.GoName)
@@ -242,6 +148,7 @@ func (svc *Manifest) genCliNew(f *g.File) {
 				g.Op("&").Qual(cliPkg, "App").CustomFunc(multiLineValues, func(fields *g.Group) {
 					fields.Id("Name").Op(":").Lit(svc.caser.ToKebab(svc.Service.GoName))
 					fields.Id("Commands").Op(":").Id("commands")
+					fields.Id("DisableSliceFlagSeparator").Op(":").True()
 				}),
 				g.Nil(),
 			),
@@ -871,220 +778,6 @@ func (svc *Manifest) genCliUpdateCommand(f *g.Group, update protoreflect.FullNam
 	})
 }
 
-// genCliUnmarshalMessage generates an UnmarshalCliFlagsTo<Message> function
-func (svc *Manifest) genCliUnmarshalMessage(f *g.File, msg *protogen.Message) {
-	name := svc.getMessageName(msg)
-	fnName := fmt.Sprintf("UnmarshalCliFlagsTo%s", svc.toCamel("%s", name))
-	f.Commentf("%s unmarshals a %s from command line flags", fnName, name)
-	f.Func().Id(fnName).
-		Params(g.Id("cmd").Op("*").Qual(cliPkg, "Context")).
-		Params(
-			g.Op("*").Qual(string(msg.GoIdent.GoImportPath), name),
-			g.Error(),
-		).
-		BlockFunc(func(fn *g.Group) {
-			fn.Var().Id("result").Qual(string(msg.GoIdent.GoImportPath), name)
-			fn.Var().Id("hasValues").Bool()
-			fn.If(g.Id("cmd").Dot("IsSet").Call(g.Lit("input-file"))).Block(
-				g.List(g.Id("inputFile"), g.Err()).Op(":=").Qual(homedirPkg, "Expand").Call(g.Id("cmd").Dot("String").Call(g.Lit("input-file"))),
-				g.If(g.Err().Op("!=").Nil()).Block(
-					g.Id("inputFile").Op("=").Id("cmd").Dot("String").Call(g.Lit("input-file")),
-				),
-				g.List(g.Id("b"), g.Err()).Op(":=").Qual("os", "ReadFile").Call(g.Id("inputFile")),
-				g.If(g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error reading input-file: %w"), g.Err())),
-				),
-				g.If(
-					g.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(g.Id("b"), g.Op("&").Id("result")),
-					g.Err().Op("!=").Nil(),
-				).Block(
-					g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error parsing input-file json: %w"), g.Err())),
-				),
-				g.Id("hasValues").Op("=").True(),
-			)
-
-			for _, field := range msg.Fields {
-				goName := svc.getFieldName(field)
-				flag := svc.caser.ToKebab(goName)
-
-				fn.If(g.Id("cmd").Dot("IsSet").Call(g.Lit(flag))).BlockFunc(func(b *g.Group) {
-					// indicate presence of value
-					b.Id("hasValues").Op("=").True()
-
-					oneof := field.Oneof
-
-					switch {
-					case field.Desc.IsList() && field.Desc.Kind() != protoreflect.StringKind:
-						fallthrough
-					case field.Desc.IsMap():
-						b.Var().Id("tmp").Qual(string(msg.GoIdent.GoImportPath), name)
-						b.If(
-							g.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(
-								g.Index().Byte().Call(g.Qual("fmt", "Sprintf").Call(g.Lit(fmt.Sprintf(`{"%s":%%s}`, field.Desc.JSONName())), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
-								g.Op("&").Id("tmp"),
-							),
-							g.Err().Op("!=").Nil(),
-						).Block(
-							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarshalling %q map flag: %%w", flag)), g.Err())),
-						)
-						b.Id("result").Dot(goName).Op("=").Id("tmp").Dot(goName)
-						return
-					}
-
-					switch field.Desc.Kind() {
-					case protoreflect.BoolKind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Bool").Call(g.Lit(flag)))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Bool").Call(g.Lit(flag))
-					case protoreflect.BytesKind:
-						b.List(g.Id("v"), g.Err()).Op(":=").Qual(base64Pkg, "StdEncoding").Dot("DecodeString").Call(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
-						b.If(g.Err().Op("!=").Nil()).Block(
-							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error base64-decoding %q flag: %%w", flag)), g.Err())),
-						)
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("v"))
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Id("v")
-					case protoreflect.DoubleKind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Float64").Call(g.Lit(flag)))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Float64").Call(g.Lit(flag))
-					case protoreflect.EnumKind:
-						b.List(g.Id("v"), g.Id("ok")).Op(":=").Qual(string(field.Enum.GoIdent.GoImportPath), fmt.Sprintf("%s_value", field.Enum.GoIdent.GoName)).Index(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
-						b.If(g.Op("!").Id("ok")).Block(
-							g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("unsupported enum value for %q flag: %%q", flag)), g.Id("cmd").Dot("String").Call(g.Lit(flag)))),
-						)
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Qual(string(field.Enum.GoIdent.GoImportPath), field.Enum.GoIdent.GoName).Call(g.Id("v")))
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Qual(string(field.Enum.GoIdent.GoImportPath), field.Enum.GoIdent.GoName).Call(g.Id("v"))
-					case protoreflect.Fixed32Kind, protoreflect.Uint32Kind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag))))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Uint32().Call(g.Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
-					case protoreflect.Fixed64Kind, protoreflect.Uint64Kind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Uint64").Call(g.Lit(flag)))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Id("cmd").Dot("Uint64").Call(g.Lit(flag))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Uint64").Call(g.Lit(flag))
-					case protoreflect.FloatKind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag))))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag)))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Float32().Call(g.Id("cmd").Dot("Float64").Call(g.Lit(flag)))
-					case protoreflect.Int32Kind, protoreflect.Sfixed32Kind, protoreflect.Sint32Kind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag))))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag)))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Int32().Call(g.Id("cmd").Dot("Int64").Call(g.Lit(flag)))
-					case protoreflect.Int64Kind, protoreflect.Sfixed64Kind, protoreflect.Sint64Kind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("Int64").Call(g.Lit(flag)))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Id("cmd").Dot("Int64").Call(g.Lit(flag))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("Int64").Call(g.Lit(flag))
-					case protoreflect.GroupKind:
-					case protoreflect.MessageKind:
-						var val *g.Statement
-						switch field.Message.Desc.FullName() {
-						case "google.protobuf.Empty":
-							return
-						case "google.protobuf.Duration":
-							val = g.Qual(durationpbPkg, "New").Call(g.Id("v"))
-							b.List(g.Id("v"), g.Err()).Op(":=").Qual("time", "ParseDuration").Call(g.Id("cmd").Dot("String").Call(g.Lit(flag)))
-							b.If(g.Err().Op("!=").Nil()).Block(
-								g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarshalling %q duration flag: %%w", flag)), g.Err())),
-							)
-						case "google.protobuf.Timestamp":
-							val = g.Qual(timestamppbPkg, "New").Call(g.Id("v"))
-							b.List(g.Id("v"), g.Err()).Op(":=").Qual("time", "Parse").Call(g.Qual("time", "RFC3339Nano"), g.Id("cmd").Dot("String").Call(g.Lit(flag)))
-							b.If(g.Err().Op("!=").Nil()).Block(
-								g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarshalling %q timestamp flag: %%w", flag)), g.Err())),
-							)
-						default:
-							val = g.Op("&").Id("v")
-							b.Var().Id("v").Qual(string(field.Message.GoIdent.GoImportPath), field.Message.GoIdent.GoName)
-							b.If(g.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(g.Index().Byte().Call(g.Id("cmd").Dot("String").Call(g.Lit(flag))), g.Op("&").Id("v")), g.Err().Op("!=").Nil()).Block(
-								g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit(fmt.Sprintf("error unmarshalling %q flag: %%w", flag)), g.Err())),
-							)
-						}
-
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Add(val))
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Add(val)
-					case protoreflect.StringKind:
-						if isGenuineOneOf(field) {
-							b.Id("result").Dot(oneof.GoName).Op("=").Op("&").Qual(string(field.GoIdent.GoImportPath), field.GoIdent.GoName).Values(g.Id(goName).Op(":").Id("cmd").Dot("String").Call(g.Lit(flag)))
-							return
-						}
-						if field.Desc.IsList() {
-							b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("StringSlice").Call(g.Lit(flag))
-							return
-						}
-						if field.Desc.HasOptionalKeyword() || field.Desc.HasPresence() {
-							b.Id("v").Op(":=").Id("cmd").Dot("String").Call(g.Lit(flag))
-							b.Id("result").Dot(goName).Op("=").Op("&").Id("v")
-							return
-						}
-						b.Id("result").Dot(goName).Op("=").Id("cmd").Dot("String").Call(g.Lit(flag))
-					}
-				})
-			}
-			fn.If(g.Op("!").Id("hasValues")).Block(
-				g.Return(g.Nil(), g.Nil()),
-			)
-			fn.Return(g.Op("&").Id("result"), g.Nil())
-		})
-}
-
 // genCliWorkerCommand generates a <Workflow> command
 func (svc *Manifest) genCliWorkerCommand(f *g.Group) {
 	f.CustomFunc(multiLineValues, func(cmd *g.Group) {
@@ -1264,8 +957,8 @@ func (svc *Manifest) genCliWorkflowCommand(f *g.Group, workflow protoreflect.Ful
 }
 
 // genCliWorkflowWithSignalCommand generates a <Workflow>-with-<Signal> command
-func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, signal protoreflect.FullName, opts *temporalv1.WorkflowOptions_Signal) {
-	method := svc.methods[workflow]
+func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, w, signal protoreflect.FullName, opts *temporalv1.WorkflowOptions_Signal) {
+	method := svc.methods[w]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 	handler := svc.methods[signal]
@@ -1273,9 +966,9 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 
 	name := opts.GetCli().GetName()
 	if name == "" {
-		workflowName := svc.workflows[workflow].GetCli().GetName()
+		workflowName := svc.workflows[w].GetCli().GetName()
 		if workflowName == "" {
-			workflowName = svc.methods[workflow].GoName
+			workflowName = svc.methods[w].GoName
 		}
 		signalName := svc.signals[signal].GetCli().GetName()
 		if signalName == "" {
@@ -1286,11 +979,14 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 
 	usage := opts.GetCli().GetUsage()
 	if usage == "" {
-		usage = fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, workflow)
+		usage = fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, w)
 	}
 
 	cmds.Comment(usage)
 	cmds.CustomFunc(multiLineValues, func(cmd *g.Group) {
+		fields := map[string]struct{}{}
+		collisions := map[string]struct{}{}
+
 		cmd.Id("Name").Op(":").Lit(name)
 		cmd.Id("Usage").Op(":").Lit(usage)
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
@@ -1312,7 +1008,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
 				fields.Id("Aliases").Op(":").Index().String().Values(g.Lit("d"))
 			})
-			fields := map[string]struct{}{}
+
 			if hasInput {
 				// add -f flag to read input from json file
 				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *g.Group) {
@@ -1339,7 +1035,8 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 				for _, field := range handler.Input.Fields {
 					var prefix string
 					if _, ok := fields[field.GoName]; ok {
-						prefix = fmt.Sprintf("%s-", svc.caser.ToKebab(handler.GoName))
+						prefix = handler.GoName
+						collisions[svc.flagName(field, "")] = struct{}{}
 					}
 					svc.genCliFlagForField(flags, field, category, prefix)
 				}
@@ -1358,7 +1055,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 			if hasInput {
 				inputName := svc.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", svc.toCamel("%s", inputName))
-				fn.List(g.Id("req"), g.Err()).Op(":=").Qual(svc.goImportPathForMethod(workflow), unmarshaller).Call(g.Id("cmd"))
+				fn.List(g.Id("req"), g.Err()).Op(":=").Qual(svc.goImportPathForMethod(w), unmarshaller).Call(g.Id("cmd"))
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling request: %w"), g.Err())),
 				)
@@ -1368,14 +1065,26 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 			if hasSignalInput {
 				inputName := svc.getMessageName(handler.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", svc.toCamel("%s", inputName))
-				fn.List(g.Id("signal"), g.Err()).Op(":=").Qual(svc.goImportPathForMethod(signal), unmarshaller).Call(g.Id("cmd"))
+				fn.List(g.Id("signal"), g.Err()).Op(":=").Qual(svc.goImportPathForMethod(signal), unmarshaller).CallFunc(func(b *g.Group) {
+					b.Id("cmd")
+					if len(collisions) > 0 {
+						b.Qual(helpersPkg, "UnmarshalCliFlagsOptions").CustomFunc(multiLineValues, func(b *g.Group) {
+							b.Id("Prefix").Op(":").Lit(svc.caser.ToKebab(handler.GoName))
+							b.Id("PrefixFlags").Op(":").Map(g.String()).Struct().CustomFunc(multiLineValues, func(b *g.Group) {
+								for _, field := range workflow.DeterministicKeys(collisions) {
+									b.Lit(field).Op(":").Values()
+								}
+							})
+						})
+					}
+				})
 				fn.If(g.Err().Op("!=").Nil()).Block(
 					g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error unmarshalling signal: %w"), g.Err())),
 				)
 			}
 
 			// execute operation
-			fn.List(g.Id("run"), g.Err()).Op(":=").Id("client").Dot(svc.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *g.Group) {
+			fn.List(g.Id("run"), g.Err()).Op(":=").Id("client").Dot(svc.toCamel("%sWith%sAsync", w, signal)).CallFunc(func(args *g.Group) {
 				args.Id("cmd").Dot("Context")
 				if hasInput {
 					args.Id("req")
@@ -1385,7 +1094,7 @@ func (svc *Manifest) genCliWorkflowWithSignalCommand(cmds *g.Group, workflow, si
 				}
 			})
 			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow with %s signal: %w"), g.Id(svc.toCamel("%sWorkflowName", workflow)), g.Qual(svc.goImportPathForMethod(signal), svc.toCamel("%sSignalName", signal)), g.Err())),
+				g.Return(g.Qual("fmt", "Errorf").Call(g.Lit("error starting %s workflow with %s signal: %w"), g.Id(svc.toCamel("%sWorkflowName", w)), g.Qual(svc.goImportPathForMethod(signal), svc.toCamel("%sSignalName", signal)), g.Err())),
 			)
 
 			// handle async invocation
