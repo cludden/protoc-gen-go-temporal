@@ -165,10 +165,6 @@ func isEmpty(m *protogen.Message) bool {
 	return m.Desc.FullName() == "google.protobuf.Empty"
 }
 
-func isGenuineOneOf(field *protogen.Field) bool {
-	return field.Oneof != nil && !field.Desc.HasOptionalKeyword()
-}
-
 func methodSet(methods ...*protogen.Method) []*protogen.Method {
 	return methods
 }
