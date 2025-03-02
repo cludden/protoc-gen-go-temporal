@@ -89,7 +89,7 @@ func TestUpdateIntegration(t *testing.T) {
 	require, ctx := require.New(t), context.Background()
 
 	srv, err := testsuite.StartDevServer(ctx, testsuite.DevServerOptions{
-		LogLevel: "fatal",
+		LogLevel: "error",
 		ExtraArgs: []string{
 			"--dynamic-config-value", "frontend.enableUpdateWorkflowExecution=true",
 			"--dynamic-config-value", "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true",

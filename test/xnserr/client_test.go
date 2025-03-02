@@ -67,7 +67,7 @@ func registerNamespaceIfNotExists(ctx context.Context, t *testing.T, c client.Cl
 	}
 
 	// check if we already have xnserr-server and if so return
-	for _, n := range res.Namespaces {
+	for _, n := range namespaces {
 		if n.NamespaceInfo.Name == "xnserr-server" {
 			return
 		}
