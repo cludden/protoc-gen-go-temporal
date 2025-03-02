@@ -20,17 +20,16 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
 - [protoc-gen-go-temporal](#protoc-gen-go-temporal)
   - [How it works](#how-it-works)
   - [Features](#features)
-  - [Examples](#examples)
-  - [Getting Started](#getting-started)
-  - [Options](#options)
     - [Bloblang Expressions](#bloblang-expressions)
-  - [Workflow Update](#workflow-update)
-  - [CLI](#cli)
-  - [Test Client](#test-client)
-  - [Cross-Namespace (XNS)](#cross-namespace-xns)
-  - [Codec](#codec)
-  - [Documentation](#documentation)
-  - [Reference](#reference)
+    - [CLI](#cli)
+    - [Test Client](#test-client)
+    - [Cross-Namespace (XNS)](#cross-namespace-xns)
+    - [Codec](#codec)
+    - [Documentation](#documentation)
+  - [Getting Started](#getting-started)
+  - [Examples](#examples)
+  - [Options](#options)
+  - [Development](#development)
   - [License](#license)
 
 ## How it works
@@ -72,16 +71,127 @@ Generated [Remote Codec Server](#codec) helpers
 
 Generated [Markdown Documentation](#documentation)
 
-## Examples
+### Bloblang Expressions
 
-See examples for more usage:
-- [codecserver](./examples/codecserver/)
-- [example](./examples/example/)
-- [helloworld](./examples/helloworld/)
-- [mutex](./examples/mutex/)
-- [searchattributes](./examples/searchattributes/)
-- [updatabletimer](./examples/updatabletimer/)
-- [xns](./examples/xns/)
+Default workflow IDs, update IDs, and search attributes can be defined using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
+
+**Example**
+
+The following schema definition:
+```protobuf
+syntax="proto3"
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc SayGreeting(SayGreetingRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id: 'say-greeting/${! greeting.or("hello").capitalize() }/${! subject.or("world").capitalize() }/${! uuid_v4() }'
+    };
+  }
+}
+
+message SayGreetingRequest {
+  string greeting = 1;
+  string subject = 2;
+}
+```
+
+Can be used like so:
+```go
+c, _ := client.Dial(client.Options{})
+example := examplev1.NewClient(c)
+
+run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{})
+require.Regexp(`^say-greeting/Hello/World/[a-f0-9-]{32}$`, run.ID())
+
+run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{
+  Greeting: "howdy",
+  Subject: "stranger",
+})
+require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
+```
+
+
+  
+### CLI
+
+This plugin can optionally generate a configurable CLI using [github.com/urfave/cli/v2](https://github.com/urfave/cli/v2). To enable this functionality, use the corresponding [plugin option](#plugin-options). When enabled, this plugin will generate a CLI command for each workflow, start-workflow-with-signal, query, and signal. Each command provides typed flags for configuring the corresponding inputs and options.
+
+```go
+package main
+
+import (
+    "log"
+    "os"
+
+    example "github.com/cludden/protoc-gen-go-temporal/example"
+    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
+    "github.com/urfave/cli/v2"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+)
+
+func main() {
+    app, err := examplev1.NewExampleCli(
+        examplev1.NewExampleCliOptions().
+            WithClient(func(cmd *cli.Context) (client.Client, error) {
+                return client.Dial(client.Options{})
+            }).
+            WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+                w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+                examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
+                examplev1.RegisterExampleActivities(w, &example.Activities{})
+                return w, nil
+            }),
+    )
+    if err != nil {
+        log.Fatalf("error initializing cli: %v", err)
+    }
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+### Test Client
+
+The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [examples](./examples/) for example usage.
+
+**_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
+
+**Example:** 
+
+See the [example_test.go](./examples/example/example_test.go) example for more details.
+
+### Cross-Namespace (XNS)
+
+*__Experimental__*
+
+This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. 
+
+**Example:** 
+
+See the [xns](./examples/xns/) example for more details.
+
+### Codec
+
+Temporal's [default data converter](https://pkg.go.dev/go.temporal.io/sdk/converter#GetDefaultDataConverter) will serialize protobuf types using the `json/protobuf` encoding provided by the [ProtoJSONPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoJSONPayloadConverter), which allows the Temporal UI to automatically decode the underlying payload and render it as JSON. If you'd prefer to take advantage of protobuf's binary format for smaller payloads, you can provide an alternative data converter to the Temporal client at initialization that prioritizes the [ProtoPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoPayloadConverter) ahead of the `ProtoJSONPayloadConverter`. See below for an example.
+
+If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. This plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
+
+**Example:** 
+
+See the [codecserver](./examples/codecserver/) example for more details.
+
+### Documentation
+
+This plugin has experimental support for generating documentation via Go templates. You can enable it by setting the [docs-out](#plugin-options) plugin option. By default, it uses the embedded `basic` template (see [example](./docs/basic.md)). A custom template can be specified using the [docs-template](#plugin-options) plugin option. Templates receive a [Data](./internal/plugin/docs/docs.go) struct value as input, and have access to various Template functions, including the functions included via [text/template](https://pkg.go.dev/text/template#hdr-Functions), as well as the third-party [sprig](https://masterminds.github.io/sprig/) template functions.
+
+
 
 ## Getting Started
 
@@ -487,140 +597,39 @@ See examples for more usage:
   }
   ```
 
+
+
+## Examples
+
+See examples for more usage:
+- [codecserver](./examples/codecserver/)
+- [example](./examples/example/)
+- [helloworld](./examples/helloworld/)
+- [mutex](./examples/mutex/)
+- [searchattributes](./examples/searchattributes/)
+- [updatabletimer](./examples/updatabletimer/)
+- [xns](./examples/xns/)
+
+
+
 ## Options
 
 See [docs](https://cludden.github.io/protoc-gen-go-temporal/docs/configuration/plugin) for all Service and Method options supported by this plugin.
 
-### Bloblang Expressions
 
-Default workflow IDs, update IDs, and search attributes can be defined using [Bloblang](https://www.benthos.dev/docs/guides/bloblang/about) expressions via the `${!<expression>}` interpolation syntax. The expression is evaluated against the protojson serialized input, allowing it to leverage fields from the input parameter, as well as Bloblang's native [functions](https://www.benthos.dev/docs/guides/bloblang/functions) and [methods](https://www.benthos.dev/docs/guides/bloblang/methods). 
 
-**Example**
+## Development
 
-The following schema definition:
-```protobuf
-syntax="proto3"
+1. Install [omni](https://omnicli.dev/)
+2. Install development dependencies
+  ```shell
+  omni up
+  ```
+3. Update generated code
+  ```shell
+  omni gen
+  ```
 
-package example.v1;
-
-import "google/protobuf/empty.proto";
-import "temporal/v1/temporal.proto";
-
-service Example {
-  rpc SayGreeting(SayGreetingRequest) returns (google.protobuf.Empty) {
-    option (temporal.v1.workflow) = {
-      id: 'say-greeting/${! greeting.or("hello").capitalize() }/${! subject.or("world").capitalize() }/${! uuid_v4() }'
-    };
-  }
-}
-
-message SayGreetingRequest {
-  string greeting = 1;
-  string subject = 2;
-}
-```
-
-Can be used like so:
-```go
-c, _ := client.Dial(client.Options{})
-example := examplev1.NewClient(c)
-
-run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{})
-require.Regexp(`^say-greeting/Hello/World/[a-f0-9-]{32}$`, run.ID())
-
-run, _ := example.ExecuteSayGreeting(context.Background(), &examplev1.SayGreetingRequest{
-  Greeting: "howdy",
-  Subject: "stranger",
-})
-require.Regexp(`^say-greeting/Howdy/Stranger/[a-f0-9-]{32}$`, run.ID())
-```
-
-## Workflow Update
-
-*__Experimental__*
-
-This plugin has experimental support for Temporal's experimental [Workflow Update](https://docs.temporal.io/workflows#update) capability. Note that this requires the `workflow-update-enabled` plugin option to be set to `true` and cluster support enabled with both of the following dynamic config values set to `true`
-
-- `frontend.enableUpdateWorkflowExecution`
-- `frontend.enableUpdateWorkflowExecutionAsyncAccepted`
-  
-## CLI
-
-This plugin can optionally generate a configurable CLI using [github.com/urfave/cli/v2](https://github.com/urfave/cli/v2). To enable this functionality, use the corresponding [plugin option](#plugin-options). When enabled, this plugin will generate a CLI command for each workflow, start-workflow-with-signal, query, and signal. Each command provides typed flags for configuring the corresponding inputs and options.
-
-```go
-package main
-
-import (
-    "log"
-    "os"
-
-    example "github.com/cludden/protoc-gen-go-temporal/example"
-    examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-    "github.com/urfave/cli/v2"
-    "go.temporal.io/sdk/client"
-    "go.temporal.io/sdk/worker"
-)
-
-func main() {
-    app, err := examplev1.NewExampleCli(
-        examplev1.NewExampleCliOptions().
-            WithClient(func(cmd *cli.Context) (client.Client, error) {
-                return client.Dial(client.Options{})
-            }).
-            WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-                w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-                examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
-                examplev1.RegisterExampleActivities(w, &example.Activities{})
-                return w, nil
-            }),
-    )
-    if err != nil {
-        log.Fatalf("error initializing cli: %v", err)
-    }
-    if err := app.Run(os.Args); err != nil {
-        log.Fatal(err)
-    }
-}
-```
-
-## Test Client
-
-The generated code includes resources that are compatible with the Temporal Go SDK's [testsuite](https://pkg.go.dev/go.temporal.io/sdk@v1.23.1/testsuite) module. See [examples](./examples/) for example usage.
-
-**_Note:_** that all queries, signals, and udpates must be called via the test environment's `RegisterDelayedCallback` method prior to invoking the test client's synchronous `<Workflow>` method or an asynchronous workflow run's `Get` method.
-
-**Example:** 
-
-See the [example_test.go](./examples/example/example_test.go) example for more details.
-
-## Cross-Namespace (XNS)
-
-*__Experimental__*
-
-This plugin provides experimental support for cross-namespace and/or cross-cluster integration by enabling the `enable-xns` plugin option. When enabled, the plugin will generate an additional `path/to/generated/code/<package>xns` go package containing types, methods, and helpers for calling workflows, queries, signals, and updates from other Temporal workflows via activities. The activities use [heartbeating](https://docs.temporal.io/activities#activity-heartbeat) to maintain liveness for long-running workflows or updates, and their associated timeouts can be configured using the generated options helpers. 
-
-**Example:** 
-
-See the [xns](./examples/xns/) example for more details.
-
-## Codec
-
-Temporal's [default data converter](https://pkg.go.dev/go.temporal.io/sdk/converter#GetDefaultDataConverter) will serialize protobuf types using the `json/protobuf` encoding provided by the [ProtoJSONPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoJSONPayloadConverter), which allows the Temporal UI to automatically decode the underlying payload and render it as JSON. If you'd prefer to take advantage of protobuf's binary format for smaller payloads, you can provide an alternative data converter to the Temporal client at initialization that prioritizes the [ProtoPayloadConverter](https://pkg.go.dev/go.temporal.io/sdk/converter#ProtoPayloadConverter) ahead of the `ProtoJSONPayloadConverter`. See below for an example.
-
-If you choose to use `binary/protobuf` encoding, you'll lose the ability to view decoded payloads in the Temporal UI unless you configure the [Remote Codec Server](https://docs.temporal.io/dataconversion#codec-server) integration. This plugin can generate helpers that simplify the process of implementing a remote codec server for use with the Temporal UI to support conversion between `binary/protobuf` and `json/protobuf` or `json/plain` payload encodings. See below for a simple example. For a more advanced example that supports different codecs per namespace, cors, and authentication, see the [codec-server](https://github.com/temporalio/samples-go/blob/main/codec-server/codec-server/main.go) go sample.
-
-**Example:** 
-
-See the [codecserver](./examples/codecserver/) example for more details.
-
-## Documentation
-
-This plugin has experimental support for generating documentation via Go templates. You can enable it by setting the [docs-out](#plugin-options) plugin option. By default, it uses the embedded `basic` template (see [example](./docs/basic.md)). A custom template can be specified using the [docs-template](#plugin-options) plugin option. Templates receive a [Data](./internal/plugin/docs/docs.go) struct value as input, and have access to various Template functions, including the functions included via [text/template](https://pkg.go.dev/text/template#hdr-Functions), as well as the third-party [sprig](https://masterminds.github.io/sprig/) template functions.
-
-## Reference
-
-- [Generated code reference](./docs/generated.md)
 
 ## License
 Licensed under the [MIT License](LICENSE.md)  

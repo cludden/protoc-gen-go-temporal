@@ -1,0 +1,30 @@
+up:
+  - go: 1.23.6
+  - github-release:
+      bufbuild/buf: 1.50.0
+      golangci/golangci-lint: 1.63.4
+      protocolbuffers/protobuf-go: 1.36.4
+      temporalio/cli: 1.2.0
+      vektra/mockery: 2.52.4
+  - protoc: 29.3
+  - custom:
+      name: protoc-gen-go_temporal
+      meet: |
+        mkdir -p ./.omni/bin
+        go build -o ./.omni/bin/protoc-gen-go_temporal ./cmd/protoc-gen-go_temporal
+
+path:
+  prepend:
+    - .omni/bin
+
+commands:
+  gen:
+    desc: Generate code
+    run: |
+      rm -rf ./gen/**
+      buf dep update
+      buf format -w
+      buf lint
+      buf generate
+      mockery --quiet
+      go mod tidy
