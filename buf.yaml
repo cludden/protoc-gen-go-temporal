@@ -10,6 +10,7 @@ modules:
   - path: proto
     name: buf.build/cludden/protoc-gen-go-temporal
   - path: test/acronym/proto
+  - path: test/activity/proto
   - path: test/editions/proto
   - path: test/expression/proto
   - path: test/opaque/proto

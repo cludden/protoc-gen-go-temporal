@@ -6,6 +6,8 @@ up:
       protocolbuffers/protobuf-go: 1.36.4
       temporalio/cli: 1.2.0
       vektra/mockery: 2.52.4
+  - go-install:
+      - github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.3
   - protoc: 29.3
   - custom:
       name: protoc-gen-go_temporal
@@ -26,5 +28,5 @@ commands:
       buf format -w
       buf lint
       buf generate
-      mockery --quiet
+      mockery --log-level=error
       go mod tidy
