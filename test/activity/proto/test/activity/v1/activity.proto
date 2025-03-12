@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package test.activity.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {task_queue: "example-v1"};
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 10}
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 10}
+    };
+  }
+
+  rpc Baz(google.protobuf.Empty) returns (BazOutput) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 10}
+    };
+  }
+
+  rpc Qux(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 10}
+    };
+  }
+}
+
+message FooInput {
+  string input = 1;
+}
+
+message FooOutput {
+  string output = 1;
+}
+
+message BarInput {
+  string input = 1;
+}
+
+message BazOutput {
+  string output = 1;
+}

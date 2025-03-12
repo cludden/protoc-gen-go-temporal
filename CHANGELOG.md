@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#95](https://github.com/cludden/protoc-gen-go-temporal/pull/95) add support for opaque, hybrid apis
 
 ### Changed
+- [#97](https://github.com/cludden/protoc-gen-go-temporal/pull/97) prevent unnecessary code generation for activity only services
 
 ### Fixed
 - [#95](https://github.com/cludden/protoc-gen-go-temporal/pull/95) fix unmarshal cli flag prefixing

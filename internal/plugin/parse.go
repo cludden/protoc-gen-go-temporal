@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -69,6 +70,7 @@ type Manifest struct {
 	queriesOrdered    []protoreflect.FullName
 	queries           map[protoreflect.FullName]*temporalv1.QueryOptions
 	serviceFiles      map[protoreflect.FullName]*protogen.File
+	serviceDetails    map[protoreflect.FullName]renderServiceDetails
 	serviceOptions    map[protoreflect.FullName]*temporalv1.ServiceOptions
 	signalsOrdered    []protoreflect.FullName
 	signals           map[protoreflect.FullName]*temporalv1.SignalOptions
@@ -89,6 +91,7 @@ func parse(p *Plugin) (*Manifest, error) {
 		patches:        make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
 		patchesByRef:   make(map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
 		queries:        make(map[protoreflect.FullName]*temporalv1.QueryOptions),
+		serviceDetails: make(map[protoreflect.FullName]renderServiceDetails),
 		serviceFiles:   make(map[protoreflect.FullName]*protogen.File),
 		serviceOptions: make(map[protoreflect.FullName]*temporalv1.ServiceOptions),
 		signals:        make(map[protoreflect.FullName]*temporalv1.SignalOptions),
@@ -119,6 +122,7 @@ func parse(p *Plugin) (*Manifest, error) {
 		}
 
 		for _, service := range file.Services {
+			details := renderServiceDetails{}
 			svc.serviceFiles[service.Desc.FullName()] = file
 			if opts, ok := proto.GetExtension(service.Desc.Options(), temporalv1.E_Service).(*temporalv1.ServiceOptions); ok && opts != nil {
 				svc.opts = opts
@@ -144,6 +148,7 @@ func parse(p *Plugin) (*Manifest, error) {
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Workflow).(*temporalv1.WorkflowOptions); ok && opts != nil {
 					svc.workflows[name] = opts
 					svc.workflowsOrdered = append(svc.workflowsOrdered, name)
+					details.workflows = append(details.workflows, name)
 					mode |= modeWorkflow
 					patches = opts.GetPatches()
 				}
@@ -151,12 +156,14 @@ func parse(p *Plugin) (*Manifest, error) {
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Activity).(*temporalv1.ActivityOptions); ok && opts != nil {
 					svc.activities[name] = opts
 					svc.activitiesOrdered = append(svc.activitiesOrdered, name)
+					details.activities = append(details.activities, name)
 					mode |= modeActivity
 				}
 
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Query).(*temporalv1.QueryOptions); ok && opts != nil {
 					svc.queries[name] = opts
 					svc.queriesOrdered = append(svc.queriesOrdered, name)
+					details.queries = append(details.queries, name)
 					mode |= modeQuery
 					patches = opts.GetPatches()
 				}
@@ -164,6 +171,7 @@ func parse(p *Plugin) (*Manifest, error) {
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Signal).(*temporalv1.SignalOptions); ok && opts != nil {
 					svc.signals[name] = opts
 					svc.signalsOrdered = append(svc.signalsOrdered, name)
+					details.signals = append(details.signals, name)
 					mode |= modeSignal
 					patches = opts.GetPatches()
 				}
@@ -174,6 +182,7 @@ func parse(p *Plugin) (*Manifest, error) {
 					}
 					svc.updates[name] = opts
 					svc.updatesOrdered = append(svc.updatesOrdered, name)
+					details.updates = append(details.updates, name)
 					mode |= modeUpdate
 					patches = opts.GetPatches()
 				}
@@ -203,6 +212,22 @@ func parse(p *Plugin) (*Manifest, error) {
 					svc.patchesByRef[method.Desc.FullName()] = patchIndex
 				}
 			}
+			slices.SortFunc(details.workflows, func(a, b protoreflect.FullName) int {
+				return strings.Compare(string(a), string(b))
+			})
+			slices.SortFunc(details.activities, func(a, b protoreflect.FullName) int {
+				return strings.Compare(string(a), string(b))
+			})
+			slices.SortFunc(details.queries, func(a, b protoreflect.FullName) int {
+				return strings.Compare(string(a), string(b))
+			})
+			slices.SortFunc(details.signals, func(a, b protoreflect.FullName) int {
+				return strings.Compare(string(a), string(b))
+			})
+			slices.SortFunc(details.updates, func(a, b protoreflect.FullName) int {
+				return strings.Compare(string(a), string(b))
+			})
+			svc.serviceDetails[service.Desc.FullName()] = details
 		}
 	}
 
@@ -578,42 +603,23 @@ func (svc *Manifest) render() error {
 
 		var hasContent bool
 		for _, service := range file.Services {
-			var hasTemporalResources bool
-			for _, m := range service.Methods {
-				if _, ok := svc.activities[m.Desc.FullName()]; ok {
-					hasTemporalResources = true
-					break
-				}
-				if _, ok := svc.workflows[m.Desc.FullName()]; ok {
-					hasTemporalResources = true
-					break
-				}
-				if _, ok := svc.queries[m.Desc.FullName()]; ok {
-					hasTemporalResources = true
-					break
-				}
-				if _, ok := svc.signals[m.Desc.FullName()]; ok {
-					hasTemporalResources = true
-					break
-				}
-				if _, ok := svc.updates[m.Desc.FullName()]; ok {
-					hasTemporalResources = true
-					break
-				}
-			}
-			if !hasTemporalResources {
+			details, ok := svc.serviceDetails[service.Desc.FullName()]
+			if !ok || details.IsEmpty() {
 				continue
 			}
-
 			svc.renderService(f, file, service)
-			svc.renderTestClient(f)
-			if svc.cfg.CliEnabled {
-				svc.renderCLI(f)
+
+			if !details.ActivitiesOnly() {
+				svc.renderTestClient(f)
+				if svc.cfg.CliEnabled {
+					svc.renderCLI(f)
+				}
+				if svc.cfg.EnableXNS {
+					svc.renderXNS(xns)
+					hasXNS = true
+				}
 			}
-			if svc.cfg.EnableXNS {
-				svc.renderXNS(xns)
-				hasXNS = true
-			}
+
 			if svc.cfg.EnableCodec {
 				svc.renderCodec(f)
 			}
@@ -648,140 +654,155 @@ func (svc *Manifest) render() error {
 	return nil
 }
 
+type renderServiceDetails struct {
+	workflows  []protoreflect.FullName
+	activities []protoreflect.FullName
+	queries    []protoreflect.FullName
+	signals    []protoreflect.FullName
+	updates    []protoreflect.FullName
+}
+
+func (d *renderServiceDetails) IsEmpty() bool {
+	return len(d.workflows) == 0 && len(d.activities) == 0 && len(d.queries) == 0 && len(d.signals) == 0 && len(d.updates) == 0
+}
+
+func (d *renderServiceDetails) ActivitiesOnly() bool {
+	return len(d.activities) > 0 && len(d.workflows) == 0 && len(d.queries) == 0 && len(d.signals) == 0 && len(d.updates) == 0
+}
+
 // renderService writes the temporal service to the given File
 func (svc *Manifest) renderService(f *g.File, file *protogen.File, service *protogen.Service) {
 	svc.File, svc.Service = file, service
 	svc.opts = svc.serviceOptions[service.Desc.FullName()]
+	details := svc.serviceDetails[service.Desc.FullName()]
 	svc.genConstants(f)
 
 	// generate client interface and implementation
-	svc.genClientInterface(f)
-	svc.genClientImpl(f)
-	svc.genClientImplConstructor(f)
-	svc.genClientOptions(f)
+	if !details.ActivitiesOnly() {
+		svc.genClientInterface(f)
+		svc.genClientImpl(f)
+		svc.genClientImplConstructor(f)
+		svc.genClientOptions(f)
 
-	// generate client workflow methods
-	for _, workflow := range svc.workflowsOrdered {
-		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
-		opts := svc.workflows[workflow]
-		svc.genClientImplWorkflowMethod(f, workflow)
-		svc.genClientImplWorkflowAsyncMethod(f, workflow)
-		svc.genClientImplWorkflowGetMethod(f, workflow)
-		for _, signal := range opts.GetSignal() {
-			if signal.GetStart() {
-				svc.genClientImplSignalWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
-				svc.genClientImplSignalWithStartAsyncMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+		// generate client workflow methods
+		for _, workflow := range svc.workflowsOrdered {
+			if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
+			opts := svc.workflows[workflow]
+			svc.genClientImplWorkflowMethod(f, workflow)
+			svc.genClientImplWorkflowAsyncMethod(f, workflow)
+			svc.genClientImplWorkflowGetMethod(f, workflow)
+			for _, signal := range opts.GetSignal() {
+				if signal.GetStart() {
+					svc.genClientImplSignalWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+					svc.genClientImplSignalWithStartAsyncMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+				}
 			}
 		}
+		svc.genClientImplWorkflowCancelMethod(f)
+		svc.genClientImplWorkflowTerminateMethod(f)
+
+		// generate client query methods
+		for _, query := range svc.queriesOrdered {
+			if svc.methods[query].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
+			svc.genClientImplQueryMethod(f, query)
+		}
+
+		// generate client signal methods
+		for _, signal := range svc.signalsOrdered {
+			if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
+			svc.genClientImplSignalMethod(f, signal)
+		}
+
+		// generate client update methods
+		for _, update := range svc.updatesOrdered {
+			if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
+			svc.genClientImplUpdateMethod(f, update)
+			svc.genClientImplUpdateMethodAsync(f, update)
+			svc.genClientImplUpdateGetMethod(f, update)
+		}
+
+		// generate <Workflow>Options, <Workflow>Run interfaces and implementations used by client
+		for _, workflow := range svc.workflowsOrdered {
+			if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
+			opts := svc.workflows[workflow]
+			svc.genWorkflowOptions(f, workflow, false)
+			svc.genClientWorkflowRunInterface(f, workflow)
+			svc.genClientWorkflowRunImpl(f, workflow)
+			svc.genClientWorkflowRunImplIDMethod(f, workflow)
+			svc.genClientWorkflowRunImplRunMethod(f, workflow)
+			svc.genClientWorkflowRunImplRunIDMethod(f, workflow)
+			svc.genClientWorkflowRunImplCancelMethod(f, workflow)
+			svc.genClientWorkflowRunImplGetMethod(f, workflow)
+			svc.genClientWorkflowRunImplTerminateMethod(f, workflow)
+
+			// generate query methods
+			for _, queryOpts := range opts.GetQuery() {
+				svc.genClientWorkflowRunImplQueryMethod(f, workflow, getFullyQualifiedRef(workflow, queryOpts.GetRef()))
+			}
+
+			// generate signal methods
+			for _, signalOpts := range opts.GetSignal() {
+				svc.genClientWorkflowRunImplSignalMethod(f, workflow, getFullyQualifiedRef(workflow, signalOpts.GetRef()))
+			}
+
+			// generate update methods
+			for _, updateOpts := range opts.GetUpdate() {
+				svc.genClientWorkflowRunImplUpdateMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
+				svc.genClientWorkflowRunImplUpdateAsyncMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
+			}
+		}
+
+		// generate <Update>Handle interfaces and implementations used by client
+		for _, update := range svc.updatesOrdered {
+			if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+				continue
+			}
+			svc.genClientUpdateHandleInterface(f, update)
+			svc.genClientUpdateHandleImpl(f, update)
+			svc.genClientUpdateHandleImplWorkflowIDMethod(f, update)
+			svc.genClientUpdateHandleImplRunIDMethod(f, update)
+			svc.genClientUpdateHandleImplUpdateIDMethod(f, update)
+			svc.genClientUpdateHandleImplGetMethod(f, update)
+			svc.genClientUpdateOptions(f, update)
+		}
 	}
-	svc.genClientImplWorkflowCancelMethod(f)
-	svc.genClientImplWorkflowTerminateMethod(f)
 
-	// generate client query methods
-	for _, query := range svc.queriesOrdered {
-		if svc.methods[query].Desc.Parent() != svc.Service.Desc {
-			continue
+	if len(details.workflows) > 0 {
+		// generate workflows interface and registration helper
+		svc.genWorkerWorkflowFunctionVars(f)
+		svc.genWorkerWorkflowsInterface(f)
+		svc.genWorkerRegisterWorkflows(f)
+
+		// generate workflow types, methods, functions
+		for _, workflow := range details.workflows {
+			svc.genWorkerRegisterWorkflow(f, workflow)
+			svc.genWorkerBuilderFunction(f, workflow)
+			svc.genWorkerWorkflowInput(f, workflow)
+			svc.genWorkerWorkflowInterface(f, workflow)
+			svc.genWorkerWorkflowChild(f, workflow)
+			svc.genWorkerWorkflowChildAsync(f, workflow)
+			svc.genWorkflowOptions(f, workflow, true)
+			svc.genWorkerWorkflowChildRun(f, workflow)
+			svc.genWorkerWorkflowChildRunGet(f, workflow)
+			svc.genWorkerWorkflowChildRunSelect(f, workflow)
+			svc.genWorkerWorkflowChildRunSelectStart(f, workflow)
+			svc.genWorkerWorkflowChildRunWaitStart(f, workflow)
+			svc.genWorkerWorkflowChildRunSignals(f, workflow)
 		}
-		svc.genClientImplQueryMethod(f, query)
-	}
-
-	// generate client signal methods
-	for _, signal := range svc.signalsOrdered {
-		if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
-		svc.genClientImplSignalMethod(f, signal)
-	}
-
-	// generate client update methods
-	for _, update := range svc.updatesOrdered {
-		if svc.methods[update].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
-		svc.genClientImplUpdateMethod(f, update)
-		svc.genClientImplUpdateMethodAsync(f, update)
-		svc.genClientImplUpdateGetMethod(f, update)
-	}
-
-	// generate <Workflow>Options, <Workflow>Run interfaces and implementations used by client
-	for _, workflow := range svc.workflowsOrdered {
-		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
-		opts := svc.workflows[workflow]
-		svc.genWorkflowOptions(f, workflow, false)
-		svc.genClientWorkflowRunInterface(f, workflow)
-		svc.genClientWorkflowRunImpl(f, workflow)
-		svc.genClientWorkflowRunImplIDMethod(f, workflow)
-		svc.genClientWorkflowRunImplRunMethod(f, workflow)
-		svc.genClientWorkflowRunImplRunIDMethod(f, workflow)
-		svc.genClientWorkflowRunImplCancelMethod(f, workflow)
-		svc.genClientWorkflowRunImplGetMethod(f, workflow)
-		svc.genClientWorkflowRunImplTerminateMethod(f, workflow)
-
-		// generate query methods
-		for _, queryOpts := range opts.GetQuery() {
-			svc.genClientWorkflowRunImplQueryMethod(f, workflow, getFullyQualifiedRef(workflow, queryOpts.GetRef()))
-		}
-
-		// generate signal methods
-		for _, signalOpts := range opts.GetSignal() {
-			svc.genClientWorkflowRunImplSignalMethod(f, workflow, getFullyQualifiedRef(workflow, signalOpts.GetRef()))
-		}
-
-		// generate update methods
-		for _, updateOpts := range opts.GetUpdate() {
-			svc.genClientWorkflowRunImplUpdateMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
-			svc.genClientWorkflowRunImplUpdateAsyncMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
-		}
-	}
-
-	// generate <Update>Handle interfaces and implementations used by client
-	for _, update := range svc.updatesOrdered {
-		if svc.methods[update].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
-		svc.genClientUpdateHandleInterface(f, update)
-		svc.genClientUpdateHandleImpl(f, update)
-		svc.genClientUpdateHandleImplWorkflowIDMethod(f, update)
-		svc.genClientUpdateHandleImplRunIDMethod(f, update)
-		svc.genClientUpdateHandleImplUpdateIDMethod(f, update)
-		svc.genClientUpdateHandleImplGetMethod(f, update)
-		svc.genClientUpdateOptions(f, update)
-	}
-
-	// generate workflows interface and registration helper
-	svc.genWorkerWorkflowFunctionVars(f)
-	svc.genWorkerWorkflowsInterface(f)
-	svc.genWorkerRegisterWorkflows(f)
-
-	// generate workflow types, methods, functions
-	for _, workflow := range svc.workflowsOrdered {
-		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
-		svc.genWorkerRegisterWorkflow(f, workflow)
-		svc.genWorkerBuilderFunction(f, workflow)
-		svc.genWorkerWorkflowInput(f, workflow)
-		svc.genWorkerWorkflowInterface(f, workflow)
-		svc.genWorkerWorkflowChild(f, workflow)
-		svc.genWorkerWorkflowChildAsync(f, workflow)
-		svc.genWorkflowOptions(f, workflow, true)
-		svc.genWorkerWorkflowChildRun(f, workflow)
-		svc.genWorkerWorkflowChildRunGet(f, workflow)
-		svc.genWorkerWorkflowChildRunSelect(f, workflow)
-		svc.genWorkerWorkflowChildRunSelectStart(f, workflow)
-		svc.genWorkerWorkflowChildRunWaitStart(f, workflow)
-		svc.genWorkerWorkflowChildRunSignals(f, workflow)
 	}
 
 	// generate signal types, methods, functions
-	for _, signal := range svc.signalsOrdered {
-		if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
+	for _, signal := range details.signals {
 		svc.genWorkerSignal(f, signal)
 		svc.genWorkerSignalConstructor(f, signal)
 		svc.genWorkerSignalReceive(f, signal)
@@ -795,10 +816,7 @@ func (svc *Manifest) renderService(f *g.File, file *protogen.File, service *prot
 	// generate activities
 	svc.genActivitiesInterface(f)
 	svc.genActivityRegisterAllFunction(f)
-	for _, activity := range svc.activitiesOrdered {
-		if svc.methods[activity].Desc.Parent() != svc.Service.Desc {
-			continue
-		}
+	for _, activity := range details.activities {
 		svc.genActivityRegisterOneFunction(f, activity)
 		svc.genActivityFuture(f, activity)
 		svc.genActivityFutureGetMethod(f, activity)
