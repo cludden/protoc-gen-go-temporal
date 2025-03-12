@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 # Unreleased
 
 ### ⚠ BREAKING CHANGES
+
+### Added
+
+### Changed
+
+### Fixed
+
+
+
+# [1.16.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.16.0) - 2025-03-11
+
+### ⚠ BREAKING CHANGES
 - The existing usage of the `iancoleman/strcase` third-party library has been
   replaced with a first-party implementation with better acronym handling. This 
   may lead to changes in generated cli command and flag names. To compensate for
