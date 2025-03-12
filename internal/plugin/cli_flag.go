@@ -74,32 +74,35 @@ func flagType(field *protogen.Field) (t string, additionalUsage string, err erro
 		return "Int64", "", nil
 
 	case protoreflect.MessageKind:
-		if !field.Desc.IsList() {
-			switch field.Desc.Message().FullName() {
-			case "google.protobuf.Duration":
-				additionalUsage = " (e.g. \"3.000000001s\")"
+		switch field.Desc.Message().FullName() {
+		case "google.protobuf.Duration":
+			additionalUsage = " (e.g. \"3.000000001s\")"
+			if !field.Desc.IsList() {
 				return "Duration", additionalUsage, nil
-			case "google.protobuf.Timestamp":
-				additionalUsage = " (e.g. \"2017-01-15T01:30:15.01Z\")"
-				return "Timestamp", additionalUsage, nil
-			default:
-				var b bytes.Buffer
-				fmt.Fprint(&b, " (json-encoded: {")
-				var fieldDocs []string
-				for _, f := range field.Message.Fields {
-					kind := f.Desc.Kind().String()
-					if f.Message != nil {
-						kind = string(f.Message.Desc.FullName())
-					} else if f.Enum != nil {
-						kind = string(f.Enum.Desc.FullName())
-					}
-					fieldDocs = append(fieldDocs, fmt.Sprintf("%s: <%s>", f.Desc.JSONName(), kind))
-				}
-				fmt.Fprint(&b, strings.Join(fieldDocs, ", "))
-				fmt.Fprint(&b, "})")
-				additionalUsage = b.String()
 			}
+		case "google.protobuf.Timestamp":
+			additionalUsage = " (e.g. \"2017-01-15T01:30:15.01Z\")"
+			if !field.Desc.IsList() {
+				return "Timestamp", additionalUsage, nil
+			}
+		default:
+			var b bytes.Buffer
+			fmt.Fprint(&b, " (json-encoded: {")
+			var fieldDocs []string
+			for _, f := range field.Message.Fields {
+				kind := f.Desc.Kind().String()
+				if f.Message != nil {
+					kind = string(f.Message.Desc.FullName())
+				} else if f.Enum != nil {
+					kind = string(f.Enum.Desc.FullName())
+				}
+				fieldDocs = append(fieldDocs, fmt.Sprintf("%s: <%s>", f.Desc.JSONName(), kind))
+			}
+			fmt.Fprint(&b, strings.Join(fieldDocs, ", "))
+			fmt.Fprint(&b, "})")
+			additionalUsage = b.String()
 		}
+
 		fallthrough
 
 	case protoreflect.BytesKind, protoreflect.EnumKind, protoreflect.StringKind:
