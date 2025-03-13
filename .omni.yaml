@@ -8,6 +8,7 @@ up:
       vektra/mockery: 2.52.4
   - go-install:
       - github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.3
+      - github.com/mfridman/tparse@v0.17.0
   - protoc: 29.3
   - custom:
       name: protoc-gen-go_temporal
@@ -30,3 +31,8 @@ commands:
       buf generate
       mockery --log-level=error
       go mod tidy
+
+  test:
+    desc: Run tests
+    run: |
+      set -o pipefail && go test -json ./... | tparse -all

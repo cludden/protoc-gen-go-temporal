@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/workflow"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -487,7 +488,8 @@ func testCliFlags[
 		WithClient(func(*cli.Context) (client.Client, error)) CliOptions
 	},
 ](t *testing.T, prefix, cmd string, appCtor func(...CliOptions) (*cli.App, error), options CliOptions) {
-	for desc, tc := range convert.IterMapDeterministic(testFlags) {
+	for _, desc := range workflow.DeterministicKeys(testFlags) {
+		tc := testFlags[desc]
 		for _, useSignal := range []bool{false, true} {
 			suffix := " workflow-input"
 			if useSignal {

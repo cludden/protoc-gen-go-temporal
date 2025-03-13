@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 
+# [1.16.1](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.16.1) - 2025-03-13
+
+### Changed
+- [#99](https://github.com/cludden/protoc-gen-go-temporal/pull/99) revert minimum required go version to 1.21.5
+
+
 
 # [1.16.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.16.0) - 2025-03-11
 

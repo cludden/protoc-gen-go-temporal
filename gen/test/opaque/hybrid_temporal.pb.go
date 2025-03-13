@@ -1156,7 +1156,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				},
 				&v2.StringSliceFlag{
 					Name:     "previous-addresses",
-					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter",
+					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{
@@ -1460,7 +1460,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				},
 				&v2.StringSliceFlag{
 					Name:     "previous-addresses",
-					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter",
+					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{
@@ -1781,7 +1781,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				},
 				&v2.StringSliceFlag{
 					Name:     "previous-addresses",
-					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter",
+					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{
@@ -2041,7 +2041,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				},
 				&v2.StringSliceFlag{
 					Name:     "signal-hybrid-previous-addresses",
-					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter",
+					Usage:    "set the value of the operation's \"PreviousAddresses\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "SIGNAL",
 				},
 				&v2.StringFlag{
