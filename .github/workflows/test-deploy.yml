@@ -10,6 +10,10 @@ jobs:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
       - name: Install omni
         uses: omnicli/setup-action@v0
         with:
@@ -18,7 +22,7 @@ jobs:
       - name: Run tests
         shell: bash
         run: omni test
-        
+
   test-deploy:
     name: Test deployment
     runs-on: ubuntu-latest
