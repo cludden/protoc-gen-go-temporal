@@ -1,6 +1,7 @@
 package xns
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -67,6 +68,10 @@ func ErrorToApplicationError(err error) error {
 		return temporal.NewNonRetryableApplicationError(canceledErr.Error(), "CanceledError", canceledErr)
 	}
 
+	if errors.Is(err, context.Canceled) {
+		return temporal.NewCanceledError(err.Error())
+	}
+
 	var terminatedErr *temporal.TerminatedError
 	if errors.As(err, &terminatedErr) {
 		return temporal.NewNonRetryableApplicationError(terminatedErr.Error(), "TerminatedError", terminatedErr)
@@ -86,14 +91,15 @@ func ErrorToApplicationError(err error) error {
 
 func MarshalStartWorkflowOptions(o client.StartWorkflowOptions) (*xnsv1.StartWorkflowOptions, error) {
 	opts := &xnsv1.StartWorkflowOptions{
-		EnableEagerStart:        o.EnableEagerStart,
-		ErrorWhenAlreadyStarted: o.WorkflowExecutionErrorWhenAlreadyStarted,
-		ExecutionTimeout:        durationpb.New(o.WorkflowExecutionTimeout),
-		Id:                      o.ID,
-		RunTimeout:              durationpb.New(o.WorkflowRunTimeout),
-		StartDelay:              durationpb.New(o.StartDelay),
-		TaskQueue:               o.TaskQueue,
-		TaskTimeout:             durationpb.New(o.WorkflowTaskTimeout),
+		EnableEagerStart:         o.EnableEagerStart,
+		ErrorWhenAlreadyStarted:  o.WorkflowExecutionErrorWhenAlreadyStarted,
+		ExecutionTimeout:         durationpb.New(o.WorkflowExecutionTimeout),
+		Id:                       o.ID,
+		RunTimeout:               durationpb.New(o.WorkflowRunTimeout),
+		StartDelay:               durationpb.New(o.StartDelay),
+		TaskQueue:                o.TaskQueue,
+		TaskTimeout:              durationpb.New(o.WorkflowTaskTimeout),
+		WorkflowIdConflictPolicy: o.WorkflowIDConflictPolicy,
 	}
 	// id reuse
 	switch o.WorkflowIDReusePolicy {

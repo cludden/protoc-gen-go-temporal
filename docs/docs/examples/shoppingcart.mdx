@@ -1,0 +1,82 @@
+import CodeBlock from '@theme/CodeBlock';
+import Proto from '!!raw-loader!../../../examples/shoppingcart/proto/example/shoppingcart/v1/shoppingcart.proto';
+import Implementation from '!!raw-loader!../../../examples/shoppingcart/workflows.go';
+import Main from '!!raw-loader!../../../examples/shoppingcart/cmd/shoppingcart/main.go';
+
+
+# Shopping Cart
+
+A stateful shopping cart example demonstrating workflows with queries, signals, updates, and cross-namespace activities.
+
+This example showcases:
+- **Stateful workflows** that maintain cart state across updates
+- **Queries** to inspect current cart contents
+- **Signals** to trigger checkout
+- **Updates** to modify cart contents with validation
+- **Cross-namespace execution** with update-with-start patterns
+- **Continue-as-new** handling for long-running workflows
+
+<CodeBlock language="protobuf" title="shoppingcart.proto">{Proto}</CodeBlock>
+
+<CodeBlock language="go" title="workflows.go">{Implementation}</CodeBlock>
+
+<CodeBlock language="go" title="main.go">{Main}</CodeBlock>
+
+
+## Run this example
+
+1. Clone the examples
+    ```sh
+    git clone https://github.com/cludden/protoc-gen-go-temporal && cd protoc-gen-go-temporal
+    ```
+2. Run a local Temporal server
+    ```sh
+    temporal server start-dev
+    ```
+3. Start the example workers
+    ```sh
+    go run examples/shoppingcart/cmd/shoppingcart/main.go start
+    ```
+4. In a different shell, start a shopping cart workflow and add an item
+    ```sh
+    go run examples/shoppingcart/cmd/shoppingcart/main.go shopping-cart-with-update-cart \
+      --req='{}' \
+      --update-cart-input='{"action": "UPDATE_CART_ACTION_ADD", "itemId": "apple"}' \
+      -d
+    ```
+5. Query the cart contents
+    ```sh
+    go run examples/shoppingcart/cmd/shoppingcart/main.go describe \
+      -w <workflow-id-from-step-4>
+    ```
+6. Add more items using updates
+    ```sh
+    go run examples/shoppingcart/cmd/shoppingcart/main.go update-cart \
+      -w <workflow-id-from-step-4> \
+      --input='{"action": "UPDATE_CART_ACTION_ADD", "itemId": "banana"}'
+    ```
+7. Checkout the cart (completes the workflow)
+    ```sh
+    go run examples/shoppingcart/cmd/shoppingcart/main.go checkout \
+      -w <workflow-id-from-step-4>
+    ```
+
+## Key Features Demonstrated
+
+### Stateful Workflow
+The `ShoppingCart` workflow maintains cart state across its execution, persisting item quantities in a map.
+
+### Query Support
+The `Describe` query allows external inspection of the current cart state without affecting workflow execution.
+
+### Signal Handling
+The `Checkout` signal triggers workflow completion, demonstrating asynchronous communication patterns.
+
+### Update with Validation
+The `UpdateCart` update includes validation logic that prevents invalid operations (e.g., removing items not in the cart).
+
+### Cross-Namespace Activities
+The example demonstrates cross-namespace execution patterns using update-with-start, allowing workflows to be initiated from different namespaces.
+
+### Continue-as-New
+The workflow monitors for continue-as-new suggestions and handles them gracefully, ensuring long-running cart sessions don't hit history size limits.

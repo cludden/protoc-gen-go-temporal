@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -230,15 +231,16 @@ func (c *openClient) SignalOpen(ctx context.Context, workflowID string, runID st
 
 // PutOpenExampleOptions provides configuration for a test.opaque.Open.PutOpenExample workflow operation
 type PutOpenExampleOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewPutOpenExampleOptions initializes a new PutOpenExampleOptions value
@@ -329,6 +331,12 @@ func (o *PutOpenExampleOptions) WithTaskTimeout(d time.Duration) *PutOpenExample
 // WithTaskQueue sets the TaskQueue value
 func (o *PutOpenExampleOptions) WithTaskQueue(tq string) *PutOpenExampleOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *PutOpenExampleOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOpenExampleOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -508,17 +516,18 @@ func PutOpenExampleChildAsync(ctx workflow.Context, req *OpenExample, options ..
 
 // PutOpenExampleChildOptions provides configuration for a child test.opaque.Open.PutOpenExample workflow operation
 type PutOpenExampleChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewPutOpenExampleChildOptions initializes a new PutOpenExampleChildOptions value
@@ -627,6 +636,12 @@ func (o *PutOpenExampleChildOptions) WithTaskQueue(tq string) *PutOpenExampleChi
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutOpenExampleChildOptions) WithWaitForCancellation(wait bool) *PutOpenExampleChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *PutOpenExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOpenExampleChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -832,6 +847,7 @@ var _ PutOpenExampleRun = &testPutOpenExampleRun{}
 type testPutOpenExampleRun struct {
 	client    *TestOpenClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *OpenExample
 	workflows OpenWorkflows
@@ -844,7 +860,9 @@ func (r *testPutOpenExampleRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test test.opaque.Open.PutOpenExample workflow result
 func (r *testPutOpenExampleRun) Get(context.Context) (*OpenExample, error) {
-	r.env.ExecuteWorkflow(PutOpenExampleWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(PutOpenExampleWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -980,9 +998,10 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1252,7 +1271,7 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewOpenClient(c)
-				req, err := UnmarshalCliFlagsToOpenExample(cmd)
+				req, err := UnmarshalCliFlagsToOpenExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1284,9 +1303,10 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 					Value:   "opaque-open",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1556,7 +1576,7 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewOpenClient(tc)
-				req, err := UnmarshalCliFlagsToOpenExample(cmd)
+				req, err := UnmarshalCliFlagsToOpenExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1605,9 +1625,10 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1868,6 +1889,12 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 					Name:     "oneof-address",
 					Usage:    "set the value of the operation's \"OneofAddress\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 				&v2.StringFlag{
 					Name:     "signal-open-name",
@@ -2137,11 +2164,11 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewOpenClient(c)
-				req, err := UnmarshalCliFlagsToOpenExample(cmd)
+				req, err := UnmarshalCliFlagsToOpenExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToOpenExample(cmd, helpers.UnmarshalCliFlagsOptions{
+				signal, err := UnmarshalCliFlagsToOpenExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"}, helpers.UnmarshalCliFlagsOptions{
 					Prefix: "signal-open",
 					PrefixFlags: map[string]struct{}{
 						"address":             {},
@@ -2266,23 +2293,20 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToOpenExample unmarshals a OpenExample from command line flags
 func UnmarshalCliFlagsToOpenExample(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OpenExample, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OpenExample
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

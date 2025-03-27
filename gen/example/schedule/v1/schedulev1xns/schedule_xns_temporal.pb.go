@@ -91,6 +91,9 @@ func RegisterExampleActivities(r worker.ActivityRegistry, c v1.ExampleClient, op
 	if name := exampleOptions.filterActivity(v1.ScheduleWorkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.Schedule, activity.RegisterOptions{Name: name})
 	}
+	if name := exampleOptions.filterActivity("example.schedule.v1.Example.GetSchedule"); name != "" {
+		r.RegisterActivityWithOptions(a.GetSchedule, activity.RegisterOptions{Name: name})
+	}
 }
 
 // ScheduleWorkflowOptions are used to configure a(n) example.schedule.v1.Schedule workflow execution
@@ -98,6 +101,7 @@ type ScheduleWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
 	ParentClosePolicy    enumsv1.ParentClosePolicy
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
@@ -105,6 +109,87 @@ type ScheduleWorkflowOptions struct {
 // NewScheduleWorkflowOptions initializes a new ScheduleWorkflowOptions value
 func NewScheduleWorkflowOptions() *ScheduleWorkflowOptions {
 	return &ScheduleWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *ScheduleWorkflowOptions) Build(ctx workflow.Context, input *v1.ScheduleInput) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
+	}
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
+	}
+
+	// marshal workflow request protobuf message
+	inputpb, err := anypb.New(input)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
+	var parentClosePolicy temporalv1.ParentClosePolicy
+	switch opts.ParentClosePolicy {
+	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
+	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
+	}
+
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
+	}, nil
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -122,6 +207,12 @@ func (opts *ScheduleWorkflowOptions) WithDetached(d bool) *ScheduleWorkflowOptio
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *ScheduleWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ScheduleWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *ScheduleWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *ScheduleWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -154,9 +245,12 @@ type ScheduleRun interface {
 
 // scheduleRun provides a(n) ScheduleRun implementation
 type scheduleRun struct {
-	cancel func()
-	future workflow.Future
-	id     string
+	cancel            func()
+	ctx               workflow.Context
+	future            workflow.Future
+	id                string
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
 }
 
 // Cancel the underlying workflow execution
@@ -173,11 +267,22 @@ func (r *scheduleRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *scheduleRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetScheduleAsync(r.ctx, r.id, "").(*scheduleRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *scheduleRun) Get(ctx workflow.Context) (*v1.ScheduleOutput, error) {
+	ctx, cancel := workflow.WithCancel(ctx)
+	if r.future == nil {
+		rr := GetScheduleAsync(ctx, r.id, "", NewGetScheduleOptions().WithParentClosePolicy(r.parentClosePolicy).WithHeartbeatInterval(r.heartbeatInterval)).(*scheduleRun)
+		r.future = rr.future
+		r.cancel = cancel
+	}
 	var resp v1.ScheduleOutput
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -200,7 +305,7 @@ func Schedule(ctx workflow.Context, req *v1.ScheduleInput, opts ...*ScheduleWork
 }
 
 // ScheduleAsync executes a(n) example.schedule.v1.Schedule workflow and returns a handle to the underlying activity
-func ScheduleAsync(ctx workflow.Context, req *v1.ScheduleInput, opts ...*ScheduleWorkflowOptions) (ScheduleRun, error) {
+func ScheduleAsync(ctx workflow.Context, input *v1.ScheduleInput, opts ...*ScheduleWorkflowOptions) (ScheduleRun, error) {
 	activityName := exampleOptions.filterActivity(v1.ScheduleWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -210,21 +315,94 @@ func ScheduleAsync(ctx workflow.Context, req *v1.ScheduleInput, opts ...*Schedul
 		)
 	}
 
-	opt := &ScheduleWorkflowOptions{}
+	var opt *ScheduleWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewScheduleWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &scheduleRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetSchedule returns a(n) example.schedule.v1.Schedule workflow execution
+func GetSchedule(ctx workflow.Context, workflowID string, runID string, options ...*GetScheduleOptions) (out *v1.ScheduleOutput, err error) {
+	out, err = GetScheduleAsync(ctx, workflowID, runID, options...).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetScheduleAsync returns a handle to a(n) example.schedule.v1.Schedule workflow execution
+func GetScheduleAsync(ctx workflow.Context, workflowID string, runID string, options ...*GetScheduleOptions) ScheduleRun {
+	activityName := exampleOptions.filterActivity("example.schedule.v1.Example.GetSchedule")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &scheduleRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	var opt *GetScheduleOptions
+	if len(options) > 0 && options[0] != nil {
+		opt = options[0]
+	} else {
+		opt = NewGetScheduleOptions()
+	}
+	ctx, req, err := opt.Build(ctx, workflowID, runID)
+	if err != nil {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(exampleOptions.convertError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil)))
+		return &scheduleRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &scheduleRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     workflowID,
+	}
+}
+
+// GetScheduleOptions are used to configure a(n) example.schedule.v1.Schedule workflow execution getter activity
+type GetScheduleOptions struct {
+	activityOptions   *workflow.ActivityOptions
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
+}
+
+// NewGetScheduleOptions initializes a new GetScheduleOptions value
+func NewGetScheduleOptions() *GetScheduleOptions {
+	return &GetScheduleOptions{}
+}
+
+// Build initializes the activity context and input
+func (opt *GetScheduleOptions) Build(ctx workflow.Context, workflowID string, runID string) (workflow.Context, *xnsv1.GetWorkflowRequest, error) {
+	if opt.heartbeatInterval == 0 {
+		opt.heartbeatInterval = 30000000000 // 30 seconds
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
+	var ao workflow.ActivityOptions
+	if opt.activityOptions != nil {
+		ao = *opt.activityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
 	}
 	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
 	ao.WaitForCancellation = true
@@ -234,61 +412,30 @@ func ScheduleAsync(ctx workflow.Context, req *v1.ScheduleInput, opts ...*Schedul
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := uuid.NewRandom()
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
-	}
-
-	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
-	}
-
-	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
-	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
-	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
-	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
-	}
-
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &scheduleRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	return ctx, &xnsv1.GetWorkflowRequest{
+		HeartbeatInterval: durationpb.New(opt.heartbeatInterval),
+		ParentClosePolicy: opt.parentClosePolicy,
+		RunId:             runID,
+		WorkflowId:        workflowID,
 	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (o *GetScheduleOptions) WithActivityOptions(ao workflow.ActivityOptions) *GetScheduleOptions {
+	o.activityOptions = &ao
+	return o
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (o *GetScheduleOptions) WithHeartbeatInterval(d time.Duration) *GetScheduleOptions {
+	o.heartbeatInterval = d
+	return o
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (o *GetScheduleOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *GetScheduleOptions {
+	o.parentClosePolicy = policy
+	return o
 }
 
 // CancelExampleWorkflow cancels an existing workflow
@@ -326,6 +473,75 @@ func (a *exampleActivities) CancelWorkflow(ctx context.Context, workflowID strin
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
+// GetSchedule retrieves a(n) example.schedule.v1.Schedule workflow via an activity
+func (a *exampleActivities) GetSchedule(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *v1.ScheduleOutput, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+
+	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
+	actx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	run := a.client.GetSchedule(actx, input.GetWorkflowId(), input.GetRunId())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = run.Get(actx)
+	}()
+
+	for {
+		select {
+		// send heartbeats periodically
+		case <-time.After(heartbeatInterval):
+			activity.GetLogger(ctx).Debug("record hearbeat")
+			activity.RecordHeartbeat(ctx)
+
+		// return retryable error if the worker is stopping
+		case <-activity.GetWorkerStopChannel(ctx):
+			activity.GetLogger(ctx).Debug("worker is stopping")
+			return nil, exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
+
+		// catch parent activity context cancellation. in most cases, this should indicate a
+		// server-sent cancellation, but there's a non-zero possibility that this cancellation
+		// is received due to the worker stopping, prior to detecting the closing of the worker
+		// stop channel. to give us an opportunity to detect a cancellation stemming from the
+		// worker closing, we again check to see if the worker stop channel is closed before
+		// propagating the cancellation
+		case <-ctx.Done():
+			activity.GetLogger(ctx).Debug("activity context canceled")
+			select {
+			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Info("worker is stopping")
+				return nil, exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
+			default:
+				parentClosePolicy := input.GetParentClosePolicy()
+				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
+				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
+					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+					defer cancel()
+					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						activity.GetLogger(ctx).Debug("cancel workflow")
+						err = run.Cancel(disconnectedCtx)
+					} else {
+						activity.GetLogger(ctx).Debug("terminate workflow")
+						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
+					}
+					if err != nil {
+						return nil, exampleOptions.convertError(err)
+					}
+				}
+				return nil, exampleOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+			}
+
+		// handle workflow completion
+		case <-done:
+			activity.GetLogger(ctx).Debug("workflow completed")
+			return out, exampleOptions.convertError(err)
+		}
+	}
+}
+
 // Schedule executes a(n) example.schedule.v1.Schedule workflow via an activity
 func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.ScheduleOutput, err error) {
 	// unmarshal workflow request
@@ -339,8 +555,15 @@ func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowR
 	}
 
 	// initialize workflow execution
+	activity.GetLogger(ctx).Debug("starting workflow")
+	actx := ctx
+	if !input.GetDetached() {
+		var cancel context.CancelFunc
+		actx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
 	var run v1.ScheduleRun
-	run, err = a.client.ScheduleAsync(ctx, &req, v1.NewScheduleOptions().WithStartWorkflowOptions(
+	run, err = a.client.ScheduleAsync(actx, &req, v1.NewScheduleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -355,7 +578,7 @@ func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowR
 	// otherwise, wait for execution to complete in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = run.Get(ctx)
+		resp, err = run.Get(actx)
 		close(doneCh)
 	}()
 
@@ -369,10 +592,12 @@ func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowR
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
+			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
+			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -382,17 +607,22 @@ func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowR
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
+			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
+				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
+						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -404,6 +634,7 @@ func (a *exampleActivities) Schedule(ctx context.Context, input *xnsv1.WorkflowR
 
 		// handle workflow completion
 		case <-doneCh:
+			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, exampleOptions.convertError(err)
 		}
 	}

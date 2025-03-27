@@ -10,6 +10,7 @@
 [![Docs](https://img.shields.io/badge/docs-learn_more-8f63ff)](https://cludden.github.io/protoc-gen-go-temporal/)
 [![GoDoc](https://godoc.org/github.com/cludden/protoc-gen-go-temporal?status.svg)](https://pkg.go.dev/github.com/cludden/protoc-gen-go-temporal)
 [![Buf](https://img.shields.io/badge/buf-cludden%2Fprotoc--gen--go--temporal-blue)](https://buf.build/cludden/protoc-gen-go-temporal)
+[![Static Badge for Temporal Code Exchange](https://img.shields.io/badge/Temporal-Code_Exchange_Featured-blue?style=flat-square&logo=temporal&labelColor=141414&color=444CE7)](https://temporal.io/code-exchange/go-code-generation-with-temporal-and-protobufs)
 
 A protoc plugin for generating typed Temporal clients and workers in Go from protobuf schemas. This plugin allows Workflow authors to configure sensible defaults and guardrails, simplifies the implementation and testing of Temporal workers, and streamlines integration by providing typed client SDKs and a generated CLI application. 
 
@@ -65,7 +66,7 @@ Optional **CLI** with:
 
 
 Generated [Cross-Namespace (XNS)](#cross-namespace-xns) helpers: **[Experimental]**
-  - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace
+  - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace (or cluster)
 
 Generated [Remote Codec Server](#codec) helpers
 

@@ -455,6 +455,9 @@ var testFlags = map[string]struct {
 				json.Compact(&adr, []byte(protojson.Format(a)))
 				previousAddresses = append(previousAddresses, adr.String())
 			}
+			if len(previousAddresses) < 2 {
+				panic(fmt.Sprintf("expected at least 2 previous addresses, got %d", len(previousAddresses)))
+			}
 
 			return []string{
 				fmt.Sprintf("name:%T(%s)", o.GetName(), o.GetName()),

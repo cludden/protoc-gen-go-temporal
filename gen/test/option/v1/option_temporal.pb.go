@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -264,15 +265,16 @@ func (c *testClient) GetUpdateWithInput(ctx context.Context, req client.GetWorkf
 
 // WorkflowWithInputOptions provides configuration for a test.option.v1.Test.WorkflowWithInput workflow operation
 type WorkflowWithInputOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewWorkflowWithInputOptions initializes a new WorkflowWithInputOptions value
@@ -395,6 +397,12 @@ func (o *WorkflowWithInputOptions) WithTaskTimeout(d time.Duration) *WorkflowWit
 // WithTaskQueue sets the TaskQueue value
 func (o *WorkflowWithInputOptions) WithTaskQueue(tq string) *WorkflowWithInputOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *WorkflowWithInputOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *WorkflowWithInputOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -709,17 +717,18 @@ func WorkflowWithInputChildAsync(ctx workflow.Context, req *WorkflowWithInputReq
 
 // WorkflowWithInputChildOptions provides configuration for a child test.option.v1.Test.WorkflowWithInput workflow operation
 type WorkflowWithInputChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewWorkflowWithInputChildOptions initializes a new WorkflowWithInputChildOptions value
@@ -904,6 +913,12 @@ func (o *WorkflowWithInputChildOptions) WithTaskQueue(tq string) *WorkflowWithIn
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *WorkflowWithInputChildOptions) WithWaitForCancellation(wait bool) *WorkflowWithInputChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *WorkflowWithInputChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *WorkflowWithInputChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1364,6 +1379,7 @@ var _ WorkflowWithInputRun = &testWorkflowWithInputRun{}
 type testWorkflowWithInputRun struct {
 	client    *TestTestClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *WorkflowWithInputRequest
 	workflows TestWorkflows
@@ -1376,7 +1392,9 @@ func (r *testWorkflowWithInputRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test test.option.v1.Test.WorkflowWithInput workflow result
 func (r *testWorkflowWithInputRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(WorkflowWithInputWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(WorkflowWithInputWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -1518,9 +1536,10 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1535,7 +1554,7 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewTestClient(c)
-				req, err := UnmarshalCliFlagsToUpdateWithInputRequest(cmd)
+				req, err := UnmarshalCliFlagsToUpdateWithInputRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1578,9 +1597,10 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 					Value:   "option-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1595,7 +1615,7 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewTestClient(tc)
-				req, err := UnmarshalCliFlagsToWorkflowWithInputRequest(cmd)
+				req, err := UnmarshalCliFlagsToWorkflowWithInputRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1659,23 +1679,20 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToUpdateWithInputRequest unmarshals a UpdateWithInputRequest from command line flags
 func UnmarshalCliFlagsToUpdateWithInputRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*UpdateWithInputRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result UpdateWithInputRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -1686,23 +1703,20 @@ func UnmarshalCliFlagsToUpdateWithInputRequest(cmd *v2.Context, options ...helpe
 
 // UnmarshalCliFlagsToWorkflowWithInputRequest unmarshals a WorkflowWithInputRequest from command line flags
 func UnmarshalCliFlagsToWorkflowWithInputRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*WorkflowWithInputRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result WorkflowWithInputRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

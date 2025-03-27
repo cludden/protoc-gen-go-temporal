@@ -3,4 +3,250 @@ import TabItem from '@theme/TabItem';
 
 # Documentation
 
-**Coming Soon...**
+The protoc-gen-go-temporal plugin provides automatic documentation generation for your Temporal workflows, activities, queries, signals, and updates. This feature extracts information from your protobuf definitions and generates comprehensive Markdown documentation.
+
+See [github.com/cludden/protoc-gen-go-temporal/proto/README.md](https://github.com/cludden/protoc-gen-go-temporal/blob/main/proto/README.md) for an example of the generated documentation using the default template.
+
+## Overview
+
+The documentation feature parses your protobuf files and generates documentation that includes:
+
+- **Services**: Temporal services with their task queues and configuration
+- **Workflows**: Input/output types, configuration options, and associated queries/signals/updates
+- **Queries**: Input/output types and configuration
+- **Signals**: Input types and start workflow capabilities
+- **Updates**: Input/output types, validation, and wait policies
+- **Activities**: Input/output types, timeouts, retry policies, and task queues
+- **Messages**: All protobuf message types referenced by your Temporal resources
+
+## Generating Documentation
+
+To generate documentation, use the `--docs-out` flag when running the plugin:
+
+<Tabs>
+<TabItem value="buf" label="buf">
+
+```yaml
+# buf.gen.yaml
+version: v1
+plugins:
+  - plugin: go-temporal
+    out: .
+    opt: 
+      - docs-out=proto/docs.md
+```
+
+</TabItem>
+<TabItem value="protoc" label="protoc">
+
+```bash
+protoc \
+  --go-temporal_out=. \
+  --go-temporal_opt=docs-out=proto/docs.md \
+  proto/*.proto
+```
+
+</TabItem>
+</Tabs>
+
+## Template Options
+
+The plugin supports two documentation template options:
+
+### Built-in Template (Default)
+
+Use the built-in "basic" template (default):
+
+<Tabs>
+<TabItem value="buf" label="buf">
+
+```yaml
+# buf.gen.yaml
+version: v1
+plugins:
+  - plugin: go-temporal
+    out: .
+    opt: 
+      - docs-out=proto/docs.md
+      - docs-template=basic
+```
+
+</TabItem>
+<TabItem value="protoc" label="protoc">
+
+```bash
+protoc \
+  --go-temporal_out=. \
+  --go-temporal_opt=docs-out=proto/docs.md \
+  --go-temporal_opt=docs-template=basic \
+  proto/*.proto
+```
+
+</TabItem>
+</Tabs>
+
+### Custom Template
+
+Provide a path to your own Go template file:
+
+<Tabs>
+<TabItem value="buf" label="buf">
+
+```yaml
+# buf.gen.yaml
+version: v1
+plugins:
+  - plugin: go-temporal
+    out: .
+    opt: 
+      - docs-out=proto/docs.md
+      - docs-template=path/to/custom.tpl
+```
+
+</TabItem>
+<TabItem value="protoc" label="protoc">
+
+```bash
+protoc \
+  --go-temporal_out=. \
+  --go-temporal_opt=docs-out=proto/docs.md \
+  --go-temporal_opt=docs-template=path/to/custom.tpl \
+  proto/*.proto
+```
+
+</TabItem>
+</Tabs>
+
+## Generated Documentation Structure
+
+The generated documentation includes:
+
+### Table of Contents
+
+A hierarchical table of contents listing all packages, services, and their Temporal resources.
+
+### Service Documentation
+
+For each service with Temporal resources:
+
+- Service name and comments
+- Task queue configuration
+- Lists of workflows, queries, signals, updates, and activities
+
+### Workflow Documentation
+
+For each workflow:
+
+- Comments and deprecation notices
+- Input and output message types with field details
+- Default configuration (ID patterns, timeouts, retry policies, etc.)
+- Associated queries, signals, and updates
+
+### Query Documentation
+
+For each query:
+
+- Comments and deprecation notices
+- Input and output message types
+- Cross-namespace (XNS) configuration if applicable
+
+### Signal Documentation
+
+For each signal:
+
+- Comments and deprecation notices
+- Input message types
+- Whether the signal can start workflows
+- XNS configuration if applicable
+
+### Update Documentation
+
+For each update:
+
+- Comments and deprecation notices
+- Input and output message types
+- Validation and wait policy settings
+- XNS configuration if applicable
+
+### Activity Documentation
+
+For each activity:
+
+- Comments and deprecation notices
+- Input and output message types
+- Timeout configurations
+- Retry policies
+- Task queue assignments
+- Cancellation behavior
+
+### Message Documentation
+
+For all referenced protobuf messages:
+
+- Field definitions with types
+- JSON and Go field names
+- Go struct tags
+- Comments and descriptions
+
+## Example Output
+
+Here's a sample of what the generated documentation looks like:
+
+```markdown
+# Table of Contents
+
+- [mycompany.workflows](#mycompany-workflows)
+  - Services
+    - [mycompany.workflows.OrderService](#mycompany-workflows-orderservice)
+      - [Workflows](#mycompany-workflows-orderservice-workflows)
+        - [mycompany.workflows.OrderService.ProcessOrder](#mycompany-workflows-orderservice-processorder-workflow)
+      - [Activities](#mycompany-workflows-orderservice-activities)
+        - [mycompany.workflows.OrderService.ValidatePayment](#mycompany-workflows-orderservice-validatepayment-activity)
+
+## mycompany.workflows.OrderService
+
+### Workflows
+
+---
+#### mycompany.workflows.OrderService.ProcessOrder
+
+<pre>
+ProcessOrder handles the complete order processing workflow
+</pre>
+
+**Input:** [mycompany.workflows.ProcessOrderRequest](#mycompany-workflows-processorderrequest)
+
+**Output:** [mycompany.workflows.ProcessOrderResponse](#mycompany-workflows-processorderresponse)
+
+**Defaults:**
+
+| Name | Value |
+|------|-------|
+| id | `order-${! .orderID}` |
+| execution_timeout | 1 hour |
+| task_queue | `order-processing` |
+```
+
+## Template Functions
+
+When creating custom templates, you have access to these helper functions:
+
+- `fmtduration`: Formats Go time.Duration values (e.g., "30 seconds", "1 hour")
+- `slug`: Converts strings to URL-safe slugs for anchor links
+- All [Sprig template functions](http://masterminds.github.io/sprig/)
+
+## Template Data Structure
+
+The template receives a `Data` object with these fields:
+
+- `Activities`: Map of activity definitions
+- `Enums`: Map of enum definitions  
+- `Messages`: Map of message definitions
+- `Packages`: Map of package definitions
+- `Queries`: Map of query definitions
+- `Services`: Map of service definitions
+- `Signals`: Map of signal definitions
+- `Updates`: Map of update definitions
+- `Workflows`: Map of workflow definitions
+
+Each definition includes metadata like comments, configuration options, input/output types, and defaults.

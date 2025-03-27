@@ -30,6 +30,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 )
 
@@ -196,15 +197,16 @@ func (c *exampleClient) Goodbye(ctx context.Context, workflowID string, runID st
 
 // HelloOptions provides configuration for a example.v1.Hello workflow operation
 type HelloOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewHelloOptions initializes a new HelloOptions value
@@ -301,6 +303,12 @@ func (o *HelloOptions) WithTaskTimeout(d time.Duration) *HelloOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *HelloOptions) WithTaskQueue(tq string) *HelloOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *HelloOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *HelloOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -482,17 +490,18 @@ func HelloChildAsync(ctx workflow.Context, req *HelloRequest, options ...*HelloC
 
 // HelloChildOptions provides configuration for a child example.v1.Hello workflow operation
 type HelloChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewHelloChildOptions initializes a new HelloChildOptions value
@@ -623,6 +632,12 @@ func (o *HelloChildOptions) WithTaskQueue(tq string) *HelloChildOptions {
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *HelloChildOptions) WithWaitForCancellation(wait bool) *HelloChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *HelloChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *HelloChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -812,6 +827,7 @@ var _ HelloRun = &testHelloRun{}
 type testHelloRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *HelloRequest
 	workflows ExampleWorkflows
@@ -824,7 +840,9 @@ func (r *testHelloRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test example.v1.Hello workflow result
 func (r *testHelloRun) Get(context.Context) (*HelloResponse, error) {
-	r.env.ExecuteWorkflow(HelloWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(HelloWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -960,9 +978,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "message",
@@ -977,7 +996,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToGoodbyeRequest(cmd)
+				req, err := UnmarshalCliFlagsToGoodbyeRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1009,9 +1028,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "hello-world",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1026,7 +1046,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToHelloRequest(cmd)
+				req, err := UnmarshalCliFlagsToHelloRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1099,23 +1119,20 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToGoodbyeRequest unmarshals a GoodbyeRequest from command line flags
 func UnmarshalCliFlagsToGoodbyeRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*GoodbyeRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result GoodbyeRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("message"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -1126,23 +1143,20 @@ func UnmarshalCliFlagsToGoodbyeRequest(cmd *v2.Context, options ...helpers.Unmar
 
 // UnmarshalCliFlagsToHelloRequest unmarshals a HelloRequest from command line flags
 func UnmarshalCliFlagsToHelloRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*HelloRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result HelloRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

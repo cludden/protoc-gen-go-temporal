@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 )
 
@@ -177,15 +178,16 @@ func (c *exampleClient) TerminateWorkflow(ctx context.Context, workflowID string
 
 // ScheduleOptions provides configuration for a example.schedule.v1.Schedule workflow operation
 type ScheduleOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewScheduleOptions initializes a new ScheduleOptions value
@@ -276,6 +278,12 @@ func (o *ScheduleOptions) WithTaskTimeout(d time.Duration) *ScheduleOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *ScheduleOptions) WithTaskQueue(tq string) *ScheduleOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ScheduleOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ScheduleOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -443,17 +451,18 @@ func ScheduleChildAsync(ctx workflow.Context, req *ScheduleInput, options ...*Sc
 
 // ScheduleChildOptions provides configuration for a child example.schedule.v1.Schedule workflow operation
 type ScheduleChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewScheduleChildOptions initializes a new ScheduleChildOptions value
@@ -562,6 +571,12 @@ func (o *ScheduleChildOptions) WithTaskQueue(tq string) *ScheduleChildOptions {
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *ScheduleChildOptions) WithWaitForCancellation(wait bool) *ScheduleChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ScheduleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ScheduleChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -677,6 +692,7 @@ var _ ScheduleRun = &testScheduleRun{}
 type testScheduleRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *ScheduleInput
 	workflows ExampleWorkflows
@@ -689,7 +705,9 @@ func (r *testScheduleRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test example.schedule.v1.Schedule workflow result
 func (r *testScheduleRun) Get(context.Context) (*ScheduleOutput, error) {
-	r.env.ExecuteWorkflow(ScheduleWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(ScheduleWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -821,9 +839,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "schedule-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -833,7 +852,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToScheduleInput(cmd)
+				req, err := UnmarshalCliFlagsToScheduleInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -906,18 +925,19 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToScheduleInput unmarshals a ScheduleInput from command line flags
 func UnmarshalCliFlagsToScheduleInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ScheduleInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ScheduleInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
 	}
 	return &result, nil

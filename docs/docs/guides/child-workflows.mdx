@@ -3,4 +3,924 @@ import TabItem from '@theme/TabItem';
 
 # Child Workflows
 
-**Coming Soon...**
+The protoc-gen-go-temporal plugin automatically generates helper functions for executing workflows as child workflows from parent workflows. These helpers provide type-safe, convenient APIs for managing child workflow lifecycle, configuration, and communication.
+
+## Generated Child Workflow Functions
+
+For each workflow defined in your protobuf service, the plugin generates child workflow helper functions that handle all the complexity of child workflow execution.
+
+<Tabs>
+<TabItem value="child-helpers" label="Generated Helpers">
+```go title="Generated Child Workflow Functions"
+// Synchronous child workflow execution
+func CreateFooChild(ctx workflow.Context, req *CreateFooRequest, options ...*CreateFooChildOptions) (*CreateFooResponse, error)
+
+// Asynchronous child workflow execution  
+func CreateFooChildAsync(ctx workflow.Context, req *CreateFooRequest, options ...*CreateFooChildOptions) (CreateFooChildRun, error)
+
+// Child workflow options builder
+func NewCreateFooChildOptions() *CreateFooChildOptions
+
+// Child workflow run handle
+type CreateFooChildRun interface {
+    // Wait for child workflow completion
+    Get(ctx workflow.Context) (*CreateFooResponse, error)
+    
+    // Wait for child workflow to start
+    WaitStart(ctx workflow.Context) (*workflow.Execution, error)
+    
+    // Selector integration for completion
+    Select(sel workflow.Selector, fn func(CreateFooChildRun)) workflow.Selector
+    
+    // Selector integration for start
+    SelectStart(sel workflow.Selector, fn func(CreateFooChildRun)) workflow.Selector
+    
+    // Signal methods (if workflow defines signals)
+    SetFooProgress(ctx workflow.Context, req *SetFooProgressRequest) error
+    SetFooProgressAsync(ctx workflow.Context, req *SetFooProgressRequest) workflow.Future
+}
+```
+</TabItem>
+<TabItem value="child-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress" }
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+      execution_timeout: { seconds: 3600 }
+    };
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Child Workflow Run Interface
+
+The generated `CreateFooChildRun` interface provides comprehensive control over child workflow execution and lifecycle management.
+
+<Tabs>
+<TabItem value="run-interface" label="Interface Methods">
+```go title="Generated Child Run Interface"
+type CreateFooChildRun interface {
+    // Core lifecycle methods
+    Get(ctx workflow.Context) (*CreateFooResponse, error)
+    WaitStart(ctx workflow.Context) (*workflow.Execution, error)
+    
+    // Selector integration for async coordination
+    Select(sel workflow.Selector, fn func(CreateFooChildRun)) workflow.Selector
+    SelectStart(sel workflow.Selector, fn func(CreateFooChildRun)) workflow.Selector
+    
+    // Signal methods (generated for each signal defined in the workflow)
+    SetFooProgress(ctx workflow.Context, req *SetFooProgressRequest) error
+    SetFooProgressAsync(ctx workflow.Context, req *SetFooProgressRequest) workflow.Future
+    
+    // Query methods (generated for each query defined in the workflow)  
+    GetFooStatus(ctx workflow.Context) (*GetFooStatusResponse, error)
+    GetFooStatusAsync(ctx workflow.Context) workflow.Future
+    
+    // Update methods (generated for each update defined in the workflow)
+    UpdateFooConfig(ctx workflow.Context, req *UpdateFooConfigRequest, opts ...*UpdateFooConfigOptions) (*UpdateFooConfigResponse, error)
+    UpdateFooConfigAsync(ctx workflow.Context, req *UpdateFooConfigRequest, opts ...*UpdateFooConfigOptions) (UpdateFooConfigHandle, error)
+}
+```
+</TabItem>
+<TabItem value="run-usage" label="Usage Examples">
+```go title="child_run_usage.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    // Start child workflow asynchronously
+    childRun, err := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "managed-child",
+    })
+    if err != nil {
+        return nil, err
+    }
+
+    // Wait for child to start and get execution info
+    execution, err := childRun.WaitStart(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("child failed to start: %w", err)
+    }
+    
+    workflow.GetLogger(ctx).Info("child started", 
+        "workflow_id", execution.ID, 
+        "run_id", execution.RunID)
+
+    // Send signal to child
+    err = childRun.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+        Progress: 0.25,
+    })
+    if err != nil {
+        workflow.GetLogger(ctx).Error("failed to signal child", "error", err)
+    }
+
+    // Query child state
+    status, err := childRun.GetFooStatus(ctx)
+    if err != nil {
+        workflow.GetLogger(ctx).Error("failed to query child", "error", err)
+    } else {
+        workflow.GetLogger(ctx).Info("child status", "status", status)
+    }
+
+    // Update child configuration
+    updateResult, err := childRun.UpdateFooConfig(ctx, &examplev1.UpdateFooConfigRequest{
+        MaxRetries: 5,
+    })
+    if err != nil {
+        workflow.GetLogger(ctx).Error("failed to update child", "error", err)
+    }
+
+    // Wait for final completion
+    result, err := childRun.Get(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("child execution failed: %w", err)
+    }
+
+    return &examplev1.ParentResponse{
+        ChildResult: result,
+        Execution:   execution,
+    }, nil
+}
+```
+</TabItem>
+</Tabs>
+
+### Core Methods
+
+#### Get(ctx workflow.Context) (*WorkflowResponse, error)
+Waits for the child workflow to complete and returns the final result. This method blocks until the child workflow finishes execution (successfully or with an error).
+
+#### WaitStart(ctx workflow.Context) (*workflow.Execution, error)  
+Waits for the child workflow to start and returns execution metadata including workflow ID and run ID. This is useful when you need to know the child's execution details before it completes.
+
+### Selector Integration
+
+#### Select(sel workflow.Selector, fn func(ChildRun)) workflow.Selector
+Adds the child workflow completion to a selector. The callback function is invoked when the child workflow completes.
+
+#### SelectStart(sel workflow.Selector, fn func(ChildRun)) workflow.Selector
+Adds the child workflow start event to a selector. The callback function is invoked when the child workflow starts.
+
+<Tabs>
+<TabItem value="selector-example" label="Selector Usage">
+```go title="selector_coordination.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) error {
+    // Start multiple child workflows
+    child1, _ := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{Name: "child-1"})
+    child2, _ := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{Name: "child-2"})
+    
+    selector := workflow.NewSelector(ctx)
+    var completedChildren int
+    
+    // Wait for both children to start
+    child1.SelectStart(selector, func(run examplev1.CreateFooChildRun) {
+        workflow.GetLogger(ctx).Info("child-1 started")
+    })
+    child2.SelectStart(selector, func(run examplev1.CreateFooChildRun) {
+        workflow.GetLogger(ctx).Info("child-2 started")
+    })
+    
+    // Wait for both to start
+    selector.Select(ctx)
+    selector.Select(ctx)
+    
+    // Now wait for completion
+    child1.Select(selector, func(run examplev1.CreateFooChildRun) {
+        result, err := run.Get(ctx)
+        if err != nil {
+            workflow.GetLogger(ctx).Error("child-1 failed", "error", err)
+        }
+        completedChildren++
+    })
+    child2.Select(selector, func(run examplev1.CreateFooChildRun) {
+        result, err := run.Get(ctx)
+        if err != nil {
+            workflow.GetLogger(ctx).Error("child-2 failed", "error", err)
+        }
+        completedChildren++
+    })
+    
+    // Wait for both to complete
+    for completedChildren < 2 {
+        selector.Select(ctx)
+    }
+    
+    return nil
+}
+```
+</TabItem>
+<TabItem value="selector-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress" }
+      query: { ref: "GetFooStatus" }
+    };
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc GetFooStatus(google.protobuf.Empty) returns (GetFooStatusResponse) {
+    option (temporal.v1.query) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Signal Methods
+
+For each signal defined in the child workflow, the run interface generates both synchronous and asynchronous signal methods.
+
+#### SignalName(ctx workflow.Context, req *SignalRequest) error
+Sends a signal synchronously to the child workflow and waits for acknowledgment.
+
+#### SignalNameAsync(ctx workflow.Context, req *SignalRequest) workflow.Future
+Sends a signal asynchronously to the child workflow and returns a Future for the operation.
+
+### Query Methods
+
+For each query defined in the child workflow, the run interface generates both synchronous and asynchronous query methods.
+
+#### QueryName(ctx workflow.Context) (*QueryResponse, error)
+Executes a query synchronously on the child workflow and returns the result.
+
+#### QueryNameAsync(ctx workflow.Context) workflow.Future
+Executes a query asynchronously on the child workflow and returns a Future for the operation.
+
+### Update Methods
+
+For each update defined in the child workflow, the run interface generates both synchronous and asynchronous update methods.
+
+#### UpdateName(ctx workflow.Context, req *UpdateRequest, opts ...*UpdateOptions) (*UpdateResponse, error)
+Executes an update synchronously on the child workflow and returns the result.
+
+#### UpdateNameAsync(ctx workflow.Context, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error)
+Executes an update asynchronously on the child workflow and returns a handle for the operation.
+
+<Tabs>
+<TabItem value="communication-example" label="Child Communication">
+```go title="child_communication.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) error {
+    // Start child workflow
+    childRun, err := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "communicating-child",
+    })
+    if err != nil {
+        return err
+    }
+
+    // Wait for child to start
+    execution, err := childRun.WaitStart(ctx)
+    if err != nil {
+        return err
+    }
+
+    // Send multiple signals with different patterns
+    
+    // 1. Synchronous signal
+    err = childRun.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+        Progress: 0.1,
+    })
+    if err != nil {
+        workflow.GetLogger(ctx).Error("sync signal failed", "error", err)
+    }
+
+    // 2. Asynchronous signal
+    signalFuture := childRun.SetFooProgressAsync(ctx, &examplev1.SetFooProgressRequest{
+        Progress: 0.2,
+    })
+    
+    // 3. Query child state
+    status, err := childRun.GetFooStatus(ctx)
+    if err != nil {
+        workflow.GetLogger(ctx).Error("query failed", "error", err)
+    } else {
+        workflow.GetLogger(ctx).Info("child status", "status", status.Status)
+    }
+
+    // 4. Update child configuration
+    updateHandle, err := childRun.UpdateFooConfigAsync(ctx, &examplev1.UpdateFooConfigRequest{
+        MaxRetries: 10,
+        Timeout:    "30s",
+    })
+    if err != nil {
+        workflow.GetLogger(ctx).Error("update failed", "error", err)
+    } else {
+        // Wait for update completion
+        updateResult, err := updateHandle.Get(ctx)
+        if err != nil {
+            workflow.GetLogger(ctx).Error("update completion failed", "error", err)
+        } else {
+            workflow.GetLogger(ctx).Info("update completed", "result", updateResult)
+        }
+    }
+
+    // Wait for async signal completion
+    err = signalFuture.Get(ctx, nil)
+    if err != nil {
+        workflow.GetLogger(ctx).Error("async signal failed", "error", err)
+    }
+
+    // Final query to check state
+    finalStatus, err := childRun.GetFooStatus(ctx)
+    if err == nil {
+        workflow.GetLogger(ctx).Info("final child status", "status", finalStatus.Status)
+    }
+
+    // Wait for child completion
+    result, err := childRun.Get(ctx)
+    if err != nil {
+        return fmt.Errorf("child failed: %w", err)
+    }
+
+    workflow.GetLogger(ctx).Info("child completed successfully", "result", result)
+    return nil
+}
+```
+</TabItem>
+<TabItem value="communication-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress" }
+      query: { ref: "GetFooStatus" }
+      update: { ref: "UpdateFooConfig" }
+    };
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc GetFooStatus(google.protobuf.Empty) returns (GetFooStatusResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc UpdateFooConfig(UpdateFooConfigRequest) returns (UpdateFooConfigResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Basic Child Workflow Execution
+
+Execute child workflows synchronously or asynchronously from parent workflows.
+
+### Synchronous Execution
+
+Synchronous child workflow execution blocks until the child completes and returns the result.
+
+<Tabs>
+<TabItem value="sync-child" label="Go">
+```go title="parent_workflow.go"
+package main
+
+import (
+    "fmt"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/workflow"
+)
+
+type ParentWorkflow struct {
+    *examplev1.ParentWorkflowInput
+}
+
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    // Execute child workflow synchronously
+    childResult, err := examplev1.CreateFooChild(ctx, &examplev1.CreateFooRequest{
+        Name: "child-foo",
+    })
+    if err != nil {
+        return nil, fmt.Errorf("child workflow failed: %w", err)
+    }
+
+    return &examplev1.ParentResponse{
+        ChildResult: childResult,
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="sync-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  rpc Parent(ParentRequest) returns (ParentResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Asynchronous Execution
+
+Asynchronous child workflow execution starts the child and returns immediately with a handle for later operations.
+
+<Tabs>
+<TabItem value="async-child" label="Go">
+```go title="parent_workflow.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    // Start child workflow asynchronously
+    childRun, err := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "async-child",
+    })
+    if err != nil {
+        return nil, fmt.Errorf("failed to start child: %w", err)
+    }
+
+    // Do other work while child executes
+    workflow.GetLogger(ctx).Info("child started, doing other work...")
+    
+    // Perform other activities or logic
+    err = workflow.Sleep(ctx, time.Second*10)
+    if err != nil {
+        return nil, err
+    }
+
+    // Wait for child completion
+    childResult, err := childRun.Get(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("child execution failed: %w", err)
+    }
+
+    return &examplev1.ParentResponse{
+        ChildResult: childResult,
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="async-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Parent(ParentRequest) returns (ParentResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Child Workflow Options
+
+Configure child workflow behavior using the generated options builders.
+
+<Tabs>
+<TabItem value="child-options" label="Go">
+```go title="child_options.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    // Configure child workflow with custom options
+    childResult, err := examplev1.CreateFooChild(ctx, &examplev1.CreateFooRequest{
+        Name: "configured-child",
+    }, examplev1.NewCreateFooChildOptions().
+        WithParentClosePolicy(enums.PARENT_CLOSE_POLICY_REQUEST_CANCEL).
+        WithExecutionTimeout(time.Hour * 2).
+        WithTaskQueue("child-task-queue").
+        WithRetryPolicy(&temporal.RetryPolicy{
+            MaximumAttempts: 3,
+            BackoffCoefficient: 2.0,
+        }).
+        WithWaitForCancellation(true).
+        WithSearchAttributes(map[string]any{
+            "child_type": "foo",
+            "priority": "high",
+        }),
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    return &examplev1.ParentResponse{
+        ChildResult: childResult,
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      execution_timeout: { seconds: 3600 }
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+      retry_policy: {
+        max_attempts: 5
+        backoff_coefficient: 2.0
+      }
+      search_attributes: 'child_type = "foo"'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Parent Close Policies
+
+Configure how child workflows behave when the parent workflow closes.
+
+<Tabs>
+<TabItem value="close-policies" label="Close Policy Options">
+```go title="parent_close_policies.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) error {
+    // Child terminates when parent closes
+    _, err := examplev1.CreateFooChild(ctx, req, 
+        examplev1.NewCreateFooChildOptions().
+            WithParentClosePolicy(enums.PARENT_CLOSE_POLICY_TERMINATE),
+    )
+
+    // Child continues running when parent closes
+    _, err = examplev1.CreateFooChild(ctx, req,
+        examplev1.NewCreateFooChildOptions().
+            WithParentClosePolicy(enums.PARENT_CLOSE_POLICY_ABANDON),
+    )
+
+    // Child receives cancellation request when parent closes
+    _, err = examplev1.CreateFooChild(ctx, req,
+        examplev1.NewCreateFooChildOptions().
+            WithParentClosePolicy(enums.PARENT_CLOSE_POLICY_REQUEST_CANCEL).
+            WithWaitForCancellation(true), // Wait for child to handle cancellation
+    )
+
+    return err
+}
+```
+</TabItem>
+<TabItem value="policies-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      // Default parent close policy for child workflows
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+      wait_for_cancellation: true
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Child Workflow Communication
+
+Send signals to child workflows using the generated signal methods on the child run handle.
+
+<Tabs>
+<TabItem value="child-signals" label="Go">
+```go title="child_communication.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    // Start child workflow
+    childRun, err := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "communicating-child",
+    })
+    if err != nil {
+        return nil, err
+    }
+
+    // Wait for child to start
+    execution, err := childRun.WaitStart(ctx)
+    if err != nil {
+        return nil, err
+    }
+
+    workflow.GetLogger(ctx).Info("child started", "workflow_id", execution.ID)
+
+    // Send progress updates to child
+    for progress := 0.2; progress <= 1.0; progress += 0.2 {
+        workflow.Sleep(ctx, time.Second*5)
+        
+        err = childRun.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+            Progress: float32(progress),
+        })
+        if err != nil {
+            workflow.GetLogger(ctx).Error("failed to send progress signal", "error", err)
+        } else {
+            workflow.GetLogger(ctx).Info("sent progress update", "progress", progress)
+        }
+    }
+
+    // Wait for child completion
+    result, err := childRun.Get(ctx)
+    if err != nil {
+        return nil, err
+    }
+
+    return &examplev1.ParentResponse{
+        ChildResult: result,
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="signals-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress" }
+    };
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Multiple Child Workflows
+
+Coordinate multiple child workflows using selectors and concurrent execution patterns.
+
+<Tabs>
+<TabItem value="multiple-children" label="Go">
+```go title="multiple_children.go"
+type childResult struct {
+    name   string
+    result *examplev1.CreateFooResponse
+    err    error
+}
+
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    childNames := []string{"child-1", "child-2", "child-3"}
+    var childRuns []examplev1.CreateFooChildRun
+    var results []childResult
+
+    // Start all child workflows
+    for _, name := range childNames {
+        childRun, err := examplev1.CreateFooChildAsync(ctx, &examplev1.CreateFooRequest{
+            Name: name,
+        })
+        if err != nil {
+            return nil, fmt.Errorf("failed to start child %s: %w", name, err)
+        }
+        childRuns = append(childRuns, childRun)
+    }
+
+    workflow.GetLogger(ctx).Info("started all children", "count", len(childRuns))
+
+    // Wait for all children to complete using selector
+    selector := workflow.NewSelector(ctx)
+    for i, childRun := range childRuns {
+        i, childRun := i, childRun // capture loop variables
+        childRun.Select(selector, func(run examplev1.CreateFooChildRun) {
+            result, err := run.Get(ctx)
+            results = append(results, childResult{
+                name:   childNames[i],
+                result: result,
+                err:    err,
+            })
+        })
+    }
+
+    // Wait for all children to complete
+    for len(results) < len(childNames) {
+        selector.Select(ctx)
+    }
+
+    // Process results
+    var successCount int
+    for _, result := range results {
+        if result.err != nil {
+            workflow.GetLogger(ctx).Error("child failed", "name", result.name, "error", result.err)
+        } else {
+            successCount++
+            workflow.GetLogger(ctx).Info("child completed", "name", result.name)
+        }
+    }
+
+    return &examplev1.ParentResponse{
+        SuccessCount: int32(successCount),
+        TotalCount:   int32(len(childNames)),
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="multiple-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Parent(ParentRequest) returns (ParentResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+    };
+  }
+}
+
+message ParentResponse {
+  int32 success_count = 1;
+  int32 total_count = 2;
+}
+```
+</TabItem>
+</Tabs>
+
+## Testing Child Workflows
+
+Test workflows that use child workflows with Temporal's testing framework.
+
+<Tabs>
+<TabItem value="testing" label="Go">
+```go title="child_workflow_test.go"
+package main
+
+import (
+    "testing"
+    "time"
+
+    "github.com/stretchr/testify/mock"
+    "github.com/stretchr/testify/require"
+    "go.temporal.io/sdk/testsuite"
+    "go.temporal.io/sdk/workflow"
+
+    examplev1 "path/to/gen/example/v1"
+)
+
+func TestParentWorkflowWithChild(t *testing.T) {
+    suite := &testsuite.WorkflowTestSuite{}
+    env := suite.NewTestWorkflowEnvironment()
+
+    // Register workflows
+    examplev1.RegisterExampleWorkflows(env, &Workflows{})
+
+    // Mock child workflow behavior
+    env.OnWorkflow(examplev1.CreateFooWorkflowName, mock.Anything, mock.Anything).
+        Return(&examplev1.CreateFooResponse{
+            Foo: &examplev1.Foo{
+                Name:   "test-child",
+                Status: examplev1.Foo_FOO_STATUS_READY,
+            },
+        }, nil)
+
+    // Execute parent workflow
+    env.ExecuteWorkflow("Parent", &examplev1.ParentRequest{
+        Name: "test-parent",
+    })
+
+    require.True(t, env.IsWorkflowCompleted())
+    require.NoError(t, env.GetWorkflowError())
+
+    var result examplev1.ParentResponse
+    err := env.GetWorkflowResult(&result)
+    require.NoError(t, err)
+    require.Equal(t, "test-child", result.ChildResult.Foo.Name)
+}
+
+func TestParentWorkflowWithChildFailure(t *testing.T) {
+    suite := &testsuite.WorkflowTestSuite{}
+    env := suite.NewTestWorkflowEnvironment()
+
+    examplev1.RegisterExampleWorkflows(env, &Workflows{})
+
+    // Mock child workflow failure
+    env.OnWorkflow(examplev1.CreateFooWorkflowName, mock.Anything, mock.Anything).
+        Return(nil, temporal.NewApplicationError("child failed", "CHILD_ERROR"))
+
+    env.ExecuteWorkflow("Parent", &examplev1.ParentRequest{
+        Name: "test-parent",
+    })
+
+    require.True(t, env.IsWorkflowCompleted())
+    require.Error(t, env.GetWorkflowError())
+}
+
+func TestChildWorkflowWithSignals(t *testing.T) {
+    suite := &testsuite.WorkflowTestSuite{}
+    env := suite.NewTestWorkflowEnvironment()
+
+    examplev1.RegisterExampleWorkflows(env, &Workflows{})
+
+    // Track signals sent to child
+    var signalsSent []examplev1.SetFooProgressRequest
+
+    env.OnWorkflow(examplev1.CreateFooWorkflowName, mock.Anything, mock.Anything).
+        Run(func(args mock.Arguments) {
+            // Simulate child workflow that receives signals
+        }).
+        Return(&examplev1.CreateFooResponse{}, nil)
+
+    // Mock signal sending
+    env.OnSignalWorkflow(examplev1.SetFooProgressSignalName, mock.Anything, mock.Anything).
+        Run(func(args mock.Arguments) {
+            req := args.Get(1).(*examplev1.SetFooProgressRequest)
+            signalsSent = append(signalsSent, *req)
+        })
+
+    env.ExecuteWorkflow("ParentWithSignaling", &examplev1.ParentRequest{})
+
+    require.True(t, env.IsWorkflowCompleted())
+    require.NoError(t, env.GetWorkflowError())
+    require.Greater(t, len(signalsSent), 0, "Expected signals to be sent to child")
+}
+```
+</TabItem>
+<TabItem value="testing-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Parent(ParentRequest) returns (ParentResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress" }
+    };
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>

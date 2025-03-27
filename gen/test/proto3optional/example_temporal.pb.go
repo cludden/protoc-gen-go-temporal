@@ -32,6 +32,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 )
 
@@ -185,15 +186,16 @@ func (c *fooServiceClient) TerminateWorkflow(ctx context.Context, workflowID str
 
 // FooOptions provides configuration for a test.proto3optional.FooService.Foo workflow operation
 type FooOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewFooOptions initializes a new FooOptions value
@@ -284,6 +286,12 @@ func (o *FooOptions) WithTaskTimeout(d time.Duration) *FooOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *FooOptions) WithTaskQueue(tq string) *FooOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *FooOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *FooOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -451,17 +459,18 @@ func FooChildAsync(ctx workflow.Context, req *FooInput, options ...*FooChildOpti
 
 // FooChildOptions provides configuration for a child test.proto3optional.FooService.Foo workflow operation
 type FooChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewFooChildOptions initializes a new FooChildOptions value
@@ -570,6 +579,12 @@ func (o *FooChildOptions) WithTaskQueue(tq string) *FooChildOptions {
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *FooChildOptions) WithWaitForCancellation(wait bool) *FooChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *FooChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *FooChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -930,6 +945,7 @@ var _ FooRun = &testFooRun{}
 type testFooRun struct {
 	client    *TestFooServiceClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *FooInput
 	workflows FooServiceWorkflows
@@ -942,7 +958,9 @@ func (r *testFooRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test test.proto3optional.FooService.Foo workflow result
 func (r *testFooRun) Get(context.Context) (*FooOutput, error) {
-	r.env.ExecuteWorkflow(FooWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(FooWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -1074,9 +1092,10 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 					Value:   "foo-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "optional-bytes",
@@ -1161,7 +1180,7 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 				}
 				defer tc.Close()
 				c := NewFooServiceClient(tc)
-				req, err := UnmarshalCliFlagsToFooInput(cmd)
+				req, err := UnmarshalCliFlagsToFooInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1234,23 +1253,20 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 
 // UnmarshalCliFlagsToFooInput unmarshals a FooInput from command line flags
 func UnmarshalCliFlagsToFooInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*FooInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result FooInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("optional-bytes"); cmd.IsSet(flag) {
 		value, err := base64.StdEncoding.DecodeString(cmd.String(flag))

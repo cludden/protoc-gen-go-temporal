@@ -1,0 +1,34 @@
+version: v2
+managed:
+  enabled: true
+  disable:
+    - module: buf.build/temporalio/api
+  override:
+    - file_option: go_package_prefix
+      value: github.com/cludden/protoc-gen-go-temporal/gen
+plugins:
+  - local: protoc-gen-go
+    out: gen
+    opt:
+      - paths=source_relative
+  - local: .omni/bin/protoc-gen-go_temporal
+    out: gen
+    opt:
+      - cli-categories=true
+      - cli-enabled=true
+      - docs-out=./proto/README.md
+      - enable-codec=true
+      - enable-debug-logging=true
+      - enable-patch-support=true
+      - enable-xns=true
+      - ignore-acronyms=AWS;URN
+      - patches=64_ENABLED
+      - paths=source_relative
+      - workflow-update-enabled=true
+    strategy: all
+inputs:
+  - directory: examples
+  - directory: proto
+  - directory: test
+    exclude_paths:
+      - test/patch/proto/test/patch

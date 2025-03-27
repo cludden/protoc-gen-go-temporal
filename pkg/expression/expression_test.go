@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	pb "github.com/cludden/protoc-gen-go-temporal/gen/test/expression/v1"
+	"github.com/cludden/protoc-gen-go-temporal/gen/test/opaque"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestExpression(t *testing.T) {
@@ -15,7 +17,7 @@ func TestExpression(t *testing.T) {
 
 	cases := []struct {
 		expr     string
-		msg      *pb.Request
+		msg      proto.Message
 		assert   func(result string, err error)
 		expected string
 		err      string
@@ -125,6 +127,25 @@ func TestExpression(t *testing.T) {
 				Id: "foo{bar}baz",
 			},
 			expected: "bar",
+		},
+		{
+			expr: `opaque/${! name }`,
+			msg: (&opaque.OpaqueExample_builder{
+				Name: proto.String("test"),
+			}).Build(),
+			expected: "opaque/test",
+		},
+		{
+			expr: `optional/${! name }`,
+			msg: &opaque.OptionalExample{
+				Name: proto.String("test"),
+			},
+			expected: "optional/test",
+		},
+		{
+			expr: `optional/${! name }`,
+			msg:  &opaque.OptionalExample{},
+			err:  "expected string result from ` name ` query, got: <nil>",
 		},
 	}
 

@@ -31,6 +31,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 )
 
@@ -216,15 +217,16 @@ func (c *exampleClient) UpdateWakeUpTime(ctx context.Context, workflowID string,
 
 // UpdatableTimerOptions provides configuration for a UpdatableTimer workflow operation
 type UpdatableTimerOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewUpdatableTimerOptions initializes a new UpdatableTimerOptions value
@@ -321,6 +323,12 @@ func (o *UpdatableTimerOptions) WithTaskTimeout(d time.Duration) *UpdatableTimer
 // WithTaskQueue sets the TaskQueue value
 func (o *UpdatableTimerOptions) WithTaskQueue(tq string) *UpdatableTimerOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *UpdatableTimerOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *UpdatableTimerOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -512,17 +520,18 @@ func UpdatableTimerChildAsync(ctx workflow.Context, req *UpdatableTimerInput, op
 
 // UpdatableTimerChildOptions provides configuration for a child UpdatableTimer workflow operation
 type UpdatableTimerChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewUpdatableTimerChildOptions initializes a new UpdatableTimerChildOptions value
@@ -653,6 +662,12 @@ func (o *UpdatableTimerChildOptions) WithTaskQueue(tq string) *UpdatableTimerChi
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *UpdatableTimerChildOptions) WithWaitForCancellation(wait bool) *UpdatableTimerChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *UpdatableTimerChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *UpdatableTimerChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -857,6 +872,7 @@ var _ UpdatableTimerRun = &testUpdatableTimerRun{}
 type testUpdatableTimerRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *UpdatableTimerInput
 	workflows ExampleWorkflows
@@ -869,7 +885,9 @@ func (r *testUpdatableTimerRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test UpdatableTimer workflow result
 func (r *testUpdatableTimerRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(UpdatableTimerWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(UpdatableTimerWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -1049,9 +1067,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.TimestampFlag{
 					Name:     "wake-up-time",
@@ -1067,7 +1086,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToUpdateWakeUpTimeInput(cmd)
+				req, err := UnmarshalCliFlagsToUpdateWakeUpTimeInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1099,9 +1118,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "updatable-timer",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.TimestampFlag{
 					Name:     "initial-wake-up-time",
@@ -1122,7 +1142,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToUpdatableTimerInput(cmd)
+				req, err := UnmarshalCliFlagsToUpdatableTimerInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1186,23 +1206,20 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToUpdateWakeUpTimeInput unmarshals a UpdateWakeUpTimeInput from command line flags
 func UnmarshalCliFlagsToUpdateWakeUpTimeInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*UpdateWakeUpTimeInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result UpdateWakeUpTimeInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("wake-up-time"); cmd.IsSet(flag) {
 		v := cmd.Timestamp(flag)
@@ -1214,23 +1231,20 @@ func UnmarshalCliFlagsToUpdateWakeUpTimeInput(cmd *v2.Context, options ...helper
 
 // UnmarshalCliFlagsToUpdatableTimerInput unmarshals a UpdatableTimerInput from command line flags
 func UnmarshalCliFlagsToUpdatableTimerInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*UpdatableTimerInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result UpdatableTimerInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("initial-wake-up-time"); cmd.IsSet(flag) {
 		v := cmd.Timestamp(flag)

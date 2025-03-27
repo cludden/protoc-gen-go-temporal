@@ -5,10 +5,6 @@ import TabItem from '@theme/TabItem';
 
 [Updates](https://docs.temporal.io/workflows#update) are defined as Protobuf RPCs annotated with the [temporal.v1.update](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.UpdateOptions) method option. They're mapped to workflows using the [update workflow option](/docs/configuration/workflow#update). See the [Updates guide](/docs/guides/queries) for more usage details.
 
-:::warning
-Updates are considered experimental. They can be enabled using the [workflow-update-enabled](/docs/configuration/plugin#options) plugin option. They are disabled by default.
-:::
-
 :::info
 Update definitions can omit an input and/or out parameter by specifying the native `google.protobuf.Empty` message type in its place. This requires an additional `google/protobuf/empty.proto` protobuf import.
 :::

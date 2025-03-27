@@ -4,8 +4,6 @@
 // 	protoc        (unknown)
 // source: test/expression/v1/expression.proto
 
-// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
-
 package expressionv1
 
 import (

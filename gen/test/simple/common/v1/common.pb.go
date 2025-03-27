@@ -4,8 +4,6 @@
 // 	protoc        (unknown)
 // source: test/simple/common/v1/common.proto
 
-// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
-
 package commonv1
 
 import (

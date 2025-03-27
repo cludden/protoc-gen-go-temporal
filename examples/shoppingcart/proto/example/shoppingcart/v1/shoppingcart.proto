@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package example.shoppingcart.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service ShoppingCart {
+  option (temporal.v1.service) = {task_queue: "example-shoppingcart-v1"};
+
+  rpc ShoppingCart(ShoppingCartInput) returns (ShoppingCartOutput) {
+    option (temporal.v1.workflow) = {
+      name: "example.shoppingcart.v1.ShoppingCart"
+      id: 'example.shoppingcart.v1.ShoppingCart/${! nanoid() }'
+      query: {ref: "Describe"}
+      signal: {ref: "Checkout"}
+      update: {
+        ref: "UpdateCart"
+        start: true
+        xns: {
+          heartbeat_interval: {seconds: 10}
+          parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+        }
+        workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
+      }
+    };
+  }
+
+  rpc Describe(DescribeInput) returns (DescribeOutput) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc UpdateCart(UpdateCartInput) returns (UpdateCartOutput) {
+    option (temporal.v1.update) = {
+      id: 'example.shoppingcart.v1.UpdateCart/${! nanoid() }'
+      validate: true
+    };
+  }
+
+  rpc Checkout(CheckoutInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+message CartState {
+  map<string, int32> items = 1; // item_id -> quantity
+}
+
+message CheckoutInput {}
+
+message DescribeInput {}
+
+message DescribeOutput {
+  CartState cart = 1;
+}
+
+message ShoppingCartInput {
+  CartState cart = 1;
+}
+
+message ShoppingCartOutput {
+  CartState cart = 1;
+}
+
+message UpdateCartInput {
+  UpdateCartAction action = 1;
+  string item_id = 2; // item_id to add or remove
+}
+
+message UpdateCartOutput {
+  CartState cart = 1;
+}
+
+enum UpdateCartAction {
+  UPDATE_CART_ACTION_UNSPECIFIED = 0;
+  UPDATE_CART_ACTION_ADD = 1;
+  UPDATE_CART_ACTION_REMOVE = 2;
+}
