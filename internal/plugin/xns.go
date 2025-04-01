@@ -2334,6 +2334,20 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 				g.Id("ao").Op("=").Op("&").Qual(workflowPkg, "ActivityOptions").Values()
 			})
 
+			// initialize activity input
+			g.Id("req").Op("=").Op("&").Qual(xnsv1Pkg, "UpdateWithStartRequest").Values()
+
+			// set heartbeat interval
+			g.IfFunc(func(g *j.Group) {
+				g.Id("o").Dot("heartbeatInterval").Op("==").Lit(0)
+			}).BlockFunc(func(g *j.Group) {
+				if d := xnsActivityOpts.GetHeartbeatInterval(); d.IsValid() {
+
+				} else {
+					g.Id("o").Dot("heartbeatInterval").Op("=").Op("&").Qual("time", "Duration").Values()
+				}
+			})
+
 			// set heartbeat timeout
 			if d := xnsActivityOpts.GetHeartbeatTimeout(); d.IsValid() {
 				g.IfFunc(func(g *j.Group) {
