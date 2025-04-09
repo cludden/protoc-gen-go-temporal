@@ -2,7 +2,6 @@
 // versions:
 //
 //	protoc-gen-go_temporal dev (latest)
-//	go go1.23.6
 //	protoc (unknown)
 //
 // source: example/mutex/v1/mutex.proto
