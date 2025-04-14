@@ -19,7 +19,7 @@ const (
 )
 
 func (n *names) xnsActivities() string {
-	return n.toCamel("%sActivities", n.Service.GoName)
+	return n.toLowerCamel("%sActivities", n.Service.GoName)
 }
 
 func (n *names) xnsOptionsType() string {
@@ -39,7 +39,11 @@ func (n *names) xnsUpdateHandleImpl(update protoreflect.FullName) string {
 }
 
 func (n *names) xnsUpdateOptions(update protoreflect.FullName) string {
-	return n.toCamel("%sOptions", update)
+	return n.toCamel("%sUpdateOptions", update)
+}
+
+func (n *names) xnsUpdateOptionsCtor(update protoreflect.FullName) string {
+	return n.toCamel("New%sUpdateOptions", update)
 }
 
 func (n *names) xnsUpdateWithStartFunction(workflow, update protoreflect.FullName) string {
@@ -79,6 +83,14 @@ func (n *names) xnsWorkflowGetOptions(workflow protoreflect.FullName) string {
 
 func (n *names) xnsWorkflowGetOptionsCtor(workflow protoreflect.FullName) string {
 	return n.toCamel("NewGet%sOptions", workflow)
+}
+
+func (n *names) xnsWorkflowOptions(workflow protoreflect.FullName) string {
+	return n.toCamel("%sWorkflowOptions", workflow)
+}
+
+func (n *names) xnsWorkflowOptionsCtor(workflow protoreflect.FullName) string {
+	return n.toCamel("New%sWorkflowOptions", workflow)
 }
 
 func (n *names) xnsWorkflowRunIface(workflow protoreflect.FullName) string {
@@ -164,6 +176,12 @@ func (m *Manifest) renderXNS(f *j.File) {
 				continue
 			}
 			m.genXNSActivitiesWorkflowMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+		}
+		for _, update := range m.workflows[workflow].GetUpdate() {
+			if !update.GetStart() {
+				continue
+			}
+			m.genXNSActivitiesUpdateWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
 		}
 	}
 	for _, query := range m.queriesOrdered {
@@ -554,6 +572,312 @@ func (m *Manifest) genXNSActivitiesUpdateMethod(f *j.File, update protoreflect.F
 		})
 }
 
+func (m *Manifest) genXNSActivitiesUpdateWithStartMethod(f *j.File, workflow, update protoreflect.FullName) {
+	activities := m.Names().xnsActivities()
+	method := m.methods[workflow]
+	hasWorkflowInput := !isEmpty(method.Input)
+	// hasWorkflowOutput := !isEmpty(method.Output)
+	handler := m.methods[update]
+	hasUpdateInput := !isEmpty(handler.Input)
+	hasUpdateOutput := !isEmpty(handler.Output)
+
+	methodName := m.Names().xnsUpdateWithStartFunction(workflow, update)
+	methodOptionsCtor := m.Names().clientUpdateWithStartOptionsCtor(workflow, update)
+	asyncName := m.Names().xnsUpdateWithStartFunctionAsync(workflow, update)
+	xnsOptions := m.Names().xnsOptionsVar()
+
+	commentf(f, methodSet(method, handler), "%s executes a(n) %s workflow with a(n) %s update via an activity", methodName, m.fqnForWorkflow(workflow), m.fqnForUpdate(update))
+	f.Func().
+		ParamsFunc(func(g *j.Group) {
+			g.Id("a").Op("*").Id(activities)
+		}).
+		Id(methodName).
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			g.Id("input").Op("*").Qual(xnsv1Pkg, "UpdateWithStartRequest")
+		}).
+		ParamsFunc(func(g *j.Group) {
+			if hasUpdateOutput {
+				g.Id("out").Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+			}
+			g.Err().Error()
+		}).
+		BlockFunc(func(g *j.Group) {
+			// log deprecation warnings
+			methodDeprecated, updateDeprecated := isDeprecated(method), isDeprecated(handler)
+			if methodDeprecated || updateDeprecated {
+				if methodDeprecated {
+					g.Qual(activityPkg, "GetLogger").Call(j.Id("ctx")).Dot("Warn").Call(j.Lit("use of deprecated workflow detected"), j.Lit("workflow"), j.Qual(string(m.File.GoImportPath), m.toCamel("%sWorkflowName", workflow))).Line()
+				}
+				if updateDeprecated {
+					g.Qual(activityPkg, "GetLogger").Call(j.Id("ctx")).Dot("Warn").Call(j.Lit("use of deprecated update detected"), j.Lit("update"), j.Qual(string(m.File.GoImportPath), m.toCamel("%sUpdateName", update))).Line()
+				}
+				g.Line()
+			}
+
+			// unmarshal workflow and update request
+			if hasWorkflowInput {
+				g.Comment("unmarshal workflow request")
+				g.Var().Id("req").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				g.IfFunc(func(g *j.Group) {
+					g.Err().Op(":=").Id("input").Dot("GetInput").Call().Dot("UnmarshalTo").CallFunc(func(g *j.Group) {
+						g.Op("&").Id("req")
+					})
+					g.Err().Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.ReturnFunc(func(g *j.Group) {
+						if hasUpdateOutput {
+							g.Nil()
+						}
+						g.Id(m.toLowerCamel("%sOptions", m.GoName)).Dot("convertError").Call(
+							j.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+								multiLineArgs,
+								j.Qual("fmt", "Sprintf").Call(
+									j.Lit(fmt.Sprintf("error unmarshalling workflow request of type %%s as %s.%s", string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))),
+									j.Id("input").Dot("GetInput").Call().Dot("GetTypeUrl").Call(),
+								),
+								j.Lit("InvalidArgument"),
+								j.Err(),
+							),
+						)
+					})
+				})
+				g.Line()
+			}
+
+			if hasUpdateInput {
+				g.Comment("unmarshal update request")
+				g.Var().Id("update").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.IfFunc(func(g *j.Group) {
+					g.Err().Op(":=").Id("input").Dot("GetUpdate").Call().Dot("UnmarshalTo").CallFunc(func(g *j.Group) {
+						g.Op("&").Id("update")
+					})
+					g.Err().Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.ReturnFunc(func(g *j.Group) {
+						if hasUpdateOutput {
+							g.Nil()
+						}
+						g.Id(m.toLowerCamel("%sOptions", m.GoName)).Dot("convertError").Call(
+							j.Qual(temporalPkg, "NewNonRetryableApplicationError").Custom(
+								multiLineArgs,
+								j.Qual("fmt", "Sprintf").Call(
+									j.Lit(fmt.Sprintf("error unmarshalling update request of type %%s as %s.%s", string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))),
+									j.Id("input").Dot("GetUpdate").Call().Dot("GetTypeUrl").Call(),
+								),
+								j.Lit("InvalidArgument"),
+								j.Err(),
+							),
+						)
+					})
+				})
+				g.Line()
+			}
+
+			// unmarshal workflow and update options
+			g.Comment("unmarshal workflow and update options")
+			g.Id("swo").Op(":=").Qual(xnsPkg, "UnmarshalStartWorkflowOptions").CallFunc(func(g *j.Group) {
+				g.Id("input").Dot("GetStartWorkflowOptions").Call()
+			})
+			g.Id("uwo").Op(":=").Qual(xnsPkg, "UnmarshalUpdateWorkflowOptions").CallFunc(func(g *j.Group) {
+				g.Id("input").Dot("GetUpdateWorkflowOptions").Call()
+			})
+			g.Line()
+			withWorkflowOptions := m.toCamel("With%sOptions", workflow)
+			workflowOptionsCtor := m.Names().clientWorkflowOptionsCtor(workflow)
+			withUpdateOptions := m.toCamel("With%sOptions", update)
+			updateOptionsCtor := m.Names().clientUpdateOptionsCtor(update)
+
+			// execute update with start asyncronously
+			g.Comment("execute update with start asynchronously")
+			g.List(j.Id("handle"), j.Id("run"), j.Err()).Op(":=").Id("a").Dot("client").Dot(asyncName).CallFunc(func(g *j.Group) {
+				g.Id("ctx")
+				if hasWorkflowInput {
+					g.Op("&").Id("req")
+				}
+				if hasUpdateInput {
+					g.Op("&").Id("update")
+				}
+				g.Qual(string(m.File.GoImportPath), methodOptionsCtor).Call().
+					Dot(withWorkflowOptions).
+					CallFunc(func(g *j.Group) {
+						g.Qual(string(m.File.GoImportPath), workflowOptionsCtor).Call().
+							Dot("WithStartWorkflowOptions").Call(j.Id("swo"))
+					}).
+					Dot(withUpdateOptions).
+					CallFunc(func(g *j.Group) {
+						g.Qual(string(m.File.GoImportPath), updateOptionsCtor).Call().
+							Dot("WithUpdateWorkflowOptions").Call(j.Id("uwo"))
+					})
+			})
+			g.IfFunc(func(g *j.Group) {
+				g.Err().Op("!=").Nil()
+			}).BlockFunc(func(g *j.Group) {
+				g.ReturnFunc(func(g *j.Group) {
+					if hasUpdateOutput {
+						g.Nil()
+					}
+					g.Id(xnsOptions).Dot("convertError").Call(j.Err())
+				})
+			})
+			g.Line()
+
+			// return early if detached
+			g.Comment("return early if detached")
+			g.IfFunc(func(g *j.Group) {
+				g.Id("input").Dot("GetDetached").Call()
+			}).BlockFunc(func(g *j.Group) {
+				g.ReturnFunc(func(g *j.Group) {
+					if hasUpdateOutput {
+						g.Nil()
+					}
+					g.Nil()
+				})
+			})
+			g.Line()
+
+			// initialize heartbeat interval duration
+			g.Comment("initialize heartbeat interval duration")
+			g.Id("heartbeatInterval").Op(":=").Id("input").Dot("GetHeartbeatInterval").Call().Dot("AsDuration").Call()
+			g.IfFunc(func(g *j.Group) {
+				g.Id("heartbeatInterval").Op("==").Lit(0)
+			}).BlockFunc(func(g *j.Group) {
+				g.Id("heartbeatTimeout").Op(":=").Qual(activityPkg, "GetInfo").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+				}).Dot("HeartbeatTimeout")
+				g.IfFunc(func(g *j.Group) {
+					g.Id("heartbeatTimeout").Op(">").Lit(0)
+				}).BlockFunc(func(g *j.Group) {
+					g.Id("heartbeatInterval").Op("=").Id("heartbeatTimeout").Op("/").Lit(2)
+				}).Else().BlockFunc(func(g *j.Group) {
+					g.Id("heartbeatInterval").Op("=").Qual("time", "Second").Op("*").Lit(30)
+				})
+			})
+			g.Line()
+
+			// wait on update in child goroutine
+			g.Comment("wait for update to complete in child goroutine")
+			g.Id("doneCh").Op(":=").Make(j.Chan().Struct())
+			g.Go().Func().Params().BlockFunc(func(g *j.Group) {
+				g.Defer().Close(j.Id("doneCh"))
+				g.ListFunc(func(g *j.Group) {
+					if hasUpdateOutput {
+						g.Id("out")
+					}
+					g.Err()
+				}).Op("=").Id("handle").Dot("Get").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+				})
+			}).Call()
+			g.Line()
+
+			// heartbeat activity while waiting for update to complete
+			g.Comment("heartbeat activity while waiting for update to complete")
+			g.For().BlockFunc(func(g *j.Group) {
+				g.Select().BlockFunc(func(g *j.Group) {
+					// record heartbeat every heartbeatInterval
+					g.Case(j.Op("<-").Qual("time", "After").Call(j.Id("heartbeatInterval"))).BlockFunc(func(g *j.Group) {
+						g.Qual(activityPkg, "RecordHeartbeat").Call(j.Id("ctx"), j.Id("handle").Dot("UpdateID").Call())
+					})
+					g.Line()
+
+					// return retryable error if the worker is stopping
+					g.Case(j.Op("<-").Qual(activityPkg, "GetWorkerStopChannel").Call(j.Id("ctx"))).BlockFunc(func(g *j.Group) {
+						g.ReturnFunc(func(g *j.Group) {
+							if hasUpdateOutput {
+								g.Nil()
+							}
+							g.Id(xnsOptions).Dot("convertError").Call(
+								j.Qual(temporalPkg, "NewApplicationError").Call(
+									j.Lit("worker is stopping"),
+									j.Lit("WorkerStopping"),
+								),
+							)
+						})
+					})
+					g.Line()
+
+					g.Comment("catch parent activity context cancellation. in most cases, this should indicate a")
+					g.Comment("server-sent cancellation, but there's a non-zero possibility that this cancellation")
+					g.Comment("is received due to the worker stopping, prior to detecting the closing of the worker")
+					g.Comment("stop channel. to give us an opportunity to detect a cancellation stemming from the")
+					g.Comment("worker closing, we again check to see if the worker stop channel is closed before")
+					g.Comment("propagating the cancellation")
+					g.Case(j.Op("<-").Id("ctx").Dot("Done").Call()).BlockFunc(func(g *j.Group) {
+						g.Select().BlockFunc(func(g *j.Group) {
+							g.Case(j.Op("<-").Qual(activityPkg, "GetWorkerStopChannel").Call(j.Id("ctx"))).BlockFunc(func(g *j.Group) {
+								g.ReturnFunc(func(g *j.Group) {
+									if hasUpdateOutput {
+										g.Nil()
+									}
+									g.Id(xnsOptions).Dot("convertError").Call(
+										j.Qual(temporalPkg, "NewApplicationError").Call(
+											j.Lit("worker is stopping"),
+											j.Lit("WorkerStopping"),
+										),
+									)
+								})
+							})
+
+							g.Default().BlockFunc(func(g *j.Group) {
+								g.Id("parentClosePolicy").Op(":=").Id("input").Dot("GetParentClosePolicy").Call()
+								g.IfFunc(func(g *j.Group) {
+									g.Id("parentClosePolicy").Op("==").Qual(temporalv1Pkg, "ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL").Op("||").
+										Id("parentClosePolicy").Op("==").Qual(temporalv1Pkg, "ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE")
+								}).BlockFunc(func(g *j.Group) {
+									g.List(j.Id("disconnectedCtx"), j.Id("cancel")).Op(":=").Qual("context", "WithTimeout").CallFunc(func(g *j.Group) {
+										g.Id("ctx")
+										g.Qual("time", "Minute")
+									})
+									g.Defer().Id("cancel").Call()
+
+									g.IfFunc(func(g *j.Group) {
+										g.Id("parentClosePolicy").Op("==").Qual(temporalv1Pkg, "ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL")
+									}).BlockFunc(func(g *j.Group) {
+										g.Err().Op("=").Id("run").Dot("Cancel").Call(j.Id("disconnectedCtx"))
+									}).Else().BlockFunc(func(g *j.Group) {
+										g.Err().Op("=").Id("run").Dot("Terminate").Call(j.Id("disconnectedCtx"), j.Lit("xns activity cancellation received"), j.Lit("error"), j.Id("ctx").Dot("Err").Call())
+									})
+									g.IfFunc(func(g *j.Group) {
+										g.Err().Op("!=").Nil()
+									}).BlockFunc(func(g *j.Group) {
+										g.ReturnFunc(func(g *j.Group) {
+											if hasUpdateOutput {
+												g.Nil()
+											}
+											g.Id(xnsOptions).Dot("convertError").Call(j.Err())
+										})
+									})
+								})
+								g.ReturnFunc(func(g *j.Group) {
+									if hasUpdateOutput {
+										g.Nil()
+									}
+									g.Id(xnsOptions).Dot("convertError").CallFunc(func(g *j.Group) {
+										g.Qual(temporalPkg, "NewCanceledError").CallFunc(func(g *j.Group) {
+											g.Id("ctx").Dot("Err").Call().Dot("Error").Call()
+										})
+									})
+								})
+							})
+						})
+					})
+					g.Line()
+
+					// handle doneCh
+					g.Case(j.Op("<-").Id("doneCh")).BlockFunc(func(g *j.Group) {
+						g.ReturnFunc(func(g *j.Group) {
+							if hasUpdateOutput {
+								g.Id("out")
+							}
+							g.Id(xnsOptions).Dot("convertError").Call(j.Err())
+						})
+					})
+				})
+			})
+		})
+}
+
 func (m *Manifest) genXNSActivitiesWorkflowGetMethod(f *j.File, workflow protoreflect.FullName) {
 	activities := m.Names().xnsActivities()
 	method := m.methods[workflow]
@@ -570,7 +894,7 @@ func (m *Manifest) genXNSActivitiesWorkflowGetMethod(f *j.File, workflow protore
 		Id(get).
 		ParamsFunc(func(g *j.Group) {
 			g.Id("ctx").Qual("context", "Context")
-			g.Id("input").Qual(xnsv1Pkg, "GetWorkflowRequest").Op("*")
+			g.Id("input").Op("*").Qual(xnsv1Pkg, "GetWorkflowRequest")
 		}).
 		ParamsFunc(func(g *j.Group) {
 			if hasWorkflowOutput {
@@ -1078,6 +1402,25 @@ func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 					).Block(
 						j.Id("r").Dot("RegisterActivityWithOptions").Call(
 							j.Id("a").Dot(m.toCamel("%sWith%s", workflow, getFullyQualifiedRef(workflow, signal.GetRef()))),
+							j.Qual(activityPkg, "RegisterOptions").Values(
+								j.Id("Name").Op(":").Id("name"),
+							),
+						),
+					)
+				}
+				for _, update := range m.workflows[workflow].GetUpdate() {
+					if !update.GetStart() {
+						continue
+					}
+					serviceName := string(m.Service.Desc.FullName())
+					methodName := m.Names().xnsUpdateWithStartFunction(workflow, getFullyQualifiedRef(workflow, update.GetRef()))
+					activityName := j.Lit(fmt.Sprintf("%s.%s", serviceName, methodName))
+					fn.If(
+						j.Id("name").Op(":=").Id(m.toLowerCamel("%sOptions", m.GoName)).Dot("filterActivity").Call(activityName),
+						j.Id("name").Op("!=").Lit(""),
+					).Block(
+						j.Id("r").Dot("RegisterActivityWithOptions").Call(
+							j.Id("a").Dot(methodName),
 							j.Qual(activityPkg, "RegisterOptions").Values(
 								j.Id("Name").Op(":").Id("name"),
 							),
@@ -2207,7 +2550,10 @@ func (m *Manifest) genXNSUpdateWithStartFunctionAsync(f *j.File, workflow, updat
 					g.Nil()
 					g.Id(xnsOptions).Dot("convertError").CallFunc(func(g *j.Group) {
 						g.Qual(temporalPkg, "NewNonRetryableApplicationError").CallFunc(func(g *j.Group) {
-							g.Qual("fmt", "Sprintf").Call(j.Lit("no activity registered for %s"), g.Id("activityName"))
+							g.Qual("fmt", "Sprintf").CallFunc(func(g *j.Group) {
+								g.Lit("no activity registered for %s")
+								g.Id("activityName")
+							})
 							g.Lit("Unimplemented")
 							g.Nil()
 						})
@@ -2247,24 +2593,22 @@ func (m *Manifest) genXNSUpdateWithStartFunctionAsync(f *j.File, workflow, updat
 
 			// execute update with start activity and initialize return values
 			g.List(j.Id("ctx"), j.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(j.Id("ctx"))
+			g.Id("handle").Op(":=").Op("&").Id(handleImpl).Values(j.DictFunc(func(d j.Dict) {
+				d[j.Id("cancel")] = j.Id("cancel")
+				d[j.Id("id")] = j.Id("req").Dot("GetUpdateWorkflowOptions").Call().Dot("GetUpdateId").Call()
+				d[j.Id("future")] = j.Qual(workflowPkg, "ExecuteActivity").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("activityName")
+					g.Id("req")
+				})
+			}))
+			g.Id("run").Op(":=").Op("&").Id(runImpl).Values(j.DictFunc(func(d j.Dict) {
+				d[j.Id("ctx")] = j.Id("ctx")
+				d[j.Id("id")] = j.Id("req").Dot("GetStartWorkflowOptions").Call().Dot("GetId").Call()
+			}))
 			g.ReturnFunc(func(g *j.Group) {
-				// return update handle using update with start activity future
-				g.Op("&").Id(handleImpl).Values(j.DictFunc(func(d j.Dict) {
-					d[j.Id("cancel")] = j.Id("cancel")
-					d[j.Id("id")] = j.Id("o").Dot("UpdateID")
-					d[j.Id("future")] = j.Qual(workflowPkg, "ExecuteActivity").CallFunc(func(g *j.Group) {
-						g.Id("ctx")
-						g.Id("activityName")
-						g.Id("req")
-					})
-				}))
-
-				// return uninitialized workflow run
-				g.Op("&").Id(runImpl).Values(j.DictFunc(func(d j.Dict) {
-					d[j.Id("ctx")] = j.Id("ctx")
-					d[j.Id("id")] = j.Id("o").Dot("UpdateID")
-				}))
-
+				g.Id("handle")
+				g.Id("run")
 				g.Nil()
 			})
 		})
@@ -2286,12 +2630,16 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 	options := m.Names().clientUpdateWithStartOptions(workflow, update)
 	optionsCtor := m.Names().xnsUpdateWithStartOptionsCtor(workflow, update)
 	updateOptions := m.Names().xnsUpdateOptions(update)
+	updateOptionsCtor := m.Names().xnsUpdateOptionsCtor(update)
+	workflowOptions := m.Names().xnsWorkflowOptions(workflow)
+	workflowOptionsCtor := m.Names().xnsWorkflowOptionsCtor(workflow)
 
 	commentf(f, methodSet(method, handler), "%s are used to configure a(n) %s update for a(n) %s workflow", m.Names().clientUpdateWithStartOptions(workflow, update), m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
 	f.Type().Id(options).StructFunc(func(g *j.Group) {
 		g.Id("activityOptions").Op("*").Qual(workflowPkg, "ActivityOptions")
 		g.Id("heartbeatInterval").Op("*").Qual("time", "Duration")
 		g.Id("updateOptions").Op("*").Id(updateOptions)
+		g.Id("workflowOptions").Op("*").Id(workflowOptions)
 	})
 
 	f.Commentf("%s initializes a new %s value", optionsCtor, options)
@@ -2321,11 +2669,27 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			}
 		}).
 		ParamsFunc(func(g *j.Group) {
-			g.Id("ctx").Qual(workflowPkg, "Context")
-			g.Id("req").Op("*").Qual(xnsv1Pkg, "UpdateWithStartRequest")
+			g.Qual(workflowPkg, "Context")
+			g.Op("*").Qual(xnsv1Pkg, "UpdateWithStartRequest")
 			g.Error()
 		}).
 		BlockFunc(func(g *j.Group) {
+			// initialize start workflow options
+			g.Id("wo").Op(":=").Id("o").Dot("workflowOptions")
+			g.IfFunc(func(g *j.Group) {
+				g.Id("wo").Op("==").Nil()
+			}).BlockFunc(func(g *j.Group) {
+				g.Id("wo").Op("=").Id(workflowOptionsCtor).Call()
+			})
+
+			// initialize update options
+			g.Id("uo").Op(":=").Id("o").Dot("updateOptions")
+			g.IfFunc(func(g *j.Group) {
+				g.Id("uo").Op("==").Nil()
+			}).BlockFunc(func(g *j.Group) {
+				g.Id("uo").Op("=").Id(updateOptionsCtor).Call()
+			})
+
 			// initialize activity options
 			g.Id("ao").Op(":=").Id("o").Dot("activityOptions")
 			g.IfFunc(func(g *j.Group) {
@@ -2333,9 +2697,6 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			}).BlockFunc(func(g *j.Group) {
 				g.Id("ao").Op("=").Op("&").Qual(workflowPkg, "ActivityOptions").Values()
 			})
-
-			// initialize activity input
-			g.Id("req").Op("=").Op("&").Qual(xnsv1Pkg, "UpdateWithStartRequest").Values()
 
 			// set heartbeat interval
 			g.IfFunc(func(g *j.Group) {
@@ -2356,6 +2717,9 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 					g.Id("ao").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(d.AsDuration()).String())
 				})
 			}
+
+			// initialize activity input
+			g.Id("req").Op("=").Op("&").Qual(xnsv1Pkg, "UpdateWithStartRequest").Values()
 		})
 
 	f.Commentf("WithActivityOptions can be used to customize the activity options")
@@ -2726,9 +3090,12 @@ func (m *Manifest) genXNSWorkflowGetFunctionAsync(f *j.File, workflow protorefle
 				}).Op(":=").Qual(workflowPkg, "NewFuture").Call(j.Id("ctx"))
 				g.Id("set").Dot("SetError").CallFunc(func(g *j.Group) {
 					g.Qual(temporalPkg, "NewNonRetryableApplicationError").CallFunc(func(g *j.Group) {
-						j.Qual("fmt", "Sprintf").Call(j.Lit("no activity registered for %s"), g.Id("activityName"))
-						j.Lit("Unimplemented")
-						j.Nil()
+						g.Qual("fmt", "Sprintf").CallFunc(func(g *j.Group) {
+							g.Lit("no activity registered for %s")
+							g.Id("activityName")
+						})
+						g.Lit("Unimplemented")
+						g.Nil()
 					})
 				})
 				g.ReturnFunc(func(g *j.Group) {
@@ -2751,7 +3118,7 @@ func (m *Manifest) genXNSWorkflowGetFunctionAsync(f *j.File, workflow protorefle
 							j.Dict{
 								j.Id("WorkflowId"): j.Id("workflowID"),
 								j.Id("RunId"):      j.Id("runID"),
-								j.Id("HeartbeatInterval"): j.Qual(timestamppbPkg, "New").CallFunc(func(g *j.Group) {
+								j.Id("HeartbeatInterval"): j.Qual(durationpbPkg, "New").CallFunc(func(g *j.Group) {
 									g.Qual("time", "Second").Op("*").Lit(30)
 								}),
 							},
@@ -2857,6 +3224,9 @@ func (m *Manifest) genXNSWorkflowGetOptions(f *j.File, workflow protoreflect.Ful
 
 func (m *Manifest) genXNSWorkflowOptions(f *j.File, workflow protoreflect.FullName) {
 	typeName := m.toCamel("%sWorkflowOptions", workflow)
+	method := m.methods[workflow]
+	opts := m.workflows[workflow]
+	hasWorkflowInput := !isEmpty(method.Input)
 
 	f.Commentf("%s are used to configure a(n) %s workflow execution", typeName, m.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).Struct(
@@ -2877,6 +3247,113 @@ func (m *Manifest) genXNSWorkflowOptions(f *j.File, workflow protoreflect.FullNa
 				j.Op("&").Id(typeName).Values(),
 			),
 		)
+
+	f.Comment("Build initializes the activity context and input")
+	f.Func().
+		ParamsFunc(func(g *j.Group) {
+			g.Id("opts").Op("*").Id(typeName)
+		}).
+		Id("Build").
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual(workflowPkg, "Context")
+			if hasWorkflowInput {
+				g.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+			}
+		}).
+		ParamsFunc(func(g *j.Group) {
+			g.Qual(workflowPkg, "Context")
+			g.Op("*").Qual(xnsv1Pkg, "WorkflowRequest")
+			g.Error()
+		}).
+		BlockFunc(func(g *j.Group) {
+			// initialize start workflow options
+			g.Comment("initialize start workflow options")
+			g.Id("swo").Op(":=").Qual(clientPkg, "StartWorkflowOptions").Values()
+			g.If(j.Id("opts").Dot("StartWorkflowOptions").Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.Id("swo").Op("=").Op("*").Id("opts").Dot("StartWorkflowOptions")
+			})
+			g.Line()
+
+			// initialize workflow id if not set
+			g.Comment("initialize workflow id if not set")
+			g.If(j.Id("swo").Dot("ID").Op("==").Lit("")).BlockFunc(func(g *j.Group) {
+				g.IfFunc(func(g *j.Group) {
+					g.Id("serr").Op(":=").Qual(workflowPkg, "SideEffect").
+						CallFunc(func(g *j.Group) {
+							g.Id("ctx")
+							g.Func().
+								ParamsFunc(func(g *j.Group) {
+									g.Id("ctx").Qual(workflowPkg, "Context")
+								}).
+								Any().
+								BlockFunc(func(g *j.Group) {
+									// if id expression defined, use it
+									if idExpr := opts.GetId(); idExpr != "" {
+										g.Var().Id("id").String()
+										g.IfFunc(func(g *j.Group) {
+											g.List(j.Id("id"), j.Err()).Op("=").Qual(expressionPkg, "EvalExpression").CallFunc(func(g *j.Group) {
+												g.Qual(string(m.File.GoImportPath), m.Names().workflowIDExpression(workflow))
+												if hasWorkflowInput {
+													g.Id("input").Dot("ProtoReflect").Call()
+												} else {
+													g.Nil()
+												}
+											})
+											g.Err().Op("!=").Nil()
+										}).BlockFunc(func(g *j.Group) {
+											g.Return(j.Err())
+										})
+										g.Return(j.Id("id"))
+									}
+									// otherwise generate uuid
+									g.Return(j.Qual(uuidPkg, "NewString").Call())
+								})
+						}).Dot("Get").Call(j.Op("&").Id("swo").Dot("ID"))
+					g.Id("serr").Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.Return(j.Id("ctx"), j.Nil(), j.Id("serr"))
+				}).Else().If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+					g.Return(j.Id("ctx"), j.Nil(), j.Err())
+				})
+			})
+			g.Line()
+
+			// marshal workflow input as anypb.Any
+			if hasWorkflowInput {
+				g.Comment("marshal workflow request protobuf message")
+				g.List(j.Id("inputpb"), j.Err()).Op(":=").Qual(anypbPkg, "New").Call(j.Id("input"))
+				g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+					g.Return(j.Id("ctx"), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error marshalling workflow request: %w"), j.Err()))
+				})
+				g.Line()
+			}
+
+			// marshal start workflow options
+			g.Comment("marshal start workflow options protobuf message")
+			g.List(j.Id("swopb"), j.Err()).Op(":=").Qual(anypbPkg, "New").Call(j.Id("swo"))
+			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.Return(j.Id("ctx"), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error marshalling start workflow options: %w"), j.Err()))
+			})
+			g.Line()
+
+			// marshal parent close policy
+			g.Comment("marshal parent close policy protobuf message")
+			g.Var().Id("parentClosePolicy").Qual(temporalv1Pkg, "ParentClosePolicy")
+			g.SwitchFunc(func(g *j.Group) {
+				g.Id("opts").Dot("ParentClosePolicy")
+			}).BlockFunc(func(g *j.Group) {
+				g.Case(j.Qual(enumsPkg, "PARENT_CLOSE_POLICY_ABANDON")).Block(
+					g.Id("parentClosePolicy").Op("=").Qual(temporalv1Pkg, "ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON"),
+				)
+				g.Case(j.Qual(enumsPkg, "PARENT_CLOSE_POLICY_REQUEST_CANCEL")).Block(
+					g.Id("parentClosePolicy").Op("=").Qual(temporalv1Pkg, "ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL"),
+				)
+				g.Case(j.Qual(enumsPkg, "PARENT_CLOSE_POLICY_TERMINATE")).Block(
+					g.Id("parentClosePolicy").Op("=").Qual(temporalv1Pkg, "ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE"),
+				)
+			})
+
+		})
 
 	f.Comment("WithActivityOptions can be used to customize the activity options")
 	f.Func().
@@ -3009,7 +3486,7 @@ func (m *Manifest) genXNSWorkflowRunImpl(f *j.File, workflow protoreflect.FullNa
 					g.Id("r").Dot("ctx")
 					g.Id("r").Dot("id")
 					g.Lit("")
-				})
+				}).Op(".").Parens(j.Op("*").Id(impl))
 				g.Id("r").Dot("future").Op("=").Id("rr").Dot("future")
 				g.Id("r").Dot("cancel").Op("=").Id("rr").Dot("cancel")
 			})
@@ -3040,7 +3517,7 @@ func (m *Manifest) genXNSWorkflowRunImpl(f *j.File, workflow protoreflect.FullNa
 					g.Id("r").Dot("ctx")
 					g.Id("r").Dot("id")
 					g.Lit("")
-				})
+				}).Op(".").Parens(j.Op("*").Id(impl))
 				g.Id("r").Dot("future").Op("=").Id("rr").Dot("future")
 				g.Id("r").Dot("cancel").Op("=").Id("rr").Dot("cancel")
 			})

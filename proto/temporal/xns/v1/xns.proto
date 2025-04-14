@@ -96,6 +96,7 @@ message UpdateWithStartRequest {
   bool detached = 4;
   google.protobuf.Any input = 5;
   google.protobuf.Any update = 6;
+  temporal.v1.ParentClosePolicy parent_close_policy = 7;
 }
 
 message UpdateWorkflowWithOptionsRequest {

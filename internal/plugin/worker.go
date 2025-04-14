@@ -9,6 +9,10 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+func (n *names) workflowIDExpression(workflow protoreflect.FullName) string {
+	return n.toCamel("%sIDExpression", workflow)
+}
+
 // genWorkerBuilderFunction generates a build<Workflow> function that converts
 // a constructor function or method into a valid workflow function
 func (m *Manifest) genWorkerBuilderFunction(f *j.File, workflow protoreflect.FullName) {
