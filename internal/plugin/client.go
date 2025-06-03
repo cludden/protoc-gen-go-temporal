@@ -10,9 +10,15 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+<<<<<<< HEAD
 func (n *names) clientCtor() string {
 	return n.toCamel("New%sClient", n.Service.GoName)
 }
+=======
+// genClientImpl generates a <service>Client implementation
+func (svc *Manifest) genClientImpl(f *j.File) {
+	typeName := svc.toLowerCamel("%sClient", svc.Service.GoName)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 func (n *names) clientImpl() string {
 	return n.toLowerCamel("%sClient", n.Service.GoName)
@@ -96,11 +102,19 @@ func (m *Manifest) genClientImpl(f *j.File) {
 }
 
 // genClientImplConstructor generates a New<Service>Client function
+<<<<<<< HEAD
 func (m *Manifest) genClientImplConstructor(f *j.File) {
 	methodName := m.toCamel("New%sClient", m.Service.GoName)
 	implName := m.toLowerCamel("%sClient", m.Service.GoName)
 	interfaceName := m.toCamel("%sClient", m.Service.GoName)
 	optionsName := m.toLowerCamel("%sClientOptions", m.Service.GoName)
+=======
+func (svc *Manifest) genClientImplConstructor(f *j.File) {
+	methodName := svc.toCamel("New%sClient", svc.Service.GoName)
+	implName := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	interfaceName := svc.toCamel("%sClient", svc.Service.GoName)
+	optionsName := svc.toLowerCamel("%sClientOptions", svc.Service.GoName)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	f.Commentf("%s initializes a new %s client", methodName, m.Service.Desc.FullName())
 	f.Func().
@@ -120,7 +134,11 @@ func (m *Manifest) genClientImplConstructor(f *j.File) {
 				).
 				Else().
 				Block(
+<<<<<<< HEAD
 					j.Id("cfg").Op("=").Id(m.toCamel("New%sClientOptions", m.Service.GoName)).Call(),
+=======
+					j.Id("cfg").Op("=").Id(svc.toCamel("New%sClientOptions", svc.Service.GoName)).Call(),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				),
 			j.Return(
 				j.Op("&").Id(implName).Custom(
@@ -157,7 +175,11 @@ func (m *Manifest) genClientImplConstructor(f *j.File) {
 				).
 				Else().
 				Block(
+<<<<<<< HEAD
 					j.Id("cfg").Op("=").Id(m.toCamel("New%sClientOptions", m.Service.GoName)).Call(),
+=======
+					j.Id("cfg").Op("=").Id(svc.toCamel("New%sClientOptions", svc.Service.GoName)).Call(),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				),
 			j.Return(
 				j.Op("&").Id(implName).Custom(
@@ -171,15 +193,25 @@ func (m *Manifest) genClientImplConstructor(f *j.File) {
 }
 
 // genClientImplQueryMethod adds a <Query> method to a workflowClient
+<<<<<<< HEAD
 func (m *Manifest) genClientImplQueryMethod(f *j.File, query protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	method := m.methods[query]
+=======
+func (svc *Manifest) genClientImplQueryMethod(f *j.File, query protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	method := svc.methods[query]
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	hasInput := !isEmpty(method.Input)
 
 	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s query to an existing workflow", query, m.fqnForQuery(query))
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
+<<<<<<< HEAD
 		Id(m.methods[query].GoName).
+=======
+		Id(svc.methods[query].GoName).
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -189,12 +221,20 @@ func (m *Manifest) genClientImplQueryMethod(f *j.File, query protoreflect.FullNa
 			}
 		}).
 		Params(
+<<<<<<< HEAD
 			j.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output)),
+=======
+			j.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output)),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			j.Error(),
 		).
 		BlockFunc(func(fn *j.Group) {
 			if isDeprecated(method) {
+<<<<<<< HEAD
 				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", query)), j.Lit("query"), j.Id(m.toCamel("%sQueryName", query))).Line()
+=======
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(svc.toCamel("%s", query)), j.Lit("query"), j.Id(svc.toCamel("%sQueryName", query))).Line()
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			}
 			fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			fn.If(
@@ -225,15 +265,25 @@ func (m *Manifest) genClientImplQueryMethod(f *j.File, query protoreflect.FullNa
 }
 
 // genClientImplSignalMethod adds a <Signal> method to a workflowClient
+<<<<<<< HEAD
 func (m *Manifest) genClientImplSignalMethod(f *j.File, signal protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	method := m.methods[signal]
+=======
+func (svc *Manifest) genClientImplSignalMethod(f *j.File, signal protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	method := svc.methods[signal]
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	hasInput := !isEmpty(method.Input)
 
 	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", signal, m.fqnForSignal(signal))
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
+<<<<<<< HEAD
 		Id(m.methods[signal].GoName).
+=======
+		Id(svc.methods[signal].GoName).
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -245,7 +295,11 @@ func (m *Manifest) genClientImplSignalMethod(f *j.File, signal protoreflect.Full
 		Params(j.Error()).
 		BlockFunc(func(fn *j.Group) {
 			if isDeprecated(method) {
+<<<<<<< HEAD
 				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", signal)), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
+=======
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(svc.toCamel("%s", signal)), j.Lit("signal"), j.Id(svc.toCamel("%sSignalName", signal)))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				fn.Line()
 			}
 			fn.Return(
@@ -265,22 +319,35 @@ func (m *Manifest) genClientImplSignalMethod(f *j.File, signal protoreflect.Full
 }
 
 // genClientImplSignalWithStartMethod adds a Start<Workflow>With<Signal> client method
+<<<<<<< HEAD
 func (m *Manifest) genClientImplSignalWithStartMethod(f *j.File, workflow, signal protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	method := m.methods[workflow]
 	handler := m.methods[signal]
 	name := m.toCamel("%sWith%s", workflow, signal)
+=======
+func (svc *Manifest) genClientImplSignalWithStartMethod(f *j.File, workflow, signal protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	method := svc.methods[workflow]
+	handler := svc.methods[signal]
+	name := svc.toCamel("%sWith%s", workflow, signal)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	hasWorkflowInput := !isEmpty(method.Input)
 	hasWorkflowOutput := !isEmpty(method.Output)
 	hasSignalInput := !isEmpty(handler.Input)
 
+<<<<<<< HEAD
 	commentWithDefaultf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, m.fqnForWorkflow(workflow), m.fqnForSignal(signal))
+=======
+	commentWithDefaultf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, svc.fqnForWorkflow(workflow), svc.fqnForSignal(signal))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(name).
 		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasWorkflowInput {
+<<<<<<< HEAD
 				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			if hasSignalInput {
@@ -291,21 +358,44 @@ func (m *Manifest) genClientImplSignalWithStartMethod(f *j.File, workflow, signa
 		ParamsFunc(func(returnVals *j.Group) {
 			if hasWorkflowOutput {
 				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+=======
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+			}
+			if hasSignalInput {
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+			}
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+		}).
+		ParamsFunc(func(returnVals *j.Group) {
+			if hasWorkflowOutput {
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			}
 			returnVals.Error()
 		}).
 		BlockFunc(func(fn *j.Group) {
 			if workflowDeprecated, signalDeprecated := isDeprecated(method), isDeprecated(handler); workflowDeprecated || signalDeprecated {
 				if workflowDeprecated {
+<<<<<<< HEAD
 					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow)))
 				}
 				if signalDeprecated {
 					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
+=======
+					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(svc.toCamel("%sWorkflowName", workflow)))
+				}
+				if signalDeprecated {
+					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(svc.toCamel("%sSignalName", signal)))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				}
 				fn.Line()
 			}
 			// signal with start workflow
+<<<<<<< HEAD
 			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(m.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *j.Group) {
+=======
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(svc.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *j.Group) {
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				args.Id("ctx")
 				if hasWorkflowInput {
 					args.Id("req")
@@ -330,6 +420,7 @@ func (m *Manifest) genClientImplSignalWithStartMethod(f *j.File, workflow, signa
 }
 
 // genClientImplSignalWithStartMethodAsync adds a <Workflow>With<Signal>Async client method
+<<<<<<< HEAD
 func (m *Manifest) genClientImplSignalWithStartMethodAsync(f *j.File, workflow, signal protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	method := m.methods[workflow]
@@ -338,10 +429,103 @@ func (m *Manifest) genClientImplSignalWithStartMethodAsync(f *j.File, workflow, 
 	runName := m.toLowerCamel("%sRun", workflow)
 	hasWorkflowInput := !isEmpty(method.Input)
 	hasSignalInput := !isEmpty(handler.Input)
+=======
+func (svc *Manifest) genClientImplSignalWithStartMethodAsync(f *j.File, workflow, signal protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	method := svc.methods[workflow]
+	handler := svc.methods[signal]
+	name := svc.toCamel("%sWith%sAsync", workflow, signal)
+	runName := svc.toLowerCamel("%sRun", workflow)
+	hasWorkflowInput := !isEmpty(method.Input)
+	hasSignalInput := !isEmpty(handler.Input)
+
+	commentWithDefaultf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, svc.fqnForWorkflow(workflow), svc.fqnForSignal(signal))
+	f.Func().
+		Params(j.Id("c").Op("*").Id(clientType)).
+		Id(name).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasWorkflowInput {
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+			}
+			if hasSignalInput {
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+			}
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+		}).
+		Params(
+			j.Id(svc.toCamel("%sRun", workflow)),
+			j.Error(),
+		).
+		BlockFunc(func(fn *j.Group) {
+			if workflowDeprecated, signalDeprecated := isDeprecated(method), isDeprecated(handler); workflowDeprecated || signalDeprecated {
+				if workflowDeprecated {
+					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(svc.toCamel("%sWorkflowName", workflow)))
+				}
+				if signalDeprecated {
+					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(svc.toCamel("%sSignalName", signal)))
+				}
+				fn.Line()
+			}
+
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			fn.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				j.Id("o").Op("=").Id("options").Index(j.Lit(0)),
+			).Else().Block(
+				j.Id("o").Op("=").Id(svc.toCamel("New%sOptions", workflow)).Call(),
+			)
+
+			// initialize client.StartWorkfowOptions
+			fn.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
+				if hasWorkflowInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+				} else {
+					args.Nil()
+				}
+			})
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
+			)
+
+			// signal with start workflow
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *j.Group) {
+				args.Id("ctx")
+				args.Id("opts").Dot("ID")
+				args.Qual(svc.goImportPathForMethod(signal), svc.toCamel("%sSignalName", signal))
+				if hasSignalInput {
+					args.Id("signal")
+				} else {
+					args.Nil()
+				}
+				args.Id("opts")
+				args.Id(svc.toCamel("%sWorkflowName", workflow))
+				if hasWorkflowInput {
+					args.Id("req")
+				}
+			})
+			fn.If(j.Id("run").Op("==").Nil().Op("||").Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Err()),
+			)
+			fn.Return(
+				j.Op("&").Id(runName).Block(
+					j.Id("client").Op(":").Id("c").Op(","),
+					j.Id("run").Op(":").Id("run").Op(","),
+				),
+				j.Nil(),
+			)
+		})
+}
+
+func (svc *Manifest) genClientImplUpdateGetMethod(f *j.File, update protoreflect.FullName) {
+	methodName := svc.toCamel("Get%s", svc.methods[update].GoName)
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	commentWithDefaultf(f, methodSet(method, handler), "%s starts a(n) %s workflow and sends a(n) %s signal in a transaction", name, m.fqnForWorkflow(workflow), m.fqnForSignal(signal))
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
+<<<<<<< HEAD
 		Id(name).
 		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
@@ -424,18 +608,28 @@ func (m *Manifest) genClientImplUpdateGetMethod(f *j.File, update protoreflect.F
 	f.Commentf("%s retrieves a handle to an existing %s update", methodName, m.fqnForUpdate(update))
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
+=======
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 		Id(methodName).
 		Params(
 			j.Id("ctx").Qual("context", "Context"),
 			j.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions"),
 		).
 		Params(
+<<<<<<< HEAD
 			j.Id(m.toCamel("%sHandle", update)),
+=======
+			j.Id(svc.toCamel("%sHandle", update)),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			j.Error(),
 		).
 		Block(
 			j.Return(
+<<<<<<< HEAD
 				j.Op("&").Id(m.toLowerCamel("%sHandle", update)).Custom(
+=======
+				j.Op("&").Id(svc.toLowerCamel("%sHandle", update)).Custom(
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 					multiLineValues,
 					j.Id("client").Op(":").Id("c"),
 					j.Id("handle").Op(":").Id("c").Dot("client").Dot("GetWorkflowUpdateHandle").Call(
@@ -448,16 +642,26 @@ func (m *Manifest) genClientImplUpdateGetMethod(f *j.File, update protoreflect.F
 }
 
 // genClientImplUpdateMethod adds an <Update> method to a workflowClient
+<<<<<<< HEAD
 func (m *Manifest) genClientImplUpdateMethod(f *j.File, update protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	handler := m.methods[update]
+=======
+func (svc *Manifest) genClientImplUpdateMethod(f *j.File, update protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	handler := svc.methods[update]
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
 	commentWithDefaultf(f, methodSet(handler), "%s sends a(n) %s update to an existing workflow", update, m.fqnForUpdate(update))
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
+<<<<<<< HEAD
 		Id(m.methods[update].GoName).
+=======
+		Id(svc.methods[update].GoName).
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
@@ -475,19 +679,31 @@ func (m *Manifest) genClientImplUpdateMethod(f *j.File, update protoreflect.Full
 		}).
 		BlockFunc(func(fn *j.Group) {
 			if isDeprecated(handler) {
+<<<<<<< HEAD
 				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", update)), j.Lit("update"), j.Id(m.toCamel("%sUpdateName", update))).Line()
+=======
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(svc.toCamel("%s", update)), j.Lit("update"), j.Id(svc.toCamel("%sUpdateName", update))).Line()
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			}
 
 			// initialize update options
 			fn.Comment("initialize update options")
+<<<<<<< HEAD
 			fn.Id("o").Op(":=").Id(m.toCamel("New%sOptions", update)).Call()
+=======
+			fn.Id("o").Op(":=").Id(svc.toCamel("New%sOptions", update)).Call()
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			fn.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
 				j.Id("o").Op("=").Id("opts").Index(j.Lit(0)),
 			)
 
 			fn.Line()
 			fn.Comment("call sync update with WorkflowUpdateStageCompleted wait policy")
+<<<<<<< HEAD
 			fn.List(j.Id("handle"), j.Err()).Op(":=").Id("c").Dot(m.toCamel("%sAsync", update)).CallFunc(func(args *j.Group) {
+=======
+			fn.List(j.Id("handle"), j.Err()).Op(":=").Id("c").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *j.Group) {
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -512,10 +728,17 @@ func (m *Manifest) genClientImplUpdateMethod(f *j.File, update protoreflect.Full
 }
 
 // genClientImplUpdateMethodAsync adds an <Update>Async method to a workflowClient
+<<<<<<< HEAD
 func (m *Manifest) genClientImplUpdateMethodAsync(f *j.File, update protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	handler := m.methods[update]
 	handleName := m.toLowerCamel("%sHandle", update)
+=======
+func (svc *Manifest) genClientImplUpdateMethodAsync(f *j.File, update protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	handler := svc.methods[update]
+	handleName := svc.toLowerCamel("%sHandle", update)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	hasInput := !isEmpty(handler.Input)
 	methodName := m.toCamel("%sAsync", update)
 
@@ -533,21 +756,37 @@ func (m *Manifest) genClientImplUpdateMethodAsync(f *j.File, update protoreflect
 			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
 		Params(
+<<<<<<< HEAD
 			j.Id(m.toCamel("%sHandle", update)),
+=======
+			j.Id(svc.toCamel("%sHandle", update)),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			j.Error(),
 		).
 		BlockFunc(func(fn *j.Group) {
 			if isDeprecated(handler) {
+<<<<<<< HEAD
 				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(methodName), j.Lit("update"), j.Id(m.toCamel("%sUpdateName", update))).Line()
+=======
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(methodName), j.Lit("update"), j.Id(svc.toCamel("%sUpdateName", update))).Line()
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			}
 
 			// initialize options
 			fn.Comment("initialize update options")
+<<<<<<< HEAD
 			fn.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", update))
 			fn.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Op("!=").Nil()).Block(
 				j.Id("o").Op("=").Id("opts").Index(j.Lit(0)),
 			).Else().Block(
 				j.Id("o").Op("=").Id(m.toCamel("New%sOptions", update)).Call(),
+=======
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", update))
+			fn.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				j.Id("o").Op("=").Id("opts").Index(j.Lit(0)),
+			).Else().Block(
+				j.Id("o").Op("=").Id(svc.toCamel("New%sOptions", update)).Call(),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			)
 
 			fn.Line()
@@ -580,9 +819,21 @@ func (m *Manifest) genClientImplUpdateMethodAsync(f *j.File, update protoreflect
 		})
 }
 
+<<<<<<< HEAD
 func (m *Manifest) genClientImplUpdateWithStartMethod(f *j.File, workflow, update protoreflect.FullName) {
 	method := m.methods[workflow]
 	hasWorkflowInput := !isEmpty(method.Input)
+=======
+// genClientImplWorkflowAsyncMethod generates an <Workflow>Async client method
+func (svc *Manifest) genClientImplWorkflowAsyncMethod(f *j.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	method := svc.methods[workflow]
+	methodName := svc.toCamel("%sAsync", workflow)
+	runImplType := svc.toLowerCamel("%sRun", workflow)
+	runInterfaceType := svc.toCamel("%sRun", workflow)
+	hasInput := !isEmpty(method.Input)
+	deprecated := isDeprecated(method)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	handler := m.methods[update]
 	hasUpdateInput := !isEmpty(handler.Input)
@@ -596,18 +847,28 @@ func (m *Manifest) genClientImplUpdateWithStartMethod(f *j.File, workflow, updat
 
 	commentf(f, methodSet(method, handler), "%s starts a(n) %s workflow and executes a(n) %s update in a transaction", methodName, m.fqnForWorkflow(workflow), m.fqnForUpdate(update))
 	f.Func().
+<<<<<<< HEAD
 		Params(j.Id("c").Op("*").Id(clientImplName)).
 		Id(methodName).
 		ParamsFunc(func(g *j.Group) {
 			g.Id("ctx").Qual("context", "Context")
 			if hasWorkflowInput {
 				g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+=======
+		Params(j.Id("c").Op("*").Id(clientType)).
+		Id(methodName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 			}
 			if hasUpdateInput {
 				g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 			g.Id("options").Op("...").Op("*").Id(optionsName)
 		}).
+<<<<<<< HEAD
 		ParamsFunc(func(g *j.Group) {
 			if hasUpdateOutput {
 				g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
@@ -803,10 +1064,34 @@ func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update p
 			g.List(j.Id("swo"), j.Err()).Op(":=").Id("o").Dot("workflowOptions").Dot("Build").CallFunc(func(g *j.Group) {
 				if hasWorkflowInput {
 					g.Id("input").Dot("ProtoReflect").Call()
+=======
+		Params(
+			j.Id(runInterfaceType),
+			j.Error(),
+		).
+		BlockFunc(func(fn *j.Group) {
+			if deprecated {
+				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(methodName), j.Lit("workflow"), j.Id(svc.toCamel("%sWorkflowName", workflow))).Line()
+			}
+
+			// initialize options
+			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			fn.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				j.Id("o").Op("=").Id("options").Index(j.Lit(0)),
+			).Else().Block(
+				j.Id("o").Op("=").Id(svc.toCamel("New%sOptions", workflow)).Call(),
+			)
+
+			// initialize client.StartWorkfowOptions
+			fn.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
+				if hasInput {
+					args.Id("req").Dot("ProtoReflect").Call()
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				} else {
 					g.Nil()
 				}
 			})
+<<<<<<< HEAD
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Id("options"), j.Err()),
 			)
@@ -868,12 +1153,45 @@ func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update p
 		BlockFunc(func(g *j.Group) {
 			g.Id("o").Dot("updateOptions").Op("=").Id("options")
 			g.Return(j.Id("o"))
+=======
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
+			)
+
+			// execute workflow
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(args *j.Group) {
+				args.Id("ctx")
+				args.Id("opts")
+				args.Id(svc.toCamel("%sWorkflowName", workflow))
+				if hasInput {
+					args.Id("req")
+				}
+			})
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Err()),
+			)
+			fn.If(j.Id("run").Op("==").Nil()).Block(
+				j.Return(j.Nil(), j.Qual("errors", "New").Call(j.Lit("execute workflow returned nil run"))),
+			)
+			fn.Return(
+				j.Op("&").Id(runImplType).Block(
+					j.Id("client").Op(":").Id("c").Op(","),
+					j.Id("run").Op(":").Id("run").Op(","),
+				),
+				j.Nil(),
+			)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 		})
 }
 
 // genClientImplWorkflowCancelMethod generates a Cancel<Workflow> client method
+<<<<<<< HEAD
 func (m *Manifest) genClientImplWorkflowCancelMethod(f *j.File) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
+=======
+func (svc *Manifest) genClientImplWorkflowCancelMethod(f *j.File) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	methodName := "CancelWorkflow"
 
 	f.Commentf("%s requests cancellation of an existing workflow execution", methodName)
@@ -900,11 +1218,19 @@ func (m *Manifest) genClientImplWorkflowCancelMethod(f *j.File) {
 }
 
 // genClientImplWorkflowGetMethod generates a Get<Workflow> client method
+<<<<<<< HEAD
 func (m *Manifest) genClientImplWorkflowGetMethod(f *j.File, workflow protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
 	methodName := m.toCamel("Get%s", workflow)
 	runImplType := m.toLowerCamel("%sRun", workflow)
 	runInterfaceType := m.toCamel("%sRun", workflow)
+=======
+func (svc *Manifest) genClientImplWorkflowGetMethod(f *j.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	methodName := svc.toCamel("Get%s", workflow)
+	runImplType := svc.toLowerCamel("%sRun", workflow)
+	runInterfaceType := svc.toCamel("%sRun", workflow)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	f.Commentf("%s fetches an existing %s execution", methodName, m.fqnForWorkflow(workflow))
 	f.Func().
@@ -1053,8 +1379,13 @@ func (m *Manifest) genClientImplWorkflowMethodAsync(f *j.File, workflow protoref
 }
 
 // genClientImplWorkflowTerminateMethod generates a TerminateWorkflow client method
+<<<<<<< HEAD
 func (m *Manifest) genClientImplWorkflowTerminateMethod(f *j.File) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
+=======
+func (svc *Manifest) genClientImplWorkflowTerminateMethod(f *j.File) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	methodName := "TerminateWorkflow"
 
 	f.Commentf("%s terminates an existing workflow execution", methodName)
@@ -1084,6 +1415,7 @@ func (m *Manifest) genClientImplWorkflowTerminateMethod(f *j.File) {
 		)
 }
 
+<<<<<<< HEAD
 // genClientInterface generates a Client interface for a given service
 func (m *Manifest) genClientInterface(f *j.File) {
 	typeName := m.toCamel("%sClient", m.Service.GoName)
@@ -1092,6 +1424,64 @@ func (m *Manifest) genClientInterface(f *j.File) {
 	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
 		for _, workflow := range m.workflowsOrdered {
 			if m.methods[workflow].Desc.Parent() != m.Service.Desc {
+=======
+// genClientImplWorkflowMethod generates an <Workflow> client method
+func (svc *Manifest) genClientImplWorkflowMethod(f *j.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	method := svc.methods[workflow]
+	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
+
+	commentWithDefaultf(f, methodSet(method), "%s executes a %s workflow and blocks until error or response received", workflow, svc.fqnForWorkflow(workflow))
+	f.Func().
+		Params(j.Id("c").Op("*").Id(clientType)).
+		Id(svc.methods[workflow].GoName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+			}
+			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+		}).
+		ParamsFunc(func(returnVals *j.Group) {
+			if hasOutput {
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(fn *j.Group) {
+			// execute workflow
+			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(svc.toCamel("%sAsync", workflow)).CallFunc(func(args *j.Group) {
+				args.Id("ctx")
+				if hasInput {
+					args.Id("req")
+				}
+				args.Id("options").Op("...")
+			})
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(returnVals *j.Group) {
+					if hasOutput {
+						returnVals.Nil()
+					}
+					returnVals.Err()
+				}),
+			)
+			fn.Return(
+				j.Id("run").Dot("Get").Call(j.Id("ctx")),
+			)
+		})
+}
+
+// genClientInterface generates a Client interface for a given service
+func (svc *Manifest) genClientInterface(f *j.File) {
+	names := svc.Names()
+	typeName := svc.toCamel("%sClient", svc.Service.GoName)
+
+	f.Commentf("%s describes a client for a(n) %s worker", typeName, svc.Service.Desc.FullName())
+	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
+		for _, workflow := range svc.workflowsOrdered {
+			if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				continue
 			}
 			opts := m.workflows[workflow]
@@ -1202,6 +1592,66 @@ func (m *Manifest) genClientInterface(f *j.File) {
 					Params(
 						j.Id(runInterfaceType),
 						j.Error(),
+<<<<<<< HEAD
+=======
+					).
+					Line()
+			}
+
+			// add <Workflow>With<Update> methods
+			for _, updateOpts := range opts.GetUpdate() {
+				if !updateOpts.GetStart() {
+					continue
+				}
+				method := svc.methods[workflow]
+				update := getFullyQualifiedRef(workflow, updateOpts.GetRef())
+				handler := svc.methods[update]
+				hasWorkflowInput := !isEmpty(method.Input)
+				hasUpdateInput := !isEmpty(handler.Input)
+				hasUpdateOutput := !isEmpty(handler.Output)
+
+				// add synchronous flavor
+				methodName := names.clientUpdateWithStartMethod(workflow, update)
+				commentf(methods, methodSet(method, handler), "%s sends a(n) %s update to a(n) %s workflow, starting it if necessary, and blocks until update completion", methodName, svc.fqnForUpdate(update), svc.fqnForWorkflow(workflow))
+				methods.Id(methodName).
+					ParamsFunc(func(args *j.Group) {
+						args.Id("ctx").Qual("context", "Context")
+						if hasWorkflowInput {
+							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+						}
+						if hasUpdateInput {
+							args.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+						}
+						args.Id("opts").Op("...").Op("*").Id(names.clientUpdateWithStartOptionsImpl(workflow, update))
+					}).
+					ParamsFunc(func(returnVals *j.Group) {
+						if hasUpdateOutput {
+							returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+						}
+						returnVals.Id(runInterfaceType)
+						returnVals.Error()
+					}).
+					Line()
+
+				// add async flavor
+				methodName = names.clientUpdateWithStartMethodAsync(workflow, update)
+				commentf(methods, methodSet(method, handler), "%s sends a(n) %s update to a(n) %s workflow, starting it if necessary, and returns a handle to the workflow update and execution", methodName, svc.fqnForUpdate(update), svc.fqnForWorkflow(workflow))
+				methods.Id(methodName).
+					ParamsFunc(func(args *j.Group) {
+						args.Id("ctx").Qual("context", "Context")
+						if hasWorkflowInput {
+							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+						}
+						if hasUpdateInput {
+							args.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+						}
+						args.Id("opts").Op("...").Op("*").Id(names.clientUpdateWithStartOptionsImpl(workflow, update))
+					}).
+					Params(
+						j.Id(svc.Names().clientUpdateHandleIface(update)),
+						j.Id(runInterfaceType),
+						j.Error(),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 					).
 					Line()
 			}
@@ -1292,8 +1742,13 @@ func (m *Manifest) genClientInterface(f *j.File) {
 			}
 			handler := m.methods[query]
 			hasInput := !isEmpty(handler.Input)
+<<<<<<< HEAD
 			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, m.fqnForQuery(query))
 			methods.Id(m.toCamel("%s", query)).
+=======
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
+			methods.Id(svc.toCamel("%s", query)).
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				ParamsFunc(func(args *j.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -1303,7 +1758,11 @@ func (m *Manifest) genClientInterface(f *j.File) {
 					}
 				}).
 				Params(
+<<<<<<< HEAD
 					j.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output)),
+=======
+					j.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output)),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 					j.Error(),
 				).
 				Line()
@@ -1316,8 +1775,13 @@ func (m *Manifest) genClientInterface(f *j.File) {
 			}
 			handler := m.methods[signal]
 			hasInput := !isEmpty(handler.Input)
+<<<<<<< HEAD
 			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, m.fqnForSignal(signal))
 			methods.Id(m.toCamel("%s", signal)).
+=======
+			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+			methods.Id(svc.toCamel("%s", signal)).
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				ParamsFunc(func(args *j.Group) {
 					args.Id("ctx").Qual("context", "Context")
 					args.Id("workflowID").String()
@@ -1374,7 +1838,11 @@ func (m *Manifest) genClientInterface(f *j.File) {
 					args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 				}).
 				Params(
+<<<<<<< HEAD
 					j.Id(m.toCamel("%sHandle", update)),
+=======
+					j.Id(svc.toCamel("%sHandle", update)),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 					j.Error(),
 				).
 				Line()
@@ -1388,7 +1856,11 @@ func (m *Manifest) genClientInterface(f *j.File) {
 					args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
 				}).
 				Params(
+<<<<<<< HEAD
 					j.Id(m.toCamel("%sHandle", update)),
+=======
+					j.Id(svc.toCamel("%sHandle", update)),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 					j.Error(),
 				).
 				Line()
@@ -1396,8 +1868,13 @@ func (m *Manifest) genClientInterface(f *j.File) {
 	})
 }
 
+<<<<<<< HEAD
 func (m *Manifest) genClientOptions(f *j.File) {
 	typeName := m.toLowerCamel("%sClientOptions", m.Service.GoName)
+=======
+func (svc *Manifest) genClientOptions(f *j.File) {
+	typeName := svc.toLowerCamel("%sClientOptions", svc.Service.GoName)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	f.Commentf("%s describes optional runtime configuration for a %s", typeName, m.toCamel("%sClient", m.Service.GoName))
 	f.Type().Id(typeName).Struct(
@@ -1438,10 +1915,17 @@ func (m *Manifest) genClientOptions(f *j.File) {
 }
 
 // genClientUpdateHandleImpl generates a <Update>Handle struct
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateHandleImpl(f *j.File, update protoreflect.FullName) {
 	clientImplType := m.toLowerCamel("%sClient", m.Service.GoName)
 	typeName := m.toLowerCamel("%sHandle", update)
 	interfaceName := m.toCamel("%sHandle", update)
+=======
+func (svc *Manifest) genClientUpdateHandleImpl(f *j.File, update protoreflect.FullName) {
+	clientImplType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	typeName := svc.toLowerCamel("%sHandle", update)
+	interfaceName := svc.toCamel("%sHandle", update)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	// generate struct
 	f.Commentf("%s provides an internal implementation of a(n) %s", typeName, interfaceName)
@@ -1454,9 +1938,15 @@ func (m *Manifest) genClientUpdateHandleImpl(f *j.File, update protoreflect.Full
 }
 
 // genClientUpdateHandleImplGetMethod generates a <UpdateHandle>'s Get method
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateHandleImplGetMethod(f *j.File, update protoreflect.FullName) {
 	typeName := m.toLowerCamel("%sHandle", update)
 	method := m.methods[update]
+=======
+func (svc *Manifest) genClientUpdateHandleImplGetMethod(f *j.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
+	method := svc.methods[update]
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	hasOutput := !isEmpty(method.Output)
 
 	f.Comment("Get blocks until the update wait policy is met, returning the result if applicable")
@@ -1534,8 +2024,13 @@ func (m *Manifest) genClientUpdateHandleImplGetMethod(f *j.File, update protoref
 }
 
 // genClientUpdateHandleImplRunIDMethod generates a <UpdateHandle>'s RunID method
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateHandleImplRunIDMethod(f *j.File, update protoreflect.FullName) {
 	typeName := m.toLowerCamel("%sHandle", update)
+=======
+func (svc *Manifest) genClientUpdateHandleImplRunIDMethod(f *j.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	f.Comment("RunID returns the execution ID")
 	f.Func().
@@ -1549,8 +2044,13 @@ func (m *Manifest) genClientUpdateHandleImplRunIDMethod(f *j.File, update protor
 }
 
 // genClientUpdateHandleImplUpdateIDMethod generates a <UpdateHandle>'s UpdateID method
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateHandleImplUpdateIDMethod(f *j.File, update protoreflect.FullName) {
 	typeName := m.toLowerCamel("%sHandle", update)
+=======
+func (svc *Manifest) genClientUpdateHandleImplUpdateIDMethod(f *j.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	f.Comment("UpdateID returns the update ID")
 	f.Func().
@@ -1564,8 +2064,13 @@ func (m *Manifest) genClientUpdateHandleImplUpdateIDMethod(f *j.File, update pro
 }
 
 // genClientUpdateHandleImplWorkflowIDMethod generates a <UpdateHandle>'s WorkflowID method
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateHandleImplWorkflowIDMethod(f *j.File, update protoreflect.FullName) {
 	typeName := m.toLowerCamel("%sHandle", update)
+=======
+func (svc *Manifest) genClientUpdateHandleImplWorkflowIDMethod(f *j.File, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sHandle", update)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 
 	f.Comment("WorkflowID returns the workflow ID")
 	f.Func().
@@ -1579,12 +2084,21 @@ func (m *Manifest) genClientUpdateHandleImplWorkflowIDMethod(f *j.File, update p
 }
 
 // genClientUpdateHandleInterface generates a <Workflow>Run interface
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateHandleInterface(f *j.File, update protoreflect.FullName) {
 	typeName := m.toCamel("%sHandle", update)
 	method := m.methods[update]
 	hasOutput := !isEmpty(method.Output)
 
 	f.Commentf("%s describes a(n) %s update handle", typeName, m.fqnForUpdate(update))
+=======
+func (svc *Manifest) genClientUpdateHandleInterface(f *j.File, update protoreflect.FullName) {
+	typeName := svc.toCamel("%sHandle", update)
+	method := svc.methods[update]
+	hasOutput := !isEmpty(method.Output)
+
+	f.Commentf("%s describes a(n) %s update handle", typeName, svc.fqnForUpdate(update))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
 		methods.Comment("WorkflowID returns the workflow ID")
 		methods.Id("WorkflowID").Params().String()
@@ -1608,8 +2122,13 @@ func (m *Manifest) genClientUpdateHandleInterface(f *j.File, update protoreflect
 }
 
 // genClientUpdateOptions generates a <Update>Options struct
+<<<<<<< HEAD
 func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullName) {
 	typeName := m.toCamel("%sOptions", update)
+=======
+func (svc *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullName) {
+	typeName := svc.toCamel("%sOptions", update)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 	constructorName := "New" + typeName
 	updateOpts := m.updates[update]
 	hasInput := !isEmpty(m.methods[update].Input)
@@ -1668,7 +2187,11 @@ func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullNam
 			if idExpr := updateOpts.GetId(); idExpr != "" {
 				id.Else().If(j.Id("opts").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *j.Group) {
 					b.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
+<<<<<<< HEAD
 						args.Id(m.toCamel("%sIDExpression", update))
+=======
+						args.Id(svc.toCamel("%sIDExpression", update))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 						if hasInput {
 							args.Id("req").Dot("ProtoReflect").Call()
 						} else {
@@ -1676,7 +2199,11 @@ func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullNam
 						}
 					})
 					b.If(j.Err().Op("!=").Nil()).Block(
+<<<<<<< HEAD
 						j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q update: %w"), j.Id(m.toCamel("%sUpdateName", update)), j.Err())),
+=======
+						j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q update: %w"), j.Id(svc.toCamel("%sUpdateName", update)), j.Err())),
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 					)
 					b.Id("opts").Dot("UpdateID").Op("=").Id("id")
 				})
@@ -1741,6 +2268,7 @@ func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullNam
 		)
 }
 
+<<<<<<< HEAD
 // genClientWorkflowRunImpl generates a <Workflow>Run struct
 func (m *Manifest) genClientWorkflowRunImpl(f *j.File, workflow protoreflect.FullName) {
 	clientType := m.toLowerCamel("%sClient", m.Service.GoName)
@@ -2241,9 +2769,27 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
 		j.Return(j.Op("&").Id(typeName).Values()),
 	)
+=======
+func (m *Manifest) genClientUpdateWithStartMethod(f *j.File, workflow, update protoreflect.FullName) {
+	names := m.Names()
 
-	f.Commentf("Build initializes a new %s.%s value with defaults and overrides applied", optionsPkg, optionsType)
+	method := m.methods[update]
+	hasWorkflowInput := !isEmpty(method.Input)
+
+	handler := m.methods[update]
+	hasUpdateInput := !isEmpty(handler.Input)
+	hasUpdateOutput := !isEmpty(handler.Output)
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
+
+	implName := names.clientImpl()
+	methodName := names.clientUpdateWithStartMethod(workflow, update)
+	asyncMethodName := names.clientUpdateWithStartMethodAsync(workflow, update)
+	optionsName := names.clientUpdateWithStartOptionsImpl(workflow, update)
+	runName := names.clientWorkflowRun(workflow)
+
+	commentf(f, methodSet(method, handler), "%s sends a(n) %s update to a(n) %s workflow, starting it if necessary, and blocks until update completion", methodName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
 	f.Func().
+<<<<<<< HEAD
 		Params(j.Id("o").Op("*").Id(typeName)).
 		Id("Build").
 		ParamsFunc(func(args *j.Group) {
@@ -2362,9 +2908,52 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 					bl.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(j.Id("ctx")).Dot("TaskQueueName")
 				} else {
 					bl.Return(j.Id("opts"), j.Qual("errors", "New").Call(j.Lit("TaskQueue is required")))
+=======
+		ParamsFunc(func(g *j.Group) {
+			g.Id("c").Op("*").Id(implName)
+		}).
+		Id(methodName).
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			if hasWorkflowInput {
+				g.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+			}
+			if hasUpdateInput {
+				g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+			}
+			g.Id("opts").Op("...").Op("*").Id(optionsName)
+		}).
+		ParamsFunc(func(g *j.Group) {
+			if hasUpdateOutput {
+				g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+			}
+			g.Id(runName)
+			g.Error()
+		}).
+		BlockFunc(func(g *j.Group) {
+			// call the async method
+			g.List(j.Id("handle"), j.Id("run"), j.Err()).Op(":=").Id("c").Dot(asyncMethodName).CallFunc(func(g *j.Group) {
+				g.Id("ctx")
+				if hasWorkflowInput {
+					g.Id("input")
 				}
+				if hasUpdateInput {
+					g.Id("update")
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
+				}
+				g.Id("opts").Op("...")
+			})
+			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.ReturnFunc(func(g *j.Group) {
+					if hasUpdateOutput {
+						g.Nil()
+					}
+					g.Id("run")
+					g.Err()
+				})
 			})
 
+<<<<<<< HEAD
 			// set RetryPolicy
 			retryPolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("retryPolicy"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("RetryPolicy").Op("=").Id("v"),
@@ -2532,8 +3121,26 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			}
 
 			fn.Return(j.Id("opts"), j.Nil())
+=======
+			// block until the update is complete
+			g.ListFunc(func(g *j.Group) {
+				if hasUpdateOutput {
+					g.Id("resp")
+				}
+				g.Err()
+			}).Op(":=").Id("handle").Dot("Get").Call(j.Id("ctx"))
+			g.ReturnFunc(func(g *j.Group) {
+				if hasUpdateOutput {
+					g.Id("resp")
+				}
+				g.Id("run")
+				g.Err()
+			})
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 		})
+}
 
+<<<<<<< HEAD
 	baseName := m.toCamel("With%s", optionsType)
 	f.Commentf("%s sets the initial %s.%s", baseName, optionsPkg, optionsType)
 	f.Func().
@@ -2664,3 +3271,974 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			)
 	}
 }
+=======
+func (m *Manifest) genClientUpdateWithStartMethodAsync(f *j.File, workflow, update protoreflect.FullName) {
+
+}
+
+// genClientWorkflowRunImpl generates a <Workflow>Run struct
+func (svc *Manifest) genClientWorkflowRunImpl(f *j.File, workflow protoreflect.FullName) {
+	clientType := svc.toLowerCamel("%sClient", svc.Service.GoName)
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	interfaceName := svc.toCamel("%sRun", workflow)
+
+	// generate struct
+	f.Commentf("%s provides an internal implementation of a(n) %sRun", typeName, interfaceName)
+	f.Type().
+		Id(typeName).
+		Struct(
+			j.Id("client").Op("*").Id(clientType),
+			j.Id("run").Qual(clientPkg, "WorkflowRun"),
+		)
+}
+
+// genClientWorkflowRunImplCancelMethod generates a <Workflow>Run's Cancel method
+func (svc *Manifest) genClientWorkflowRunImplCancelMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+
+	f.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id("Cancel").
+		Params(j.Id("ctx").Qual("context", "Context")).
+		Params(j.Error()).
+		Block(
+			j.Return(
+				j.Id("r").Dot("client").Dot("CancelWorkflow").CallFunc(func(args *j.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+				}),
+			),
+		)
+}
+
+// genClientWorkflowRunImplGetMethod generates a <Workflow>Run's Get method
+func (svc *Manifest) genClientWorkflowRunImplGetMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	method := svc.methods[workflow]
+	hasOutput := !isEmpty(method.Output)
+
+	f.Comment("Get blocks until the workflow is complete, returning the result if applicable")
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id("Get").
+		Params(j.Id("ctx").Qual("context", "Context")).
+		ParamsFunc(func(returnVals *j.Group) {
+			if hasOutput {
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+			}
+			returnVals.Error()
+		}).
+		BlockFunc(func(fn *j.Group) {
+			if hasOutput {
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				fn.If(
+					j.Err().Op(":=").Id("r").Dot("run").Dot("Get").Call(
+						j.Id("ctx"),
+						j.Op("&").Id("resp"),
+					),
+					j.Err().Op("!=").Nil(),
+				).Block(
+					j.Return(
+						j.Nil(), j.Err(),
+					),
+				)
+				fn.Return(
+					j.Op("&").Id("resp"), j.Nil(),
+				)
+			} else {
+				fn.Return(
+					j.Id("r").Dot("run").Dot("Get").Call(
+						j.Id("ctx"),
+						j.Nil(),
+					),
+				)
+			}
+		})
+}
+
+// genClientWorkflowRunImplIDMethod generates a <Workflow>Run's ID method
+func (svc *Manifest) genClientWorkflowRunImplIDMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+
+	f.Comment("ID returns the workflow ID")
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id("ID").
+		Params().
+		String().
+		Block(
+			j.Return(j.Id("r").Dot("run").Dot("GetID").Call()),
+		)
+}
+
+// genClientWorkflowRunImplQueryMethod generates a <WOrkflow>Run's <Query> method
+func (svc *Manifest) genClientWorkflowRunImplQueryMethod(f *j.File, workflow protoreflect.FullName, query protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	handler := svc.methods[query]
+	hasInput := !isEmpty(handler.Input)
+
+	commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id(svc.methods[query].GoName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+			}
+		}).
+		Params(
+			j.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output)),
+			j.Error(),
+		).
+		Block(
+			j.Return(
+				j.Id("r").Dot("client").Dot(svc.methods[query].GoName).CallFunc(func(args *j.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Lit("")
+					if hasInput {
+						args.Id("req")
+					}
+				}),
+			),
+		)
+}
+
+// genClientWorkflowRunImplRunMethod generates a <Workflow>Run's Run method
+func (svc *Manifest) genClientWorkflowRunImplRunMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+
+	f.Comment("Run returns the inner client.WorkflowRun")
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id("Run").
+		Params().
+		Qual(clientPkg, "WorkflowRun").
+		Block(
+			j.Return(j.Id("r").Dot("run")),
+		)
+}
+
+// genClientWorkflowRunImplRunIDMethod generates a <Workflow>Run's RunID method
+func (svc *Manifest) genClientWorkflowRunImplRunIDMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+
+	f.Comment("RunID returns the execution ID")
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id("RunID").
+		Params().
+		String().
+		Block(
+			j.Return(j.Id("r").Dot("run").Dot("GetRunID").Call()),
+		)
+}
+
+// genClientWorkflowRunImplSignalMethod generates a <Workflow>Run's <Signal> method
+func (svc *Manifest) genClientWorkflowRunImplSignalMethod(f *j.File, workflow protoreflect.FullName, signal protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	handler := svc.methods[signal]
+	hasInput := !isEmpty(handler.Input)
+
+	// generate get method
+	commentWithDefaultf(f, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id(svc.methods[signal].GoName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+			}
+		}).
+		Params(j.Error()).
+		Block(
+			j.ReturnFunc(func(returnVals *j.Group) {
+				if svc.methodsFromSameService(signal, workflow) {
+					returnVals.Id("r").Dot("client").Dot(svc.methods[signal].GoName).CallFunc(func(args *j.Group) {
+						args.Id("ctx")
+						args.Id("r").Dot("ID").Call()
+						args.Lit("")
+						if hasInput {
+							args.Id("req")
+						}
+					})
+				} else {
+					returnVals.Id("r").Dot("client").Dot("client").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
+						args.Id("ctx")
+						args.Id("r").Dot("ID").Call()
+						args.Id("r").Dot("RunID").Call()
+						args.Add(svc.Qual(signal, svc.toCamel("%sSignalName", signal)))
+						if hasInput {
+							args.Id("req")
+						} else {
+							args.Nil()
+						}
+					})
+				}
+			}),
+		)
+}
+
+// genClientWorkflowRunImplTerminateMethod generates a <Workflow>Run's Terminate method
+func (svc *Manifest) genClientWorkflowRunImplTerminateMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+
+	f.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id("Terminate").
+		Params(
+			j.Id("ctx").Qual("context", "Context"),
+			j.Id("reason").String(),
+			j.Id("details").Op("...").Interface(),
+		).
+		Params(j.Error()).
+		Block(
+			j.Return(
+				j.Id("r").Dot("client").Dot("TerminateWorkflow").CallFunc(func(args *j.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+					args.Id("reason")
+					args.Id("details").Op("...")
+				}),
+			),
+		)
+}
+
+// genClientWorkflowRunImplUpdateAsyncMethod generates a <Workflow>Run's <Update>Async method
+func (svc *Manifest) genClientWorkflowRunImplUpdateAsyncMethod(f *j.File, workflow protoreflect.FullName, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	methodName := svc.toCamel("%sAsync", update)
+	handler := svc.methods[update]
+	hasInput := !isEmpty(handler.Input)
+
+	commentWithDefaultf(f, methodSet(handler), "%s start a(n) %s workflow update and returns a handle to the update", methodName, svc.fqnForUpdate(update))
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id(methodName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+			}
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
+		}).
+		Params(
+			j.Add(svc.Qual(update, svc.toCamel("%sHandle", update))),
+			j.Error(),
+		).
+		BlockFunc(func(fn *j.Group) {
+			if svc.methodsFromSamePackage(workflow, update) {
+				fn.Return(
+					j.Id("r").Dot("client").Dot(svc.toCamel("%sAsync", update)).CallFunc(func(args *j.Group) {
+						args.Id("ctx")
+						args.Id("r").Dot("ID").Call()
+						args.Id("r").Dot("RunID").Call()
+						if hasInput {
+							args.Id("req")
+						}
+						args.Id("opts").Op("...")
+					}),
+				)
+			} else {
+				// initialize options
+				fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", update))
+				fn.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Op("!=").Nil()).Block(
+					j.Id("o").Op("=").Id("opts").Index(j.Lit(0)),
+				).Else().Block(
+					j.Id("o").Op("=").Id(svc.toCamel("New%sOptions", update)).Call(),
+				)
+
+				// build UpdateWorkflowWithOptions
+				fn.List(j.Id("options"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+					if hasInput {
+						args.Id("req")
+					}
+				})
+				fn.If(j.Err().Op("!=").Nil()).Block(
+					j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing UpdateWorkflowWithOptions: %w"), j.Err())),
+				)
+
+				// update workflow
+				fn.List(j.Id("handle"), j.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(j.Id("ctx"), j.Id("options"))
+				fn.If(j.Err().Op("!=").Nil()).Block(
+					j.Return(j.Nil(), j.Err()),
+				)
+
+				fn.Return(
+					j.Op("&").Add(svc.Qual(update, svc.toCamel("%sHandle", update))).Values(
+						j.Id("client").Op(":").Id("c"),
+						j.Id("handle").Op(":").Id("handle"),
+					),
+					j.Nil(),
+				)
+			}
+		})
+}
+
+// genClientWorkflowRunImplUpdateMethod generates a <Workflow>Run's <Update> method
+func (svc *Manifest) genClientWorkflowRunImplUpdateMethod(f *j.File, workflow protoreflect.FullName, update protoreflect.FullName) {
+	typeName := svc.toLowerCamel("%sRun", workflow)
+	handler := svc.methods[update]
+	hasInput := !isEmpty(handler.Input)
+	hasOutput := !isEmpty(handler.Output)
+
+	commentWithDefaultf(f, methodSet(handler), "%s executes a(n) %s workflow update", update, svc.fqnForUpdate(update))
+	f.Func().
+		Params(j.Id("r").Op("*").Id(typeName)).
+		Id(svc.methods[update].GoName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			if hasInput {
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+			}
+			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
+		}).
+		ParamsFunc(func(returnVals *j.Group) {
+			if hasOutput {
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+			}
+			returnVals.Error()
+		}).
+		Block(
+			j.Return(
+				j.Id("r").Dot("client").Dot(svc.methods[update].GoName).CallFunc(func(args *j.Group) {
+					args.Id("ctx")
+					args.Id("r").Dot("ID").Call()
+					args.Id("r").Dot("RunID").Call()
+					if hasInput {
+						args.Id("req")
+					}
+					args.Id("opts").Op("...")
+				}),
+			),
+		)
+}
+
+// genClientWorkflowRunInterface generates a <Workflow>Run interface
+func (svc *Manifest) genClientWorkflowRunInterface(f *j.File, workflow protoreflect.FullName) {
+	typeName := svc.toCamel("%sRun", workflow)
+	opts := svc.workflows[workflow]
+	method := svc.methods[workflow]
+	hasOutput := !isEmpty(method.Output)
+
+	f.Commentf("%s describes a(n) %s workflow run", typeName, svc.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
+		methods.Comment("ID returns the workflow ID")
+		methods.Id("ID").Params().String().Line()
+
+		methods.Comment("RunID returns the workflow instance ID")
+		methods.Id("RunID").Params().String().Line()
+
+		methods.Comment("Run returns the inner client.WorkflowRun")
+		methods.Id("Run").Params().Qual(clientPkg, "WorkflowRun").Line()
+
+		methods.Comment("Get blocks until the workflow is complete and returns the result")
+		methods.Id("Get").
+			Params(j.Id("ctx").Qual("context", "Context")).
+			ParamsFunc(func(returnVals *j.Group) {
+				if hasOutput {
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				}
+				returnVals.Error()
+			}).Line()
+
+		methods.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
+		methods.Id("Cancel").
+			Params(j.Id("ctx").Qual("context", "Context")).
+			Params(j.Error()).Line()
+
+		methods.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
+		methods.Id("Terminate").
+			Params(
+				j.Id("ctx").Qual("context", "Context"),
+				j.Id("reason").String(),
+				j.Id("details").Op("...").Interface(),
+			).
+			Params(j.Error()).Line()
+
+		for _, queryOpts := range opts.GetQuery() {
+			query := getFullyQualifiedRef(workflow, queryOpts.GetRef())
+			handler := svc.methods[query]
+			hasInput := !isEmpty(handler.Input)
+
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, svc.fqnForQuery(query))
+			methods.Id(svc.toCamel("%s", query)).
+				ParamsFunc(func(args *j.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					if hasInput {
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+					}
+				}).
+				Params(
+					j.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output)),
+					j.Error(),
+				).Line()
+		}
+
+		for _, signalOpts := range opts.GetSignal() {
+			signal := getFullyQualifiedRef(workflow, signalOpts.GetRef())
+			handler := svc.methods[signal]
+			hasInput := !isEmpty(handler.Input)
+
+			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, svc.fqnForSignal(signal))
+			methods.Id(svc.toCamel("%s", signal)).
+				ParamsFunc(func(args *j.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					if hasInput {
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+					}
+				}).
+				Params(j.Error()).Line()
+		}
+
+		for _, updateOpts := range opts.GetUpdate() {
+			update := getFullyQualifiedRef(workflow, updateOpts.GetRef())
+			handler := svc.methods[update]
+			hasInput := !isEmpty(handler.Input)
+			hasOutput := !isEmpty(handler.Output)
+
+			// add synchronous flavor
+			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update", update, svc.fqnForUpdate(update))
+			methods.Id(svc.toCamel("%s", update)).
+				ParamsFunc(func(args *j.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					if hasInput {
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+					}
+					args.Id("opts").Op("...").Op("*").Add(svc.Qual(update, svc.toCamel("%sOptions", update)))
+				}).
+				ParamsFunc(func(returnVals *j.Group) {
+					if hasOutput {
+						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+					}
+					returnVals.Error()
+				}).Line()
+
+			// add async flavor
+			commentWithDefaultf(methods, methodSet(handler), "%sAsync sends a(n) %s update to the workflow", update, svc.fqnForUpdate(update))
+			methods.Id(svc.toCamel("%sAsync", update)).
+				ParamsFunc(func(args *j.Group) {
+					args.Id("ctx").Qual("context", "Context")
+					if hasInput {
+						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+					}
+					args.Id("opts").Op("...").Op("*").Add(svc.Qual(update, svc.toCamel("%sOptions", update)))
+				}).
+				Params(
+					j.Add(svc.Qual(update, svc.toCamel("%sHandle", update))),
+					j.Error(),
+				).Line()
+		}
+	})
+}
+
+func (m *Manifest) genClientWorkflowWithUpdateOptions(f *j.File, workflow, update protoreflect.FullName) {
+	names := m.Names()
+
+	method := m.methods[workflow]
+	hasWorkflowInput := !isEmpty(method.Input)
+
+	handler := m.methods[update]
+	hasUpdateInput := !isEmpty(handler.Input)
+
+	implName := names.clientUpdateWithStartOptionsImpl(workflow, update)
+	f.Type().Id(implName).StructFunc(func(g *j.Group) {
+
+	})
+
+	ctorName := names.clientUpdateWithStartOptionsCtor(workflow, update)
+	f.Func().Id(ctorName).Params().Op("*").Id(implName).Block(
+		j.Return(j.Op("&").Id(implName).Values()),
+	)
+
+	f.Func().
+		ParamsFunc(func(g *j.Group) {
+			g.Id("o").Op("*").Id(implName)
+		}).
+		Id("Build").
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			if hasWorkflowInput {
+				g.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+			}
+			if hasUpdateInput {
+				g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+			}
+		}).
+		ParamsFunc(func(g *j.Group) {
+			g.Qual(clientPkg, "UpdateWithStartWorkflowOptions")
+			g.Error()
+		}).
+		BlockFunc(func(g *j.Group) {
+
+		})
+}
+
+// genWorkflowOptions generates a <Workflow>Options struct
+func (svc *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName, child bool) {
+	optionsPkg := clientPkg
+	optionsType := "StartWorkflowOptions"
+	typeName := svc.toCamel("%sOptions", workflow)
+	childQualifier := ""
+	if child {
+		optionsPkg = workflowPkg
+		optionsType = "ChildWorkflowOptions"
+		typeName = svc.toCamel("%sChildOptions", workflow)
+		childQualifier = "child "
+	}
+	constructorName := "New" + typeName
+	opts := svc.workflows[workflow]
+
+	f.Commentf("%s provides configuration for a %s%s workflow operation", typeName, childQualifier, svc.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).StructFunc(func(values *j.Group) {
+		values.Id("options").Qual(optionsPkg, optionsType)
+		values.Id("executionTimeout").Op("*").Qual("time", "Duration")
+		values.Id("id").Op("*").String()
+		values.Id("idReusePolicy").Qual(enumsPkg, "WorkflowIdReusePolicy")
+		values.Id("retryPolicy").Op("*").Qual(temporalPkg, "RetryPolicy")
+		values.Id("runTimeout").Op("*").Qual("time", "Duration")
+		values.Id("searchAttributes").Map(j.String()).Any()
+		values.Id("taskQueue").Op("*").String()
+		values.Id("taskTimeout").Op("*").Qual("time", "Duration")
+		if child {
+			values.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
+			values.Id("waitForCancellation").Op("*").Bool()
+		}
+	})
+
+	f.Commentf("%s initializes a new %s value", constructorName, typeName)
+	f.Func().Id(constructorName).Params().Op("*").Id(typeName).Block(
+		j.Return(j.Op("&").Id(typeName).Values()),
+	)
+
+	f.Commentf("Build initializes a new %s.%s value with defaults and overrides applied", optionsPkg, optionsType)
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("Build").
+		ParamsFunc(func(args *j.Group) {
+			if child {
+				args.Id("ctx").Qual(workflowPkg, "Context")
+			}
+			args.Id("req").Qual(protoreflectPkg, "Message")
+		}).
+		Params(
+			j.Qual(optionsPkg, optionsType),
+			j.Error(),
+		).
+		BlockFunc(func(fn *j.Group) {
+			fn.Id("opts").Op(":=").Id("o").Dot("options")
+
+			// set ID
+			idFieldName := "ID"
+			if child {
+				idFieldName = "WorkflowID"
+			}
+			id := fn.If(j.Id("v").Op(":=").Id("o").Dot("id"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot(idFieldName).Op("=").Op("*").Id("v"),
+			)
+			if idExpr := opts.GetId(); idExpr != "" {
+				id.Else().If(j.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *j.Group) {
+					// original expression evaluation logic
+					origFn := func(b *j.Group, errorReturn j.Code) {
+						b.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
+							args.Id(svc.toCamel("%sIDExpression", workflow))
+							args.Id("req")
+						})
+						b.If(j.Err().Op("!=").Nil()).BlockFunc(func(returnVals *j.Group) {
+							returnVals.Return(errorReturn, j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q workflow: %w"), j.Id(svc.toCamel("%sWorkflowName", workflow)), j.Err()))
+						})
+					}
+
+					if child {
+						// local activity wrapper
+						fixFn := func(b *j.Group) {
+							b.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(j.Id("ctx"))
+							b.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
+							b.If(
+								j.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").Call(
+									j.Qual(workflowPkg, "WithLocalActivityOptions").Call(j.Id("ctx"), j.Id("lao")),
+									j.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.String(), j.Error()).BlockFunc(func(bl *j.Group) {
+										origFn(bl, j.Lit(""))
+										bl.Return(j.Id("id"), j.Nil())
+									}),
+								).Dot("Get").Call(j.Id("ctx"), j.Op("&").Id("opts").Dot(idFieldName)),
+								j.Err().Op("!=").Nil(),
+							).Block(
+								j.Return(j.Id("opts"), j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q workflow: %w"), j.Id(svc.toCamel("%sWorkflowName", workflow)), j.Err())),
+							)
+						}
+
+						// introduce local activity wrapper behind workflow versioning
+						switch pvm := svc.patchMode(temporalv1.Patch_PV_64, workflow); pvm {
+						case temporalv1.Patch_PVM_ENABLED:
+							patchComment(b, temporalv1.Patch_PV_64)
+							b.If(j.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
+								fixFn,
+							).Else().BlockFunc(func(b *j.Group) {
+								origFn(b, j.Id("opts"))
+								b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+							})
+						case temporalv1.Patch_PVM_MARKER:
+							b.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
+							fixFn(b)
+						case temporalv1.Patch_PVM_REMOVED:
+							fixFn(b)
+						default:
+							origFn(b, j.Id("opts"))
+							b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+						}
+					} else {
+						origFn(b, j.Id("opts"))
+						b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+					}
+				})
+			}
+
+			// set WorkflowIDReusePolicy
+			idReusePolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("idReusePolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).Block(
+				j.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Id("v"),
+			)
+			if opts.GetIdReusePolicy() != temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+				idReusePolicy.Else().If(j.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).BlockFunc(func(bl *j.Group) {
+					var policy string
+					switch opts.GetIdReusePolicy() {
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE:
+						policy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE"
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY:
+						policy = "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY"
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE:
+						policy = "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE"
+					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING:
+						policy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
+					}
+					bl.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, policy)
+				})
+			}
+
+			// set TaskQueue
+			fn.If(j.Id("v").Op(":=").Id("o").Dot("taskQueue"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
+			).Else().If(j.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(bl *j.Group) {
+				var taskQueueVar j.Code
+				if tq := opts.GetTaskQueue(); tq != "" {
+					taskQueueVar = j.Lit(tq)
+				} else if tq = svc.opts.GetTaskQueue(); tq != "" {
+					taskQueueVar = j.Id(svc.toCamel("%sTaskQueue", svc.Service.GoName))
+				}
+				if taskQueueVar != nil {
+					bl.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueueVar)
+				} else if child {
+					bl.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(j.Id("ctx")).Dot("TaskQueueName")
+				} else {
+					bl.Return(j.Id("opts"), j.Qual("errors", "New").Call(j.Lit("TaskQueue is required")))
+				}
+			})
+
+			// set RetryPolicy
+			retryPolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("retryPolicy"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot("RetryPolicy").Op("=").Id("v"),
+			)
+			if policy := opts.GetRetryPolicy(); policy != nil {
+				retryPolicy.Else().If(j.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
+					j.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(fields *j.Group) {
+						if d := policy.GetInitialInterval(); d.IsValid() {
+							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+						}
+						if d := policy.GetMaxInterval(); d.IsValid() {
+							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+						}
+						if n := policy.GetBackoffCoefficient(); n != 0 {
+							fields.Id("BackoffCoefficient").Op(":").Lit(n)
+						}
+						if n := policy.GetMaxAttempts(); n != 0 {
+							fields.Id("MaximumAttempts").Op(":").Lit(n)
+						}
+						if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
+							fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *j.Group) {
+								for _, err := range errs {
+									vals.Lit(err)
+								}
+							})
+						}
+					}),
+				)
+			}
+
+			// set SearchAttributes
+			searchAttributes := fn.If(j.Id("v").Op(":=").Id("o").Dot("searchAttributes"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot("SearchAttributes").Op("=").Id("o").Dot("searchAttributes"),
+			)
+			if mapping := opts.GetSearchAttributes(); mapping != "" {
+				searchAttributes.Else().If(j.Id("opts").Dot("SearchAttributes").Op("==").Nil()).
+					BlockFunc(func(b *j.Group) {
+						// original expression evaluation logic
+						origFn := func(b *j.Group, errorResult j.Code) {
+							// convert input to generic mapping input
+							b.List(j.Id("structured"), j.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(j.Id("req"))
+							b.If(j.Err().Op("!=").Nil()).Block(
+								j.Return(errorResult, j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", svc.methods[workflow].GoName)), j.Err())),
+							)
+
+							// execute mapping
+							b.List(j.Id("result"), j.Err()).Op(":=").Id(svc.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(j.Id("structured"))
+							b.If(j.Err().Op("!=").Nil()).Block(
+								j.Return(errorResult, j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", svc.methods[workflow].GoName)), j.Err())),
+							)
+
+							// coerce mapping result to map[string]any
+							b.List(j.Id("searchAttributes"), j.Id("ok")).Op(":=").Id("result").Op(".").Parens(j.Map(j.String()).Any())
+							b.If(j.Op("!").Id("ok")).Block(
+								j.Return(errorResult, j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", svc.methods[workflow].GoName)), j.Id("result"))),
+							)
+						}
+
+						if child {
+							// local activity wrapper
+							fixFn := func(b *j.Group) {
+								b.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(j.Id("ctx"))
+								b.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
+								b.If(
+									j.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").Call(
+										j.Qual(workflowPkg, "WithLocalActivityOptions").Call(j.Id("ctx"), j.Id("lao")),
+										j.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.Map(j.String()).Any(), j.Error()).BlockFunc(func(b *j.Group) {
+											origFn(b, j.Nil())
+											b.Return(j.Id("searchAttributes"), j.Nil())
+										}),
+									).Dot("Get").Call(j.Id("ctx"), j.Op("&").Id("opts").Dot("SearchAttributes")),
+									j.Err().Op("!=").Nil(),
+								).Block(
+									j.Return(j.Id("opts"), j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating search attributes for %q workflow: %w"), j.Id(svc.toCamel("%sWorkflowName", workflow)), j.Err())),
+								)
+							}
+
+							// introduce local activity wrapper behind workflow versioning
+							switch pvm := svc.patchMode(temporalv1.Patch_PV_64, workflow); pvm {
+							case temporalv1.Patch_PVM_ENABLED:
+								patchComment(b, temporalv1.Patch_PV_64)
+								b.If(j.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
+									fixFn,
+								).Else().BlockFunc(func(b *j.Group) {
+									origFn(b, j.Id("opts"))
+									b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+								})
+							case temporalv1.Patch_PVM_MARKER:
+								b.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
+								fixFn(b)
+							case temporalv1.Patch_PVM_REMOVED:
+								fixFn(b)
+							default:
+								origFn(b, j.Id("opts"))
+								b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+							}
+						} else {
+							origFn(b, j.Id("opts"))
+							b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+						}
+					})
+			}
+
+			// set WorkflowExecutionTimeout
+			executionTimeout := fn.If(j.Id("v").Op(":=").Id("o").Dot("executionTimeout"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Op("*").Id("v"),
+			)
+			if d := opts.GetExecutionTimeout().AsDuration(); d > 0 {
+				executionTimeout.Else().If(j.Id("opts").Dot("WorkflowExecutionTimeout").Op("==").Lit(0)).Block(
+					j.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+				)
+			}
+
+			// set WorkflowRunTimeout
+			runTimeout := fn.If(j.Id("v").Op(":=").Id("o").Dot("runTimeout"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot("WorkflowRunTimeout").Op("=").Op("*").Id("v"),
+			)
+			if d := opts.GetRunTimeout().AsDuration(); d > 0 {
+				runTimeout.Else().If(j.Id("opts").Dot("WorkflowRunTimeout").Op("==").Lit(0)).Block(
+					j.Id("opts").Dot("WorkflowRunTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+				)
+			}
+
+			// set WorkflowTaskTimeout
+			taskTimeout := fn.If(j.Id("v").Op(":=").Id("o").Dot("taskTimeout"), j.Id("v").Op("!=").Nil()).Block(
+				j.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Op("*").Id("v"),
+			)
+			if d := opts.GetTaskTimeout().AsDuration(); d > 0 {
+				taskTimeout.Else().If(j.Id("opts").Dot("WorkflowTaskTimeout").Op("==").Lit(0)).Block(
+					j.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+				)
+			}
+
+			// set ParentClosePolicy
+			if child {
+				parentClosePolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("parentClosePolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).Block(
+					j.Id("opts").Dot("ParentClosePolicy").Op("=").Id("v"),
+				)
+				if opts.GetParentClosePolicy() != temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_UNSPECIFIED {
+					parentClosePolicy.Else().If(j.Id("opts").Dot("ParentClosePolicy").Op("==").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).BlockFunc(func(bl *j.Group) {
+						var policy string
+						switch opts.GetParentClosePolicy() {
+						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
+							policy = "PARENT_CLOSE_POLICY_ABANDON"
+						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+							policy = "PARENT_CLOSE_POLICY_REQUEST_CANCEL"
+						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE:
+							policy = "PARENT_CLOSE_POLICY_TERMINATE"
+						}
+						bl.Id("opts").Dot("ParentClosePolicy").Op("=").Qual(enumsPkg, policy)
+					})
+				}
+			}
+
+			// set WaitForCancellation
+			if child {
+				waitForCancellation := fn.If(j.Id("v").Op(":=").Id("o").Dot("waitForCancellation"), j.Id("v").Op("!=").Nil()).Block(
+					j.Id("opts").Dot("WaitForCancellation").Op("=").Op("*").Id("v"),
+				)
+				if opts.GetWaitForCancellation() {
+					waitForCancellation.Else().Block(
+						j.Id("opts").Dot("WaitForCancellation").Op("=").Lit(true),
+					)
+				}
+			}
+
+			fn.Return(j.Id("opts"), j.Nil())
+		})
+
+	baseName := svc.toCamel("With%s", optionsType)
+	f.Commentf("%s sets the initial %s.%s", baseName, optionsPkg, optionsType)
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id(baseName).
+		Params(j.Id("options").Qual(optionsPkg, optionsType)).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("options").Op("=").Id("options"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithExecutionTimeout sets the WorkflowExecutionTimeout value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithExecutionTimeout").
+		Params(j.Id("d").Qual("time", "Duration")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("executionTimeout").Op("=").Op("&").Id("d"),
+			j.Return(j.Id("o")),
+		)
+
+	if child {
+		f.Comment("WithID sets the WorkflowID value")
+	} else {
+		f.Comment("WithID sets the ID value")
+	}
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithID").
+		Params(j.Id("id").String()).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("id").Op("=").Op("&").Id("id"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithIDReusePolicy sets the WorkflowIDReusePolicy value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithIDReusePolicy").
+		Params(j.Id("policy").Qual(enumsPkg, "WorkflowIdReusePolicy")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("idReusePolicy").Op("=").Id("policy"),
+			j.Return(j.Id("o")),
+		)
+
+	if child {
+		f.Comment("WithParentClosePolicy sets the WorkflowIDReusePolicy value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithParentClosePolicy").
+			Params(j.Id("policy").Qual(enumsPkg, "ParentClosePolicy")).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("parentClosePolicy").Op("=").Id("policy"),
+				j.Return(j.Id("o")),
+			)
+	}
+
+	f.Comment("WithRetryPolicy sets the RetryPolicy value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithRetryPolicy").
+		Params(j.Id("policy").Op("*").Qual(temporalPkg, "RetryPolicy")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("retryPolicy").Op("=").Id("policy"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithRunTimeout sets the WorkflowRunTimeout value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithRunTimeout").
+		Params(j.Id("d").Qual("time", "Duration")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("runTimeout").Op("=").Op("&").Id("d"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithSearchAttributes sets the SearchAttributes value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithSearchAttributes").
+		Params(j.Id("sa").Map(j.String()).Any()).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("searchAttributes").Op("=").Id("sa"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithTaskTimeout sets the WorkflowTaskTimeout value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithTaskTimeout").
+		Params(j.Id("d").Qual("time", "Duration")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("taskTimeout").Op("=").Op("&").Id("d"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithTaskQueue sets the TaskQueue value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithTaskQueue").
+		Params(j.Id("tq").String()).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("taskQueue").Op("=").Op("&").Id("tq"),
+			j.Return(j.Id("o")),
+		)
+
+	if child {
+		f.Comment("WithWaitForCancellation sets the WaitForCancellation value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithWaitForCancellation").
+			Params(j.Id("wait").Bool()).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("waitForCancellation").Op("=").Op("&").Id("wait"),
+				j.Return(j.Id("o")),
+			)
+	}
+}
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 
+
 # [1.16.1](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.16.1) - 2025-03-13
 
 ### Changed

@@ -77,7 +77,7 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
 	flags.StringVar(&cfg.IgnoreAcronyms, "ignore-acronyms", "", "semicolon-delimited string of acronyms to ignore when converting generated output to camel case")
 	flags.StringVar(&cfg.Patches, "patches", "", "semicolon-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER;65_REMOVED)")
-	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", false, "enable experimental workflow update")
+	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", true, "enable workflow update")
 
 	return &Plugin{
 		Commit:  commit,

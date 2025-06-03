@@ -695,15 +695,26 @@ func (m *Manifest) renderService(f *g.File, file *protogen.File, service *protog
 			m.genClientImplWorkflowGetMethod(f, workflow)
 			for _, signal := range opts.GetSignal() {
 				if signal.GetStart() {
+<<<<<<< HEAD
 					m.genClientImplSignalWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
 					m.genClientImplSignalWithStartMethodAsync(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+=======
+					svc.genClientImplSignalWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+					svc.genClientImplSignalWithStartMethodAsync(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				}
 			}
 			for _, update := range opts.GetUpdate() {
 				if update.GetStart() {
+<<<<<<< HEAD
 					m.genClientUpdateWithStartOptions(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
 					m.genClientImplUpdateWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
 					m.genClientImplUpdateWithStartMethodAsync(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
+=======
+					svc.genClientWorkflowWithUpdateOptions(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
+					svc.genClientUpdateWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
+					svc.genClientUpdateWithStartMethodAsync(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
+>>>>>>> 167d3d8 (fixup! Merge pull request #99 from cludden/cludden/revert-unnecessary-go-toolchain-upgrade)
 				}
 			}
 		}
