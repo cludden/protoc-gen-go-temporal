@@ -2258,7 +2258,7 @@ func (m *Manifest) genXNSSignalWithStartOptions(f *j.File, workflow, signal prot
 							j.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
 								args.Qual(string(m.File.GoImportPath), m.toCamel("%sIDExpression", workflow))
 								if hasWorkflowInput {
-									args.Id("req").Dot("ProtoReflect").Call()
+									args.Id("input").Dot("ProtoReflect").Call()
 								} else {
 									args.Nil()
 								}
@@ -2275,7 +2275,7 @@ func (m *Manifest) genXNSSignalWithStartOptions(f *j.File, workflow, signal prot
 						)).Dot("Get").Call(j.Op("&").Id("swo").Dot("ID")),
 						j.Err().Op("!=").Nil(),
 					).Block(
-						j.Return(j.Nil(), j.Err()),
+						j.Return(j.Nil(), j.Nil(), j.Err()),
 					),
 				)
 			}
@@ -2458,7 +2458,7 @@ func (m *Manifest) genXNSSignalWithStartOptions(f *j.File, workflow, signal prot
 				g.Id("opts").Dot("HeartbeatInterval").Op("==").Lit(0)
 			}).BlockFunc(func(g *j.Group) {
 				if d := xnsOpts.GetHeartbeatInterval(); d.IsValid() {
-					g.Id("ao").Dot("HeartbeatInterval").Op("=").
+					g.Id("opts").Dot("HeartbeatInterval").Op("=").
 						Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).
 						Comment(durafmt.Parse(d.AsDuration()).String())
 				} else {
@@ -3758,7 +3758,7 @@ func (m *Manifest) genXNSWorkflowOptions(f *j.File, workflow protoreflect.FullNa
 							j.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
 								args.Qual(string(m.File.GoImportPath), m.toCamel("%sIDExpression", workflow))
 								if hasWorkflowInput {
-									args.Id("req").Dot("ProtoReflect").Call()
+									args.Id("input").Dot("ProtoReflect").Call()
 								} else {
 									args.Nil()
 								}
@@ -3775,7 +3775,7 @@ func (m *Manifest) genXNSWorkflowOptions(f *j.File, workflow protoreflect.FullNa
 						)).Dot("Get").Call(j.Op("&").Id("swo").Dot("ID")),
 						j.Err().Op("!=").Nil(),
 					).Block(
-						j.Return(j.Nil(), j.Err()),
+						j.Return(j.Nil(), j.Nil(), j.Err()),
 					),
 				)
 			}
@@ -3936,7 +3936,7 @@ func (m *Manifest) genXNSWorkflowOptions(f *j.File, workflow protoreflect.FullNa
 				g.Id("opts").Dot("HeartbeatInterval").Op("==").Lit(0)
 			}).BlockFunc(func(g *j.Group) {
 				if d := opts.GetXns().GetHeartbeatInterval(); d.IsValid() {
-					g.Id("ao").Dot("HeartbeatInterval").Op("=").
+					g.Id("opts").Dot("HeartbeatInterval").Op("=").
 						Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).
 						Comment(durafmt.Parse(d.AsDuration()).String())
 				} else {

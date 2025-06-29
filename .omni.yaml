@@ -32,6 +32,17 @@ commands:
       mockery --log-level=error
       go mod tidy
 
+  genlocal:
+    desc: Generate code locally
+    run: |
+      rm -rf ./gen/**
+      buf dep update
+      buf format -w
+      buf lint
+      buf generate --template buf.local.gen.yaml
+      mockery --log-level=error
+      go mod tidy
+
   test:
     desc: Run tests
     run: |

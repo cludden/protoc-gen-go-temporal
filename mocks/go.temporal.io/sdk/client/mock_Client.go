@@ -330,6 +330,53 @@ func (_c *MockClient_CountWorkflow_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
+// DeploymentClient provides a mock function with no fields
+func (_m *MockClient) DeploymentClient() client.DeploymentClient {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeploymentClient")
+	}
+
+	var r0 client.DeploymentClient
+	if rf, ok := ret.Get(0).(func() client.DeploymentClient); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(client.DeploymentClient)
+		}
+	}
+
+	return r0
+}
+
+// MockClient_DeploymentClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeploymentClient'
+type MockClient_DeploymentClient_Call struct {
+	*mock.Call
+}
+
+// DeploymentClient is a helper method to define mock.On call
+func (_e *MockClient_Expecter) DeploymentClient() *MockClient_DeploymentClient_Call {
+	return &MockClient_DeploymentClient_Call{Call: _e.mock.On("DeploymentClient")}
+}
+
+func (_c *MockClient_DeploymentClient_Call) Run(run func()) *MockClient_DeploymentClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClient_DeploymentClient_Call) Return(_a0 client.DeploymentClient) *MockClient_DeploymentClient_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_DeploymentClient_Call) RunAndReturn(run func() client.DeploymentClient) *MockClient_DeploymentClient_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DescribeTaskQueue provides a mock function with given fields: ctx, taskqueue, taskqueueType
 func (_m *MockClient) DescribeTaskQueue(ctx context.Context, taskqueue string, taskqueueType enums.TaskQueueType) (*workflowservice.DescribeTaskQueueResponse, error) {
 	ret := _m.Called(ctx, taskqueue, taskqueueType)
@@ -1199,6 +1246,66 @@ func (_c *MockClient_ListWorkflow_Call) RunAndReturn(run func(context.Context, *
 	return _c
 }
 
+// NewWithStartWorkflowOperation provides a mock function with given fields: options, workflow, args
+func (_m *MockClient) NewWithStartWorkflowOperation(options client.StartWorkflowOptions, workflow interface{}, args ...interface{}) client.WithStartWorkflowOperation {
+	var _ca []interface{}
+	_ca = append(_ca, options, workflow)
+	_ca = append(_ca, args...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NewWithStartWorkflowOperation")
+	}
+
+	var r0 client.WithStartWorkflowOperation
+	if rf, ok := ret.Get(0).(func(client.StartWorkflowOptions, interface{}, ...interface{}) client.WithStartWorkflowOperation); ok {
+		r0 = rf(options, workflow, args...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(client.WithStartWorkflowOperation)
+		}
+	}
+
+	return r0
+}
+
+// MockClient_NewWithStartWorkflowOperation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewWithStartWorkflowOperation'
+type MockClient_NewWithStartWorkflowOperation_Call struct {
+	*mock.Call
+}
+
+// NewWithStartWorkflowOperation is a helper method to define mock.On call
+//   - options client.StartWorkflowOptions
+//   - workflow interface{}
+//   - args ...interface{}
+func (_e *MockClient_Expecter) NewWithStartWorkflowOperation(options interface{}, workflow interface{}, args ...interface{}) *MockClient_NewWithStartWorkflowOperation_Call {
+	return &MockClient_NewWithStartWorkflowOperation_Call{Call: _e.mock.On("NewWithStartWorkflowOperation",
+		append([]interface{}{options, workflow}, args...)...)}
+}
+
+func (_c *MockClient_NewWithStartWorkflowOperation_Call) Run(run func(options client.StartWorkflowOptions, workflow interface{}, args ...interface{})) *MockClient_NewWithStartWorkflowOperation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(client.StartWorkflowOptions), args[1].(interface{}), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockClient_NewWithStartWorkflowOperation_Call) Return(_a0 client.WithStartWorkflowOperation) *MockClient_NewWithStartWorkflowOperation_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_NewWithStartWorkflowOperation_Call) RunAndReturn(run func(client.StartWorkflowOptions, interface{}, ...interface{}) client.WithStartWorkflowOperation) *MockClient_NewWithStartWorkflowOperation_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // OperatorService provides a mock function with no fields
 func (_m *MockClient) OperatorService() operatorservice.OperatorServiceClient {
 	ret := _m.Called()
@@ -1845,6 +1952,65 @@ func (_c *MockClient_TerminateWorkflow_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// UpdateWithStartWorkflow provides a mock function with given fields: ctx, options
+func (_m *MockClient) UpdateWithStartWorkflow(ctx context.Context, options client.UpdateWithStartWorkflowOptions) (client.WorkflowUpdateHandle, error) {
+	ret := _m.Called(ctx, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateWithStartWorkflow")
+	}
+
+	var r0 client.WorkflowUpdateHandle
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.UpdateWithStartWorkflowOptions) (client.WorkflowUpdateHandle, error)); ok {
+		return rf(ctx, options)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.UpdateWithStartWorkflowOptions) client.WorkflowUpdateHandle); ok {
+		r0 = rf(ctx, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(client.WorkflowUpdateHandle)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.UpdateWithStartWorkflowOptions) error); ok {
+		r1 = rf(ctx, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_UpdateWithStartWorkflow_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWithStartWorkflow'
+type MockClient_UpdateWithStartWorkflow_Call struct {
+	*mock.Call
+}
+
+// UpdateWithStartWorkflow is a helper method to define mock.On call
+//   - ctx context.Context
+//   - options client.UpdateWithStartWorkflowOptions
+func (_e *MockClient_Expecter) UpdateWithStartWorkflow(ctx interface{}, options interface{}) *MockClient_UpdateWithStartWorkflow_Call {
+	return &MockClient_UpdateWithStartWorkflow_Call{Call: _e.mock.On("UpdateWithStartWorkflow", ctx, options)}
+}
+
+func (_c *MockClient_UpdateWithStartWorkflow_Call) Run(run func(ctx context.Context, options client.UpdateWithStartWorkflowOptions)) *MockClient_UpdateWithStartWorkflow_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(client.UpdateWithStartWorkflowOptions))
+	})
+	return _c
+}
+
+func (_c *MockClient_UpdateWithStartWorkflow_Call) Return(_a0 client.WorkflowUpdateHandle, _a1 error) *MockClient_UpdateWithStartWorkflow_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_UpdateWithStartWorkflow_Call) RunAndReturn(run func(context.Context, client.UpdateWithStartWorkflowOptions) (client.WorkflowUpdateHandle, error)) *MockClient_UpdateWithStartWorkflow_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateWorkerBuildIdCompatibility provides a mock function with given fields: ctx, options
 func (_m *MockClient) UpdateWorkerBuildIdCompatibility(ctx context.Context, options *client.UpdateWorkerBuildIdCompatibilityOptions) error {
 	ret := _m.Called(ctx, options)
@@ -2006,6 +2172,110 @@ func (_c *MockClient_UpdateWorkflow_Call) Return(_a0 client.WorkflowUpdateHandle
 }
 
 func (_c *MockClient_UpdateWorkflow_Call) RunAndReturn(run func(context.Context, client.UpdateWorkflowOptions) (client.WorkflowUpdateHandle, error)) *MockClient_UpdateWorkflow_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateWorkflowExecutionOptions provides a mock function with given fields: ctx, options
+func (_m *MockClient) UpdateWorkflowExecutionOptions(ctx context.Context, options client.UpdateWorkflowExecutionOptionsRequest) (client.WorkflowExecutionOptions, error) {
+	ret := _m.Called(ctx, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateWorkflowExecutionOptions")
+	}
+
+	var r0 client.WorkflowExecutionOptions
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.UpdateWorkflowExecutionOptionsRequest) (client.WorkflowExecutionOptions, error)); ok {
+		return rf(ctx, options)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.UpdateWorkflowExecutionOptionsRequest) client.WorkflowExecutionOptions); ok {
+		r0 = rf(ctx, options)
+	} else {
+		r0 = ret.Get(0).(client.WorkflowExecutionOptions)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.UpdateWorkflowExecutionOptionsRequest) error); ok {
+		r1 = rf(ctx, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_UpdateWorkflowExecutionOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWorkflowExecutionOptions'
+type MockClient_UpdateWorkflowExecutionOptions_Call struct {
+	*mock.Call
+}
+
+// UpdateWorkflowExecutionOptions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - options client.UpdateWorkflowExecutionOptionsRequest
+func (_e *MockClient_Expecter) UpdateWorkflowExecutionOptions(ctx interface{}, options interface{}) *MockClient_UpdateWorkflowExecutionOptions_Call {
+	return &MockClient_UpdateWorkflowExecutionOptions_Call{Call: _e.mock.On("UpdateWorkflowExecutionOptions", ctx, options)}
+}
+
+func (_c *MockClient_UpdateWorkflowExecutionOptions_Call) Run(run func(ctx context.Context, options client.UpdateWorkflowExecutionOptionsRequest)) *MockClient_UpdateWorkflowExecutionOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(client.UpdateWorkflowExecutionOptionsRequest))
+	})
+	return _c
+}
+
+func (_c *MockClient_UpdateWorkflowExecutionOptions_Call) Return(_a0 client.WorkflowExecutionOptions, _a1 error) *MockClient_UpdateWorkflowExecutionOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_UpdateWorkflowExecutionOptions_Call) RunAndReturn(run func(context.Context, client.UpdateWorkflowExecutionOptionsRequest) (client.WorkflowExecutionOptions, error)) *MockClient_UpdateWorkflowExecutionOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WorkerDeploymentClient provides a mock function with no fields
+func (_m *MockClient) WorkerDeploymentClient() client.WorkerDeploymentClient {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for WorkerDeploymentClient")
+	}
+
+	var r0 client.WorkerDeploymentClient
+	if rf, ok := ret.Get(0).(func() client.WorkerDeploymentClient); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(client.WorkerDeploymentClient)
+		}
+	}
+
+	return r0
+}
+
+// MockClient_WorkerDeploymentClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WorkerDeploymentClient'
+type MockClient_WorkerDeploymentClient_Call struct {
+	*mock.Call
+}
+
+// WorkerDeploymentClient is a helper method to define mock.On call
+func (_e *MockClient_Expecter) WorkerDeploymentClient() *MockClient_WorkerDeploymentClient_Call {
+	return &MockClient_WorkerDeploymentClient_Call{Call: _e.mock.On("WorkerDeploymentClient")}
+}
+
+func (_c *MockClient_WorkerDeploymentClient_Call) Run(run func()) *MockClient_WorkerDeploymentClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClient_WorkerDeploymentClient_Call) Return(_a0 client.WorkerDeploymentClient) *MockClient_WorkerDeploymentClient_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_WorkerDeploymentClient_Call) RunAndReturn(run func() client.WorkerDeploymentClient) *MockClient_WorkerDeploymentClient_Call {
 	_c.Call.Return(run)
 	return _c
 }
