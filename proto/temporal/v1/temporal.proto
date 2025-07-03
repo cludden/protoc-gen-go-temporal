@@ -321,8 +321,13 @@ message WorkflowOptions {
 
   // Update identifies an update supported by the workflow
   message Update {
+    CLICommandOptions cli = 4;
+
     // Update name
     string ref = 1;
+
+    // Include convenience method for update with start
+    bool start = 3;
 
     // XNS can be used to configure default activity options for xns workflow executions
     XNSActivityOptions xns = 2;

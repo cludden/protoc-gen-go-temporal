@@ -5,15 +5,19 @@ import (
 	"sort"
 	"strings"
 
-	g "github.com/dave/jennifer/jen"
+	j "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+func (n *names) workflowIDExpression(workflow protoreflect.FullName) string {
+	return n.toCamel("%sIDExpression", workflow)
+}
+
 // genWorkerBuilderFunction generates a build<Workflow> function that converts
 // a constructor function or method into a valid workflow function
-func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.FullName) {
-	method := svc.methods[workflow]
-	opts := svc.workflows[workflow]
+func (m *Manifest) genWorkerBuilderFunction(f *j.File, workflow protoreflect.FullName) {
+	method := m.methods[workflow]
+	opts := m.workflows[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 	builderName := fmt.Sprintf("build%s", method.GoName)
@@ -23,79 +27,79 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 	f.Func().
 		Id(builderName).
 		Params(
-			g.Id("ctor").
+			j.Id("ctor").
 				Func().
-				ParamsFunc(func(args *g.Group) {
+				ParamsFunc(func(args *j.Group) {
 					args.Qual(workflowPkg, "Context")
-					if svc.cfg.DisableWorkflowInputRename {
-						args.Op("*").Id(svc.toCamel("%sInput", workflow))
+					if m.cfg.DisableWorkflowInputRename {
+						args.Op("*").Id(m.toCamel("%sInput", workflow))
 					} else {
-						args.Op("*").Id(svc.toCamel("%sWorkflowInput", workflow))
+						args.Op("*").Id(m.toCamel("%sWorkflowInput", workflow))
 					}
 				}).
 				Params(
-					g.Id(svc.toCamel("%sWorkflow", workflow)),
-					g.Error(),
+					j.Id(m.toCamel("%sWorkflow", workflow)),
+					j.Error(),
 				),
 		).
 		Params(
-			g.Func().
-				ParamsFunc(func(args *g.Group) {
+			j.Func().
+				ParamsFunc(func(args *j.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 					}
 				}).
-				ParamsFunc(func(returnVals *g.Group) {
+				ParamsFunc(func(returnVals *j.Group) {
 					if hasOutput {
-						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				}),
 		).
 		Block(
-			g.Return(
+			j.Return(
 				//g.Parens(g.Op("&").Id(workerName).Values(g.Id("wf"))).Dot(method.GoName),
 				// generate <Workflow> method for worker struct
-				g.Func().
-					ParamsFunc(func(args *g.Group) {
+				j.Func().
+					ParamsFunc(func(args *j.Group) {
 						args.Id("ctx").Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 						}
 					}).
-					ParamsFunc(func(returnVals *g.Group) {
+					ParamsFunc(func(returnVals *j.Group) {
 						if hasOutput {
-							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 						}
 						returnVals.Error()
 					}).
-					BlockFunc(func(fn *g.Group) {
+					BlockFunc(func(fn *j.Group) {
 						// build input struct
-						inputType := svc.toCamel("%sWorkflowInput", workflow)
-						if svc.cfg.DisableWorkflowInputRename {
-							inputType = svc.toCamel("%sInput", workflow)
+						inputType := m.toCamel("%sWorkflowInput", workflow)
+						if m.cfg.DisableWorkflowInputRename {
+							inputType = m.toCamel("%sInput", workflow)
 						}
-						fn.Id("input").Op(":=").Op("&").Id(inputType).BlockFunc(func(fields *g.Group) {
+						fn.Id("input").Op(":=").Op("&").Id(inputType).BlockFunc(func(fields *j.Group) {
 							if hasInput {
 								fields.Id("Req").Op(":").Id("req").Op(",")
 							}
 							for _, s := range opts.GetSignal() {
 								signal := getFullyQualifiedRef(workflow, s.GetRef())
-								fields.Id(svc.methods[signal].GoName).Op(":").Op("&").Add(svc.Qual(signal, svc.toCamel("%sSignal", signal))).Block(
-									g.Id("Channel").Op(":").Qual(workflowPkg, "GetSignalChannel").Call(
-										g.Id("ctx"), svc.Qual(signal, svc.toCamel("%sSignalName", signal)),
+								fields.Id(m.methods[signal].GoName).Op(":").Op("&").Add(m.Qual(signal, m.toCamel("%sSignal", signal))).Block(
+									j.Id("Channel").Op(":").Qual(workflowPkg, "GetSignalChannel").Call(
+										j.Id("ctx"), m.Qual(signal, m.toCamel("%sSignalName", signal)),
 									).Op(","),
 								).Op(",")
 							}
 						})
 
 						// call constructor to get workflow implementation
-						fn.List(g.Id("wf"), g.Err()).Op(":=").Id("ctor").Call(
-							g.Id("ctx"), g.Id("input"),
+						fn.List(j.Id("wf"), j.Err()).Op(":=").Id("ctor").Call(
+							j.Id("ctx"), j.Id("input"),
 						)
-						fn.If(g.Err().Op("!=").Nil()).Block(
-							g.ReturnFunc(func(returnVals *g.Group) {
+						fn.If(j.Err().Op("!=").Nil()).Block(
+							j.ReturnFunc(func(returnVals *j.Group) {
 								if hasOutput {
 									returnVals.Nil()
 								}
@@ -104,11 +108,11 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 						)
 
 						fn.If(
-							g.List(g.Id("initializable"), g.Id("ok")).Op(":=").Id("wf").Op(".").Parens(g.Qual(helpersPkg, "Initializable")),
-							g.Id("ok"),
+							j.List(j.Id("initializable"), j.Id("ok")).Op(":=").Id("wf").Op(".").Parens(j.Qual(helpersPkg, "Initializable")),
+							j.Id("ok"),
 						).Block(
-							g.If(g.Err().Op(":=").Id("initializable").Dot("Initialize").Call(g.Id("ctx")), g.Err().Op("!=").Nil()).Block(
-								g.ReturnFunc(func(returnVals *g.Group) {
+							j.If(j.Err().Op(":=").Id("initializable").Dot("Initialize").Call(j.Id("ctx")), j.Err().Op("!=").Nil()).Block(
+								j.ReturnFunc(func(returnVals *j.Group) {
 									if hasOutput {
 										returnVals.Nil()
 									}
@@ -121,12 +125,12 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 						for _, q := range opts.GetQuery() {
 							query := q.GetRef()
 							fn.If(
-								g.Err().Op(":=").Qual(workflowPkg, "SetQueryHandler").Call(
-									g.Id("ctx"), g.Id(svc.toCamel("%sQueryName", query)), g.Id("wf").Dot(query),
+								j.Err().Op(":=").Qual(workflowPkg, "SetQueryHandler").Call(
+									j.Id("ctx"), j.Id(m.toCamel("%sQueryName", query)), j.Id("wf").Dot(query),
 								),
-								g.Err().Op("!=").Nil(),
+								j.Err().Op("!=").Nil(),
 							).Block(
-								g.ReturnFunc(func(returnVals *g.Group) {
+								j.ReturnFunc(func(returnVals *j.Group) {
 									if hasOutput {
 										returnVals.Nil()
 									}
@@ -138,23 +142,23 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 						// register update handlers
 						for _, u := range opts.GetUpdate() {
 							update := getFullyQualifiedRef(workflow, u.GetRef())
-							updateOpts := svc.updates[update]
+							updateOpts := m.updates[update]
 
-							fn.BlockFunc(func(b *g.Group) {
+							fn.BlockFunc(func(b *j.Group) {
 								// build UpdateHandlerOptions
-								var updateHandlerOptions []g.Code
+								var updateHandlerOptions []j.Code
 								if updateOpts.GetValidate() {
-									updateHandlerOptions = append(updateHandlerOptions, g.Id("Validator").Op(":").Id("wf").Dot(svc.toCamel("Validate%s", update)))
+									updateHandlerOptions = append(updateHandlerOptions, j.Id("Validator").Op(":").Id("wf").Dot(m.toCamel("Validate%s", update)))
 								}
 								b.Id("opts").Op(":=").Qual(workflowPkg, "UpdateHandlerOptions").Values(updateHandlerOptions...)
 
 								b.If(
-									g.Err().Op(":=").Qual(workflowPkg, "SetUpdateHandlerWithOptions").Call(
-										g.Id("ctx"), g.Id(svc.toCamel("%sUpdateName", update)), g.Id("wf").Dot(svc.methods[update].GoName), g.Id("opts"),
+									j.Err().Op(":=").Qual(workflowPkg, "SetUpdateHandlerWithOptions").Call(
+										j.Id("ctx"), j.Id(m.toCamel("%sUpdateName", update)), j.Id("wf").Dot(m.methods[update].GoName), j.Id("opts"),
 									),
-									g.Err().Op("!=").Nil(),
+									j.Err().Op("!=").Nil(),
 								).Block(
-									g.ReturnFunc(func(returnVals *g.Group) {
+									j.ReturnFunc(func(returnVals *j.Group) {
 										if hasOutput {
 											returnVals.Nil()
 										}
@@ -166,7 +170,7 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 
 						// execute workflow
 						fn.Return(
-							g.Id("wf").Dot("Execute").Call(g.Id("ctx")),
+							j.Id("wf").Dot("Execute").Call(j.Id("ctx")),
 						)
 					}),
 			),
@@ -174,46 +178,46 @@ func (svc *Manifest) genWorkerBuilderFunction(f *g.File, workflow protoreflect.F
 }
 
 // genWorkerRegisterWorkflow generates a Register<Workflow> public function
-func (svc *Manifest) genWorkerRegisterWorkflow(f *g.File, workflow protoreflect.FullName) {
-	method := svc.methods[workflow]
-	opts := svc.workflows[workflow]
+func (m *Manifest) genWorkerRegisterWorkflow(f *j.File, workflow protoreflect.FullName) {
+	method := m.methods[workflow]
+	opts := m.workflows[workflow]
 	builderName := fmt.Sprintf("build%s", method.GoName)
-	varName := svc.toCamel("%sFunction", workflow)
+	varName := m.toCamel("%sFunction", workflow)
 
 	// generate Register<Workflow> function
-	f.Commentf("Register%sWorkflow registers a %s workflow with the given worker", svc.methods[workflow].GoName, method.Desc.FullName())
+	f.Commentf("Register%sWorkflow registers a %s workflow with the given worker", m.methods[workflow].GoName, method.Desc.FullName())
 	f.Func().
-		Id(svc.toCamel("Register%sWorkflow", workflow)).
+		Id(m.toCamel("Register%sWorkflow", workflow)).
 		Params(
-			g.Id("r").Qual(workerPkg, "WorkflowRegistry"),
-			g.Id("wf").
+			j.Id("r").Qual(workerPkg, "WorkflowRegistry"),
+			j.Id("wf").
 				Func().
-				ParamsFunc(func(args *g.Group) {
+				ParamsFunc(func(args *j.Group) {
 					args.Qual(workflowPkg, "Context")
-					if svc.cfg.DisableWorkflowInputRename {
-						args.Op("*").Id(svc.toCamel("%sInput", workflow))
+					if m.cfg.DisableWorkflowInputRename {
+						args.Op("*").Id(m.toCamel("%sInput", workflow))
 					} else {
-						args.Op("*").Id(svc.toCamel("%sWorkflowInput", workflow))
+						args.Op("*").Id(m.toCamel("%sWorkflowInput", workflow))
 					}
 				}).
 				Params(
-					g.Id(svc.toCamel("%sWorkflow", workflow)),
-					g.Error(),
+					j.Id(m.toCamel("%sWorkflow", workflow)),
+					j.Error(),
 				),
 		).
-		BlockFunc(func(fn *g.Group) {
-			fn.Id(varName).Op("=").Id(builderName).Call(g.Id("wf"))
-			names := []g.Code{g.Id(svc.toCamel("%sWorkflowName", workflow))}
+		BlockFunc(func(fn *j.Group) {
+			fn.Id(varName).Op("=").Id(builderName).Call(j.Id("wf"))
+			names := []j.Code{j.Id(m.toCamel("%sWorkflowName", workflow))}
 			aliases := opts.GetAliases()
 			sort.Strings(aliases)
 			for _, alias := range aliases {
-				names = append(names, g.Lit(alias))
+				names = append(names, j.Lit(alias))
 			}
 			for _, name := range names {
 				fn.Id("r").Dot("RegisterWorkflowWithOptions").Call(
-					g.Id(varName),
-					g.Qual(workflowPkg, "RegisterOptions").Values(
-						g.Id("Name").Op(":").Add(name),
+					j.Id(varName),
+					j.Qual(workflowPkg, "RegisterOptions").Values(
+						j.Id("Name").Op(":").Add(name),
 					),
 				)
 			}
@@ -221,109 +225,109 @@ func (svc *Manifest) genWorkerRegisterWorkflow(f *g.File, workflow protoreflect.
 }
 
 // genWorkerRegisterWorkflows generates a public RegisterWorkflows method for a given service
-func (svc *Manifest) genWorkerRegisterWorkflows(f *g.File) {
-	f.Commentf("Register%sWorkflows registers %s workflows with the given worker", svc.Service.GoName, svc.Service.Desc.FullName())
+func (m *Manifest) genWorkerRegisterWorkflows(f *j.File) {
+	f.Commentf("Register%sWorkflows registers %s workflows with the given worker", m.Service.GoName, m.Service.Desc.FullName())
 	f.Func().
-		Id(svc.toCamel("Register%sWorkflows", svc.Service.GoName)).
+		Id(m.toCamel("Register%sWorkflows", m.Service.GoName)).
 		Params(
-			g.Id("r").Qual(workerPkg, "WorkflowRegistry"),
-			g.Id("workflows").Id(svc.toCamel("%sWorkflows", svc.Service.GoName)),
+			j.Id("r").Qual(workerPkg, "WorkflowRegistry"),
+			j.Id("workflows").Id(m.toCamel("%sWorkflows", m.Service.GoName)),
 		).
-		BlockFunc(func(fn *g.Group) {
-			for _, workflow := range svc.workflowsOrdered {
-				if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+		BlockFunc(func(fn *j.Group) {
+			for _, workflow := range m.workflowsOrdered {
+				if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 					continue
 				}
-				fn.Id(svc.toCamel("Register%sWorkflow", workflow)).Call(
-					g.Id("r"), g.Id("workflows").Dot(svc.methods[workflow].GoName),
+				fn.Id(m.toCamel("Register%sWorkflow", workflow)).Call(
+					j.Id("r"), j.Id("workflows").Dot(m.methods[workflow].GoName),
 				)
 			}
 		})
 }
 
 // genWorkerSignal generates a worker signal struct
-func (svc *Manifest) genWorkerSignal(f *g.File, signal protoreflect.FullName) {
-	typeName := svc.toCamel("%sSignal", signal)
+func (m *Manifest) genWorkerSignal(f *j.File, signal protoreflect.FullName) {
+	typeName := m.toCamel("%sSignal", signal)
 
-	f.Commentf("%s describes a(n) %s signal", typeName, svc.methods[signal].Desc.FullName())
+	f.Commentf("%s describes a(n) %s signal", typeName, m.methods[signal].Desc.FullName())
 	f.Type().Id(typeName).Struct(
-		g.Id("Channel").Qual(workflowPkg, "ReceiveChannel"),
+		j.Id("Channel").Qual(workflowPkg, "ReceiveChannel"),
 	)
 }
 
-func (svc *Manifest) genWorkerSignalConstructor(f *g.File, signal protoreflect.FullName) {
-	typeName := svc.toCamel("%sSignal", signal)
-	funcName := svc.toCamel("New%sSignal", signal)
+func (m *Manifest) genWorkerSignalConstructor(f *j.File, signal protoreflect.FullName) {
+	typeName := m.toCamel("%sSignal", signal)
+	funcName := m.toCamel("New%sSignal", signal)
 
-	f.Commentf("%s initializes a new %s signal wrapper", funcName, svc.fqnForSignal(signal))
+	f.Commentf("%s initializes a new %s signal wrapper", funcName, m.fqnForSignal(signal))
 	f.Func().
 		Id(funcName).
-		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
+		Params(j.Id("ctx").Qual(workflowPkg, "Context")).
 		Op("*").Id(typeName).
 		Block(
-			g.Return(
-				g.Op("&").Id(typeName).ValuesFunc(func(fields *g.Group) {
-					fields.Id("Channel").Op(":").Qual(workflowPkg, "GetSignalChannel").Call(g.Id("ctx"), g.Id(svc.toCamel("%sSignalName", signal)))
+			j.Return(
+				j.Op("&").Id(typeName).ValuesFunc(func(fields *j.Group) {
+					fields.Id("Channel").Op(":").Qual(workflowPkg, "GetSignalChannel").Call(j.Id("ctx"), j.Id(m.toCamel("%sSignalName", signal)))
 				}),
 			),
 		)
 }
 
 // genWorkerSignalExternal generates a <Signal>External public function
-func (svc *Manifest) genWorkerSignalExternal(f *g.File, signal protoreflect.FullName) {
-	functionName := svc.toCamel("%sExternal", signal)
-	method := svc.methods[signal]
+func (m *Manifest) genWorkerSignalExternal(f *j.File, signal protoreflect.FullName) {
+	functionName := m.toCamel("%sExternal", signal)
+	method := m.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, m.fqnForSignal(signal))
 	f.Func().Id(functionName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 		}).
-		Params(g.Error()).
+		Params(j.Error()).
 		Block(
-			g.Return(
-				g.Id(svc.toCamel("%sAsync", functionName)).CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id(m.toCamel("%sAsync", functionName)).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
 					if hasInput {
 						args.Id("req")
 					}
-				}).Dot("Get").Call(g.Id("ctx"), g.Nil()),
+				}).Dot("Get").Call(j.Id("ctx"), j.Nil()),
 			),
 		)
 }
 
 // genWorkerSignalExternalAsync generates a <Signal>ExternalAsync public function
-func (svc *Manifest) genWorkerSignalExternalAsync(f *g.File, signal protoreflect.FullName) {
-	functionName := svc.toCamel("%sExternalAsync", signal)
-	method := svc.methods[signal]
+func (m *Manifest) genWorkerSignalExternalAsync(f *j.File, signal protoreflect.FullName) {
+	functionName := m.toCamel("%sExternalAsync", signal)
+	method := m.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
-	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, svc.fqnForSignal(signal))
+	commentWithDefaultf(f, methodSet(method), "%s sends a(n) %s signal to an existing workflow", functionName, m.fqnForSignal(signal))
 	f.Func().Id(functionName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 		}).
-		Params(g.Qual(workflowPkg, "Future")).
+		Params(j.Qual(workflowPkg, "Future")).
 		Block(
-			g.Return(
-				g.Qual(workflowPkg, "SignalExternalWorkflow").CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Qual(workflowPkg, "SignalExternalWorkflow").CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("workflowID")
 					args.Id("runID")
-					args.Id(svc.toCamel("%sSignalName", signal))
+					args.Id(m.toCamel("%sSignalName", signal))
 					if hasInput {
 						args.Id("req")
 					} else {
@@ -335,26 +339,26 @@ func (svc *Manifest) genWorkerSignalExternalAsync(f *g.File, signal protoreflect
 }
 
 // genWorkerSignalReceive generates a worker signal Receive method
-func (svc *Manifest) genWorkerSignalReceive(f *g.File, signal protoreflect.FullName) {
-	method := svc.methods[signal]
+func (m *Manifest) genWorkerSignalReceive(f *j.File, signal protoreflect.FullName) {
+	method := m.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
 	f.Commentf("Receive blocks until a(n) %s signal is received", method.Desc.FullName())
 	f.Func().
-		Params(g.Id("s").Op("*").Id(svc.toCamel("%sSignal", signal))).
+		Params(j.Id("s").Op("*").Id(m.toCamel("%sSignal", signal))).
 		Id("Receive").
-		Params(g.Id("ctx").Qual(workflowPkg, "Context")).
-		ParamsFunc(func(returnVals *g.Group) {
+		Params(j.Id("ctx").Qual(workflowPkg, "Context")).
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasInput {
-				returnVals.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				returnVals.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			returnVals.Bool()
 		}).
-		BlockFunc(func(b *g.Group) {
+		BlockFunc(func(b *j.Group) {
 			if hasInput {
-				b.Var().Id("resp").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				b.Var().Id("resp").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			b.Id("more").Op(":=").Id("s").Dot("Channel").Dot("Receive").CallFunc(func(args *g.Group) {
+			b.Id("more").Op(":=").Id("s").Dot("Channel").Dot("Receive").CallFunc(func(args *j.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Op("&").Id("resp")
@@ -362,7 +366,7 @@ func (svc *Manifest) genWorkerSignalReceive(f *g.File, signal protoreflect.FullN
 					args.Nil()
 				}
 			})
-			b.ReturnFunc(func(returnVals *g.Group) {
+			b.ReturnFunc(func(returnVals *j.Group) {
 				if hasInput {
 					returnVals.Op("&").Id("resp")
 				}
@@ -372,43 +376,43 @@ func (svc *Manifest) genWorkerSignalReceive(f *g.File, signal protoreflect.FullN
 }
 
 // genWorkerSignalReceiveAsync generates a worker signal ReceiveAsync method
-func (svc *Manifest) genWorkerSignalReceiveAsync(f *g.File, signal protoreflect.FullName) {
-	method := svc.methods[signal]
+func (m *Manifest) genWorkerSignalReceiveAsync(f *j.File, signal protoreflect.FullName) {
+	method := m.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
 	f.Commentf("ReceiveAsync checks for a %s signal without blocking", method.Desc.FullName())
 	f.Func().
-		Params(g.Id("s").Op("*").Id(svc.toCamel("%sSignal", signal))).
+		Params(j.Id("s").Op("*").Id(m.toCamel("%sSignal", signal))).
 		Id("ReceiveAsync").
 		Params().
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasInput {
-				returnVals.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				returnVals.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			} else {
 				returnVals.Bool()
 			}
 		}).
-		BlockFunc(func(b *g.Group) {
+		BlockFunc(func(b *j.Group) {
 			if hasInput {
-				b.Var().Id("resp").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				b.Var().Id("resp").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 				b.If(
-					g.Id("ok").Op(":=").Id("s").Dot("Channel").Dot("ReceiveAsync").Call(
-						g.Op("&").Id("resp"),
+					j.Id("ok").Op(":=").Id("s").Dot("Channel").Dot("ReceiveAsync").Call(
+						j.Op("&").Id("resp"),
 					),
-					g.Op("!").Id("ok"),
+					j.Op("!").Id("ok"),
 				).Block(
-					g.Return(g.Nil()),
+					j.Return(j.Nil()),
 				)
-				b.Return(g.Op("&").Id("resp"))
+				b.Return(j.Op("&").Id("resp"))
 			} else {
-				b.Return(g.Id("s").Dot("Channel").Dot("ReceiveAsync").Call(g.Nil()))
+				b.Return(j.Id("s").Dot("Channel").Dot("ReceiveAsync").Call(j.Nil()))
 			}
 		})
 }
 
 // genWorkerSignalReceiveWithTimeout generates a worker signal ReceiveWithTimeout method
-func (svc *Manifest) genWorkerSignalReceiveWithTimeout(f *g.File, signal protoreflect.FullName) {
-	method := svc.methods[signal]
+func (m *Manifest) genWorkerSignalReceiveWithTimeout(f *j.File, signal protoreflect.FullName) {
+	method := m.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
 	f.Commentf("ReceiveWithTimeout blocks until a(n) %s signal is received or timeout expires.", method.Desc.FullName())
@@ -418,25 +422,25 @@ func (svc *Manifest) genWorkerSignalReceiveWithTimeout(f *g.File, signal protore
 		f.Comment("resp will be nil if ok is false.")
 	}
 	f.Func().
-		Params(g.Id("s").Op("*").Id(svc.toCamel("%sSignal", signal))).
+		Params(j.Id("s").Op("*").Id(m.toCamel("%sSignal", signal))).
 		Id("ReceiveWithTimeout").
 		Params(
-			g.Id("ctx").Qual(workflowPkg, "Context"),
-			g.Id("timeout").Qual("time", "Duration"),
+			j.Id("ctx").Qual(workflowPkg, "Context"),
+			j.Id("timeout").Qual("time", "Duration"),
 		).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasInput {
-				returnVals.Id("resp").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				returnVals.Id("resp").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			returnVals.Id("ok").Bool()
 			returnVals.Id("more").Bool()
 		}).
-		BlockFunc(func(b *g.Group) {
+		BlockFunc(func(b *j.Group) {
 			if hasInput {
-				b.Id("resp").Op("=").Op("&").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input)).Values()
+				b.Id("resp").Op("=").Op("&").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input)).Values()
 			}
 			b.If(
-				g.List(g.Id("ok"), g.Id("more")).Op("=").Id("s").Dot("Channel").Dot("ReceiveWithTimeout").CallFunc(func(args *g.Group) {
+				j.List(j.Id("ok"), j.Id("more")).Op("=").Id("s").Dot("Channel").Dot("ReceiveWithTimeout").CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("timeout")
 					if hasInput {
@@ -445,9 +449,9 @@ func (svc *Manifest) genWorkerSignalReceiveWithTimeout(f *g.File, signal protore
 						args.Nil()
 					}
 				}),
-				g.Op("!").Id("ok"),
+				j.Op("!").Id("ok"),
 			).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+				j.ReturnFunc(func(returnVals *j.Group) {
 					if hasInput {
 						returnVals.Nil()
 					}
@@ -460,42 +464,42 @@ func (svc *Manifest) genWorkerSignalReceiveWithTimeout(f *g.File, signal protore
 }
 
 // genWorkerSignalSelect generates a worker signal Select method
-func (svc *Manifest) genWorkerSignalSelect(f *g.File, signal protoreflect.FullName) {
-	method := svc.methods[signal]
+func (m *Manifest) genWorkerSignalSelect(f *j.File, signal protoreflect.FullName) {
+	method := m.methods[signal]
 	hasInput := !isEmpty(method.Input)
 
 	f.Commentf("Select checks for a(n) %s signal without blocking", method.Desc.FullName())
 	f.Func().
-		Params(g.Id("s").Op("*").Id(svc.toCamel("%sSignal", signal))).
+		Params(j.Id("s").Op("*").Id(m.toCamel("%sSignal", signal))).
 		Id("Select").
 		Params(
-			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().ParamsFunc(func(args *g.Group) {
+			j.Id("sel").Qual(workflowPkg, "Selector"),
+			j.Id("fn").Func().ParamsFunc(func(args *j.Group) {
 				if hasInput {
-					args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+					args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 				}
 			}),
 		).
 		Params(
-			g.Qual(workflowPkg, "Selector"),
+			j.Qual(workflowPkg, "Selector"),
 		).
 		Block(
-			g.Return(
-				g.Id("sel").Dot("AddReceive").Call(
-					g.Id("s").Dot("Channel"),
-					g.Func().
+			j.Return(
+				j.Id("sel").Dot("AddReceive").Call(
+					j.Id("s").Dot("Channel"),
+					j.Func().
 						Params(
-							g.Qual(workflowPkg, "ReceiveChannel"),
-							g.Bool(),
+							j.Qual(workflowPkg, "ReceiveChannel"),
+							j.Bool(),
 						).
-						BlockFunc(func(fn *g.Group) {
+						BlockFunc(func(fn *j.Group) {
 							if hasInput {
 								fn.Id("req").Op(":=").Id("s").Dot("ReceiveAsync").Call()
 							} else {
 								fn.Id("s").Dot("ReceiveAsync").Call()
 							}
-							fn.If(g.Id("fn").Op("!=").Nil()).Block(
-								g.Id("fn").CallFunc(func(args *g.Group) {
+							fn.If(j.Id("fn").Op("!=").Nil()).Block(
+								j.Id("fn").CallFunc(func(args *j.Group) {
 									if hasInput {
 										args.Id("req")
 									}
@@ -508,38 +512,38 @@ func (svc *Manifest) genWorkerSignalSelect(f *g.File, signal protoreflect.FullNa
 }
 
 // genWorkerWorkflowChild generates a public <Workflow>Child function
-func (svc *Manifest) genWorkerWorkflowChild(f *g.File, workflow protoreflect.FullName) {
-	functionName := svc.toCamel("%sChild", workflow)
-	method := svc.methods[workflow]
+func (m *Manifest) genWorkerWorkflowChild(f *j.File, workflow protoreflect.FullName) {
+	functionName := m.toCamel("%sChild", workflow)
+	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	commentWithDefaultf(f, methodSet(method), "%s executes a child %s workflow and blocks until error or response received", functionName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s executes a child %s workflow and blocks until error or response received", functionName, m.fqnForWorkflow(workflow))
 	f.Func().
 		Id(functionName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sChildOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(m.toCamel("%sChildOptions", workflow))
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
-		BlockFunc(func(fn *g.Group) {
-			fn.List(g.Id("childRun"), g.Err()).Op(":=").Id(svc.toCamel("%sChildAsync", workflow)).CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *j.Group) {
+			fn.List(j.Id("childRun"), j.Err()).Op(":=").Id(m.toCamel("%sChildAsync", workflow)).CallFunc(func(args *j.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
 				}
 				args.Id("options").Op("...")
 			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(returnVals *j.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
@@ -547,42 +551,42 @@ func (svc *Manifest) genWorkerWorkflowChild(f *g.File, workflow protoreflect.Ful
 				}),
 			)
 			fn.Return(
-				g.Id("childRun").Dot("Get").Call(g.Id("ctx")),
+				j.Id("childRun").Dot("Get").Call(j.Id("ctx")),
 			)
 		})
 }
 
 // genWorkerWorkflowChildAsync generates a public <Workflow>Child function
-func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflect.FullName) {
-	functionName := svc.toCamel("%sChildAsync", workflow)
-	method := svc.methods[workflow]
+func (m *Manifest) genWorkerWorkflowChildAsync(f *j.File, workflow protoreflect.FullName) {
+	functionName := m.toCamel("%sChildAsync", workflow)
+	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	commentWithDefaultf(f, methodSet(method), "%s starts a child %s workflow and returns a handle to the child workflow run", functionName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s starts a child %s workflow and returns a handle to the child workflow run", functionName, m.fqnForWorkflow(workflow))
 	f.Func().
 		Id(functionName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual(workflowPkg, "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sChildOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(m.toCamel("%sChildOptions", workflow))
 		}).
 		Params(
-			g.Op("*").Id(svc.toCamel("%sChildRun", workflow)),
-			g.Error(),
+			j.Op("*").Id(m.toCamel("%sChildRun", workflow)),
+			j.Error(),
 		).
-		BlockFunc(func(fn *g.Group) {
+		BlockFunc(func(fn *j.Group) {
 			// initialize options
-			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sChildOptions", workflow))
-			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).Block(
-				g.Id("o").Op("=").Id("options").Index(g.Lit(0)),
+			fn.Var().Id("o").Op("*").Id(m.toCamel("%sChildOptions", workflow))
+			fn.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				j.Id("o").Op("=").Id("options").Index(j.Lit(0)),
 			).Else().Block(
-				g.Id("o").Op("=").Id(svc.toCamel("New%sChildOptions", workflow)).Call(),
+				j.Id("o").Op("=").Id(m.toCamel("New%sChildOptions", workflow)).Call(),
 			)
 
 			// initialize client.StartWorkfowOptions
-			fn.List(g.Id("opts"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+			fn.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req").Dot("ProtoReflect").Call()
@@ -590,16 +594,16 @@ func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflec
 					args.Nil()
 				}
 			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing workflow.ChildWorkflowOptions: %w"), g.Err())),
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing workflow.ChildWorkflowOptions: %w"), j.Err())),
 			)
 
-			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(g.Id("ctx"), g.Id("opts"))
+			fn.Id("ctx").Op("=").Qual(workflowPkg, "WithChildOptions").Call(j.Id("ctx"), j.Id("opts"))
 			fn.Return(
-				g.Op("&").Id(svc.toCamel("%sChildRun", workflow)).Values(
-					g.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *g.Group) {
+				j.Op("&").Id(m.toCamel("%sChildRun", workflow)).Values(
+					j.Id("Future").Op(":").Qual(workflowPkg, "ExecuteChildWorkflow").CallFunc(func(args *j.Group) {
 						args.Id("ctx")
-						args.Id(svc.toCamel("%sWorkflowName", workflow))
+						args.Id(m.toCamel("%sWorkflowName", workflow))
 						if hasInput {
 							args.Id("req")
 						} else {
@@ -607,48 +611,48 @@ func (svc *Manifest) genWorkerWorkflowChildAsync(f *g.File, workflow protoreflec
 						}
 					}),
 				),
-				g.Nil(),
+				j.Nil(),
 			)
 		})
 }
 
 // genWorkerWorkflowChildRun generates a <Workflow>ChildRun struct
-func (svc *Manifest) genWorkerWorkflowChildRun(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildRun", workflow)
+func (m *Manifest) genWorkerWorkflowChildRun(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sChildRun", workflow)
 
-	f.Commentf("%s describes a child %s workflow run", typeName, svc.methods[workflow].GoName)
-	f.Type().Id(typeName).StructFunc(func(fields *g.Group) {
-		fields.Add(g.Id("Future").Qual(workflowPkg, "ChildWorkflowFuture"))
+	f.Commentf("%s describes a child %s workflow run", typeName, m.methods[workflow].GoName)
+	f.Type().Id(typeName).StructFunc(func(fields *j.Group) {
+		fields.Add(j.Id("Future").Qual(workflowPkg, "ChildWorkflowFuture"))
 	})
 }
 
 // genWorkerWorkflowChildRunGet generates a <Workflow>ChildRun Get method
-func (svc *Manifest) genWorkerWorkflowChildRunGet(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildRun", workflow)
-	method := svc.methods[workflow]
+func (m *Manifest) genWorkerWorkflowChildRunGet(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sChildRun", workflow)
+	method := m.methods[workflow]
 	hasOutput := !isEmpty(method.Output)
 
 	f.Comment("Get blocks until the workflow is completed, returning the response value")
 	f.Func().
 		Params(
-			g.Id("r").Op("*").Id(typeName),
+			j.Id("r").Op("*").Id(typeName),
 		).
 		Id("Get").
 		Params(
-			g.Id("ctx").Qual(workflowPkg, "Context"),
+			j.Id("ctx").Qual(workflowPkg, "Context"),
 		).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
-		BlockFunc(func(fn *g.Group) {
+		BlockFunc(func(fn *j.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			fn.If(
-				g.Err().Op(":=").Id("r").Dot("Future").Dot("Get").CallFunc(func(args *g.Group) {
+				j.Err().Op(":=").Id("r").Dot("Future").Dot("Get").CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					if hasOutput {
 						args.Op("&").Id("resp")
@@ -656,46 +660,46 @@ func (svc *Manifest) genWorkerWorkflowChildRunGet(f *g.File, workflow protorefle
 						args.Nil()
 					}
 				}),
-				g.Err().Op("!=").Nil(),
-			).BlockFunc(func(b *g.Group) {
+				j.Err().Op("!=").Nil(),
+			).BlockFunc(func(b *j.Group) {
 				if hasOutput {
-					b.Return(g.Nil(), g.Err())
+					b.Return(j.Nil(), j.Err())
 				} else {
-					b.Return(g.Err())
+					b.Return(j.Err())
 				}
 			})
 			if hasOutput {
-				fn.Return(g.Op("&").Id("resp"), g.Nil())
+				fn.Return(j.Op("&").Id("resp"), j.Nil())
 			} else {
-				fn.Return(g.Nil())
+				fn.Return(j.Nil())
 			}
 		})
 }
 
 // genWorkerWorkflowChildRunSelect generates a <Workflow>ChildRun Select method
-func (svc *Manifest) genWorkerWorkflowChildRunSelect(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildRun", workflow)
+func (m *Manifest) genWorkerWorkflowChildRunSelect(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sChildRun", workflow)
 
 	f.Comment("Select adds this completion to the selector. Callback can be nil.")
 	f.Func().
 		Params(
-			g.Id("r").Op("*").Id(typeName),
+			j.Id("r").Op("*").Id(typeName),
 		).
 		Id("Select").
 		Params(
-			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Op("*").Id(typeName)),
+			j.Id("sel").Qual(workflowPkg, "Selector"),
+			j.Id("fn").Func().Params(j.Op("*").Id(typeName)),
 		).
 		Params(
-			g.Qual(workflowPkg, "Selector"),
+			j.Qual(workflowPkg, "Selector"),
 		).
 		Block(
-			g.Return(
-				g.Id("sel").Dot("AddFuture").Call(
-					g.Id("r").Dot("Future"),
-					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
-						g.If(g.Id("fn").Op("!=").Nil()).Block(
-							g.Id("fn").Call(g.Id("r")),
+			j.Return(
+				j.Id("sel").Dot("AddFuture").Call(
+					j.Id("r").Dot("Future"),
+					j.Func().Params(j.Qual(workflowPkg, "Future")).Block(
+						j.If(j.Id("fn").Op("!=").Nil()).Block(
+							j.Id("fn").Call(j.Id("r")),
 						),
 					),
 				),
@@ -704,29 +708,29 @@ func (svc *Manifest) genWorkerWorkflowChildRunSelect(f *g.File, workflow protore
 }
 
 // genWorkerWorkflowChildRunSelectStart generates a <Workflow>ChildRun SelectStart method
-func (svc *Manifest) genWorkerWorkflowChildRunSelectStart(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildRun", workflow)
+func (m *Manifest) genWorkerWorkflowChildRunSelectStart(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sChildRun", workflow)
 
 	f.Comment("SelectStart adds waiting for start to the selector. Callback can be nil.")
 	f.Func().
 		Params(
-			g.Id("r").Op("*").Id(typeName),
+			j.Id("r").Op("*").Id(typeName),
 		).
 		Id("SelectStart").
 		Params(
-			g.Id("sel").Qual(workflowPkg, "Selector"),
-			g.Id("fn").Func().Params(g.Op("*").Id(typeName)),
+			j.Id("sel").Qual(workflowPkg, "Selector"),
+			j.Id("fn").Func().Params(j.Op("*").Id(typeName)),
 		).
 		Params(
-			g.Qual(workflowPkg, "Selector"),
+			j.Qual(workflowPkg, "Selector"),
 		).
 		Block(
-			g.Return(
-				g.Id("sel").Dot("AddFuture").Call(
-					g.Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call(),
-					g.Func().Params(g.Qual(workflowPkg, "Future")).Block(
-						g.If(g.Id("fn").Op("!=").Nil()).Block(
-							g.Id("fn").Call(g.Id("r")),
+			j.Return(
+				j.Id("sel").Dot("AddFuture").Call(
+					j.Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call(),
+					j.Func().Params(j.Qual(workflowPkg, "Future")).Block(
+						j.If(j.Id("fn").Op("!=").Nil()).Block(
+							j.Id("fn").Call(j.Id("r")),
 						),
 					),
 				),
@@ -735,51 +739,51 @@ func (svc *Manifest) genWorkerWorkflowChildRunSelectStart(f *g.File, workflow pr
 }
 
 // genWorkerWorkflowChildRunSignals generates <Workflow>ChildRun signal methods
-func (svc *Manifest) genWorkerWorkflowChildRunSignals(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildRun", workflow)
-	opts := svc.workflows[workflow]
+func (m *Manifest) genWorkerWorkflowChildRunSignals(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sChildRun", workflow)
+	opts := m.workflows[workflow]
 
 	for _, signalOpts := range opts.GetSignal() {
 		signal := getFullyQualifiedRef(workflow, signalOpts.GetRef())
-		handler := svc.methods[signal]
+		handler := m.methods[signal]
 		hasInput := !isEmpty(handler.Input)
-		asyncName := svc.toCamel("%sAsync", signal)
+		asyncName := m.toCamel("%sAsync", signal)
 
-		f.Commentf("%s sends a(n) %q signal request to the child workflow", svc.methods[signal].GoName, svc.fqnForSignal(signal))
+		f.Commentf("%s sends a(n) %q signal request to the child workflow", m.methods[signal].GoName, m.fqnForSignal(signal))
 		f.Func().
-			Params(g.Id("r").Op("*").Id(typeName)).
-			Id(svc.methods[signal].GoName).
-			ParamsFunc(func(params *g.Group) {
+			Params(j.Id("r").Op("*").Id(typeName)).
+			Id(m.methods[signal].GoName).
+			ParamsFunc(func(params *j.Group) {
 				params.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
-					params.Id("input").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+					params.Id("input").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 				}
 			}).
-			Params(g.Error()).
+			Params(j.Error()).
 			Block(
-				g.Return(g.Id("r").Dot(asyncName).CallFunc(func(args *g.Group) {
+				j.Return(j.Id("r").Dot(asyncName).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					if hasInput {
 						args.Id("input")
 					}
-				})).Dot("Get").Call(g.Id("ctx"), g.Nil()),
+				})).Dot("Get").Call(j.Id("ctx"), j.Nil()),
 			)
 
-		f.Commentf("%s sends a(n) %q signal request to the child workflow", asyncName, svc.fqnForSignal(signal))
+		f.Commentf("%s sends a(n) %q signal request to the child workflow", asyncName, m.fqnForSignal(signal))
 		f.Func().
-			Params(g.Id("r").Op("*").Id(typeName)).
+			Params(j.Id("r").Op("*").Id(typeName)).
 			Id(asyncName).
-			ParamsFunc(func(params *g.Group) {
+			ParamsFunc(func(params *j.Group) {
 				params.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
-					params.Id("input").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+					params.Id("input").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 				}
 			}).
-			Params(g.Qual(workflowPkg, "Future")).
+			Params(j.Qual(workflowPkg, "Future")).
 			Block(
-				g.Return(g.Id("r").Dot("Future").Dot("SignalChildWorkflow").CallFunc(func(args *g.Group) {
+				j.Return(j.Id("r").Dot("Future").Dot("SignalChildWorkflow").CallFunc(func(args *j.Group) {
 					args.Id("ctx")
-					args.Add(svc.Qual(signal, svc.toCamel("%sSignalName", signal)))
+					args.Add(m.Qual(signal, m.toCamel("%sSignalName", signal)))
 					if hasInput {
 						args.Id("input")
 					} else {
@@ -791,146 +795,146 @@ func (svc *Manifest) genWorkerWorkflowChildRunSignals(f *g.File, workflow protor
 }
 
 // genWorkerWorkflowChildRunWaitStart generates a <Workflow>ChildRun WaitStart method
-func (svc *Manifest) genWorkerWorkflowChildRunWaitStart(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sChildRun", workflow)
+func (m *Manifest) genWorkerWorkflowChildRunWaitStart(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sChildRun", workflow)
 
 	f.Comment("WaitStart waits for the child workflow to start")
 	f.Func().
 		Params(
-			g.Id("r").Op("*").Id(typeName),
+			j.Id("r").Op("*").Id(typeName),
 		).
 		Id("WaitStart").
 		Params(
-			g.Id("ctx").Qual(workflowPkg, "Context"),
+			j.Id("ctx").Qual(workflowPkg, "Context"),
 		).
 		Params(
-			g.Op("*").Qual(workflowPkg, "Execution"),
-			g.Error(),
+			j.Op("*").Qual(workflowPkg, "Execution"),
+			j.Error(),
 		).
 		Block(
-			g.Var().Id("exec").Qual(workflowPkg, "Execution"),
-			g.If(
-				g.Err().Op(":=").Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call().Dot("Get").Call(
-					g.Id("ctx"),
-					g.Op("&").Id("exec"),
+			j.Var().Id("exec").Qual(workflowPkg, "Execution"),
+			j.If(
+				j.Err().Op(":=").Id("r").Dot("Future").Dot("GetChildWorkflowExecution").Call().Dot("Get").Call(
+					j.Id("ctx"),
+					j.Op("&").Id("exec"),
 				),
-				g.Err().Op("!=").Nil(),
+				j.Err().Op("!=").Nil(),
 			).Block(
-				g.Return(g.Nil(), g.Err()),
+				j.Return(j.Nil(), j.Err()),
 			),
-			g.Return(g.Op("&").Id("exec"), g.Nil()),
+			j.Return(j.Op("&").Id("exec"), j.Nil()),
 		)
 }
 
 // genWorkerWorkflowFunctionVars generates a <Workflow>Function var for each workflow that are
 // initialized on registration
-func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
-	if len(svc.workflowsOrdered) == 0 {
+func (m *Manifest) genWorkerWorkflowFunctionVars(f *j.File) {
+	if len(m.workflowsOrdered) == 0 {
 		return
 	}
 	f.Commentf("Reference to generated workflow functions")
-	f.Var().DefsFunc(func(defs *g.Group) {
-		for _, workflow := range svc.workflowsOrdered {
-			if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+	f.Var().DefsFunc(func(defs *j.Group) {
+		for _, workflow := range m.workflowsOrdered {
+			if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 				continue
 			}
-			method := svc.methods[workflow]
+			method := m.methods[workflow]
 			hasInput := !isEmpty(method.Input)
 			hasOutput := !isEmpty(method.Output)
-			varName := svc.toCamel("%sFunction", workflow)
+			varName := m.toCamel("%sFunction", workflow)
 
-			commentWithDefaultf(defs, methodSet(method), "%s implements a %q workflow", varName, svc.fqnForWorkflow(workflow))
+			commentWithDefaultf(defs, methodSet(method), "%s implements a %q workflow", varName, m.fqnForWorkflow(workflow))
 			defs.Id(varName).
 				Func().
-				ParamsFunc(func(args *g.Group) {
+				ParamsFunc(func(args *j.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+						args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 					}
 				}).
-				ParamsFunc(func(returnVals *g.Group) {
+				ParamsFunc(func(returnVals *j.Group) {
 					if hasOutput {
-						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 					}
 					returnVals.Error()
 				})
 		}
 	})
 
-	typeName := svc.toCamel("%sWorkflowFunctions", svc.GoName)
-	implName := svc.toLowerCamel("%sWorkflowFunctions", svc.GoName)
+	typeName := m.toCamel("%sWorkflowFunctions", m.GoName)
+	implName := m.toLowerCamel("%sWorkflowFunctions", m.GoName)
 	f.Commentf("%s describes a mockable dependency for inlining workflows within other workflows", typeName)
 	f.Type().Defs(
-		g.Commentf("%s describes a mockable dependency for inlining workflows within other workflows", typeName),
-		g.Id(typeName).InterfaceFunc(func(methods *g.Group) {
-			for _, workflow := range svc.workflowsOrdered {
-				if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+		j.Commentf("%s describes a mockable dependency for inlining workflows within other workflows", typeName),
+		j.Id(typeName).InterfaceFunc(func(methods *j.Group) {
+			for _, workflow := range m.workflowsOrdered {
+				if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 					continue
 				}
-				methodName := svc.toCamel("%s", workflow)
-				method := svc.methods[workflow]
+				methodName := m.toCamel("%s", workflow)
+				method := m.methods[workflow]
 				hasInput := !isEmpty(method.Input)
 				hasOutput := !isEmpty(method.Output)
-				commentWithDefaultf(methods, methodSet(method), "%s executes a %q workflow inline", methodName, svc.fqnForWorkflow(workflow))
+				commentWithDefaultf(methods, methodSet(method), "%s executes a %q workflow inline", methodName, m.fqnForWorkflow(workflow))
 				methods.Id(methodName).
-					ParamsFunc(func(args *g.Group) {
+					ParamsFunc(func(args *j.Group) {
 						args.Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+							args.Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 						}
 					}).
-					ParamsFunc(func(returnVals *g.Group) {
+					ParamsFunc(func(returnVals *j.Group) {
 						if hasOutput {
-							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 						}
 						returnVals.Error()
 					})
 			}
 		}),
 
-		g.Commentf("%s provides an internal %s implementation", implName, typeName),
-		g.Id(implName).Struct(),
+		j.Commentf("%s provides an internal %s implementation", implName, typeName),
+		j.Id(implName).Struct(),
 	)
 
-	f.Func().Id(svc.toCamel("New%s", typeName)).Params().Id(typeName).Block(
-		g.Return(g.Op("&").Id(implName).Values()),
+	f.Func().Id(m.toCamel("New%s", typeName)).Params().Id(typeName).Block(
+		j.Return(j.Op("&").Id(implName).Values()),
 	)
 
-	for _, workflow := range svc.workflowsOrdered {
-		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+	for _, workflow := range m.workflowsOrdered {
+		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		methodName := svc.toCamel("%s", workflow)
-		method := svc.methods[workflow]
-		varName := svc.toCamel("%sFunction", workflow)
+		methodName := m.toCamel("%s", workflow)
+		method := m.methods[workflow]
+		varName := m.toCamel("%sFunction", workflow)
 		hasInput := !isEmpty(method.Input)
 		hasOutput := !isEmpty(method.Output)
-		commentWithDefaultf(f, methodSet(method), "%s executes a %q workflow inline", methodName, svc.fqnForWorkflow(workflow))
+		commentWithDefaultf(f, methodSet(method), "%s executes a %q workflow inline", methodName, m.fqnForWorkflow(workflow))
 		f.Func().
-			Params(g.Id("f").Op("*").Id(implName)).
+			Params(j.Id("f").Op("*").Id(implName)).
 			Id(methodName).
-			ParamsFunc(func(args *g.Group) {
+			ParamsFunc(func(args *j.Group) {
 				args.Id("ctx").Qual(workflowPkg, "Context")
 				if hasInput {
-					args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+					args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 				}
 			}).
-			ParamsFunc(func(returnVals *g.Group) {
+			ParamsFunc(func(returnVals *j.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).
 			Block(
-				g.If(g.Id(varName).Op("==").Nil()).Block(
-					g.ReturnFunc(func(returnVals *g.Group) {
+				j.If(j.Id(varName).Op("==").Nil()).Block(
+					j.ReturnFunc(func(returnVals *j.Group) {
 						if hasOutput {
 							returnVals.Nil()
 						}
-						returnVals.Qual("errors", "New").Call(g.Lit(fmt.Sprintf("%s requires workflow registration via %s or %s", methodName, svc.toCamel("Register%sWorkflows", svc.GoName), svc.toCamel("Register%sWorkflow", workflow))))
+						returnVals.Qual("errors", "New").Call(j.Lit(fmt.Sprintf("%s requires workflow registration via %s or %s", methodName, m.toCamel("Register%sWorkflows", m.GoName), m.toCamel("Register%sWorkflow", workflow))))
 					}),
 				),
-				g.Return(g.Id(varName).CallFunc(func(args *g.Group) {
+				j.Return(j.Id(varName).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					if hasInput {
 						args.Id("req")
@@ -941,60 +945,60 @@ func (svc *Manifest) genWorkerWorkflowFunctionVars(f *g.File) {
 }
 
 // genWorkerWorkflowInput generates a <Workflow>Input struct
-func (svc *Manifest) genWorkerWorkflowInput(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sWorkflowInput", workflow)
-	if svc.cfg.DisableWorkflowInputRename {
-		typeName = svc.toCamel("%sInput", workflow)
+func (m *Manifest) genWorkerWorkflowInput(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sWorkflowInput", workflow)
+	if m.cfg.DisableWorkflowInputRename {
+		typeName = m.toCamel("%sInput", workflow)
 	}
-	opts := svc.workflows[workflow]
-	method := svc.methods[workflow]
+	opts := m.workflows[workflow]
+	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, svc.fqnForWorkflow(workflow))
-	f.Type().Id(typeName).StructFunc(func(fields *g.Group) {
+	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, m.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).StructFunc(func(fields *j.Group) {
 		if hasInput {
-			fields.Id("Req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+			fields.Id("Req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 		}
 
 		// add workflow signals
 		for _, signalOpts := range opts.GetSignal() {
 			signal := getFullyQualifiedRef(workflow, signalOpts.GetRef())
-			fields.Id(svc.methods[signal].GoName).Op("*").Add(svc.Qual(signal, svc.toCamel("%sSignal", signal)))
+			fields.Id(m.methods[signal].GoName).Op("*").Add(m.Qual(signal, m.toCamel("%sSignal", signal)))
 		}
 	})
 }
 
 // genWorkerWorkflowInterface generates a <Workflow> interface
-func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toCamel("%sWorkflow", workflow)
-	opts := svc.workflows[workflow]
-	method := svc.methods[workflow]
+func (m *Manifest) genWorkerWorkflowInterface(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toCamel("%sWorkflow", workflow)
+	opts := m.workflows[workflow]
+	method := m.methods[workflow]
 	hasOutput := !isEmpty(method.Output)
 
 	// generate workflow interface
 	var details []string
-	if comments := method.Comments.Leading.String(); comments != "" && !strings.Contains(comments, svc.fqnForWorkflow(workflow)) {
-		details = append(details, fmt.Sprintf("name: \"%s\"", svc.fqnForWorkflow(workflow)))
+	if comments := method.Comments.Leading.String(); comments != "" && !strings.Contains(comments, m.fqnForWorkflow(workflow)) {
+		details = append(details, fmt.Sprintf("name: \"%s\"", m.fqnForWorkflow(workflow)))
 	}
 	if id := opts.GetId(); id != "" {
 		details = append(details, fmt.Sprintf("id: \"%s\"", id))
 	}
 
-	commentWithDefaultf(f, methodSet(method), "%s describes a(n) %s workflow implementation", typeName, svc.fqnForWorkflow(workflow))
+	commentWithDefaultf(f, methodSet(method), "%s describes a(n) %s workflow implementation", typeName, m.fqnForWorkflow(workflow))
 	if len(details) > 0 {
 		f.Comment(" ")
 		f.Commentf("workflow details: (%s)", strings.Join(details, ", "))
 	}
-	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
-		commentf(methods, methodSet(method), "Execute defines the entrypoint to a(n) %s workflow", svc.fqnForWorkflow(workflow))
+	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
+		commentf(methods, methodSet(method), "Execute defines the entrypoint to a(n) %s workflow", m.fqnForWorkflow(workflow))
 		methods.
 			Id("Execute").
 			Params(
-				g.Id("ctx").Qual(workflowPkg, "Context"),
+				j.Id("ctx").Qual(workflowPkg, "Context"),
 			).
-			ParamsFunc(func(returnVals *g.Group) {
+			ParamsFunc(func(returnVals *j.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 				}
 				returnVals.Error()
 			}).
@@ -1003,19 +1007,19 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 		// add workflow query methods
 		for _, queryOpts := range opts.GetQuery() {
 			query := getFullyQualifiedRef(workflow, queryOpts.GetRef())
-			handler := svc.methods[query]
+			handler := m.methods[query]
 			hasInput := !isEmpty(handler.Input)
 
-			commentWithDefaultf(methods, methodSet(handler), "%s implements a(n) %s query handler", query, svc.fqnForQuery(query))
-			methods.Id(svc.toCamel("%s", query)).
-				ParamsFunc(func(args *g.Group) {
+			commentWithDefaultf(methods, methodSet(handler), "%s implements a(n) %s query handler", query, m.fqnForQuery(query))
+			methods.Id(m.toCamel("%s", query)).
+				ParamsFunc(func(args *j.Group) {
 					if hasInput {
-						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
 				}).
 				Params(
-					g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output)),
-					g.Error(),
+					j.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output)),
+					j.Error(),
 				).
 				Line()
 		}
@@ -1023,38 +1027,38 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 		// add workflow update methods
 		for _, updateOpts := range opts.GetUpdate() {
 			update := getFullyQualifiedRef(workflow, updateOpts.GetRef())
-			handler := svc.methods[update]
-			handlerOpts := svc.updates[update]
+			handler := m.methods[update]
+			handlerOpts := m.updates[update]
 			hasInput := !isEmpty(handler.Input)
 			hasOutput := !isEmpty(handler.Output)
 
 			// add Validate<Update> method if enabled
 			if handlerOpts.GetValidate() {
-				validatorName := svc.toCamel("Validate%s", update)
-				methods.Commentf("%s validates a(n) %s update", validatorName, svc.fqnForUpdate(update))
+				validatorName := m.toCamel("Validate%s", update)
+				methods.Commentf("%s validates a(n) %s update", validatorName, m.fqnForUpdate(update))
 				methods.Id(validatorName).
-					ParamsFunc(func(args *g.Group) {
+					ParamsFunc(func(args *j.Group) {
 						args.Qual(workflowPkg, "Context")
 						if hasInput {
-							args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+							args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 						}
 					}).
-					Params(g.Error()).
+					Params(j.Error()).
 					Line()
 			}
 
 			// add <Update> method
-			commentWithDefaultf(methods, methodSet(handler), "%s implements a(n) %s update handler", update, svc.fqnForQuery(update))
-			methods.Id(svc.toCamel("%s", update)).
-				ParamsFunc(func(args *g.Group) {
+			commentWithDefaultf(methods, methodSet(handler), "%s implements a(n) %s update handler", update, m.fqnForQuery(update))
+			methods.Id(m.toCamel("%s", update)).
+				ParamsFunc(func(args *j.Group) {
 					args.Qual(workflowPkg, "Context")
 					if hasInput {
-						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+						args.Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
 				}).
-				ParamsFunc(func(returnVals *g.Group) {
+				ParamsFunc(func(returnVals *j.Group) {
 					if hasOutput {
-						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 					}
 					returnVals.Error()
 				}).
@@ -1064,31 +1068,31 @@ func (svc *Manifest) genWorkerWorkflowInterface(f *g.File, workflow protoreflect
 }
 
 // genWorkerWorkflowsInterface generates a Workflows interface for a given service
-func (svc *Manifest) genWorkerWorkflowsInterface(f *g.File) {
-	typeName := svc.toCamel("%sWorkflows", svc.Service.GoName)
+func (m *Manifest) genWorkerWorkflowsInterface(f *j.File) {
+	typeName := m.toCamel("%sWorkflows", m.Service.GoName)
 	// generate workflows interface
-	f.Commentf("%s provides methods for initializing new %s workflow values", typeName, svc.Service.Desc.FullName())
-	f.Type().Id(typeName).InterfaceFunc(func(methods *g.Group) {
-		for _, workflow := range svc.workflowsOrdered {
-			if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+	f.Commentf("%s provides methods for initializing new %s workflow values", typeName, m.Service.Desc.FullName())
+	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
+		for _, workflow := range m.workflowsOrdered {
+			if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 				continue
 			}
-			handler := svc.methods[workflow]
+			handler := m.methods[workflow]
 
-			commentWithDefaultf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", svc.toCamel("%s", workflow), svc.toCamel("%sWorkflow", workflow))
+			commentWithDefaultf(methods, methodSet(handler), "%s initializes a new a(n) %s implementation", m.toCamel("%s", workflow), m.toCamel("%sWorkflow", workflow))
 			methods.
-				Id(svc.methods[workflow].GoName).
-				ParamsFunc(func(args *g.Group) {
+				Id(m.methods[workflow].GoName).
+				ParamsFunc(func(args *j.Group) {
 					args.Id("ctx").Qual(workflowPkg, "Context")
-					if svc.cfg.DisableWorkflowInputRename {
-						args.Id("input").Op("*").Id(svc.toCamel("%sInput", workflow))
+					if m.cfg.DisableWorkflowInputRename {
+						args.Id("input").Op("*").Id(m.toCamel("%sInput", workflow))
 					} else {
-						args.Id("input").Op("*").Id(svc.toCamel("%sWorkflowInput", workflow))
+						args.Id("input").Op("*").Id(m.toCamel("%sWorkflowInput", workflow))
 					}
 				}).
 				Params(
-					g.Id(svc.toCamel("%sWorkflow", workflow)),
-					g.Error(),
+					j.Id(m.toCamel("%sWorkflow", workflow)),
+					j.Error(),
 				).
 				Line()
 		}

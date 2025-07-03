@@ -979,9 +979,10 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1251,7 +1252,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewHybridClient(c)
-				req, err := UnmarshalCliFlagsToHybridExample(cmd)
+				req, err := UnmarshalCliFlagsToHybridExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1283,9 +1284,10 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 					Value:   "opaque-hybrid",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1555,7 +1557,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewHybridClient(tc)
-				req, err := UnmarshalCliFlagsToHybridExample(cmd)
+				req, err := UnmarshalCliFlagsToHybridExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1604,9 +1606,10 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1867,6 +1870,12 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 					Name:     "oneof-address",
 					Usage:    "set the value of the operation's \"OneofAddress\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 				&v2.StringFlag{
 					Name:     "signal-hybrid-name",
@@ -2136,11 +2145,11 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewHybridClient(c)
-				req, err := UnmarshalCliFlagsToHybridExample(cmd)
+				req, err := UnmarshalCliFlagsToHybridExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToHybridExample(cmd, helpers.UnmarshalCliFlagsOptions{
+				signal, err := UnmarshalCliFlagsToHybridExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"}, helpers.UnmarshalCliFlagsOptions{
 					Prefix: "signal-hybrid",
 					PrefixFlags: map[string]struct{}{
 						"address":             {},
@@ -2265,23 +2274,20 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToHybridExample unmarshals a HybridExample from command line flags
 func UnmarshalCliFlagsToHybridExample(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*HybridExample, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result HybridExample
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

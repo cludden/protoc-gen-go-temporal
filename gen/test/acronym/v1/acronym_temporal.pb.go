@@ -3074,9 +3074,10 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					Value:   "aws-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "urn",
@@ -3091,7 +3092,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToManageAWSRequest(cmd)
+				req, err := UnmarshalCliFlagsToManageAWSRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -3146,9 +3147,10 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					Value:   "aws-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "urn",
@@ -3168,7 +3170,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd)
+				req, err := UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -3224,9 +3226,10 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					Value:   "aws-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "urn",
@@ -3247,7 +3250,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd)
+				req, err := UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -3320,23 +3323,20 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToManageAWSRequest unmarshals a ManageAWSRequest from command line flags
 func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ManageAWSRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ManageAWSRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -3347,23 +3347,20 @@ func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToManageAWSResourceRequest unmarshals a ManageAWSResourceRequest from command line flags
 func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ManageAWSResourceRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ManageAWSResourceRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -3378,23 +3375,20 @@ func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context, options ...hel
 
 // UnmarshalCliFlagsToSomethingV1FooBarRequest unmarshals a SomethingV1FooBarRequest from command line flags
 func UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomethingV1FooBarRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomethingV1FooBarRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -3409,23 +3403,20 @@ func UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd *v2.Context, options ...hel
 
 // UnmarshalCliFlagsToSomethingV2FooBarRequest unmarshals a SomethingV2FooBarRequest from command line flags
 func UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomethingV2FooBarRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomethingV2FooBarRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

@@ -107,6 +107,7 @@ type ManageAWSWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
 	ParentClosePolicy    enumsv1.ParentClosePolicy
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
@@ -114,6 +115,99 @@ type ManageAWSWorkflowOptions struct {
 // NewManageAWSWorkflowOptions initializes a new ManageAWSWorkflowOptions value
 func NewManageAWSWorkflowOptions() *ManageAWSWorkflowOptions {
 	return &ManageAWSWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *ManageAWSWorkflowOptions) Build(ctx workflow.Context, input *v1.ManageAWSRequest) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
+	}
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := expression.EvalExpression(v1.ManageAWSIdexpression, input.ProtoReflect())
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.ManageAWS\" workflow", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
+	}
+
+	// marshal workflow request protobuf message
+	inputpb, err := anypb.New(input)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
+	var parentClosePolicy temporalv1.ParentClosePolicy
+	switch opts.ParentClosePolicy {
+	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
+	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
+	}
+
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
+	}, nil
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -131,6 +225,12 @@ func (opts *ManageAWSWorkflowOptions) WithDetached(d bool) *ManageAWSWorkflowOpt
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *ManageAWSWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ManageAWSWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *ManageAWSWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *ManageAWSWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -164,6 +264,7 @@ type ManageAWSRun interface {
 // manageAWSRun provides a(n) ManageAWSRun implementation
 type manageAWSRun struct {
 	cancel func()
+	ctx    workflow.Context
 	future workflow.Future
 	id     string
 }
@@ -182,11 +283,21 @@ func (r *manageAWSRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *manageAWSRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetManageAWSAsync(r.ctx, r.id, "").(*manageAWSRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *manageAWSRun) Get(ctx workflow.Context) (*v1.ManageAWSResponse, error) {
+	if r.future == nil {
+		rr := GetManageAWSAsync(r.ctx, r.id, "").(*manageAWSRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	var resp v1.ManageAWSResponse
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -209,7 +320,7 @@ func ManageAWS(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAW
 }
 
 // ManageAWS does some workflow thing.
-func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*ManageAWSWorkflowOptions) (ManageAWSRun, error) {
+func ManageAWSAsync(ctx workflow.Context, input *v1.ManageAWSRequest, opts ...*ManageAWSWorkflowOptions) (ManageAWSRun, error) {
 	activityName := awsOptions.filterActivity(v1.ManageAWSWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -219,48 +330,93 @@ func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*Man
 		)
 	}
 
-	opt := &ManageAWSWorkflowOptions{}
+	var opt *ManageAWSWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewManageAWSWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &manageAWSRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetManageAWS returns a(n) test.acronym.v1.AWS.ManageAWS workflow execution
+func GetManageAWS(ctx workflow.Context, workflowID string, runID string) (out *v1.ManageAWSResponse, err error) {
+	out, err = GetManageAWSAsync(ctx, workflowID, runID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetManageAWSAsync returns a handle to a(n) test.acronym.v1.AWS.ManageAWS workflow execution
+func GetManageAWSAsync(ctx workflow.Context, workflowID string, runID string) ManageAWSRun {
+	activityName := awsOptions.filterActivity("test.acronym.v1.AWS.GetManageAWS")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &manageAWSRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &manageAWSRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.GetWorkflowRequest{
+			HeartbeatInterval: durationpb.New(time.Second * 30),
+			RunId:             runID,
+			WorkflowId:        workflowID,
+		}),
+		id: workflowID,
+	}
+}
+
+// ManageAWSResourceWorkflowOptions are used to configure a(n) test.acronym.v1.AWS.ManageAWSResource workflow execution
+type ManageAWSResourceWorkflowOptions struct {
+	ActivityOptions      *workflow.ActivityOptions
+	Detached             bool
+	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
+	ParentClosePolicy    enumsv1.ParentClosePolicy
+	StartWorkflowOptions *client.StartWorkflowOptions
+}
+
+// NewManageAWSResourceWorkflowOptions initializes a new ManageAWSResourceWorkflowOptions value
+func NewManageAWSResourceWorkflowOptions() *ManageAWSResourceWorkflowOptions {
+	return &ManageAWSResourceWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *ManageAWSResourceWorkflowOptions) Build(ctx workflow.Context, input *v1.ManageAWSResourceRequest) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
 	}
 
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
+	// initialize workflow id if not set
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.ManageAWSIdexpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(v1.ManageAWSResourceIdexpression, input.ProtoReflect())
 			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.ManageAWS\" workflow", "error", err)
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.ManageAWSResource\" workflow", "error", err)
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			id, err := uuid.NewRandom()
 			if err != nil {
@@ -268,28 +424,29 @@ func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*Man
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
 	}
 
 	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
+	inputpb, err := anypb.New(input)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
 	}
 
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
 	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
+	switch opts.ParentClosePolicy {
 	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
 	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
@@ -298,32 +455,37 @@ func ManageAWSAsync(ctx workflow.Context, req *v1.ManageAWSRequest, opts ...*Man
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
 	}
 
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &manageAWSRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
 	}, nil
-}
-
-// ManageAWSResourceWorkflowOptions are used to configure a(n) test.acronym.v1.AWS.ManageAWSResource workflow execution
-type ManageAWSResourceWorkflowOptions struct {
-	ActivityOptions      *workflow.ActivityOptions
-	Detached             bool
-	HeartbeatInterval    time.Duration
-	ParentClosePolicy    enumsv1.ParentClosePolicy
-	StartWorkflowOptions *client.StartWorkflowOptions
-}
-
-// NewManageAWSResourceWorkflowOptions initializes a new ManageAWSResourceWorkflowOptions value
-func NewManageAWSResourceWorkflowOptions() *ManageAWSResourceWorkflowOptions {
-	return &ManageAWSResourceWorkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -341,6 +503,12 @@ func (opts *ManageAWSResourceWorkflowOptions) WithDetached(d bool) *ManageAWSRes
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *ManageAWSResourceWorkflowOptions) WithHeartbeatInterval(d time.Duration) *ManageAWSResourceWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *ManageAWSResourceWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *ManageAWSResourceWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -374,6 +542,7 @@ type ManageAWSResourceRun interface {
 // manageAWSResourceRun provides a(n) ManageAWSResourceRun implementation
 type manageAWSResourceRun struct {
 	cancel func()
+	ctx    workflow.Context
 	future workflow.Future
 	id     string
 }
@@ -392,11 +561,21 @@ func (r *manageAWSResourceRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *manageAWSResourceRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetManageAWSResourceAsync(r.ctx, r.id, "").(*manageAWSResourceRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *manageAWSResourceRun) Get(ctx workflow.Context) (*v1.ManageAWSResourceResponse, error) {
+	if r.future == nil {
+		rr := GetManageAWSResourceAsync(r.ctx, r.id, "").(*manageAWSResourceRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	var resp v1.ManageAWSResourceResponse
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -419,7 +598,7 @@ func ManageAWSResource(ctx workflow.Context, req *v1.ManageAWSResourceRequest, o
 }
 
 // ManageAWSResource does some workflow thing.
-func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceRequest, opts ...*ManageAWSResourceWorkflowOptions) (ManageAWSResourceRun, error) {
+func ManageAWSResourceAsync(ctx workflow.Context, input *v1.ManageAWSResourceRequest, opts ...*ManageAWSResourceWorkflowOptions) (ManageAWSResourceRun, error) {
 	activityName := awsOptions.filterActivity(v1.ManageAWSResourceWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -429,48 +608,93 @@ func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceReque
 		)
 	}
 
-	opt := &ManageAWSResourceWorkflowOptions{}
+	var opt *ManageAWSResourceWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewManageAWSResourceWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &manageAWSResourceRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetManageAWSResource returns a(n) test.acronym.v1.AWS.ManageAWSResource workflow execution
+func GetManageAWSResource(ctx workflow.Context, workflowID string, runID string) (out *v1.ManageAWSResourceResponse, err error) {
+	out, err = GetManageAWSResourceAsync(ctx, workflowID, runID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetManageAWSResourceAsync returns a handle to a(n) test.acronym.v1.AWS.ManageAWSResource workflow execution
+func GetManageAWSResourceAsync(ctx workflow.Context, workflowID string, runID string) ManageAWSResourceRun {
+	activityName := awsOptions.filterActivity("test.acronym.v1.AWS.GetManageAWSResource")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &manageAWSResourceRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &manageAWSResourceRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.GetWorkflowRequest{
+			HeartbeatInterval: durationpb.New(time.Second * 30),
+			RunId:             runID,
+			WorkflowId:        workflowID,
+		}),
+		id: workflowID,
+	}
+}
+
+// SomethingV1FooBarWorkflowOptions are used to configure a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow execution
+type SomethingV1FooBarWorkflowOptions struct {
+	ActivityOptions      *workflow.ActivityOptions
+	Detached             bool
+	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
+	ParentClosePolicy    enumsv1.ParentClosePolicy
+	StartWorkflowOptions *client.StartWorkflowOptions
+}
+
+// NewSomethingV1FooBarWorkflowOptions initializes a new SomethingV1FooBarWorkflowOptions value
+func NewSomethingV1FooBarWorkflowOptions() *SomethingV1FooBarWorkflowOptions {
+	return &SomethingV1FooBarWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *SomethingV1FooBarWorkflowOptions) Build(ctx workflow.Context, input *v1.SomethingV1FooBarRequest) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
 	}
 
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
+	// initialize workflow id if not set
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.ManageAWSResourceIdexpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(v1.SomethingV1FooBarIdexpression, input.ProtoReflect())
 			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.ManageAWSResource\" workflow", "error", err)
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.SomethingV1FooBar\" workflow", "error", err)
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			id, err := uuid.NewRandom()
 			if err != nil {
@@ -478,28 +702,29 @@ func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceReque
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
 	}
 
 	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
+	inputpb, err := anypb.New(input)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
 	}
 
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
 	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
+	switch opts.ParentClosePolicy {
 	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
 	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
@@ -508,32 +733,37 @@ func ManageAWSResourceAsync(ctx workflow.Context, req *v1.ManageAWSResourceReque
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
 	}
 
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &manageAWSResourceRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
 	}, nil
-}
-
-// SomethingV1FooBarWorkflowOptions are used to configure a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow execution
-type SomethingV1FooBarWorkflowOptions struct {
-	ActivityOptions      *workflow.ActivityOptions
-	Detached             bool
-	HeartbeatInterval    time.Duration
-	ParentClosePolicy    enumsv1.ParentClosePolicy
-	StartWorkflowOptions *client.StartWorkflowOptions
-}
-
-// NewSomethingV1FooBarWorkflowOptions initializes a new SomethingV1FooBarWorkflowOptions value
-func NewSomethingV1FooBarWorkflowOptions() *SomethingV1FooBarWorkflowOptions {
-	return &SomethingV1FooBarWorkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -551,6 +781,12 @@ func (opts *SomethingV1FooBarWorkflowOptions) WithDetached(d bool) *SomethingV1F
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *SomethingV1FooBarWorkflowOptions) WithHeartbeatInterval(d time.Duration) *SomethingV1FooBarWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *SomethingV1FooBarWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *SomethingV1FooBarWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -584,6 +820,7 @@ type SomethingV1FooBarRun interface {
 // somethingV1FooBarRun provides a(n) SomethingV1FooBarRun implementation
 type somethingV1FooBarRun struct {
 	cancel func()
+	ctx    workflow.Context
 	future workflow.Future
 	id     string
 }
@@ -602,11 +839,21 @@ func (r *somethingV1FooBarRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *somethingV1FooBarRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetSomethingV1FooBarAsync(r.ctx, r.id, "").(*somethingV1FooBarRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *somethingV1FooBarRun) Get(ctx workflow.Context) (*v1.SomethingV1FooBarResponse, error) {
+	if r.future == nil {
+		rr := GetSomethingV1FooBarAsync(r.ctx, r.id, "").(*somethingV1FooBarRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	var resp v1.SomethingV1FooBarResponse
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -629,7 +876,7 @@ func SomethingV1FooBar(ctx workflow.Context, req *v1.SomethingV1FooBarRequest, o
 }
 
 // SomethingV1FooBar does some workflow thing.
-func SomethingV1FooBarAsync(ctx workflow.Context, req *v1.SomethingV1FooBarRequest, opts ...*SomethingV1FooBarWorkflowOptions) (SomethingV1FooBarRun, error) {
+func SomethingV1FooBarAsync(ctx workflow.Context, input *v1.SomethingV1FooBarRequest, opts ...*SomethingV1FooBarWorkflowOptions) (SomethingV1FooBarRun, error) {
 	activityName := awsOptions.filterActivity(v1.SomethingV1FooBarWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -639,48 +886,93 @@ func SomethingV1FooBarAsync(ctx workflow.Context, req *v1.SomethingV1FooBarReque
 		)
 	}
 
-	opt := &SomethingV1FooBarWorkflowOptions{}
+	var opt *SomethingV1FooBarWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewSomethingV1FooBarWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &somethingV1FooBarRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetSomethingV1FooBar returns a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow execution
+func GetSomethingV1FooBar(ctx workflow.Context, workflowID string, runID string) (out *v1.SomethingV1FooBarResponse, err error) {
+	out, err = GetSomethingV1FooBarAsync(ctx, workflowID, runID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetSomethingV1FooBarAsync returns a handle to a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow execution
+func GetSomethingV1FooBarAsync(ctx workflow.Context, workflowID string, runID string) SomethingV1FooBarRun {
+	activityName := awsOptions.filterActivity("test.acronym.v1.AWS.GetSomethingV1FooBar")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &somethingV1FooBarRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &somethingV1FooBarRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.GetWorkflowRequest{
+			HeartbeatInterval: durationpb.New(time.Second * 30),
+			RunId:             runID,
+			WorkflowId:        workflowID,
+		}),
+		id: workflowID,
+	}
+}
+
+// SomethingV2FooBarWorkflowOptions are used to configure a(n) test.acronym.v1.AWS.SomethingV2FooBar workflow execution
+type SomethingV2FooBarWorkflowOptions struct {
+	ActivityOptions      *workflow.ActivityOptions
+	Detached             bool
+	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
+	ParentClosePolicy    enumsv1.ParentClosePolicy
+	StartWorkflowOptions *client.StartWorkflowOptions
+}
+
+// NewSomethingV2FooBarWorkflowOptions initializes a new SomethingV2FooBarWorkflowOptions value
+func NewSomethingV2FooBarWorkflowOptions() *SomethingV2FooBarWorkflowOptions {
+	return &SomethingV2FooBarWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *SomethingV2FooBarWorkflowOptions) Build(ctx workflow.Context, input *v1.SomethingV2FooBarRequest) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
 	}
 
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
+	// initialize workflow id if not set
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.SomethingV1FooBarIdexpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(v1.SomethingV2FooBarIdexpression, input.ProtoReflect())
 			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.SomethingV1FooBar\" workflow", "error", err)
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.SomethingV2FooBar\" workflow", "error", err)
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			id, err := uuid.NewRandom()
 			if err != nil {
@@ -688,28 +980,29 @@ func SomethingV1FooBarAsync(ctx workflow.Context, req *v1.SomethingV1FooBarReque
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
 	}
 
 	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
+	inputpb, err := anypb.New(input)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
 	}
 
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
 	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
+	switch opts.ParentClosePolicy {
 	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
 	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
@@ -718,32 +1011,37 @@ func SomethingV1FooBarAsync(ctx workflow.Context, req *v1.SomethingV1FooBarReque
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
 	}
 
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &somethingV1FooBarRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
 	}, nil
-}
-
-// SomethingV2FooBarWorkflowOptions are used to configure a(n) test.acronym.v1.AWS.SomethingV2FooBar workflow execution
-type SomethingV2FooBarWorkflowOptions struct {
-	ActivityOptions      *workflow.ActivityOptions
-	Detached             bool
-	HeartbeatInterval    time.Duration
-	ParentClosePolicy    enumsv1.ParentClosePolicy
-	StartWorkflowOptions *client.StartWorkflowOptions
-}
-
-// NewSomethingV2FooBarWorkflowOptions initializes a new SomethingV2FooBarWorkflowOptions value
-func NewSomethingV2FooBarWorkflowOptions() *SomethingV2FooBarWorkflowOptions {
-	return &SomethingV2FooBarWorkflowOptions{}
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -761,6 +1059,12 @@ func (opts *SomethingV2FooBarWorkflowOptions) WithDetached(d bool) *SomethingV2F
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *SomethingV2FooBarWorkflowOptions) WithHeartbeatInterval(d time.Duration) *SomethingV2FooBarWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *SomethingV2FooBarWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *SomethingV2FooBarWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -794,6 +1098,7 @@ type SomethingV2FooBarRun interface {
 // somethingV2FooBarRun provides a(n) SomethingV2FooBarRun implementation
 type somethingV2FooBarRun struct {
 	cancel func()
+	ctx    workflow.Context
 	future workflow.Future
 	id     string
 }
@@ -812,11 +1117,21 @@ func (r *somethingV2FooBarRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *somethingV2FooBarRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetSomethingV2FooBarAsync(r.ctx, r.id, "").(*somethingV2FooBarRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *somethingV2FooBarRun) Get(ctx workflow.Context) (*v1.SomethingV2FooBarResponse, error) {
+	if r.future == nil {
+		rr := GetSomethingV2FooBarAsync(r.ctx, r.id, "").(*somethingV2FooBarRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	var resp v1.SomethingV2FooBarResponse
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -839,7 +1154,7 @@ func SomethingV2FooBar(ctx workflow.Context, req *v1.SomethingV2FooBarRequest, o
 }
 
 // SomethingV2FooBar does some workflow thing.
-func SomethingV2FooBarAsync(ctx workflow.Context, req *v1.SomethingV2FooBarRequest, opts ...*SomethingV2FooBarWorkflowOptions) (SomethingV2FooBarRun, error) {
+func SomethingV2FooBarAsync(ctx workflow.Context, input *v1.SomethingV2FooBarRequest, opts ...*SomethingV2FooBarWorkflowOptions) (SomethingV2FooBarRun, error) {
 	activityName := awsOptions.filterActivity(v1.SomethingV2FooBarWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -849,97 +1164,54 @@ func SomethingV2FooBarAsync(ctx workflow.Context, req *v1.SomethingV2FooBarReque
 		)
 	}
 
-	opt := &SomethingV2FooBarWorkflowOptions{}
+	var opt *SomethingV2FooBarWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewSomethingV2FooBarWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
-	}
-
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.SomethingV2FooBarIdexpression, req.ProtoReflect())
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"test.acronym.v1.AWS.SomethingV2FooBar\" workflow", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := uuid.NewRandom()
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
+	ctx, req, err := opt.Build(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+		return nil, awsOptions.convertError(err)
 	}
-
-	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
-	}
-
-	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
-	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
-	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
-	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
-	}
-
 	ctx, cancel := workflow.WithCancel(ctx)
 	return &somethingV2FooBarRun{
 		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
 	}, nil
+}
+
+// GetSomethingV2FooBar returns a(n) test.acronym.v1.AWS.SomethingV2FooBar workflow execution
+func GetSomethingV2FooBar(ctx workflow.Context, workflowID string, runID string) (out *v1.SomethingV2FooBarResponse, err error) {
+	out, err = GetSomethingV2FooBarAsync(ctx, workflowID, runID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetSomethingV2FooBarAsync returns a handle to a(n) test.acronym.v1.AWS.SomethingV2FooBar workflow execution
+func GetSomethingV2FooBarAsync(ctx workflow.Context, workflowID string, runID string) SomethingV2FooBarRun {
+	activityName := awsOptions.filterActivity("test.acronym.v1.AWS.GetSomethingV2FooBar")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &somethingV2FooBarRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &somethingV2FooBarRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.GetWorkflowRequest{
+			HeartbeatInterval: durationpb.New(time.Second * 30),
+			RunId:             runID,
+			WorkflowId:        workflowID,
+		}),
+		id: workflowID,
+	}
 }
 
 // CancelAWSWorkflow cancels an existing workflow
@@ -975,6 +1247,29 @@ type awsActivities struct {
 // CancelWorkflow cancels an existing workflow execution
 func (a *awsActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// GetManageAWS retrieves a(n) test.acronym.v1.AWS.ManageAWS workflow via an activity
+func (a *awsActivities) GetManageAWS(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *v1.ManageAWSResponse, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = a.client.GetManageAWS(ctx, input.GetWorkflowId(), input.GetRunId()).Get(ctx)
+	}()
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, awsOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+		case <-ctx.Done():
+			return nil, awsOptions.convertError(err)
+		}
+	}
 }
 
 // ManageAWS executes a(n) test.acronym.v1.AWS.ManageAWS workflow via an activity
@@ -1056,6 +1351,29 @@ func (a *awsActivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequ
 		// handle workflow completion
 		case <-doneCh:
 			return resp, awsOptions.convertError(err)
+		}
+	}
+}
+
+// GetManageAWSResource retrieves a(n) test.acronym.v1.AWS.ManageAWSResource workflow via an activity
+func (a *awsActivities) GetManageAWSResource(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *v1.ManageAWSResourceResponse, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = a.client.GetManageAWSResource(ctx, input.GetWorkflowId(), input.GetRunId()).Get(ctx)
+	}()
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, awsOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+		case <-ctx.Done():
+			return nil, awsOptions.convertError(err)
 		}
 	}
 }
@@ -1143,6 +1461,29 @@ func (a *awsActivities) ManageAWSResource(ctx context.Context, input *xnsv1.Work
 	}
 }
 
+// GetSomethingV1FooBar retrieves a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow via an activity
+func (a *awsActivities) GetSomethingV1FooBar(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *v1.SomethingV1FooBarResponse, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = a.client.GetSomethingV1FooBar(ctx, input.GetWorkflowId(), input.GetRunId()).Get(ctx)
+	}()
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, awsOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+		case <-ctx.Done():
+			return nil, awsOptions.convertError(err)
+		}
+	}
+}
+
 // SomethingV1FooBar executes a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow via an activity
 func (a *awsActivities) SomethingV1FooBar(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.SomethingV1FooBarResponse, err error) {
 	// unmarshal workflow request
@@ -1222,6 +1563,29 @@ func (a *awsActivities) SomethingV1FooBar(ctx context.Context, input *xnsv1.Work
 		// handle workflow completion
 		case <-doneCh:
 			return resp, awsOptions.convertError(err)
+		}
+	}
+}
+
+// GetSomethingV2FooBar retrieves a(n) test.acronym.v1.AWS.SomethingV2FooBar workflow via an activity
+func (a *awsActivities) GetSomethingV2FooBar(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *v1.SomethingV2FooBarResponse, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = a.client.GetSomethingV2FooBar(ctx, input.GetWorkflowId(), input.GetRunId()).Get(ctx)
+	}()
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, awsOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+		case <-ctx.Done():
+			return nil, awsOptions.convertError(err)
 		}
 	}
 }

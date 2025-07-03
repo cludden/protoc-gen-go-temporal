@@ -817,9 +817,10 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 					Value:   "xnserr-server-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.DurationFlag{
 					Name:     "sleep",
@@ -839,7 +840,7 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewServerClient(tc)
-				req, err := UnmarshalCliFlagsToSleepRequest(cmd)
+				req, err := UnmarshalCliFlagsToSleepRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -903,23 +904,20 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSleepRequest unmarshals a SleepRequest from command line flags
 func UnmarshalCliFlagsToSleepRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SleepRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SleepRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("sleep"); cmd.IsSet(flag) {
 		value := durationpb.New(cmd.Duration(flag))
@@ -1723,9 +1721,10 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 					Value:   "xnserr-client-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.DurationFlag{
 					Name:     "sleep",
@@ -1755,7 +1754,7 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewClientClient(tc)
-				req, err := UnmarshalCliFlagsToCallSleepRequest(cmd)
+				req, err := UnmarshalCliFlagsToCallSleepRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1819,23 +1818,20 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToCallSleepRequest unmarshals a CallSleepRequest from command line flags
 func UnmarshalCliFlagsToCallSleepRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*CallSleepRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result CallSleepRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("sleep"); cmd.IsSet(flag) {
 		value := durationpb.New(cmd.Duration(flag))

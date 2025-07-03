@@ -14,6 +14,7 @@ import (
 	commonv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/patch"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -360,6 +361,7 @@ func TestUnmarshalCLIFlagsToOtherWorkflowRequest(t *testing.T) {
 
 	cases := []struct {
 		args   []string
+		opts   helpers.UnmarshalCliFlagsOptions
 		assert func(req *simplepb.OtherWorkflowRequest, err error)
 	}{
 		{
@@ -399,6 +401,7 @@ func TestUnmarshalCLIFlagsToOtherWorkflowRequest(t *testing.T) {
 				"-f", inputFile,
 				"--qux", `{"qux":"example"}`,
 			},
+			opts: helpers.UnmarshalCliFlagsOptions{FromFile: "f"},
 			assert: func(req *simplepb.OtherWorkflowRequest, err error) {
 				require.NoError(err)
 				require.NotNil(req)
@@ -411,7 +414,7 @@ func TestUnmarshalCLIFlagsToOtherWorkflowRequest(t *testing.T) {
 
 	for _, c := range cases {
 		command.Action = func(cmd *cli.Context) error {
-			c.assert(simplepb.UnmarshalCliFlagsToOtherWorkflowRequest(cmd))
+			c.assert(simplepb.UnmarshalCliFlagsToOtherWorkflowRequest(cmd, c.opts))
 			return nil
 		}
 		require.NoError(app.RunContext(ctx, append([]string{

@@ -1073,9 +1073,10 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 					Value:   "foo-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "optional-bytes",
@@ -1160,7 +1161,7 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 				}
 				defer tc.Close()
 				c := NewFooServiceClient(tc)
-				req, err := UnmarshalCliFlagsToFooInput(cmd)
+				req, err := UnmarshalCliFlagsToFooInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1233,23 +1234,20 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 
 // UnmarshalCliFlagsToFooInput unmarshals a FooInput from command line flags
 func UnmarshalCliFlagsToFooInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*FooInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result FooInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("optional-bytes"); cmd.IsSet(flag) {
 		value, err := base64.StdEncoding.DecodeString(cmd.String(flag))

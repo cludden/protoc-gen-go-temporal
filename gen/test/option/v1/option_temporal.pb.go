@@ -1517,9 +1517,10 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1534,7 +1535,7 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewTestClient(c)
-				req, err := UnmarshalCliFlagsToUpdateWithInputRequest(cmd)
+				req, err := UnmarshalCliFlagsToUpdateWithInputRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1577,9 +1578,10 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 					Value:   "option-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1594,7 +1596,7 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewTestClient(tc)
-				req, err := UnmarshalCliFlagsToWorkflowWithInputRequest(cmd)
+				req, err := UnmarshalCliFlagsToWorkflowWithInputRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1658,23 +1660,20 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToUpdateWithInputRequest unmarshals a UpdateWithInputRequest from command line flags
 func UnmarshalCliFlagsToUpdateWithInputRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*UpdateWithInputRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result UpdateWithInputRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -1685,23 +1684,20 @@ func UnmarshalCliFlagsToUpdateWithInputRequest(cmd *v2.Context, options ...helpe
 
 // UnmarshalCliFlagsToWorkflowWithInputRequest unmarshals a WorkflowWithInputRequest from command line flags
 func UnmarshalCliFlagsToWorkflowWithInputRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*WorkflowWithInputRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result WorkflowWithInputRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
