@@ -3324,10 +3324,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToManageAWSRequest unmarshals a ManageAWSRequest from command line flags
 func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ManageAWSRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ManageAWSRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -3351,10 +3348,7 @@ func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToManageAWSResourceRequest unmarshals a ManageAWSResourceRequest from command line flags
 func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ManageAWSResourceRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ManageAWSResourceRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -3382,10 +3376,7 @@ func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context, options ...hel
 
 // UnmarshalCliFlagsToSomethingV1FooBarRequest unmarshals a SomethingV1FooBarRequest from command line flags
 func UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomethingV1FooBarRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomethingV1FooBarRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -3413,10 +3404,7 @@ func UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd *v2.Context, options ...hel
 
 // UnmarshalCliFlagsToSomethingV2FooBarRequest unmarshals a SomethingV2FooBarRequest from command line flags
 func UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomethingV2FooBarRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomethingV2FooBarRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

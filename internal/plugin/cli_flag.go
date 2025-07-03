@@ -184,10 +184,9 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 		}).
 		BlockFunc(func(g *j.Group) {
 			// initialize unmarshal options
-			g.Id("opts").Op(":=").Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values()
-			g.If(j.Len(j.Id("options")).Op(">").Lit(0)).Block(
-				j.Id("opts").Op("=").Id("options").Index(j.Lit(0)),
-			)
+			g.Id("opts").Op(":=").Qual(helpersPkg, "FlattenUnmarshalCliFlagsOptions").CallFunc(func(g *j.Group) {
+				g.Id("options").Op("...")
+			})
 
 			// Initialize a new instance of the message
 			g.Var().Id("result").Qual(string(msg.GoIdent.GoImportPath), goName)

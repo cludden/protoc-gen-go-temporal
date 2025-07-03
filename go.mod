@@ -1,6 +1,8 @@
 module github.com/cludden/protoc-gen-go-temporal
 
-go 1.21.5
+go 1.23
+
+toolchain go1.23.6
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
@@ -10,6 +12,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.13.1
+	github.com/hairyhenderson/go-which v0.2.2
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/run v1.1.0

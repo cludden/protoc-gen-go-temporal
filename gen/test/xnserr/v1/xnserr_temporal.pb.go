@@ -905,10 +905,7 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSleepRequest unmarshals a SleepRequest from command line flags
 func UnmarshalCliFlagsToSleepRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SleepRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SleepRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -1822,10 +1819,7 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToCallSleepRequest unmarshals a CallSleepRequest from command line flags
 func UnmarshalCliFlagsToCallSleepRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*CallSleepRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result CallSleepRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

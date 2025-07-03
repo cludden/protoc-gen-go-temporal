@@ -2407,10 +2407,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToAcquireLockInput unmarshals a AcquireLockInput from command line flags
 func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*AcquireLockInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result AcquireLockInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -2438,10 +2435,7 @@ func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToLockAcquiredInput unmarshals a LockAcquiredInput from command line flags
 func UnmarshalCliFlagsToLockAcquiredInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*LockAcquiredInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result LockAcquiredInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -2465,10 +2459,7 @@ func UnmarshalCliFlagsToLockAcquiredInput(cmd *v2.Context, options ...helpers.Un
 
 // UnmarshalCliFlagsToReleaseLockInput unmarshals a ReleaseLockInput from command line flags
 func UnmarshalCliFlagsToReleaseLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ReleaseLockInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ReleaseLockInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -2492,10 +2483,7 @@ func UnmarshalCliFlagsToReleaseLockInput(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToMutexInput unmarshals a MutexInput from command line flags
 func UnmarshalCliFlagsToMutexInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*MutexInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result MutexInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -2519,10 +2507,7 @@ func UnmarshalCliFlagsToMutexInput(cmd *v2.Context, options ...helpers.Unmarshal
 
 // UnmarshalCliFlagsToSampleWorkflowWithMutexInput unmarshals a SampleWorkflowWithMutexInput from command line flags
 func UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SampleWorkflowWithMutexInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SampleWorkflowWithMutexInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

@@ -2275,10 +2275,7 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 
 // UnmarshalCliFlagsToOptionalExample unmarshals a OptionalExample from command line flags
 func UnmarshalCliFlagsToOptionalExample(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OptionalExample, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OptionalExample
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

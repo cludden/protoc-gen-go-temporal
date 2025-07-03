@@ -2275,10 +2275,7 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToHybridExample unmarshals a HybridExample from command line flags
 func UnmarshalCliFlagsToHybridExample(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*HybridExample, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result HybridExample
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

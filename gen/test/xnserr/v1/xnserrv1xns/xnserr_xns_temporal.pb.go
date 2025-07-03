@@ -12,6 +12,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	xnsv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
 	v1 "github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1"
@@ -25,7 +27,6 @@ import (
 	workflow "go.temporal.io/sdk/workflow"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
-	"time"
 )
 
 // ServerOptions is used to configure test.xnserr.v1.Server xns activity registration
@@ -889,6 +890,7 @@ func (a *clientActivities) GetCallSleep(ctx context.Context, input *xnsv1.GetWor
 
 // CallSleep executes a(n) test.xnserr.v1.Client.CallSleep workflow via an activity
 func (a *clientActivities) CallSleep(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
+	activity.GetLogger(ctx).Info(":::executing CallSleep activity", "input", input)
 	// unmarshal workflow request
 	var req v1.CallSleepRequest
 	if err := input.Request.UnmarshalTo(&req); err != nil {
@@ -900,16 +902,19 @@ func (a *clientActivities) CallSleep(ctx context.Context, input *xnsv1.WorkflowR
 	}
 
 	// initialize workflow execution
+	activity.GetLogger(ctx).Info(":::initializing CallSleep workflow execution", "request", &req)
 	var run v1.CallSleepRun
 	run, err = a.client.CallSleepAsync(ctx, &req, v1.NewCallSleepOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
+		activity.GetLogger(ctx).Error(":::error executing CallSleepAsync", "error", err)
 		return clientOptions.convertError(err)
 	}
 
 	// exit early if detached enabled
 	if input.GetDetached() {
+		activity.GetLogger(ctx).Info(":::detached CallSleep workflow execution started", "workflowID", run.ID())
 		return nil
 	}
 
@@ -930,10 +935,12 @@ func (a *clientActivities) CallSleep(ctx context.Context, input *xnsv1.WorkflowR
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
+			activity.GetLogger(ctx).Info(":::sending heartbeat", "workflowID", run.ID())
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
+			activity.GetLogger(ctx).Info("worker is stopping, returning error")
 			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -943,23 +950,30 @@ func (a *clientActivities) CallSleep(ctx context.Context, input *xnsv1.WorkflowR
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
+			activity.GetLogger(ctx).Info(":::parent activity context canceled", "error", ctx.Err())
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Info(":::worker is stopping, returning error")
 				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
+				activity.GetLogger(ctx).Info(":::parent close policy", "policy", parentClosePolicy)
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						activity.GetLogger(ctx).Info("requesting workflow cancellation", "workflowID", run.ID())
 						err = run.Cancel(disconnectedCtx)
 					} else {
+						activity.GetLogger(ctx).Info(":::terminating workflow", "workflowID", run.ID(), "error", ctx.Err())
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
+						activity.GetLogger(ctx).Error(":::error canceling or terminating workflow", "error", err)
 						return clientOptions.convertError(err)
 					}
 				}
+				activity.GetLogger(ctx).Info(":::parent activity context canceled, returning error", "error", ctx.Err())
 				return clientOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
 			}
 

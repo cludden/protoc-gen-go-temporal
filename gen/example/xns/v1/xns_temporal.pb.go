@@ -953,10 +953,7 @@ func newXnsCommands(options ...*XnsCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToProvisionFooRequest unmarshals a ProvisionFooRequest from command line flags
 func UnmarshalCliFlagsToProvisionFooRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ProvisionFooRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ProvisionFooRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -2933,10 +2930,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSetFooProgressRequest unmarshals a SetFooProgressRequest from command line flags
 func UnmarshalCliFlagsToSetFooProgressRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SetFooProgressRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SetFooProgressRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -2963,10 +2957,7 @@ func UnmarshalCliFlagsToSetFooProgressRequest(cmd *v2.Context, options ...helper
 
 // UnmarshalCliFlagsToCreateFooRequest unmarshals a CreateFooRequest from command line flags
 func UnmarshalCliFlagsToCreateFooRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*CreateFooRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result CreateFooRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

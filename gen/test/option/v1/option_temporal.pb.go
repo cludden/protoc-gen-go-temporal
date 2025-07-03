@@ -1661,10 +1661,7 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToUpdateWithInputRequest unmarshals a UpdateWithInputRequest from command line flags
 func UnmarshalCliFlagsToUpdateWithInputRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*UpdateWithInputRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result UpdateWithInputRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -1688,10 +1685,7 @@ func UnmarshalCliFlagsToUpdateWithInputRequest(cmd *v2.Context, options ...helpe
 
 // UnmarshalCliFlagsToWorkflowWithInputRequest unmarshals a WorkflowWithInputRequest from command line flags
 func UnmarshalCliFlagsToWorkflowWithInputRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*WorkflowWithInputRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result WorkflowWithInputRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

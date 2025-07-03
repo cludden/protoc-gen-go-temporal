@@ -1101,10 +1101,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToGoodbyeRequest unmarshals a GoodbyeRequest from command line flags
 func UnmarshalCliFlagsToGoodbyeRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*GoodbyeRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result GoodbyeRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -1128,10 +1125,7 @@ func UnmarshalCliFlagsToGoodbyeRequest(cmd *v2.Context, options ...helpers.Unmar
 
 // UnmarshalCliFlagsToHelloRequest unmarshals a HelloRequest from command line flags
 func UnmarshalCliFlagsToHelloRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*HelloRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result HelloRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

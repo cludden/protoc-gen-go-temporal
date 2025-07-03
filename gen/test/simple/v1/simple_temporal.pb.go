@@ -6347,10 +6347,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSomeQuery2Request unmarshals a SomeQuery2Request from command line flags
 func UnmarshalCliFlagsToSomeQuery2Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeQuery2Request, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeQuery2Request
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -6374,10 +6371,7 @@ func UnmarshalCliFlagsToSomeQuery2Request(cmd *v2.Context, options ...helpers.Un
 
 // UnmarshalCliFlagsToSomeSignal2Request unmarshals a SomeSignal2Request from command line flags
 func UnmarshalCliFlagsToSomeSignal2Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeSignal2Request, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeSignal2Request
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -6401,10 +6395,7 @@ func UnmarshalCliFlagsToSomeSignal2Request(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToSomeSignal3Request unmarshals a SomeSignal3Request from command line flags
 func UnmarshalCliFlagsToSomeSignal3Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeSignal3Request, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeSignal3Request
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -6428,10 +6419,7 @@ func UnmarshalCliFlagsToSomeSignal3Request(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToSomeUpdate1Request unmarshals a SomeUpdate1Request from command line flags
 func UnmarshalCliFlagsToSomeUpdate1Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeUpdate1Request, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeUpdate1Request
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -6455,10 +6443,7 @@ func UnmarshalCliFlagsToSomeUpdate1Request(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToSomeWorkflow1Request unmarshals a SomeWorkflow1Request from command line flags
 func UnmarshalCliFlagsToSomeWorkflow1Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeWorkflow1Request, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeWorkflow1Request
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -6486,10 +6471,7 @@ func UnmarshalCliFlagsToSomeWorkflow1Request(cmd *v2.Context, options ...helpers
 
 // UnmarshalCliFlagsToSomeWorkflow3Request unmarshals a SomeWorkflow3Request from command line flags
 func UnmarshalCliFlagsToSomeWorkflow3Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeWorkflow3Request, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeWorkflow3Request
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -6517,10 +6499,7 @@ func UnmarshalCliFlagsToSomeWorkflow3Request(cmd *v2.Context, options ...helpers
 
 // UnmarshalCliFlagsToPaginatedRequest unmarshals a PaginatedRequest from command line flags
 func UnmarshalCliFlagsToPaginatedRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*v1.PaginatedRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result v1.PaginatedRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -8362,10 +8341,7 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToOtherUpdateRequest unmarshals a OtherUpdateRequest from command line flags
 func UnmarshalCliFlagsToOtherUpdateRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OtherUpdateRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OtherUpdateRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -8389,10 +8365,7 @@ func UnmarshalCliFlagsToOtherUpdateRequest(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToOtherWorkflowRequest unmarshals a OtherWorkflowRequest from command line flags
 func UnmarshalCliFlagsToOtherWorkflowRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OtherWorkflowRequest, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OtherWorkflowRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
@@ -13263,10 +13236,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 
 // UnmarshalCliFlagsToSomeDeprecatedMessage unmarshals a SomeDeprecatedMessage from command line flags
 func UnmarshalCliFlagsToSomeDeprecatedMessage(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeDeprecatedMessage, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeDeprecatedMessage
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

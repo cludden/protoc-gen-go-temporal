@@ -2275,10 +2275,7 @@ func newOpenCommands(options ...*OpenCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToOpenExample unmarshals a OpenExample from command line flags
 func UnmarshalCliFlagsToOpenExample(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OpenExample, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OpenExample
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

@@ -1235,10 +1235,7 @@ func newFooServiceCommands(options ...*FooServiceCliOptions) ([]*v2.Command, err
 
 // UnmarshalCliFlagsToFooInput unmarshals a FooInput from command line flags
 func UnmarshalCliFlagsToFooInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*FooInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result FooInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

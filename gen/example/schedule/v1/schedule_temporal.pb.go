@@ -907,10 +907,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToScheduleInput unmarshals a ScheduleInput from command line flags
 func UnmarshalCliFlagsToScheduleInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ScheduleInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ScheduleInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))

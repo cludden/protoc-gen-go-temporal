@@ -1012,10 +1012,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSearchAttributesInput unmarshals a SearchAttributesInput from command line flags
 func UnmarshalCliFlagsToSearchAttributesInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SearchAttributesInput, error) {
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SearchAttributesInput
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
 		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
