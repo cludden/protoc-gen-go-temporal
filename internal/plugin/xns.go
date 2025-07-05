@@ -3831,7 +3831,25 @@ func (m *Manifest) genXNSWorkflowOptions(f *j.File, workflow protoreflect.FullNa
 
 			// marshal parent close policy
 			g.Comment("marshal parent close policy protobuf message")
-			g.Var().Id("parentClosePolicy").Qual(temporalv1Pkg, "ParentClosePolicy")
+			defaultParentClosePolicy := opts.GetParentClosePolicy()
+			if opts.GetXns().GetParentClosePolicy() != temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_UNSPECIFIED {
+				defaultParentClosePolicy = opts.GetXns().GetParentClosePolicy()
+			}
+			if defaultParentClosePolicy != temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_UNSPECIFIED {
+				var v string
+				switch defaultParentClosePolicy {
+				case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
+					v = "ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON"
+				case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+					v = "ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL"
+				case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE:
+					v = "ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE"
+				}
+				g.Id("parentClosePolicy").Op(":=").Qual(temporalv1Pkg, v)
+			} else {
+				g.Var().Id("parentClosePolicy").Qual(temporalv1Pkg, "ParentClosePolicy")
+			}
+
 			g.SwitchFunc(func(g *j.Group) {
 				g.Id("opts").Dot("ParentClosePolicy")
 			}).BlockFunc(func(g *j.Group) {

@@ -162,7 +162,7 @@ func (opts *WorkflowWithInputWorkflowOptions) Build(ctx workflow.Context, input 
 	}
 
 	// marshal parent close policy protobuf message
-	var parentClosePolicy temporalv1.ParentClosePolicy
+	parentClosePolicy := temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
 	switch opts.ParentClosePolicy {
 	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON

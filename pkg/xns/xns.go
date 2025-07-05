@@ -1,6 +1,7 @@
 package xns
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -65,6 +66,10 @@ func ErrorToApplicationError(err error) error {
 	var canceledErr *temporal.CanceledError
 	if errors.As(err, &canceledErr) {
 		return temporal.NewNonRetryableApplicationError(canceledErr.Error(), "CanceledError", canceledErr)
+	}
+
+	if errors.Is(err, context.Canceled) {
+		return temporal.NewCanceledError(err.Error())
 	}
 
 	var terminatedErr *temporal.TerminatedError

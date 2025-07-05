@@ -30,25 +30,19 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-const (
-	serverNamespace = "xnserr-server"
-)
-
 type XnsErrSuite struct {
 	suite.Suite
 	testsuite.WorkflowTestSuite
 
-	cancel       func()
-	c            client.Client
-	client       xnserrv1.ClientClient
-	clientWorker worker.Worker
-	ctx          context.Context
-	log          *slog.Logger
-	g            *run.Group
-	sc           client.Client
-	server       xnserrv1.ServerClient
-	serverWorker worker.Worker
-	srv          *testsuite.DevServer
+	cancel func()
+	c      client.Client
+	client xnserrv1.ClientClient
+	ctx    context.Context
+	doneCh chan error
+	g      *run.Group
+	sc     client.Client
+	server xnserrv1.ServerClient
+	srv    *testsuite.DevServer
 }
 
 func TestXnsErrSuite(t *testing.T) {
@@ -58,21 +52,45 @@ func TestXnsErrSuite(t *testing.T) {
 	suite.Run(t, new(XnsErrSuite))
 }
 
-func (s *XnsErrSuite) SetupSuite() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.log = slog.New(slog.NewTextHandler(os.Stderr, nil))
+func registerNamespaceIfNotExists(ctx context.Context, t *testing.T, c client.Client) {
+	retention := time.Hour * 24
 
+	// fetch all namespaces
+	var namespaces []*workflowservice.DescribeNamespaceResponse
+	res, err := c.WorkflowService().ListNamespaces(ctx, &workflowservice.ListNamespacesRequest{})
+	require.NoError(t, err)
+	namespaces = append(namespaces, res.Namespaces...)
+
+	for len(res.NextPageToken) > 0 {
+		res, err := c.WorkflowService().ListNamespaces(ctx, &workflowservice.ListNamespacesRequest{NextPageToken: res.NextPageToken})
+		require.NoError(t, err)
+		namespaces = append(namespaces, res.Namespaces...)
+	}
+
+	// check if we already have xnserr-server and if so return
+	for _, n := range namespaces {
+		if n.NamespaceInfo.Name == "xnserr-server" {
+			return
+		}
+	}
+
+	// since we don't have this ns let's create it
+	_, err = c.WorkflowService().RegisterNamespace(ctx, &workflowservice.RegisterNamespaceRequest{Namespace: "xnserr-server", WorkflowExecutionRetentionPeriod: durationpb.New(retention)})
+	require.NoError(t, err)
+}
+
+func (s *XnsErrSuite) SetupSuite() {
 	existingPath := which.Which("temporal")
 	if existingPath == "" {
-		s.T().Skip("temporal CLI not found in PATH, skipping XnsErrSuite tests")
-		return
+		s.T().Skip("temporal binary not found in PATH, skipping test")
 	}
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	var err error
 	s.srv, err = testsuite.StartDevServer(s.ctx, testsuite.DevServerOptions{
 		ClientOptions: &client.Options{
 			HostPort: "0.0.0.0:7233",
-			Logger:   log.NewStructuredLogger(s.log),
+			Logger:   log.NewStructuredLogger(slog.New(slog.NewTextHandler(os.Stderr, nil))),
 		},
 		EnableUI:     true,
 		ExistingPath: existingPath,
@@ -97,90 +115,90 @@ func (s *XnsErrSuite) SetupSuite() {
 	)
 
 	s.sc, err = client.NewClientFromExisting(s.c, client.Options{
-		Namespace: serverNamespace,
-		Logger:    log.NewStructuredLogger(s.log),
+		Namespace: "xnserr-server",
+		Logger:    log.NewStructuredLogger(slog.New(slog.NewTextHandler(os.Stderr, nil))),
 	})
 	s.Require().NoError(err)
 
-	s.serverWorker = worker.New(s.sc, xnserrv1.ServerTaskQueue, worker.Options{})
-	xnserrv1.RegisterServerWorkflows(s.serverWorker, &ServerWorkflows{})
-	s.Require().NoError(s.serverWorker.Start())
-	s.server, err = xnserrv1.NewServerClientWithOptions(s.sc, client.Options{
-		Namespace: serverNamespace,
-		Logger:    log.NewStructuredLogger(s.log),
-	})
+	server := worker.New(s.sc, xnserrv1.ServerTaskQueue, worker.Options{})
+	xnserrv1.RegisterServerWorkflows(server, &ServerWorkflows{})
+	s.g.Add(
+		func() error {
+			return server.Run(nil)
+		},
+		func(error) {
+			server.Stop()
+		},
+	)
+	s.server, err = xnserrv1.NewServerClientWithOptions(s.sc, client.Options{Namespace: "xnserr-server"})
 	s.Require().NoError(err)
 
-	s.clientWorker = worker.New(s.c, xnserrv1.ClientTaskQueue, worker.Options{})
-	xnserrv1.RegisterClientWorkflows(s.clientWorker, &ClientWorkflows{})
-	xnserrv1xns.RegisterServerActivities(s.clientWorker, xnserrv1.NewServerClient(s.sc))
-	s.Require().NoError(s.clientWorker.Start())
+	client := worker.New(s.c, xnserrv1.ClientTaskQueue, worker.Options{})
+	xnserrv1.RegisterClientWorkflows(client, &ClientWorkflows{})
+	xnserrv1xns.RegisterServerActivities(client, xnserrv1.NewServerClient(s.sc))
+	s.g.Add(
+		func() error {
+			return client.Run(nil)
+		},
+		func(error) {
+			client.Stop()
+		},
+	)
 	s.client = xnserrv1.NewClientClient(s.c)
-}
 
-func (s *XnsErrSuite) TearDownSuite() {
-	s.cancel()
-	s.clientWorker.Stop()
-	s.serverWorker.Stop()
-	s.c.Close()
-	s.Require().NoError(s.srv.Stop())
+	s.T().Cleanup(func() {
+		defer s.srv.Stop()
+		defer s.c.Close()
+		s.cancel()
+		s.Require().ErrorIs(<-s.doneCh, context.Canceled)
+	})
+
+	s.doneCh = make(chan error)
+	go func() {
+		s.doneCh <- s.g.Run()
+	}()
 }
 
 func (s *XnsErrSuite) TestWorkflowExecutionError_ClientCanceled() {
-	run, err := s.client.CallSleepAsync(
-		s.ctx,
-		&xnserrv1.CallSleepRequest{
-			Sleep: durationpb.New(2 * time.Hour),
-			StartWorkflowOptions: &xnsv1.StartWorkflowOptions{
-				Id: "TestWorkflowExecutionError_Canceled_Server",
-				RetryPolicy: &xnsv1.RetryPolicy{
-					MaxInterval: durationpb.New(time.Second),
-					MaxAttempts: 3,
-				},
+	run, err := s.client.CallSleepAsync(s.ctx, &xnserrv1.CallSleepRequest{
+		Sleep: durationpb.New(2 * time.Hour),
+		StartWorkflowOptions: &xnsv1.StartWorkflowOptions{
+			Id: "TestWorkflowExecutionError_Canceled_Server",
+			RetryPolicy: &xnsv1.RetryPolicy{
+				MaxInterval: durationpb.New(time.Second),
+				MaxAttempts: 3,
 			},
 		},
-		xnserrv1.NewCallSleepOptions().
-			WithStartWorkflowOptions(client.StartWorkflowOptions{
-				ID: "TestWorkflowExecutionError_Canceled_Client",
-			}),
-	)
+	}, xnserrv1.NewCallSleepOptions().WithStartWorkflowOptions(client.StartWorkflowOptions{
+		ID: "TestWorkflowExecutionError_Canceled_Client",
+	}))
 	s.Require().NoError(err)
 
 	s.Require().Eventually(func() bool {
-		desc, err := s.c.DescribeWorkflowExecution(s.ctx, run.ID(), run.RunID())
+		resp, err := s.sc.DescribeWorkflowExecution(s.ctx, "TestWorkflowExecutionError_Canceled_Server", "")
 		if err != nil {
-			s.T().Logf("DescribeWorkflowExecution failed: %v", err)
 			return false
 		}
+		return resp.GetWorkflowExecutionInfo().GetStatus() == enums.WORKFLOW_EXECUTION_STATUS_RUNNING
+	}, time.Second*5, time.Millisecond*100, "Sleep should be running")
 
-		if desc.WorkflowExecutionInfo.Status == enums.WORKFLOW_EXECUTION_STATUS_RUNNING {
-			s.T().Log("Workflow has started execution")
-			return true
-		}
-
-		return false
-	}, 10*time.Second, 100*time.Millisecond)
-
-	s.T().Log("Cancelling workflow execution in 3 seconds")
-	<-time.After(time.Second * 3)
-	s.T().Log("Cancelling workflow execution")
-	s.Require().NoError(
-		s.client.CancelWorkflow(s.ctx, "TestWorkflowExecutionError_Canceled_Client", ""),
-	)
+	go func() {
+		<-time.After(time.Second * 3)
+		s.Require().NoError(s.client.CancelWorkflow(s.ctx, "TestWorkflowExecutionError_Canceled_Client", ""))
+	}()
 
 	err = run.Get(s.ctx)
-	var cancelledErr *temporal.CanceledError
-	s.Require().ErrorAs(err, &cancelledErr)
+	var canceledErr *temporal.CanceledError
+	s.Require().ErrorAs(err, &canceledErr)
 
-	execs, err := s.sc.WorkflowService().
-		ListClosedWorkflowExecutions(s.ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
-			Namespace: "xnserr-server",
-			Filters: &workflowservice.ListClosedWorkflowExecutionsRequest_ExecutionFilter{
-				ExecutionFilter: &filter.WorkflowExecutionFilter{
-					WorkflowId: "TestWorkflowExecutionError_Canceled_Server",
-				},
+	execs, err := s.sc.WorkflowService().ListClosedWorkflowExecutions(s.ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
+		Namespace: "xnserr-server",
+		Filters: &workflowservice.ListClosedWorkflowExecutionsRequest_ExecutionFilter{
+			ExecutionFilter: &filter.WorkflowExecutionFilter{
+				WorkflowId: "TestWorkflowExecutionError_Canceled_Server",
 			},
-		})
+		},
+	})
 	s.Require().NoError(err)
 	s.Require().Len(execs.GetExecutions(), 1)
 	s.Require().Equal(enums.WORKFLOW_EXECUTION_STATUS_CANCELED, execs.GetExecutions()[0].GetStatus())
@@ -570,39 +588,4 @@ func TestErrorConverter(t *testing.T) {
 	require.Equal("OVERRIDDEN", terr.Type())
 	require.Equal("uh oh", terr.Message())
 	require.False(terr.NonRetryable())
-}
-
-func registerNamespaceIfNotExists(ctx context.Context, t *testing.T, c client.Client) {
-	retention := time.Hour * 24
-
-	// fetch all namespaces
-	var namespaces []*workflowservice.DescribeNamespaceResponse
-	res, err := c.WorkflowService().
-		ListNamespaces(ctx, &workflowservice.ListNamespacesRequest{})
-	require.NoError(t, err)
-	namespaces = append(namespaces, res.Namespaces...)
-
-	for len(res.NextPageToken) > 0 {
-		res, err := c.WorkflowService().
-			ListNamespaces(ctx, &workflowservice.ListNamespacesRequest{
-				NextPageToken: res.NextPageToken,
-			})
-		require.NoError(t, err)
-		namespaces = append(namespaces, res.Namespaces...)
-	}
-
-	// check if we already have xnserr-server and if so return
-	for _, n := range namespaces {
-		if n.NamespaceInfo.Name == serverNamespace {
-			return
-		}
-	}
-
-	// since we don't have this ns let's create it
-	_, err = c.WorkflowService().
-		RegisterNamespace(ctx, &workflowservice.RegisterNamespaceRequest{
-			Namespace:                        serverNamespace,
-			WorkflowExecutionRetentionPeriod: durationpb.New(retention),
-		})
-	require.NoError(t, err)
 }
