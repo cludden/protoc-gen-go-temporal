@@ -1,4 +1,4 @@
-# helloworld
+# updatabletimer
 
 *inspired by [temporalio/samples-go/updatabletimer](https://github.com/temporalio/samples-go/tree/main/updatabletimer)*
 

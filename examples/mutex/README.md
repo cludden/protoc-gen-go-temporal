@@ -1,4 +1,4 @@
-# helloworld
+# mutex
 
 *inspired by [temporalio/samples-go/mutex](https://github.com/temporalio/samples-go/tree/main/mutex)*
 
