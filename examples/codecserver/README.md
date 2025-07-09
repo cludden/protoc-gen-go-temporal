@@ -1,4 +1,4 @@
-# xns
+# codecserver 
 
 An example showcasing use of binary protobuf encoding alongside a codec server in order to support automatic UI decoding
 
