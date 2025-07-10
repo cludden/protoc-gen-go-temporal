@@ -5,6 +5,7 @@ modules:
   - path: examples/mutex/proto
   - path: examples/schedule/proto
   - path: examples/searchattributes/proto
+  - path: examples/shoppingcart/proto
   - path: examples/updatabletimer/proto
   - path: examples/xns/proto
   - path: proto
