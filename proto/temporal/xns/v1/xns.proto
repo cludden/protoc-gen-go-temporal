@@ -6,6 +6,7 @@ import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
+import "temporal/api/enums/v1/workflow.proto";
 import "temporal/v1/temporal.proto";
 
 option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1";
@@ -80,6 +81,7 @@ message StartWorkflowOptions {
   google.protobuf.Struct search_attirbutes = 10;
   bool enable_eager_start = 11;
   google.protobuf.Duration start_delay = 12;
+  .temporal.api.enums.v1.WorkflowIdConflictPolicy workflow_id_conflict_policy = 13;
 }
 
 // UpdateRequest can be used to configure xns update activities

@@ -23,6 +23,7 @@ modules:
 deps:
   - buf.build/alta/protopatch
   - buf.build/cludden/protoc-gen-go-temporal
+  - buf.build/temporalio/api
 lint:
   use:
     - BASIC

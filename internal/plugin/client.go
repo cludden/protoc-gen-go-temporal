@@ -1,12 +1,14 @@
 package plugin
 
 import (
+	"cmp"
 	"fmt"
 	"strconv"
 
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	j "github.com/dave/jennifer/jen"
 	"github.com/hako/durafmt"
+	"go.temporal.io/api/enums/v1"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -740,6 +742,7 @@ func (m *Manifest) genClientImplUpdateWithStartMethodAsync(f *j.File, workflow, 
 
 func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update protoreflect.FullName) {
 	method := m.methods[workflow]
+	opts := m.workflows[workflow]
 	hasWorkflowInput := !isEmpty(method.Input)
 
 	handler := m.methods[update]
@@ -811,6 +814,28 @@ func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update p
 				j.Return(j.Id("options"), j.Err()),
 			)
 
+			// set default WorkflowIDConflictPolicy if not specified
+			defaultWorkflowIDConflictPolicy := enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL
+			for _, u := range opts.GetUpdate() {
+				if getFullyQualifiedRef(workflow, u.GetRef()) == update {
+					defaultWorkflowIDConflictPolicy = cmp.Or(u.GetWorkflowIdConflictPolicy(), defaultWorkflowIDConflictPolicy)
+				}
+			}
+			if defaultWorkflowIDConflictPolicy != enums.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+				g.If(j.Id("swo").Dot("WorkflowIDConflictPolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).BlockFunc(func(g *j.Group) {
+					var enumv string
+					switch defaultWorkflowIDConflictPolicy {
+					case enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL:
+						enumv = "WORKFLOW_ID_CONFLICT_POLICY_FAIL"
+					case enums.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING:
+						enumv = "WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING"
+					case enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING:
+						enumv = "WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING"
+					}
+					g.Id("swo").Dot("WorkflowIDConflictPolicy").Op("=").Qual(enumsPkg, enumv)
+				})
+			}
+
 			// initialize start workflow operation
 			g.Id("options").Dot("StartWorkflowOperation").Op("=").Id("op").Call(j.Id("swo"))
 
@@ -827,6 +852,9 @@ func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update p
 					g.Id("update")
 				}
 			})
+			g.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Id("options"), j.Err()),
+			)
 			g.Id("options").Dot("UpdateOptions").Op("=").Op("*").Id("uo")
 
 			g.ReturnFunc(func(g *j.Group) {
@@ -2231,6 +2259,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 		values.Id("searchAttributes").Map(j.String()).Any()
 		values.Id("taskQueue").Op("*").String()
 		values.Id("taskTimeout").Op("*").Qual("time", "Duration")
+		values.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		if child {
 			values.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
 			values.Id("waitForCancellation").Op("*").Bool()
@@ -2531,6 +2560,21 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 				}
 			}
 
+			if p := opts.GetWorkflowIdConflictPolicy(); p != enums.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+				fn.If(j.Id("opts").Dot("workflowIdConflictPolicy").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).BlockFunc(func(bl *j.Group) {
+					var policy string
+					switch p {
+					case enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL:
+						policy = "WORKFLOW_ID_CONFLICT_POLICY_FAIL"
+					case enums.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING:
+						policy = "WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING"
+					case enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING:
+						policy = "WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING"
+					}
+					bl.Id("opts").Dot("WorkflowIdConflictPolicy").Op("=").Qual(enumsPkg, policy)
+				})
+			}
+
 			fn.Return(j.Id("opts"), j.Nil())
 		})
 
@@ -2663,4 +2707,15 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 				j.Return(j.Id("o")),
 			)
 	}
+
+	f.Comment("WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithWorkflowIdConflictPolicy").
+		Params(j.Id("policy").Qual(enumsPkg, "WorkflowIdConflictPolicy")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("workflowIdConflictPolicy").Op("=").Id("policy"),
+			j.Return(j.Id("o")),
+		)
 }

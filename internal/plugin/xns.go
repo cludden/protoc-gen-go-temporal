@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"cmp"
 	"fmt"
 	"strconv"
 	"time"
@@ -1415,6 +1416,20 @@ func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 						),
 					),
 				)
+
+				getActivity := m.Names().xnsWorkflowGetFunction(workflow)
+				getActivityName := fmt.Sprintf("%s.%s", string(m.Service.Desc.FullName()), getActivity)
+				fn.If(
+					j.Id("name").Op(":=").Id(m.toLowerCamel("%sOptions", m.GoName)).Dot("filterActivity").Call(j.Lit(getActivityName)),
+					j.Id("name").Op("!=").Lit(""),
+				).Block(
+					j.Id("r").Dot("RegisterActivityWithOptions").Call(
+						j.Id("a").Dot(getActivity),
+						j.Qual(activityPkg, "RegisterOptions").Values(
+							j.Id("Name").Op(":").Id("name"),
+						),
+					),
+				)
 				for _, signal := range m.workflows[workflow].GetSignal() {
 					if !signal.GetStart() {
 						continue
@@ -2643,7 +2658,7 @@ func (m *Manifest) genXNSUpdateFunctionAsync(f *j.File, update protoreflect.Full
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				args.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sUpdateOptions", update))
 		}).
@@ -2683,17 +2698,25 @@ func (m *Manifest) genXNSUpdateFunctionAsync(f *j.File, update protoreflect.Full
 			// build update activity options and request
 			g.List(j.Id("ctx"), j.Id("req"), j.Err()).Op(":=").Id("opt").Dot("Build").CallFunc(func(g *j.Group) {
 				g.Id("ctx")
+				g.Id("workflowID")
+				g.Id("runID")
 				if hasInput {
-					g.Id("req")
+					g.Id("input")
 				}
 			})
+			g.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(
+					j.Nil(),
+					j.Err(),
+				),
+			)
 
 			// return run with execute activity future
 			g.List(j.Id("ctx"), j.Id("cancel")).Op(":=").Qual(workflowPkg, "WithCancel").Call(j.Id("ctx"))
 			g.Return(
 				j.Op("&").Id(m.toLowerCamel("%sHandle", update)).Custom(multiLineValues,
 					j.Id("cancel").Op(":").Id("cancel"),
-					j.Id("id").Op(":").Id("uo").Dot("UpdateID"),
+					j.Id("id").Op(":").Id("req").Dot("GetUpdateWorkflowOptions").Call().Dot("GetUpdateId").Call(),
 					j.Id("future").Op(":").Qual(workflowPkg, "ExecuteActivity").Call(
 						j.Id("ctx"),
 						j.Id("activityName"),
@@ -2733,11 +2756,13 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 	f.Comment("Build initializes the update options")
 	f.Func().
 		ParamsFunc(func(g *j.Group) {
-			g.Id("opts").Op("*").Id(typeName)
+			g.Id("opt").Op("*").Id(typeName)
 		}).
 		Id("Build").
 		ParamsFunc(func(g *j.Group) {
 			g.Id("ctx").Qual(workflowPkg, "Context")
+			g.Id("workflowID").String()
+			g.Id("runID").String()
 			if hasInput {
 				g.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
@@ -2827,9 +2852,9 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 
 			g.Comment("configure heartbeat interval")
 			g.IfFunc(func(g *j.Group) {
-				g.Id("opts").Dot("HeartbeatInterval").Op("==").Lit(0)
+				g.Id("opt").Dot("HeartbeatInterval").Op("==").Lit(0)
 			}).BlockFunc(func(g *j.Group) {
-				g.Id("opts").Dot("HeartbeatInterval").Op("=").Id(strconv.FormatInt(heartbeatInterval.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(heartbeatInterval.AsDuration()).String())
+				g.Id("opt").Dot("HeartbeatInterval").Op("=").Id(strconv.FormatInt(heartbeatInterval.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(heartbeatInterval.AsDuration()).String())
 			})
 			g.Line()
 
@@ -2858,7 +2883,7 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 							j.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
 								args.Qual(string(m.File.GoImportPath), m.toCamel("%sIDExpression", update))
 								if hasInput {
-									args.Id("req").Dot("ProtoReflect").Call()
+									args.Id("input").Dot("ProtoReflect").Call()
 								} else {
 									args.Nil()
 								}
@@ -2875,7 +2900,7 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 						)).Dot("Get").Call(j.Op("&").Id("uo").Dot("UpdateID")),
 						j.Err().Op("!=").Nil(),
 					).Block(
-						j.Return(j.Nil(), j.Err()),
+						j.Return(j.Nil(), j.Nil(), j.Err()),
 					),
 				)
 			}
@@ -2895,11 +2920,12 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 					)).Dot("Get").Call(j.Op("&").Id("uo").Dot("UpdateID")),
 					j.Err().Op("!=").Nil(),
 				).Block(
-					j.Return(j.Nil(), j.Err()),
+					j.Return(j.Nil(), j.Nil(), j.Err()),
 				),
 			)
 			g.If(j.Id("uo").Dot("UpdateID").Op("==").Lit("")).Block(
 				j.Return(
+					j.Nil(),
 					j.Nil(),
 					j.Qual(temporalPkg, "NewNonRetryableApplicationError").Call(
 						j.Lit("update id is required"),
@@ -2913,7 +2939,7 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 			// marshal update options
 			g.List(j.Id("uopb"), j.Err()).Op(":=").Qual(xnsPkg, "MarshalUpdateWorkflowOptions").Call(j.Id("uo"))
 			g.If(j.Err().Op("!=").Nil()).Block(
-				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error marshalling update workflow options: %w"), j.Err())),
+				j.Return(j.Nil(), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error marshalling update workflow options: %w"), j.Err())),
 			)
 			g.Line()
 
@@ -2921,7 +2947,7 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 			if hasInput {
 				g.List(j.Id("inpb"), j.Err()).Op(":=").Qual(anypbPkg, "New").Call(j.Id("input"))
 				g.If(j.Err().Op("!=").Nil()).Block(
-					j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error marshalling update request: %w"), j.Err())),
+					j.Return(j.Nil(), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error marshalling update request: %w"), j.Err())),
 				)
 				g.Line()
 			}
@@ -2935,6 +2961,7 @@ func (m *Manifest) genXNSUpdateOptions(f *j.File, update protoreflect.FullName) 
 					}
 					d[j.Id("UpdateWorkflowOptions")] = j.Id("uopb")
 				}))
+				g.Nil()
 			})
 		})
 
@@ -3340,7 +3367,7 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 	commentf(f, methodSet(method, handler), "%s are used to configure a(n) %s update for a(n) %s workflow", m.Names().clientUpdateWithStartOptions(workflow, update), m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
 	f.Type().Id(options).StructFunc(func(g *j.Group) {
 		g.Id("activityOptions").Op("*").Qual(workflowPkg, "ActivityOptions")
-		g.Id("heartbeatInterval").Op("*").Qual("time", "Duration")
+		g.Id("heartbeatInterval").Qual("time", "Duration")
 		g.Id("updateOptions").Op("*").Id(updateOptions)
 		g.Id("workflowOptions").Op("*").Id(workflowOptions)
 	})
@@ -3405,10 +3432,13 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			}).BlockFunc(func(g *j.Group) {
 				g.Id("uo").Op("=").Id(updateOptionsCtor).Call()
 			})
+			g.Line()
 
 			// build update options
 			g.List(j.Id("ctx"), j.Id("ureq"), j.Err()).Op(":=").Id("uo").Dot("Build").CallFunc(func(g *j.Group) {
 				g.Id("ctx")
+				g.Id("swreq").Dot("GetStartWorkflowOptions").Call().Dot("GetId").Call()
+				g.Lit("")
 				if hasUpdateInput {
 					g.Id("update")
 				}
@@ -3419,12 +3449,13 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			g.Line()
 
 			// initialize activity options
-			g.Id("ao").Op(":=").Id("o").Dot("activityOptions")
+			g.Var().Id("ao").Qual(workflowPkg, "ActivityOptions")
 			g.IfFunc(func(g *j.Group) {
-				g.Id("ao").Op("==").Nil()
+				g.Id("o").Dot("activityOptions").Op("!=").Nil()
 			}).BlockFunc(func(g *j.Group) {
-				g.Id("ao").Op("=").Op("&").Qual(workflowPkg, "ActivityOptions").Values()
+				g.Id("ao").Op("=").Op("*").Id("o").Dot("activityOptions")
 			})
+			g.Line()
 
 			heartbeatInterval, heartbeatTimeout := getHeartbeatIntervalAndTimeout(xnsActivityOpts)
 
@@ -3501,9 +3532,9 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 
 			g.Comment("configure heartbeat interval")
 			g.IfFunc(func(g *j.Group) {
-				g.Id("opts").Dot("HeartbeatInterval").Op("==").Lit(0)
+				g.Id("o").Dot("heartbeatInterval").Op("==").Lit(0)
 			}).BlockFunc(func(g *j.Group) {
-				g.Id("opts").Dot("HeartbeatInterval").Op("=").
+				g.Id("o").Dot("heartbeatInterval").Op("=").
 					Id(strconv.FormatInt(heartbeatInterval.AsDuration().Nanoseconds(), 10)).
 					Comment(durafmt.Parse(heartbeatInterval.AsDuration()).String())
 			})
@@ -3516,10 +3547,19 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			g.Line()
 
 			// initialize activity input
-			g.Id("req").Op(":=").Op("&").Qual(xnsv1Pkg, "UpdateWithStartRequest").Values()
 			g.ReturnFunc(func(g *j.Group) {
 				g.Id("ctx")
-				g.Id("req")
+				g.Op("&").Qual(xnsv1Pkg, "UpdateWithStartRequest").Values(j.DictFunc(func(d j.Dict) {
+					d[j.Id("HeartbeatInterval")] = j.Qual(durationpbPkg, "New").Call(j.Id("o").Dot("heartbeatInterval"))
+					if hasWorkflowInput {
+						d[j.Id("Input")] = j.Id("swreq").Dot("GetRequest").Call()
+					}
+					d[j.Id("StartWorkflowOptions")] = j.Id("swreq").Dot("GetStartWorkflowOptions").Call()
+					if hasUpdateInput {
+						d[j.Id("Update")] = j.Id("ureq").Dot("GetRequest").Call()
+					}
+					d[j.Id("UpdateWorkflowOptions")] = j.Id("ureq").Dot("GetUpdateWorkflowOptions").Call()
+				}))
 				g.Nil()
 			})
 		})
@@ -3554,7 +3594,7 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			g.Op("*").Id(options)
 		}).
 		BlockFunc(func(g *j.Group) {
-			g.Id("o").Dot("heartbeatInterval").Op("=").Op("&").Id("d")
+			g.Id("o").Dot("heartbeatInterval").Op("=").Id("d")
 			g.Return(j.Id("o"))
 		})
 
@@ -3773,6 +3813,7 @@ func (m *Manifest) genXNSWorkflowGetFunctionAsync(f *j.File, workflow protorefle
 
 	async := m.Names().xnsWorkflowGetFunctionAsync(workflow)
 	getActivity := m.Names().xnsWorkflowGetFunction(workflow)
+	getActivityName := fmt.Sprintf("%s.%s", string(m.Service.Desc.FullName()), getActivity)
 	runIface := m.Names().xnsWorkflowRunIface(workflow)
 	runImpl := m.Names().xnsWorkflowRunImpl(workflow)
 	options := m.Names().xnsOptionsVar()
@@ -3790,7 +3831,7 @@ func (m *Manifest) genXNSWorkflowGetFunctionAsync(f *j.File, workflow protorefle
 		}).
 		BlockFunc(func(g *j.Group) {
 			g.Id("activityName").Op(":=").Id(options).Dot("filterActivity").Call(
-				j.Lit(fmt.Sprintf("%s.%s", string(m.Service.Desc.FullName()), getActivity)),
+				j.Lit(getActivityName),
 			)
 			g.If(j.Id("activityName").Op("==").Lit("")).BlockFunc(func(g *j.Group) {
 				g.ListFunc(func(g *j.Group) {
@@ -3841,6 +3882,8 @@ func (m *Manifest) genXNSWorkflowGetFunctionAsync(f *j.File, workflow protorefle
 func (m *Manifest) genXNSWorkflowGetOptions(f *j.File, workflow protoreflect.FullName) {
 	options := m.Names().xnsWorkflowGetOptions(workflow)
 	optionsCtor := m.Names().xnsWorkflowGetOptionsCtor(workflow)
+	opts := m.workflows[workflow]
+	xnsOpts := opts.GetXns()
 
 	commentf(f, methodSet(m.methods[workflow]), "%s are used to configure a(n) %s workflow execution getter activity", options, m.fqnForWorkflow(workflow))
 	f.Type().Id(options).StructFunc(func(g *j.Group) {
@@ -3863,26 +3906,123 @@ func (m *Manifest) genXNSWorkflowGetOptions(f *j.File, workflow protoreflect.Ful
 	f.Comment("Build initializes the activity context and input")
 	f.Func().
 		ParamsFunc(func(g *j.Group) {
-			g.Id("o").Op("*").Id(options)
+			g.Id("opt").Op("*").Id(options)
 		}).
 		Id("Build").
 		ParamsFunc(func(g *j.Group) {
 			g.Id("ctx").Qual(workflowPkg, "Context")
+			g.Id("workflowID").String()
+			g.Id("runID").String()
 		}).
 		ParamsFunc(func(g *j.Group) {
-			g.Id("ao").Qual(workflowPkg, "ActivityOptions")
-			g.Id("input").Op("*").Qual(xnsv1Pkg, "GetWorkflowRequest")
+			g.Qual(workflowPkg, "Context")
+			g.Op("*").Qual(xnsv1Pkg, "GetWorkflowRequest")
 			g.Error()
 		}).
 		BlockFunc(func(g *j.Group) {
-			// initialize activity options
-			g.IfFunc(func(g *j.Group) {
-				g.Id("o").Dot("activityOptions").Op("!=").Nil()
-			}).BlockFunc(func(g *j.Group) {
-				g.Id("ao").Op("=").Op("*").Id("o").Dot("activityOptions")
+			defaultTimeout := cmp.Or(xnsOpts.GetScheduleToCloseTimeout().AsDuration(), xnsOpts.GetStartToCloseTimeout().AsDuration())
+			if defaultTimeout == 0 {
+				defaultTimeout = time.Hour * 24
+			}
+
+			heartbeatInterval, heartbeatTimeout := getHeartbeatIntervalAndTimeout(xnsOpts)
+
+			// set default heartbeat interval if unset
+			g.If(j.Id("opt").Dot("heartbeatInterval").Op("==").Lit(0)).BlockFunc(func(bl *j.Group) {
+				bl.Id("opt").Dot("heartbeatInterval").Op("=").Id(strconv.FormatInt(heartbeatInterval.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(heartbeatInterval.AsDuration()).String())
+			})
+			g.Line()
+
+			g.Comment("configure activity options")
+			g.Var().Id("ao").Qual(workflowPkg, "ActivityOptions")
+			// use user-specified activity options if non-nil
+			g.If(j.Id("opt").Dot("activityOptions").Op("!=").Nil()).Block(
+				j.Id("ao").Op("=").Op("*").Id("opt").Dot("activityOptions"),
+			).Else().Block(
+				j.Id("ao").Op("=").Qual(workflowPkg, "ActivityOptions").Values(),
+			)
+
+			// set heartbeat timeout if unset
+			g.If(j.Id("ao").Dot("HeartbeatTimeout").Op("==").Lit(0)).BlockFunc(func(bl *j.Group) {
+				bl.Id("ao").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(heartbeatTimeout.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(heartbeatTimeout.AsDuration()).String())
 			})
 
-			//
+			g.Comment("WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled")
+			g.Id("ao").Dot("WaitForCancellation").Op("=").Lit(true)
+			g.Line()
+
+			// set retry policy if defined
+			if v := xnsOpts.GetRetryPolicy(); v != nil {
+				g.If(j.Id("ao").Dot("RetryPolicy").Op("==").Nil()).Block(
+					j.Id("ao").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(fields *j.Group) {
+						if d := v.GetBackoffCoefficient(); d != 0 {
+							fields.Id("BackoffCoefficient").Op(":").Lit(d)
+						}
+						if d := v.GetInitialInterval(); d.IsValid() {
+							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+						}
+						if d := v.GetMaxAttempts(); d != 0 {
+							fields.Id("MaximumAttempts").Op(":").Lit(d)
+						}
+						if d := v.GetMaxInterval(); d.IsValid() {
+							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+						}
+						if d := v.GetNonRetryableErrorTypes(); len(d) > 0 {
+							fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *j.Group) {
+								for _, errT := range d {
+									vals.Lit(errT)
+								}
+							})
+						}
+					}),
+				)
+			}
+			var hasDefaultTimeout bool
+			// set schedule-to-close if schema defined and unset
+			if d := xnsOpts.GetScheduleToCloseTimeout(); d.IsValid() {
+				hasDefaultTimeout = true
+				g.If(j.Id("ao").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
+					j.Id("ao").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(d.AsDuration()).String()),
+				)
+			}
+			if d := xnsOpts.GetScheduleToStartTimeout(); d.IsValid() {
+				g.If(j.Id("ao").Dot("ScheduleToStartTimeout").Op("==").Lit(0)).Block(
+					j.Id("ao").Dot("ScheduleToStartTimeout").Op("=").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(d.AsDuration()).String()),
+				)
+			}
+			// set start-to-close if schema defined and unset
+			if d := xnsOpts.GetStartToCloseTimeout(); d.IsValid() {
+				hasDefaultTimeout = true
+				g.If(j.Id("ao").Dot("StartToCloseTimeout").Op("==").Lit(0)).Block(
+					j.Id("ao").Dot("StartToCloseTimeout").Op("=").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10)).Comment(durafmt.Parse(d.AsDuration()).String()),
+				)
+			}
+			if !hasDefaultTimeout {
+				// ensure atleast one of start-to-close or schedule-to-close is set
+				g.If(j.Id("ao").Dot("StartToCloseTimeout").Op("==").Lit(0).Op("&&").Id("ao").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
+					j.Id("ao").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(defaultTimeout.Nanoseconds(), 10)).Comment(durafmt.Parse(defaultTimeout).String()),
+				)
+			}
+			// set task queue if unset
+			if v := xnsOpts.GetTaskQueue(); v != "" {
+				g.If(j.Id("ao").Dot("TaskQueue").Op("==").Lit("")).Block(
+					j.Id("ao").Dot("TaskQueue").Op("=").Lit(v),
+				)
+			}
+			g.Id("ctx").Op("=").Qual(workflowPkg, "WithActivityOptions").Call(j.Id("ctx"), j.Id("ao"))
+			g.Line()
+
+			g.ReturnFunc(func(g *j.Group) {
+				g.Id("ctx")
+				g.Op("&").Qual(xnsv1Pkg, "GetWorkflowRequest").Values(j.Dict{
+					j.Id("WorkflowId"): j.Id("workflowID"),
+					j.Id("RunId"):      j.Id("runID"),
+					j.Id("HeartbeatInterval"): j.Qual(durationpbPkg, "New").CallFunc(func(g *j.Group) {
+						g.Id("opt").Dot("heartbeatInterval")
+					}),
+				})
+				g.Nil()
+			})
 		})
 
 	f.Comment("WithActivityOptions can be used to customize the activity options")
@@ -4876,11 +5016,14 @@ func initializeXNSOptions(fn *j.Group, opts *temporalv1.XNSActivityOptions, defa
 	fn.Line()
 
 	fn.Comment("configure activity options")
-	fn.Id("ao").Op(":=").Qual(workflowPkg, "GetActivityOptions").Call(j.Id("ctx"))
+	fn.Var().Id("ao").Qual(workflowPkg, "ActivityOptions")
 	// use user-specified activity options if non-nil
 	fn.If(j.Id("opt").Dot("ActivityOptions").Op("!=").Nil()).Block(
 		j.Id("ao").Op("=").Op("*").Id("opt").Dot("ActivityOptions"),
+	).Else().Block(
+		j.Id("ao").Op("=").Qual(workflowPkg, "ActivityOptions").Values(),
 	)
+
 	// set heartbeat timeout if unset
 	fn.If(j.Id("ao").Dot("HeartbeatTimeout").Op("==").Lit(0)).BlockFunc(func(bl *j.Group) {
 		if d := opts.GetHeartbeatTimeout(); d.IsValid() {
@@ -4956,7 +5099,7 @@ func initializeXNSOptions(fn *j.Group, opts *temporalv1.XNSActivityOptions, defa
 	fn.Line()
 }
 
-func getHeartbeatIntervalAndTimeout(opts *temporalv1.XNSActivityOptions) (*durationpb.Duration, *durationpb.Duration) {
+func getHeartbeatIntervalAndTimeout(opts *temporalv1.XNSActivityOptions) (interval *durationpb.Duration, timeout *durationpb.Duration) {
 	i, t := opts.GetHeartbeatInterval(), opts.GetHeartbeatTimeout()
 	switch {
 	case i.IsValid() && t.IsValid():
