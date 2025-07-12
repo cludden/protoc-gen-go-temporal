@@ -1,6 +1,8 @@
 version: v2
 managed:
   enabled: true
+  disable:
+    - module: buf.build/temporalio/api
   override:
     - file_option: go_package_prefix
       value: github.com/cludden/protoc-gen-go-temporal/gen
@@ -9,7 +11,7 @@ plugins:
     out: gen
     opt:
       - paths=source_relative
-  - local: .omni/bin/protoc-gen-go_temporal
+  - local: protoc-gen-go_temporal
     out: gen
     opt:
       - cli-categories=true

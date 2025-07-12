@@ -308,15 +308,16 @@ func (c *exampleClient) ReleaseLock(ctx context.Context, workflowID string, runI
 
 // MutexOptions provides configuration for a example.mutex.v1.Example.Mutex workflow operation
 type MutexOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewMutexOptions initializes a new MutexOptions value
@@ -423,6 +424,12 @@ func (o *MutexOptions) WithTaskQueue(tq string) *MutexOptions {
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *MutexOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *MutexOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // MutexRun describes a(n) example.mutex.v1.Example.Mutex workflow run
 type MutexRun interface {
 	// ID returns the workflow ID
@@ -498,15 +505,16 @@ func (r *mutexRun) ReleaseLock(ctx context.Context, req *ReleaseLockInput) error
 
 // SampleWorkflowWithMutexOptions provides configuration for a example.mutex.v1.Example.SampleWorkflowWithMutex workflow operation
 type SampleWorkflowWithMutexOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSampleWorkflowWithMutexOptions initializes a new SampleWorkflowWithMutexOptions value
@@ -603,6 +611,12 @@ func (o *SampleWorkflowWithMutexOptions) WithTaskTimeout(d time.Duration) *Sampl
 // WithTaskQueue sets the TaskQueue value
 func (o *SampleWorkflowWithMutexOptions) WithTaskQueue(tq string) *SampleWorkflowWithMutexOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SampleWorkflowWithMutexOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SampleWorkflowWithMutexOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -800,17 +814,18 @@ func MutexChildAsync(ctx workflow.Context, req *MutexInput, options ...*MutexChi
 
 // MutexChildOptions provides configuration for a child example.mutex.v1.Example.Mutex workflow operation
 type MutexChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewMutexChildOptions initializes a new MutexChildOptions value
@@ -951,6 +966,12 @@ func (o *MutexChildOptions) WithWaitForCancellation(wait bool) *MutexChildOption
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *MutexChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *MutexChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // MutexChildRun describes a child Mutex workflow run
 type MutexChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1080,17 +1101,18 @@ func SampleWorkflowWithMutexChildAsync(ctx workflow.Context, req *SampleWorkflow
 
 // SampleWorkflowWithMutexChildOptions provides configuration for a child example.mutex.v1.Example.SampleWorkflowWithMutex workflow operation
 type SampleWorkflowWithMutexChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSampleWorkflowWithMutexChildOptions initializes a new SampleWorkflowWithMutexChildOptions value
@@ -1221,6 +1243,12 @@ func (o *SampleWorkflowWithMutexChildOptions) WithTaskQueue(tq string) *SampleWo
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SampleWorkflowWithMutexChildOptions) WithWaitForCancellation(wait bool) *SampleWorkflowWithMutexChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SampleWorkflowWithMutexChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SampleWorkflowWithMutexChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -2028,9 +2056,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "workflow-id",
@@ -2050,7 +2079,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToAcquireLockInput(cmd)
+				req, err := UnmarshalCliFlagsToAcquireLockInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2081,9 +2110,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "lease-id",
@@ -2098,7 +2128,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToLockAcquiredInput(cmd)
+				req, err := UnmarshalCliFlagsToLockAcquiredInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2129,9 +2159,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "lease-id",
@@ -2146,7 +2177,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToReleaseLockInput(cmd)
+				req, err := UnmarshalCliFlagsToReleaseLockInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2178,9 +2209,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "mutex",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "resource-id",
@@ -2195,7 +2227,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToMutexInput(cmd)
+				req, err := UnmarshalCliFlagsToMutexInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2235,14 +2267,21 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "resource-id",
 					Usage:    "set the value of the operation's \"ResourceId\" parameter",
 					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 				&v2.StringFlag{
 					Name:     "workflow-id",
@@ -2262,11 +2301,11 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToMutexInput(cmd)
+				req, err := UnmarshalCliFlagsToMutexInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToAcquireLockInput(cmd)
+				signal, err := UnmarshalCliFlagsToAcquireLockInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
@@ -2308,9 +2347,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "mutex",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "resource-id",
@@ -2330,7 +2370,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd)
+				req, err := UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2394,23 +2434,20 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToAcquireLockInput unmarshals a AcquireLockInput from command line flags
 func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*AcquireLockInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result AcquireLockInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("workflow-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -2425,23 +2462,20 @@ func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToLockAcquiredInput unmarshals a LockAcquiredInput from command line flags
 func UnmarshalCliFlagsToLockAcquiredInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*LockAcquiredInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result LockAcquiredInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("lease-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -2452,23 +2486,20 @@ func UnmarshalCliFlagsToLockAcquiredInput(cmd *v2.Context, options ...helpers.Un
 
 // UnmarshalCliFlagsToReleaseLockInput unmarshals a ReleaseLockInput from command line flags
 func UnmarshalCliFlagsToReleaseLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ReleaseLockInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ReleaseLockInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("lease-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -2479,23 +2510,20 @@ func UnmarshalCliFlagsToReleaseLockInput(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToMutexInput unmarshals a MutexInput from command line flags
 func UnmarshalCliFlagsToMutexInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*MutexInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result MutexInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("resource-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -2506,23 +2534,20 @@ func UnmarshalCliFlagsToMutexInput(cmd *v2.Context, options ...helpers.Unmarshal
 
 // UnmarshalCliFlagsToSampleWorkflowWithMutexInput unmarshals a SampleWorkflowWithMutexInput from command line flags
 func UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SampleWorkflowWithMutexInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SampleWorkflowWithMutexInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("resource-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

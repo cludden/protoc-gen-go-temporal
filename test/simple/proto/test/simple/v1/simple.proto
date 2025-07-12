@@ -34,7 +34,10 @@ service Simple {
         ref: 'SomeSignal1'
         start: true
       }
-      update: {ref: 'SomeUpdate1'}
+      update: {
+        ref: 'SomeUpdate1'
+        start: true
+      }
       patches: [
         {
           version: PV_64

@@ -91,11 +91,17 @@ func RegisterExampleActivities(r worker.ActivityRegistry, c v1.ExampleClient, op
 	if name := exampleOptions.filterActivity(v1.MutexWorkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.Mutex, activity.RegisterOptions{Name: name})
 	}
+	if name := exampleOptions.filterActivity("example.mutex.v1.Example.GetMutex"); name != "" {
+		r.RegisterActivityWithOptions(a.GetMutex, activity.RegisterOptions{Name: name})
+	}
 	if name := exampleOptions.filterActivity("example.mutex.v1.Example.MutexWithAcquireLock"); name != "" {
 		r.RegisterActivityWithOptions(a.MutexWithAcquireLock, activity.RegisterOptions{Name: name})
 	}
 	if name := exampleOptions.filterActivity(v1.SampleWorkflowWithMutexWorkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.SampleWorkflowWithMutex, activity.RegisterOptions{Name: name})
+	}
+	if name := exampleOptions.filterActivity("example.mutex.v1.Example.GetSampleWorkflowWithMutex"); name != "" {
+		r.RegisterActivityWithOptions(a.GetSampleWorkflowWithMutex, activity.RegisterOptions{Name: name})
 	}
 	if name := exampleOptions.filterActivity(v1.AcquireLockSignalName); name != "" {
 		r.RegisterActivityWithOptions(a.AcquireLock, activity.RegisterOptions{Name: name})
@@ -113,6 +119,7 @@ type MutexWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
 	ParentClosePolicy    enumsv1.ParentClosePolicy
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
@@ -120,6 +127,107 @@ type MutexWorkflowOptions struct {
 // NewMutexWorkflowOptions initializes a new MutexWorkflowOptions value
 func NewMutexWorkflowOptions() *MutexWorkflowOptions {
 	return &MutexWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *MutexWorkflowOptions) Build(ctx workflow.Context, input *v1.MutexInput) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
+	}
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := expression.EvalExpression(v1.MutexIdexpression, input.ProtoReflect())
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.mutex.v1.Example.Mutex\" workflow", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
+	}
+
+	// marshal workflow request protobuf message
+	inputpb, err := anypb.New(input)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
+	var parentClosePolicy temporalv1.ParentClosePolicy
+	switch opts.ParentClosePolicy {
+	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
+	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
+	}
+
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.RetryPolicy == nil {
+		ao.RetryPolicy = &temporal.RetryPolicy{
+			BackoffCoefficient: 2.0,
+			InitialInterval:    1000000000,
+			MaximumAttempts:    int32(5),
+			MaximumInterval:    60000000000,
+		}
+	}
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
+	}, nil
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -137,6 +245,12 @@ func (opts *MutexWorkflowOptions) WithDetached(d bool) *MutexWorkflowOptions {
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *MutexWorkflowOptions) WithHeartbeatInterval(d time.Duration) *MutexWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *MutexWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *MutexWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -182,6 +296,7 @@ type MutexRun interface {
 // mutexRun provides a(n) MutexRun implementation
 type mutexRun struct {
 	cancel func()
+	ctx    workflow.Context
 	future workflow.Future
 	id     string
 }
@@ -200,11 +315,21 @@ func (r *mutexRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *mutexRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetMutexAsync(r.ctx, r.id, "").(*mutexRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *mutexRun) Get(ctx workflow.Context) error {
+	if r.future == nil {
+		rr := GetMutexAsync(r.ctx, r.id, "").(*mutexRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	if err := r.future.Get(ctx, nil); err != nil {
 		return err
 	}
@@ -246,7 +371,7 @@ func Mutex(ctx workflow.Context, req *v1.MutexInput, opts ...*MutexWorkflowOptio
 }
 
 // MutexAsync executes a(n) example.mutex.v1.Example.Mutex workflow and returns a handle to the underlying activity
-func MutexAsync(ctx workflow.Context, req *v1.MutexInput, opts ...*MutexWorkflowOptions) (MutexRun, error) {
+func MutexAsync(ctx workflow.Context, input *v1.MutexInput, opts ...*MutexWorkflowOptions) (MutexRun, error) {
 	activityName := exampleOptions.filterActivity(v1.MutexWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -256,21 +381,83 @@ func MutexAsync(ctx workflow.Context, req *v1.MutexInput, opts ...*MutexWorkflow
 		)
 	}
 
-	opt := &MutexWorkflowOptions{}
+	var opt *MutexWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewMutexWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &mutexRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetMutex returns a(n) example.mutex.v1.Example.Mutex workflow execution
+func GetMutex(ctx workflow.Context, workflowID string, runID string) (err error) {
+	err = GetMutexAsync(ctx, workflowID, runID).Get(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetMutexAsync returns a handle to a(n) example.mutex.v1.Example.Mutex workflow execution
+func GetMutexAsync(ctx workflow.Context, workflowID string, runID string) MutexRun {
+	activityName := exampleOptions.filterActivity("example.mutex.v1.Example.GetMutex")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &mutexRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &mutexRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.GetWorkflowRequest{
+			HeartbeatInterval: durationpb.New(time.Second * 30),
+			RunId:             runID,
+			WorkflowId:        workflowID,
+		}),
+		id: workflowID,
+	}
+}
+
+// GetMutexOptions are used to configure a(n) example.mutex.v1.Example.Mutex workflow execution getter activity
+type GetMutexOptions struct {
+	activityOptions   *workflow.ActivityOptions
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
+}
+
+// NewGetMutexOptions initializes a new GetMutexOptions value
+func NewGetMutexOptions() *GetMutexOptions {
+	return &GetMutexOptions{}
+}
+
+// Build initializes the activity context and input
+func (opt *GetMutexOptions) Build(ctx workflow.Context, workflowID string, runID string) (workflow.Context, *xnsv1.GetWorkflowRequest, error) {
+	if opt.heartbeatInterval == 0 {
+		opt.heartbeatInterval = 30000000000 // 30 seconds
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
+	var ao workflow.ActivityOptions
+	if opt.activityOptions != nil {
+		ao = *opt.activityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
 	}
 	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
 	ao.WaitForCancellation = true
@@ -280,24 +467,68 @@ func MutexAsync(ctx workflow.Context, req *v1.MutexInput, opts ...*MutexWorkflow
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
+	return ctx, &xnsv1.GetWorkflowRequest{
+		HeartbeatInterval: durationpb.New(opt.heartbeatInterval),
+		RunId:             runID,
+		WorkflowId:        workflowID,
+	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (o *GetMutexOptions) WithActivityOptions(ao workflow.ActivityOptions) *GetMutexOptions {
+	o.activityOptions = &ao
+	return o
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (o *GetMutexOptions) WithHeartbeatInterval(d time.Duration) *GetMutexOptions {
+	o.heartbeatInterval = d
+	return o
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (o *GetMutexOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *GetMutexOptions {
+	o.parentClosePolicy = policy
+	return o
+}
+
+// MutexWithAcquireLockOptions are used to configure a(n) example.mutex.v1.Example.MutexWithAcquireLock activity
+type MutexWithAcquireLockOptions struct {
+	ActivityOptions      *workflow.ActivityOptions
+	Detached             bool
+	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
+	ParentClosePolicy    enumsv1.ParentClosePolicy
+	StartWorkflowOptions *client.StartWorkflowOptions
+}
+
+// NewMutexWithAcquireLockOptions initializes a new MutexWithAcquireLockOptions value
+func NewMutexWithAcquireLockOptions() *MutexWithAcquireLockOptions {
+	return &MutexWithAcquireLockOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *MutexWithAcquireLockOptions) Build(ctx workflow.Context, input *v1.MutexInput, signal *v1.AcquireLockInput) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
 	}
-	if wo.ID == "" {
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.MutexIdexpression, req.ProtoReflect())
+			id, err := expression.EvalExpression(v1.MutexIdexpression, input.ProtoReflect())
 			if err != nil {
 				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.mutex.v1.Example.Mutex\" workflow", "error", err)
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			id, err := uuid.NewRandom()
 			if err != nil {
@@ -305,28 +536,35 @@ func MutexAsync(ctx workflow.Context, req *v1.MutexInput, opts ...*MutexWorkflow
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
 	}
 
 	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
+	inputpb, err := anypb.New(input)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
 	}
 
+	// marshal signal request protobuf message
+	signalpb, err := anypb.New(signal)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling signal request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
 	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
+	switch opts.ParentClosePolicy {
 	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
 	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
@@ -335,31 +573,95 @@ func MutexAsync(ctx workflow.Context, req *v1.MutexInput, opts ...*MutexWorkflow
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
 	}
 
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &mutexRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.RetryPolicy == nil {
+		ao.RetryPolicy = &temporal.RetryPolicy{
+			BackoffCoefficient: 2.0,
+			InitialInterval:    1000000000,
+			MaximumAttempts:    int32(5),
+			MaximumInterval:    60000000000,
+		}
+	}
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		Signal:               signalpb,
+		StartWorkflowOptions: swopb,
 	}, nil
 }
 
-// MutexWithAcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal to a example.mutex.v1.Example.Mutex workflow, starting it if necessary, and blocks until the workflow completes
-func MutexWithAcquireLock(ctx workflow.Context, req *v1.MutexInput, signal *v1.AcquireLockInput, opts ...*MutexWorkflowOptions) error {
-	run, err := MutexWithAcquireLockAsync(ctx, req, signal, opts...)
+// WithActivityOptions can be used to customize the activity options
+func (opts *MutexWithAcquireLockOptions) WithActivityOptions(ao workflow.ActivityOptions) *MutexWithAcquireLockOptions {
+	opts.ActivityOptions = &ao
+	return opts
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (opts *MutexWithAcquireLockOptions) WithDetached(d bool) *MutexWithAcquireLockOptions {
+	opts.Detached = d
+	return opts
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (opts *MutexWithAcquireLockOptions) WithHeartbeatInterval(d time.Duration) *MutexWithAcquireLockOptions {
+	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *MutexWithAcquireLockOptions) WithHeartbeatTimeout(d time.Duration) *MutexWithAcquireLockOptions {
+	opts.HeartbeatTimeout = d
+	return opts
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (opts *MutexWithAcquireLockOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *MutexWithAcquireLockOptions {
+	opts.ParentClosePolicy = policy
+	return opts
+}
+
+// WithStartWorkflowOptions can be used to customize the start workflow options
+func (opts *MutexWithAcquireLockOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *MutexWithAcquireLockOptions {
+	opts.StartWorkflowOptions = &swo
+	return opts
+}
+
+// MutexWithAcquireLock executes a(n) example.mutex.v1.Example.MutexWithAcquireLock activity and blocks until completion
+func MutexWithAcquireLock(ctx workflow.Context, input *v1.MutexInput, signal *v1.AcquireLockInput, opts ...*MutexWithAcquireLockOptions) error {
+	run, err := MutexWithAcquireLockAsync(ctx, input, signal, opts...)
 	if err != nil {
 		return err
 	}
 	return run.Get(ctx)
 }
 
-// MutexWithAcquireLockAsync sends a(n) example.mutex.v1.Example.AcquireLock signal to a(n) example.mutex.v1.Example.Mutex workflow, starting it if necessary, and returns a handle to the underlying activity
-func MutexWithAcquireLockAsync(ctx workflow.Context, req *v1.MutexInput, signal *v1.AcquireLockInput, opts ...*MutexWorkflowOptions) (MutexRun, error) {
+// MutexWithAcquireLockAsync executes a(n) example.mutex.v1.Example.MutexWithAcquireLock activity and returns a handle to the activity
+func MutexWithAcquireLockAsync(ctx workflow.Context, input *v1.MutexInput, signal *v1.AcquireLockInput, opts ...*MutexWithAcquireLockOptions) (MutexRun, error) {
 	activityName := exampleOptions.filterActivity("example.mutex.v1.Example.MutexWithAcquireLock")
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -369,103 +671,21 @@ func MutexWithAcquireLockAsync(ctx workflow.Context, req *v1.MutexInput, signal 
 		)
 	}
 
-	opt := &MutexWorkflowOptions{}
+	var opt *MutexWithAcquireLockOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewMutexWithAcquireLockOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
-	}
-
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.MutexIdexpression, req.ProtoReflect())
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.mutex.v1.Example.Mutex\" workflow", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := uuid.NewRandom()
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
+	ctx, req, err := opt.Build(ctx, input, signal)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+		return nil, err
 	}
-
-	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
-	}
-
-	// marshal signal request protobuf message
-	wsignal, err := anypb.New(signal)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling signal request: %w", err)
-	}
-
-	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
-	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
-	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
-	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
-	}
-
 	ctx, cancel := workflow.WithCancel(ctx)
 	return &mutexRun{
 		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			Signal:               wsignal,
-			StartWorkflowOptions: swo,
-		}),
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
 	}, nil
 }
 
@@ -474,6 +694,7 @@ type SampleWorkflowWithMutexWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
 	ParentClosePolicy    enumsv1.ParentClosePolicy
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
@@ -481,6 +702,99 @@ type SampleWorkflowWithMutexWorkflowOptions struct {
 // NewSampleWorkflowWithMutexWorkflowOptions initializes a new SampleWorkflowWithMutexWorkflowOptions value
 func NewSampleWorkflowWithMutexWorkflowOptions() *SampleWorkflowWithMutexWorkflowOptions {
 	return &SampleWorkflowWithMutexWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *SampleWorkflowWithMutexWorkflowOptions) Build(ctx workflow.Context, input *v1.SampleWorkflowWithMutexInput) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
+	}
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := expression.EvalExpression(v1.SampleWorkflowWithMutexIdexpression, input.ProtoReflect())
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.mutex.v1.Example.SampleWorkflowWithMutex\" workflow", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
+	}
+
+	// marshal workflow request protobuf message
+	inputpb, err := anypb.New(input)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
+	var parentClosePolicy temporalv1.ParentClosePolicy
+	switch opts.ParentClosePolicy {
+	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
+	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
+	}
+
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
+	}, nil
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -498,6 +812,12 @@ func (opts *SampleWorkflowWithMutexWorkflowOptions) WithDetached(d bool) *Sample
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *SampleWorkflowWithMutexWorkflowOptions) WithHeartbeatInterval(d time.Duration) *SampleWorkflowWithMutexWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *SampleWorkflowWithMutexWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *SampleWorkflowWithMutexWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -537,6 +857,7 @@ type SampleWorkflowWithMutexRun interface {
 // sampleWorkflowWithMutexRun provides a(n) SampleWorkflowWithMutexRun implementation
 type sampleWorkflowWithMutexRun struct {
 	cancel func()
+	ctx    workflow.Context
 	future workflow.Future
 	id     string
 }
@@ -555,11 +876,21 @@ func (r *sampleWorkflowWithMutexRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *sampleWorkflowWithMutexRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetSampleWorkflowWithMutexAsync(r.ctx, r.id, "").(*sampleWorkflowWithMutexRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *sampleWorkflowWithMutexRun) Get(ctx workflow.Context) error {
+	if r.future == nil {
+		rr := GetSampleWorkflowWithMutexAsync(r.ctx, r.id, "").(*sampleWorkflowWithMutexRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	if err := r.future.Get(ctx, nil); err != nil {
 		return err
 	}
@@ -591,7 +922,7 @@ func SampleWorkflowWithMutex(ctx workflow.Context, req *v1.SampleWorkflowWithMut
 }
 
 // SampleWorkflowWithMutexAsync executes a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow and returns a handle to the underlying activity
-func SampleWorkflowWithMutexAsync(ctx workflow.Context, req *v1.SampleWorkflowWithMutexInput, opts ...*SampleWorkflowWithMutexWorkflowOptions) (SampleWorkflowWithMutexRun, error) {
+func SampleWorkflowWithMutexAsync(ctx workflow.Context, input *v1.SampleWorkflowWithMutexInput, opts ...*SampleWorkflowWithMutexWorkflowOptions) (SampleWorkflowWithMutexRun, error) {
 	activityName := exampleOptions.filterActivity(v1.SampleWorkflowWithMutexWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -601,21 +932,83 @@ func SampleWorkflowWithMutexAsync(ctx workflow.Context, req *v1.SampleWorkflowWi
 		)
 	}
 
-	opt := &SampleWorkflowWithMutexWorkflowOptions{}
+	var opt *SampleWorkflowWithMutexWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewSampleWorkflowWithMutexWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &sampleWorkflowWithMutexRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetSampleWorkflowWithMutex returns a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow execution
+func GetSampleWorkflowWithMutex(ctx workflow.Context, workflowID string, runID string) (err error) {
+	err = GetSampleWorkflowWithMutexAsync(ctx, workflowID, runID).Get(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetSampleWorkflowWithMutexAsync returns a handle to a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow execution
+func GetSampleWorkflowWithMutexAsync(ctx workflow.Context, workflowID string, runID string) SampleWorkflowWithMutexRun {
+	activityName := exampleOptions.filterActivity("example.mutex.v1.Example.GetSampleWorkflowWithMutex")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &sampleWorkflowWithMutexRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &sampleWorkflowWithMutexRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.GetWorkflowRequest{
+			HeartbeatInterval: durationpb.New(time.Second * 30),
+			RunId:             runID,
+			WorkflowId:        workflowID,
+		}),
+		id: workflowID,
+	}
+}
+
+// GetSampleWorkflowWithMutexOptions are used to configure a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow execution getter activity
+type GetSampleWorkflowWithMutexOptions struct {
+	activityOptions   *workflow.ActivityOptions
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
+}
+
+// NewGetSampleWorkflowWithMutexOptions initializes a new GetSampleWorkflowWithMutexOptions value
+func NewGetSampleWorkflowWithMutexOptions() *GetSampleWorkflowWithMutexOptions {
+	return &GetSampleWorkflowWithMutexOptions{}
+}
+
+// Build initializes the activity context and input
+func (opt *GetSampleWorkflowWithMutexOptions) Build(ctx workflow.Context, workflowID string, runID string) (workflow.Context, *xnsv1.GetWorkflowRequest, error) {
+	if opt.heartbeatInterval == 0 {
+		opt.heartbeatInterval = 30000000000 // 30 seconds
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
+	var ao workflow.ActivityOptions
+	if opt.activityOptions != nil {
+		ao = *opt.activityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
 	}
 	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
 	ao.WaitForCancellation = true
@@ -625,73 +1018,29 @@ func SampleWorkflowWithMutexAsync(ctx workflow.Context, req *v1.SampleWorkflowWi
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := expression.EvalExpression(v1.SampleWorkflowWithMutexIdexpression, req.ProtoReflect())
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.mutex.v1.Example.SampleWorkflowWithMutex\" workflow", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := uuid.NewRandom()
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
-	}
-
-	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
-	}
-
-	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
-	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
-	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
-	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
-	}
-
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &sampleWorkflowWithMutexRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	return ctx, &xnsv1.GetWorkflowRequest{
+		HeartbeatInterval: durationpb.New(opt.heartbeatInterval),
+		RunId:             runID,
+		WorkflowId:        workflowID,
 	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (o *GetSampleWorkflowWithMutexOptions) WithActivityOptions(ao workflow.ActivityOptions) *GetSampleWorkflowWithMutexOptions {
+	o.activityOptions = &ao
+	return o
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (o *GetSampleWorkflowWithMutexOptions) WithHeartbeatInterval(d time.Duration) *GetSampleWorkflowWithMutexOptions {
+	o.heartbeatInterval = d
+	return o
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (o *GetSampleWorkflowWithMutexOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *GetSampleWorkflowWithMutexOptions {
+	o.parentClosePolicy = policy
+	return o
 }
 
 // AcquireLockSignalOptions are used to configure a(n) example.mutex.v1.Example.AcquireLock signal execution
@@ -782,9 +1131,11 @@ func AcquireLockAsync(ctx workflow.Context, workflowID string, runID string, req
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
+	var ao workflow.ActivityOptions
 	if opt.ActivityOptions != nil {
 		ao = *opt.ActivityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
 		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
@@ -903,9 +1254,11 @@ func LockAcquiredAsync(ctx workflow.Context, workflowID string, runID string, re
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
+	var ao workflow.ActivityOptions
 	if opt.ActivityOptions != nil {
 		ao = *opt.ActivityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
 		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
@@ -1024,9 +1377,11 @@ func ReleaseLockAsync(ctx workflow.Context, workflowID string, runID string, req
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
+	var ao workflow.ActivityOptions
 	if opt.ActivityOptions != nil {
 		ao = *opt.ActivityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
 		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
@@ -1090,6 +1445,29 @@ type exampleActivities struct {
 // CancelWorkflow cancels an existing workflow execution
 func (a *exampleActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// GetMutex retrieves a(n) example.mutex.v1.Example.Mutex workflow via an activity
+func (a *exampleActivities) GetMutex(ctx context.Context, input *xnsv1.GetWorkflowRequest) (err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		err = a.client.GetMutex(ctx, input.GetWorkflowId(), input.GetRunId()).Get(ctx)
+	}()
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+		case <-activity.GetWorkerStopChannel(ctx):
+			return exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+		case <-ctx.Done():
+			return exampleOptions.convertError(err)
+		}
+	}
 }
 
 // Mutex executes a(n) example.mutex.v1.Example.Mutex workflow via an activity
@@ -1263,6 +1641,29 @@ func (a *exampleActivities) MutexWithAcquireLock(ctx context.Context, input *xns
 
 		// handle workflow completion
 		case <-doneCh:
+			return exampleOptions.convertError(err)
+		}
+	}
+}
+
+// GetSampleWorkflowWithMutex retrieves a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow via an activity
+func (a *exampleActivities) GetSampleWorkflowWithMutex(ctx context.Context, input *xnsv1.GetWorkflowRequest) (err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		err = a.client.GetSampleWorkflowWithMutex(ctx, input.GetWorkflowId(), input.GetRunId()).Get(ctx)
+	}()
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+		case <-activity.GetWorkerStopChannel(ctx):
+			return exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+		case <-ctx.Done():
 			return exampleOptions.convertError(err)
 		}
 	}

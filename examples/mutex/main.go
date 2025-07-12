@@ -85,7 +85,7 @@ func (w *SampleWorkflowWithMutexWorkflow) Execute(ctx workflow.Context) error {
 			WorkflowId: workflow.GetInfo(ctx).WorkflowExecution.ID,
 			Timeout:    durationpb.New(time.Minute * 10),
 		},
-		mutexv1xns.NewMutexWorkflowOptions().WithDetached(true),
+		// mutexv1xns.NewMutexWithAcquireLockOptions().WithDetached(true),
 	)
 	if err != nil {
 		return err

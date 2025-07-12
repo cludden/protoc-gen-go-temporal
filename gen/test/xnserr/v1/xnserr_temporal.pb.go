@@ -176,15 +176,16 @@ func (c *serverClient) TerminateWorkflow(ctx context.Context, workflowID string,
 
 // SleepOptions provides configuration for a test.xnserr.v1.Server.Sleep workflow operation
 type SleepOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSleepOptions initializes a new SleepOptions value
@@ -277,6 +278,12 @@ func (o *SleepOptions) WithTaskTimeout(d time.Duration) *SleepOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *SleepOptions) WithTaskQueue(tq string) *SleepOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SleepOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SleepOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -440,17 +447,18 @@ func SleepChildAsync(ctx workflow.Context, req *SleepRequest, options ...*SleepC
 
 // SleepChildOptions provides configuration for a child test.xnserr.v1.Server.Sleep workflow operation
 type SleepChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSleepChildOptions initializes a new SleepChildOptions value
@@ -563,6 +571,12 @@ func (o *SleepChildOptions) WithTaskQueue(tq string) *SleepChildOptions {
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SleepChildOptions) WithWaitForCancellation(wait bool) *SleepChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SleepChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SleepChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -817,9 +831,10 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 					Value:   "xnserr-server-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.DurationFlag{
 					Name:     "sleep",
@@ -839,7 +854,7 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewServerClient(tc)
-				req, err := UnmarshalCliFlagsToSleepRequest(cmd)
+				req, err := UnmarshalCliFlagsToSleepRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -903,23 +918,20 @@ func newServerCommands(options ...*ServerCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSleepRequest unmarshals a SleepRequest from command line flags
 func UnmarshalCliFlagsToSleepRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SleepRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SleepRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("sleep"); cmd.IsSet(flag) {
 		value := durationpb.New(cmd.Duration(flag))
@@ -1088,15 +1100,16 @@ func (c *clientClient) TerminateWorkflow(ctx context.Context, workflowID string,
 
 // CallSleepOptions provides configuration for a test.xnserr.v1.Client.CallSleep workflow operation
 type CallSleepOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewCallSleepOptions initializes a new CallSleepOptions value
@@ -1187,6 +1200,12 @@ func (o *CallSleepOptions) WithTaskTimeout(d time.Duration) *CallSleepOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *CallSleepOptions) WithTaskQueue(tq string) *CallSleepOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *CallSleepOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CallSleepOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1350,17 +1369,18 @@ func CallSleepChildAsync(ctx workflow.Context, req *CallSleepRequest, options ..
 
 // CallSleepChildOptions provides configuration for a child test.xnserr.v1.Client.CallSleep workflow operation
 type CallSleepChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewCallSleepChildOptions initializes a new CallSleepChildOptions value
@@ -1469,6 +1489,12 @@ func (o *CallSleepChildOptions) WithTaskQueue(tq string) *CallSleepChildOptions 
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *CallSleepChildOptions) WithWaitForCancellation(wait bool) *CallSleepChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *CallSleepChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CallSleepChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1723,9 +1749,10 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 					Value:   "xnserr-client-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.DurationFlag{
 					Name:     "sleep",
@@ -1739,7 +1766,7 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 				},
 				&v2.StringFlag{
 					Name:     "start-workflow-options",
-					Usage:    "set the value of the operation's \"StartWorkflowOptions\" parameter (json-encoded: {id: <string>, taskQueue: <string>, executionTimeout: <google.protobuf.Duration>, runTimeout: <google.protobuf.Duration>, taskTimeout: <google.protobuf.Duration>, idReusePolicy: <temporal.xns.v1.IDReusePolicy>, errorWhenAlreadyStarted: <bool>, retryPolicy: <temporal.xns.v1.RetryPolicy>, memo: <google.protobuf.Struct>, searchAttirbutes: <google.protobuf.Struct>, enableEagerStart: <bool>, startDelay: <google.protobuf.Duration>})",
+					Usage:    "set the value of the operation's \"StartWorkflowOptions\" parameter (json-encoded: {id: <string>, taskQueue: <string>, executionTimeout: <google.protobuf.Duration>, runTimeout: <google.protobuf.Duration>, taskTimeout: <google.protobuf.Duration>, idReusePolicy: <temporal.xns.v1.IDReusePolicy>, errorWhenAlreadyStarted: <bool>, retryPolicy: <temporal.xns.v1.RetryPolicy>, memo: <google.protobuf.Struct>, searchAttirbutes: <google.protobuf.Struct>, enableEagerStart: <bool>, startDelay: <google.protobuf.Duration>, workflowIdConflictPolicy: <temporal.api.enums.v1.WorkflowIdConflictPolicy>})",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{
@@ -1755,7 +1782,7 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewClientClient(tc)
-				req, err := UnmarshalCliFlagsToCallSleepRequest(cmd)
+				req, err := UnmarshalCliFlagsToCallSleepRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1819,23 +1846,20 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToCallSleepRequest unmarshals a CallSleepRequest from command line flags
 func UnmarshalCliFlagsToCallSleepRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*CallSleepRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result CallSleepRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("sleep"); cmd.IsSet(flag) {
 		value := durationpb.New(cmd.Duration(flag))

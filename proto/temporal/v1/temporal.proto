@@ -4,6 +4,7 @@ package temporal.v1;
 
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
+import "temporal/api/enums/v1/workflow.proto";
 
 option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1";
 
@@ -293,6 +294,9 @@ message WorkflowOptions {
   // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
   bool wait_for_cancellation = 13;
 
+  // Default workflow id conflict policy for start workflow with options
+  temporal.api.enums.v1.WorkflowIdConflictPolicy workflow_id_conflict_policy = 20;
+
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 16;
 
@@ -321,8 +325,16 @@ message WorkflowOptions {
 
   // Update identifies an update supported by the workflow
   message Update {
+    CLICommandOptions cli = 4;
+
     // Update name
     string ref = 1;
+
+    // Include convenience method for update with start
+    bool start = 3;
+
+    // Default workflow id conflict policy for update with start
+    temporal.api.enums.v1.WorkflowIdConflictPolicy workflow_id_conflict_policy = 5;
 
     // XNS can be used to configure default activity options for xns workflow executions
     XNSActivityOptions xns = 2;

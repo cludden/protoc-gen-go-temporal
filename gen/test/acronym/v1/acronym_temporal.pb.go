@@ -348,15 +348,16 @@ func (c *awsClient) TerminateWorkflow(ctx context.Context, workflowID string, ru
 
 // ManageAWSOptions provides configuration for a test.acronym.v1.AWS.ManageAWS workflow operation
 type ManageAWSOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewManageAWSOptions initializes a new ManageAWSOptions value
@@ -456,6 +457,12 @@ func (o *ManageAWSOptions) WithTaskQueue(tq string) *ManageAWSOptions {
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ManageAWSOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ManageAWSOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // ManageAWSRun describes a(n) test.acronym.v1.AWS.ManageAWS workflow run
 type ManageAWSRun interface {
 	// ID returns the workflow ID
@@ -519,15 +526,16 @@ func (r *manageAWSRun) Terminate(ctx context.Context, reason string, details ...
 
 // ManageAWSResourceOptions provides configuration for a test.acronym.v1.AWS.ManageAWSResource workflow operation
 type ManageAWSResourceOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewManageAWSResourceOptions initializes a new ManageAWSResourceOptions value
@@ -627,6 +635,12 @@ func (o *ManageAWSResourceOptions) WithTaskQueue(tq string) *ManageAWSResourceOp
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ManageAWSResourceOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ManageAWSResourceOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // ManageAWSResourceRun describes a(n) test.acronym.v1.AWS.ManageAWSResource workflow run
 type ManageAWSResourceRun interface {
 	// ID returns the workflow ID
@@ -690,15 +704,16 @@ func (r *manageAWSResourceRun) Terminate(ctx context.Context, reason string, det
 
 // SomethingV1FooBarOptions provides configuration for a test.acronym.v1.AWS.SomethingV1FooBar workflow operation
 type SomethingV1FooBarOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomethingV1FooBarOptions initializes a new SomethingV1FooBarOptions value
@@ -798,6 +813,12 @@ func (o *SomethingV1FooBarOptions) WithTaskQueue(tq string) *SomethingV1FooBarOp
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomethingV1FooBarOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomethingV1FooBarOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SomethingV1FooBarRun describes a(n) test.acronym.v1.AWS.SomethingV1FooBar workflow run
 type SomethingV1FooBarRun interface {
 	// ID returns the workflow ID
@@ -861,15 +882,16 @@ func (r *somethingV1FooBarRun) Terminate(ctx context.Context, reason string, det
 
 // SomethingV2FooBarOptions provides configuration for a test.acronym.v1.AWS.SomethingV2FooBar workflow operation
 type SomethingV2FooBarOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomethingV2FooBarOptions initializes a new SomethingV2FooBarOptions value
@@ -966,6 +988,12 @@ func (o *SomethingV2FooBarOptions) WithTaskTimeout(d time.Duration) *SomethingV2
 // WithTaskQueue sets the TaskQueue value
 func (o *SomethingV2FooBarOptions) WithTaskQueue(tq string) *SomethingV2FooBarOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomethingV2FooBarOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomethingV2FooBarOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1183,17 +1211,18 @@ func ManageAWSChildAsync(ctx workflow.Context, req *ManageAWSRequest, options ..
 
 // ManageAWSChildOptions provides configuration for a child test.acronym.v1.AWS.ManageAWS workflow operation
 type ManageAWSChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewManageAWSChildOptions initializes a new ManageAWSChildOptions value
@@ -1327,6 +1356,12 @@ func (o *ManageAWSChildOptions) WithWaitForCancellation(wait bool) *ManageAWSChi
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ManageAWSChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ManageAWSChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // ManageAWSChildRun describes a child ManageAWS workflow run
 type ManageAWSChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1433,17 +1468,18 @@ func ManageAWSResourceChildAsync(ctx workflow.Context, req *ManageAWSResourceReq
 
 // ManageAWSResourceChildOptions provides configuration for a child test.acronym.v1.AWS.ManageAWSResource workflow operation
 type ManageAWSResourceChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewManageAWSResourceChildOptions initializes a new ManageAWSResourceChildOptions value
@@ -1577,6 +1613,12 @@ func (o *ManageAWSResourceChildOptions) WithWaitForCancellation(wait bool) *Mana
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ManageAWSResourceChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ManageAWSResourceChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // ManageAWSResourceChildRun describes a child ManageAWSResource workflow run
 type ManageAWSResourceChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1683,17 +1725,18 @@ func SomethingV1FooBarChildAsync(ctx workflow.Context, req *SomethingV1FooBarReq
 
 // SomethingV1FooBarChildOptions provides configuration for a child test.acronym.v1.AWS.SomethingV1FooBar workflow operation
 type SomethingV1FooBarChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomethingV1FooBarChildOptions initializes a new SomethingV1FooBarChildOptions value
@@ -1827,6 +1870,12 @@ func (o *SomethingV1FooBarChildOptions) WithWaitForCancellation(wait bool) *Some
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomethingV1FooBarChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomethingV1FooBarChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SomethingV1FooBarChildRun describes a child SomethingV1FooBar workflow run
 type SomethingV1FooBarChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1933,17 +1982,18 @@ func SomethingV2FooBarChildAsync(ctx workflow.Context, req *SomethingV2FooBarReq
 
 // SomethingV2FooBarChildOptions provides configuration for a child test.acronym.v1.AWS.SomethingV2FooBar workflow operation
 type SomethingV2FooBarChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomethingV2FooBarChildOptions initializes a new SomethingV2FooBarChildOptions value
@@ -2074,6 +2124,12 @@ func (o *SomethingV2FooBarChildOptions) WithTaskQueue(tq string) *SomethingV2Foo
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomethingV2FooBarChildOptions) WithWaitForCancellation(wait bool) *SomethingV2FooBarChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomethingV2FooBarChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomethingV2FooBarChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -3074,9 +3130,10 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					Value:   "aws-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "urn",
@@ -3091,7 +3148,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToManageAWSRequest(cmd)
+				req, err := UnmarshalCliFlagsToManageAWSRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -3146,9 +3203,10 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					Value:   "aws-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "urn",
@@ -3168,7 +3226,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd)
+				req, err := UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -3224,9 +3282,10 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 					Value:   "aws-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "urn",
@@ -3247,7 +3306,7 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewAWSClient(tc)
-				req, err := UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd)
+				req, err := UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -3320,23 +3379,20 @@ func newAWSCommands(options ...*AWSCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToManageAWSRequest unmarshals a ManageAWSRequest from command line flags
 func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ManageAWSRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ManageAWSRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -3347,23 +3403,20 @@ func UnmarshalCliFlagsToManageAWSRequest(cmd *v2.Context, options ...helpers.Unm
 
 // UnmarshalCliFlagsToManageAWSResourceRequest unmarshals a ManageAWSResourceRequest from command line flags
 func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ManageAWSResourceRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ManageAWSResourceRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -3378,23 +3431,20 @@ func UnmarshalCliFlagsToManageAWSResourceRequest(cmd *v2.Context, options ...hel
 
 // UnmarshalCliFlagsToSomethingV1FooBarRequest unmarshals a SomethingV1FooBarRequest from command line flags
 func UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomethingV1FooBarRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomethingV1FooBarRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -3409,23 +3459,20 @@ func UnmarshalCliFlagsToSomethingV1FooBarRequest(cmd *v2.Context, options ...hel
 
 // UnmarshalCliFlagsToSomethingV2FooBarRequest unmarshals a SomethingV2FooBarRequest from command line flags
 func UnmarshalCliFlagsToSomethingV2FooBarRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomethingV2FooBarRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomethingV2FooBarRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("urn"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

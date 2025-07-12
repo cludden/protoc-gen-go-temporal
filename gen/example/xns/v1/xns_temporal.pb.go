@@ -187,15 +187,16 @@ func (c *xnsClient) TerminateWorkflow(ctx context.Context, workflowID string, ru
 
 // ProvisionFooOptions provides configuration for a example.xns.v1.Xns.ProvisionFoo workflow operation
 type ProvisionFooOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewProvisionFooOptions initializes a new ProvisionFooOptions value
@@ -292,6 +293,12 @@ func (o *ProvisionFooOptions) WithTaskTimeout(d time.Duration) *ProvisionFooOpti
 // WithTaskQueue sets the TaskQueue value
 func (o *ProvisionFooOptions) WithTaskQueue(tq string) *ProvisionFooOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ProvisionFooOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ProvisionFooOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -461,17 +468,18 @@ func ProvisionFooChildAsync(ctx workflow.Context, req *ProvisionFooRequest, opti
 
 // ProvisionFooChildOptions provides configuration for a child example.xns.v1.Xns.ProvisionFoo workflow operation
 type ProvisionFooChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewProvisionFooChildOptions initializes a new ProvisionFooChildOptions value
@@ -602,6 +610,12 @@ func (o *ProvisionFooChildOptions) WithTaskQueue(tq string) *ProvisionFooChildOp
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *ProvisionFooChildOptions) WithWaitForCancellation(wait bool) *ProvisionFooChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ProvisionFooChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ProvisionFooChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -861,9 +875,10 @@ func newXnsCommands(options ...*XnsCliOptions) ([]*v2.Command, error) {
 					Value:   "xns-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -878,7 +893,7 @@ func newXnsCommands(options ...*XnsCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewXnsClient(tc)
-				req, err := UnmarshalCliFlagsToProvisionFooRequest(cmd)
+				req, err := UnmarshalCliFlagsToProvisionFooRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -951,23 +966,20 @@ func newXnsCommands(options ...*XnsCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToProvisionFooRequest unmarshals a ProvisionFooRequest from command line flags
 func UnmarshalCliFlagsToProvisionFooRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ProvisionFooRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result ProvisionFooRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -1277,15 +1289,16 @@ func (c *exampleClient) GetUpdateFooProgress(ctx context.Context, req client.Get
 
 // CreateFooOptions provides configuration for a example.xns.v1.Example.CreateFoo workflow operation
 type CreateFooOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewCreateFooOptions initializes a new CreateFooOptions value
@@ -1386,6 +1399,12 @@ func (o *CreateFooOptions) WithTaskTimeout(d time.Duration) *CreateFooOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *CreateFooOptions) WithTaskQueue(tq string) *CreateFooOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *CreateFooOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CreateFooOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1734,17 +1753,18 @@ func CreateFooChildAsync(ctx workflow.Context, req *CreateFooRequest, options ..
 
 // CreateFooChildOptions provides configuration for a child example.xns.v1.Example.CreateFoo workflow operation
 type CreateFooChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewCreateFooChildOptions initializes a new CreateFooChildOptions value
@@ -1879,6 +1899,12 @@ func (o *CreateFooChildOptions) WithTaskQueue(tq string) *CreateFooChildOptions 
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *CreateFooChildOptions) WithWaitForCancellation(wait bool) *CreateFooChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *CreateFooChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CreateFooChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -2638,9 +2664,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.Float64Flag{
 					Name:     "progress",
@@ -2655,7 +2682,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToSetFooProgressRequest(cmd)
+				req, err := UnmarshalCliFlagsToSetFooProgressRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2691,9 +2718,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.Float64Flag{
 					Name:     "progress",
@@ -2708,7 +2736,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToSetFooProgressRequest(cmd)
+				req, err := UnmarshalCliFlagsToSetFooProgressRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2760,9 +2788,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "example-v1",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -2777,7 +2806,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToCreateFooRequest(cmd)
+				req, err := UnmarshalCliFlagsToCreateFooRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2826,14 +2855,21 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
 					Usage:    "unique foo name",
 					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 				&v2.Float64Flag{
 					Name:     "progress",
@@ -2848,11 +2884,11 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToCreateFooRequest(cmd)
+				req, err := UnmarshalCliFlagsToCreateFooRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToSetFooProgressRequest(cmd)
+				signal, err := UnmarshalCliFlagsToSetFooProgressRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
@@ -2921,23 +2957,20 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSetFooProgressRequest unmarshals a SetFooProgressRequest from command line flags
 func UnmarshalCliFlagsToSetFooProgressRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SetFooProgressRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SetFooProgressRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("progress"); cmd.IsSet(flag) {
 		value, err := convert.SafeCast[float64, float32](cmd.Float64(flag))
@@ -2951,23 +2984,20 @@ func UnmarshalCliFlagsToSetFooProgressRequest(cmd *v2.Context, options ...helper
 
 // UnmarshalCliFlagsToCreateFooRequest unmarshals a CreateFooRequest from command line flags
 func UnmarshalCliFlagsToCreateFooRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*CreateFooRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result CreateFooRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
