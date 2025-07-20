@@ -18,6 +18,7 @@ import (
 	v2 "github.com/urfave/cli/v2"
 	enumsv1 "go.temporal.io/api/enums/v1"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -473,6 +474,9 @@ func SearchAttributesChildAsync(ctx workflow.Context, req *SearchAttributesInput
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &SearchAttributesChildRun{Future: workflow.ExecuteChildWorkflow(ctx, SearchAttributesWorkflowName, req)}, nil
 }
 
@@ -488,6 +492,7 @@ type SearchAttributesChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -598,6 +603,12 @@ func (o *SearchAttributesChildOptions) Build(ctx workflow.Context, req protorefl
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *SearchAttributesChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *SearchAttributesChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *SearchAttributesChildOptions) WithDataConverter(dc converter.DataConverter) *SearchAttributesChildOptions {
+	o.dc = dc
 	return o
 }
 

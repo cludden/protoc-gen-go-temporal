@@ -25,9 +25,9 @@ var patches = map[temporalv1.Patch_Version]patchDetail{
 	},
 }
 
-func patchComment(b *j.Group, pv temporalv1.Patch_Version) {
-	b.Comment(patches[pv].comment)
-	b.Commentf("more info: %s", patches[pv].link)
+func patchComment(g *j.Group, pv temporalv1.Patch_Version) {
+	g.Comment(patches[pv].comment)
+	g.Commentf("more info: %s", patches[pv].link)
 }
 
 func patchVersion(pv temporalv1.Patch_Version, pvm temporalv1.Patch_Mode) j.Code {

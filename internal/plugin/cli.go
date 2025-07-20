@@ -134,10 +134,10 @@ func (m *Manifest) genCliNew(f *j.File) {
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing subcommands: %w"), j.Err())),
 			),
 			j.Return(
-				j.Op("&").Qual(cliPkg, "App").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
-					fields.Id("Commands").Op(":").Id("commands")
-					fields.Id("DisableSliceFlagSeparator").Op(":").True()
+				j.Op("&").Qual(cliPkg, "App").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
+					g.Id("Commands").Op(":").Id("commands")
+					g.Id("DisableSliceFlagSeparator").Op(":").True()
 				}),
 				j.Nil(),
 			),
@@ -164,9 +164,9 @@ func (m *Manifest) genCliNewCommand(f *j.File) {
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing subcommands: %w"), j.Err())),
 			),
 			j.Return(
-				j.Op("&").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
-					fields.Id("Subcommands").Op(":").Id("subcommands")
+				j.Op("&").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
+					g.Id("Subcommands").Op(":").Id("subcommands")
 				}),
 				j.Nil(),
 			),
@@ -290,8 +290,8 @@ func (m *Manifest) genCliNewCommands(f *j.File) {
 
 			// append worker command if initializer provided
 			j.If(j.Id("opts").Dot("worker").Op("!=").Nil()).Block(
-				j.Id("commands").Op("=").Append(j.Id("commands"), j.Index().Op("*").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(cmds *j.Group) {
-					m.genCliWorkerCommand(cmds)
+				j.Id("commands").Op("=").Append(j.Id("commands"), j.Index().Op("*").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(g *j.Group) {
+					m.genCliWorkerCommand(g)
 				}).Op("...")),
 			),
 
@@ -399,23 +399,23 @@ func (m *Manifest) genCliOptionsImpl(f *j.File) {
 }
 
 // genCliPrintMessage serializes a proto message as json and pretty prints it
-func genCliPrintMessage(b *j.Group, varName string) {
-	b.List(j.Id("b"), j.Err()).Op(":=").Qual(protojsonPkg, "Marshal").Call(j.Id(varName))
-	b.If(j.Err().Op("!=").Nil()).Block(
+func genCliPrintMessage(g *j.Group, varName string) {
+	g.List(j.Id("b"), j.Err()).Op(":=").Qual(protojsonPkg, "Marshal").Call(j.Id(varName))
+	g.If(j.Err().Op("!=").Nil()).Block(
 		j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error serializing response json: %w"), j.Err())),
 	)
-	b.Var().Id("out").Qual("bytes", "Buffer")
-	b.If(
+	g.Var().Id("out").Qual("bytes", "Buffer")
+	g.If(
 		j.Err().Op(":=").Qual("encoding/json", "Indent").Call(j.Op("&").Id("out"), j.Id("b"), j.Lit(""), j.Lit("  ")),
 		j.Err().Op("!=").Nil(),
 	).Block(
 		j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error formatting json: %w"), j.Err())),
 	)
-	b.Qual("fmt", "Println").Call(j.Id("out").Dot("String").Call())
+	g.Qual("fmt", "Println").Call(j.Id("out").Dot("String").Call())
 }
 
 // genCliQueryCommand generates a <Query> command
-func (m *Manifest) genCliQueryCommand(cmds *j.Group, query protoreflect.FullName) {
+func (m *Manifest) genCliQueryCommand(g *j.Group, query protoreflect.FullName) {
 	method := m.methods[query]
 	opts := m.queries[query]
 	hasInput := !isEmpty(method.Input)
@@ -437,85 +437,85 @@ func (m *Manifest) genCliQueryCommand(cmds *j.Group, query protoreflect.FullName
 		usage = fmt.Sprintf("executes a %s query and blocks until error or response received", m.fqnForQuery(query))
 	}
 
-	cmds.CustomFunc(multiLineValues, func(cmd *j.Group) {
-		cmd.Id("Name").Op(":").Lit(name)
-		cmd.Id("Usage").Op(":").Lit(usage)
+	g.CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Name").Op(":").Lit(name)
+		g.Id("Usage").Op(":").Lit(usage)
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
-			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+			g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
 				for _, alias := range aliases {
 					g.Lit(alias)
 				}
 			})
 		}
 		if m.cfg.CliCategories {
-			cmd.Id("Category").Op(":").Lit("QUERIES")
+			g.Id("Category").Op(":").Lit("QUERIES")
 		}
-		cmd.Id("UseShortOptionHandling").Op(":").True()
-		cmd.Id("Before").Op(":").Id("opts").Dot("before")
-		cmd.Id("After").Op(":").Id("opts").Dot("after")
-		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *j.Group) {
+		g.Id("UseShortOptionHandling").Op(":").True()
+		g.Id("Before").Op(":").Id("opts").Dot("before")
+		g.Id("After").Op(":").Id("opts").Dot("after")
+		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add workflow-id required flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("workflow-id")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
-				fields.Id("Required").Op(":").True()
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("workflow-id")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
+				g.Id("Required").Op(":").True()
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
 			})
 			// add run-id optional flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("run-id")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("run-id")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit("input-file")
-					fields.Id("Usage").Op(":").Lit("path to json-formatted input file")
-					fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
-					fields.Id("Category").Op(":").Lit("INPUT")
+				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit("input-file")
+					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
+					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
+					g.Id("Category").Op(":").Lit("INPUT")
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					m.genCliFlagForField(flags, field, "INPUT", "")
+					m.genCliFlagForField(g, field, "INPUT", "")
 				}
 			}
 		})
-		cmd.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *j.Group) {
+		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			fn.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
-			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
+			g.Defer().Id("c").Dot("Close").Call()
+			g.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
 
 			// unmarshal input
 			if hasInput {
 				inputName := m.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", m.toCamel("%s", inputName))
-				fn.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
+				g.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
 					j.Id("FromFile"): j.Lit("input-file"),
 				}))
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error unmarshalling request: %w"), j.Err())),
 				)
 			}
 
 			// execute query
-			fn.
+			g.
 				If(
-					j.ListFunc(func(returnVals *j.Group) {
+					j.ListFunc(func(g *j.Group) {
 						if hasOutput {
-							returnVals.Id("resp")
+							g.Id("resp")
 						}
-						returnVals.Err()
-					}).Op(":=").Id("client").Dot(m.methods[query].GoName).CallFunc(func(args *j.Group) {
-						args.Id("cmd").Dot("Context")
-						args.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
-						args.Id("cmd").Dot("String").Call(j.Lit("run-id"))
+						g.Err()
+					}).Op(":=").Id("client").Dot(m.methods[query].GoName).CallFunc(func(g *j.Group) {
+						g.Id("cmd").Dot("Context")
+						g.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
+						g.Id("cmd").Dot("String").Call(j.Lit("run-id"))
 						if hasInput {
-							args.Id("req")
+							g.Id("req")
 						}
 					}),
 					j.Err().Op("!=").Nil(),
@@ -524,21 +524,21 @@ func (m *Manifest) genCliQueryCommand(cmds *j.Group, query protoreflect.FullName
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error executing %q query: %w"), j.Id(m.toCamel("%sQueryName", query)), j.Err())),
 				).
 				Else().
-				BlockFunc(func(b *j.Group) {
+				BlockFunc(func(g *j.Group) {
 					// print response
 					if hasOutput {
-						genCliPrintMessage(b, "resp")
+						genCliPrintMessage(g, "resp")
 					} else {
-						fn.Qual("fmt", "Println").Call(j.Lit("success"))
+						g.Qual("fmt", "Println").Call(j.Lit("success"))
 					}
-					b.Return(j.Nil())
+					g.Return(j.Nil())
 				})
 		})
 	})
 }
 
 // genCliSignalCommand generates a <Signal> command
-func (m *Manifest) genCliSignalCommand(cmds *j.Group, signal protoreflect.FullName) {
+func (m *Manifest) genCliSignalCommand(g *j.Group, signal protoreflect.FullName) {
 	method := m.methods[signal]
 	opts := m.signals[signal]
 	hasInput := !isEmpty(method.Input)
@@ -559,78 +559,78 @@ func (m *Manifest) genCliSignalCommand(cmds *j.Group, signal protoreflect.FullNa
 		usage = fmt.Sprintf("executes a %s signal", m.fqnForSignal(signal))
 	}
 
-	cmds.CustomFunc(multiLineValues, func(cmd *j.Group) {
-		cmd.Id("Name").Op(":").Lit(name)
-		cmd.Id("Usage").Op(":").Lit(usage)
+	g.CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Name").Op(":").Lit(name)
+		g.Id("Usage").Op(":").Lit(usage)
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
-			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+			g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
 				for _, alias := range aliases {
 					g.Lit(alias)
 				}
 			})
 		}
 		if m.cfg.CliCategories {
-			cmd.Id("Category").Op(":").Lit("SIGNALS")
+			g.Id("Category").Op(":").Lit("SIGNALS")
 		}
-		cmd.Id("UseShortOptionHandling").Op(":").True()
-		cmd.Id("Before").Op(":").Id("opts").Dot("before")
-		cmd.Id("After").Op(":").Id("opts").Dot("after")
-		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *j.Group) {
+		g.Id("UseShortOptionHandling").Op(":").True()
+		g.Id("Before").Op(":").Id("opts").Dot("before")
+		g.Id("After").Op(":").Id("opts").Dot("after")
+		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add workflow-id required flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("workflow-id")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
-				fields.Id("Required").Op(":").True()
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("workflow-id")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
+				g.Id("Required").Op(":").True()
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
 			})
 			// add run-id optional flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("run-id")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("run-id")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit("input-file")
-					fields.Id("Usage").Op(":").Lit("path to json-formatted input file")
-					fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
-					fields.Id("Category").Op(":").Lit("INPUT")
+				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit("input-file")
+					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
+					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
+					g.Id("Category").Op(":").Lit("INPUT")
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					m.genCliFlagForField(flags, field, "INPUT", "")
+					m.genCliFlagForField(g, field, "INPUT", "")
 				}
 			}
 		})
-		cmd.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *j.Group) {
+		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			fn.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
-			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
+			g.Defer().Id("c").Dot("Close").Call()
+			g.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
 
 			// unmarshal input
 			if hasInput {
 				inputName := m.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", m.toCamel("%s", inputName))
-				fn.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
+				g.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
 					j.Id("FromFile"): j.Lit("input-file"),
 				}))
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error unmarshalling request: %w"), j.Err())),
 				)
 			}
 
-			fn.If(
-				j.Err().Op(":=").Id("client").Dot(m.methods[signal].GoName).CallFunc(func(args *j.Group) {
-					args.Id("cmd").Dot("Context")
-					args.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
-					args.Id("cmd").Dot("String").Call(j.Lit("run-id"))
+			g.If(
+				j.Err().Op(":=").Id("client").Dot(m.methods[signal].GoName).CallFunc(func(g *j.Group) {
+					g.Id("cmd").Dot("Context")
+					g.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
+					g.Id("cmd").Dot("String").Call(j.Lit("run-id"))
 					if hasInput {
-						args.Id("req")
+						g.Id("req")
 					}
 				}),
 				j.Err().Op("!=").Nil(),
@@ -639,14 +639,14 @@ func (m *Manifest) genCliSignalCommand(cmds *j.Group, signal protoreflect.FullNa
 			)
 
 			// print response
-			fn.Qual("fmt", "Println").Call(j.Lit("success"))
-			fn.Return(j.Nil())
+			g.Qual("fmt", "Println").Call(j.Lit("success"))
+			g.Return(j.Nil())
 		})
 	})
 }
 
 // genCliUpdateCommand generates an <Update> command
-func (m *Manifest) genCliUpdateCommand(f *j.Group, update protoreflect.FullName) {
+func (m *Manifest) genCliUpdateCommand(g *j.Group, update protoreflect.FullName) {
 	method := m.methods[update]
 	opts := m.updates[update]
 	hasInput := !isEmpty(method.Input)
@@ -668,92 +668,92 @@ func (m *Manifest) genCliUpdateCommand(f *j.Group, update protoreflect.FullName)
 		usage = fmt.Sprintf("executes a(n) %s update", m.fqnForUpdate(update))
 	}
 
-	f.CustomFunc(multiLineValues, func(cmd *j.Group) {
-		cmd.Id("Name").Op(":").Lit(name)
-		cmd.Id("Usage").Op(":").Lit(usage)
+	g.CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Name").Op(":").Lit(name)
+		g.Id("Usage").Op(":").Lit(usage)
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
-			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+			g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
 				for _, alias := range aliases {
 					g.Lit(alias)
 				}
 			})
 		}
 		if m.cfg.CliCategories {
-			cmd.Id("Category").Op(":").Lit("UPDATES")
+			g.Id("Category").Op(":").Lit("UPDATES")
 		}
-		cmd.Id("UseShortOptionHandling").Op(":").True()
-		cmd.Id("Before").Op(":").Id("opts").Dot("before")
-		cmd.Id("After").Op(":").Id("opts").Dot("after")
-		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *j.Group) {
+		g.Id("UseShortOptionHandling").Op(":").True()
+		g.Id("Before").Op(":").Id("opts").Dot("before")
+		g.Id("After").Op(":").Id("opts").Dot("after")
+		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add async flag
-			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("detach")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow update in the background and print workflow, execution, and udpate id"))
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
+			g.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("detach")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow update in the background and print workflow, execution, and udpate id"))
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
 			})
 			// add workflow-id required flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("workflow-id")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
-				fields.Id("Required").Op(":").True()
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("workflow-id")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
+				g.Id("Required").Op(":").True()
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
 			})
 			// add run-id optional flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("run-id")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("run-id")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit("input-file")
-					fields.Id("Usage").Op(":").Lit("path to json-formatted input file")
-					fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
-					fields.Id("Category").Op(":").Lit("INPUT")
+				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit("input-file")
+					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
+					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
+					g.Id("Category").Op(":").Lit("INPUT")
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					m.genCliFlagForField(flags, field, "INPUT", "")
+					m.genCliFlagForField(g, field, "INPUT", "")
 				}
 			}
 		})
-		cmd.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *j.Group) {
+		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			fn.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
-			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
+			g.Defer().Id("c").Dot("Close").Call()
+			g.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
 
 			// unmarshal input
 			if hasInput {
 				inputName := m.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", m.toCamel("%s", inputName))
-				fn.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
+				g.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
 					j.Id("FromFile"): j.Lit("input-file"),
 				}))
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error unmarshalling request: %w"), j.Err())),
 				)
 			}
 
 			// execute update operation
-			fn.List(j.Id("handle"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sAsync", update)).CallFunc(func(args *j.Group) {
-				args.Id("cmd").Dot("Context")
-				args.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
-				args.Id("cmd").Dot("String").Call(j.Lit("run-id"))
+			g.List(j.Id("handle"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sAsync", update)).CallFunc(func(g *j.Group) {
+				g.Id("cmd").Dot("Context")
+				g.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
+				g.Id("cmd").Dot("String").Call(j.Lit("run-id"))
 				if hasInput {
-					args.Id("req")
+					g.Id("req")
 				}
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error executing %s update: %w"), j.Id(m.toCamel("%sUpdateName", update)), j.Err())),
 			)
 
 			// handle async invocation
-			fn.If(j.Id("cmd").Dot("Bool").Call(j.Lit("detach"))).Block(
+			g.If(j.Id("cmd").Dot("Bool").Call(j.Lit("detach"))).Block(
 				j.Qual("fmt", "Println").Call(j.Lit("success")),
 				j.Qual("fmt", "Printf").Call(j.Lit("workflow id: %s\n"), j.Id("handle").Dot("WorkflowID").Call()),
 				j.Qual("fmt", "Printf").Call(j.Lit("run id: %s\n"), j.Id("handle").Dot("RunID").Call()),
@@ -762,13 +762,13 @@ func (m *Manifest) genCliUpdateCommand(f *j.Group, update protoreflect.FullName)
 			)
 
 			// handle synchronous invocation
-			fn.
+			g.
 				If(
-					j.ListFunc(func(returnVals *j.Group) {
+					j.ListFunc(func(g *j.Group) {
 						if hasOutput {
-							returnVals.Id("resp")
+							g.Id("resp")
 						}
-						returnVals.Err()
+						g.Err()
 					}).Op(":=").Id("handle").Dot("Get").Call(j.Id("cmd").Dot("Context")),
 					j.Err().Op("!=").Nil(),
 				).
@@ -776,54 +776,54 @@ func (m *Manifest) genCliUpdateCommand(f *j.Group, update protoreflect.FullName)
 					j.Return(j.Err()),
 				).
 				Else().
-				BlockFunc(func(b *j.Group) {
+				BlockFunc(func(g *j.Group) {
 					// print response
 					if hasOutput {
-						genCliPrintMessage(b, "resp")
+						genCliPrintMessage(g, "resp")
 					}
-					b.Return(j.Nil())
+					g.Return(j.Nil())
 				})
 		})
 	})
 }
 
 // genCliWorkerCommand generates a <Workflow> command
-func (m *Manifest) genCliWorkerCommand(f *j.Group) {
-	f.CustomFunc(multiLineValues, func(cmd *j.Group) {
-		cmd.Id("Name").Op(":").Lit("worker")
-		cmd.Id("Usage").Op(":").Lit(fmt.Sprintf("runs a %s worker process", m.Service.Desc.FullName()))
-		cmd.Id("UseShortOptionHandling").Op(":").True()
-		cmd.Id("Before").Op(":").Id("opts").Dot("before")
-		cmd.Id("After").Op(":").Id("opts").Dot("after")
-		cmd.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *j.Group) {
+func (m *Manifest) genCliWorkerCommand(g *j.Group) {
+	g.CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Name").Op(":").Lit("worker")
+		g.Id("Usage").Op(":").Lit(fmt.Sprintf("runs a %s worker process", m.Service.Desc.FullName()))
+		g.Id("UseShortOptionHandling").Op(":").True()
+		g.Id("Before").Op(":").Id("opts").Dot("before")
+		g.Id("After").Op(":").Id("opts").Dot("after")
+		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			fn.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
-			fn.Defer().Id("c").Dot("Close").Call()
+			g.Defer().Id("c").Dot("Close").Call()
 
 			// initialize worker
-			fn.List(j.Id("w"), j.Err()).Op(":=").Id("opts").Dot("worker").Call(j.Id("cmd"), j.Id("c"))
-			fn.If(j.Id("opts").Dot("worker").Op("!=").Nil()).Block(
+			g.List(j.Id("w"), j.Err()).Op(":=").Id("opts").Dot("worker").Call(j.Id("cmd"), j.Id("c"))
+			g.If(j.Id("opts").Dot("worker").Op("!=").Nil()).Block(
 				j.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing worker: %w"), j.Err())),
 				),
 			)
 
 			// run worker
-			fn.If(j.Err().Op(":=").Id("w").Dot("Start").Call(), j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op(":=").Id("w").Dot("Start").Call(), j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error starting worker: %w"), j.Err())),
 			)
-			fn.Defer().Id("w").Dot("Stop").Call()
-			fn.Op("<-").Id("cmd").Dot("Context").Dot("Done").Call()
-			fn.Return(j.Nil())
+			g.Defer().Id("w").Dot("Stop").Call()
+			g.Op("<-").Id("cmd").Dot("Context").Dot("Done").Call()
+			g.Return(j.Nil())
 		})
 	})
 }
 
 // genCliWorkflowCommand generates a <Workflow> command
-func (m *Manifest) genCliWorkflowCommand(f *j.Group, workflow protoreflect.FullName) {
+func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullName) {
 	method := m.methods[workflow]
 	opts := m.workflows[workflow]
 	hasInput := !isEmpty(method.Input)
@@ -845,97 +845,97 @@ func (m *Manifest) genCliWorkflowCommand(f *j.Group, workflow protoreflect.FullN
 		usage = fmt.Sprintf("executes a(n) %s workflow", m.fqnForWorkflow(workflow))
 	}
 
-	f.CustomFunc(multiLineValues, func(cmd *j.Group) {
-		cmd.Id("Name").Op(":").Lit(name)
-		cmd.Id("Usage").Op(":").Lit(usage)
+	g.CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Name").Op(":").Lit(name)
+		g.Id("Usage").Op(":").Lit(usage)
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
-			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+			g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
 				for _, alias := range aliases {
 					g.Lit(alias)
 				}
 			})
 		}
 		if m.cfg.CliCategories {
-			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
+			g.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
-		cmd.Id("UseShortOptionHandling").Op(":").True()
-		cmd.Id("Before").Op(":").Id("opts").Dot("before")
-		cmd.Id("After").Op(":").Id("opts").Dot("after")
-		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *j.Group) {
+		g.Id("UseShortOptionHandling").Op(":").True()
+		g.Id("Before").Op(":").Id("opts").Dot("before")
+		g.Id("After").Op(":").Id("opts").Dot("after")
+		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add async flag
-			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("detach")
-				fields.Id("Usage").Op(":").Lit("run workflow in the background and print workflow and execution id")
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
+			g.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("detach")
+				g.Id("Usage").Op(":").Lit("run workflow in the background and print workflow and execution id")
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
 			})
 			// add task-queue flag
-			flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("task-queue")
-				fields.Id("Usage").Op(":").Lit("task queue name")
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("t"))
-				fields.Id("EnvVars").Op(":").Index().String().Values(j.Lit("TEMPORAL_TASK_QUEUE_NAME"), j.Lit("TEMPORAL_TASK_QUEUE"), j.Lit("TASK_QUEUE_NAME"), j.Lit("TASK_QUEUE"))
+			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("task-queue")
+				g.Id("Usage").Op(":").Lit("task queue name")
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("t"))
+				g.Id("EnvVars").Op(":").Index().String().Values(j.Lit("TEMPORAL_TASK_QUEUE_NAME"), j.Lit("TEMPORAL_TASK_QUEUE"), j.Lit("TASK_QUEUE_NAME"), j.Lit("TASK_QUEUE"))
 				tq := m.opts.GetTaskQueue()
 				if tq == "" {
-					fields.Id("Required").Op(":").True()
+					g.Id("Required").Op(":").True()
 				} else {
-					fields.Id("Value").Op(":").Lit(tq)
+					g.Id("Value").Op(":").Lit(tq)
 				}
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit("input-file")
-					fields.Id("Usage").Op(":").Lit("path to json-formatted input file")
-					fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
-					fields.Id("Category").Op(":").Lit("INPUT")
+				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit("input-file")
+					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
+					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
+					g.Id("Category").Op(":").Lit("INPUT")
 				})
 				// add request flags
 				for _, field := range method.Input.Fields {
-					m.genCliFlagForField(flags, field, "INPUT", "")
+					m.genCliFlagForField(g, field, "INPUT", "")
 				}
 			}
 		})
-		cmd.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *j.Group) {
+		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			fn.List(j.Id("tc"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.List(j.Id("tc"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
-			fn.Defer().Id("tc").Dot("Close").Call()
-			fn.Id("c").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("tc"))
+			g.Defer().Id("tc").Dot("Close").Call()
+			g.Id("c").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("tc"))
 
 			// unmarshal input
 			if hasInput {
 				inputName := m.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", m.toCamel("%s", inputName))
-				fn.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
+				g.List(j.Id("req"), j.Err()).Op(":=").Id(unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
 					j.Id("FromFile"): j.Lit("input-file"),
 				}))
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error unmarshalling request: %w"), j.Err())),
 				)
 			}
 
 			// build workflow options
-			fn.Id("opts").Op(":=").Qual(clientPkg, "StartWorkflowOptions").Values()
-			fn.If(j.Id("tq").Op(":=").Id("cmd").Dot("String").Call(j.Lit("task-queue")), j.Id("tq").Op("!=").Lit("")).Block(
+			g.Id("opts").Op(":=").Qual(clientPkg, "StartWorkflowOptions").Values()
+			g.If(j.Id("tq").Op(":=").Id("cmd").Dot("String").Call(j.Lit("task-queue")), j.Id("tq").Op("!=").Lit("")).Block(
 				j.Id("opts").Dot("TaskQueue").Op("=").Id("tq"),
 			)
 
 			// execute operation
-			fn.List(j.Id("run"), j.Err()).Op(":=").Id("c").Dot(m.toCamel("%sAsync", workflow)).CallFunc(func(args *j.Group) {
-				args.Id("cmd").Dot("Context")
+			g.List(j.Id("run"), j.Err()).Op(":=").Id("c").Dot(m.toCamel("%sAsync", workflow)).CallFunc(func(g *j.Group) {
+				g.Id("cmd").Dot("Context")
 				if hasInput {
-					args.Id("req")
+					g.Id("req")
 				}
-				args.Id(m.toCamel("New%sOptions", workflow)).Call().Dot("WithStartWorkflowOptions").Call(j.Id("opts"))
+				g.Id(m.toCamel("New%sOptions", workflow)).Call().Dot("WithStartWorkflowOptions").Call(j.Id("opts"))
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error starting %s workflow: %w"), j.Id(m.toCamel("%sWorkflowName", workflow)), j.Err())),
 			)
 
 			// handle async invocation
-			fn.If(j.Id("cmd").Dot("Bool").Call(j.Lit("detach"))).Block(
+			g.If(j.Id("cmd").Dot("Bool").Call(j.Lit("detach"))).Block(
 				j.Qual("fmt", "Println").Call(j.Lit("success")),
 				j.Qual("fmt", "Printf").Call(j.Lit("workflow id: %s\n"), j.Id("run").Dot("ID").Call()),
 				j.Qual("fmt", "Printf").Call(j.Lit("run id: %s\n"), j.Id("run").Dot("RunID").Call()),
@@ -943,13 +943,13 @@ func (m *Manifest) genCliWorkflowCommand(f *j.Group, workflow protoreflect.FullN
 			)
 
 			// handle synchronous invocation
-			fn.
+			g.
 				If(
-					j.ListFunc(func(returnVals *j.Group) {
+					j.ListFunc(func(g *j.Group) {
 						if hasOutput {
-							returnVals.Id("resp")
+							g.Id("resp")
 						}
-						returnVals.Err()
+						g.Err()
 					}).Op(":=").Id("run").Dot("Get").Call(j.Id("cmd").Dot("Context")),
 					j.Err().Op("!=").Nil(),
 				).
@@ -957,19 +957,19 @@ func (m *Manifest) genCliWorkflowCommand(f *j.Group, workflow protoreflect.FullN
 					j.Return(j.Err()),
 				).
 				Else().
-				BlockFunc(func(b *j.Group) {
+				BlockFunc(func(g *j.Group) {
 					// print response
 					if hasOutput {
-						genCliPrintMessage(b, "resp")
+						genCliPrintMessage(g, "resp")
 					}
-					b.Return(j.Nil())
+					g.Return(j.Nil())
 				})
 		})
 	})
 }
 
 // genCliWorkflowWithSignalCommand generates a <Workflow>-with-<Signal> command
-func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal protoreflect.FullName, opts *temporalv1.WorkflowOptions_Signal) {
+func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protoreflect.FullName, opts *temporalv1.WorkflowOptions_Signal) {
 	method := m.methods[w]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
@@ -994,31 +994,31 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 		usage = fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, w)
 	}
 
-	cmds.Comment(usage)
-	cmds.CustomFunc(multiLineValues, func(cmd *j.Group) {
+	g.Comment(usage)
+	g.CustomFunc(multiLineValues, func(g *j.Group) {
 		fields := map[string]struct{}{}
 		collisions := map[string]struct{}{}
 
-		cmd.Id("Name").Op(":").Lit(name)
-		cmd.Id("Usage").Op(":").Lit(usage)
+		g.Id("Name").Op(":").Lit(name)
+		g.Id("Usage").Op(":").Lit(usage)
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
-			cmd.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+			g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
 				for _, alias := range aliases {
 					g.Lit(alias)
 				}
 			})
 		}
 		if m.cfg.CliCategories {
-			cmd.Id("Category").Op(":").Lit("WORKFLOWS")
+			g.Id("Category").Op(":").Lit("WORKFLOWS")
 		}
-		cmd.Id("UseShortOptionHandling").Op(":").True()
-		cmd.Id("Before").Op(":").Id("opts").Dot("before")
-		cmd.Id("After").Op(":").Id("opts").Dot("after")
-		cmd.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(flags *j.Group) {
-			flags.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-				fields.Id("Name").Op(":").Lit("detach")
-				fields.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
-				fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
+		g.Id("UseShortOptionHandling").Op(":").True()
+		g.Id("Before").Op(":").Id("opts").Dot("before")
+		g.Id("After").Op(":").Id("opts").Dot("after")
+		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("detach")
+				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
 			})
 
 			if hasInput {
@@ -1028,17 +1028,17 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 				}
 
 				// add -f flag to read input from json file
-				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit("input-file")
-					fields.Id("Usage").Op(":").Lit("path to json-formatted input file")
-					fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
-					fields.Id("Category").Op(":").Lit(category)
+				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit("input-file")
+					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
+					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
+					g.Id("Category").Op(":").Lit(category)
 				})
 
 				// add request flags
 				for _, field := range method.Input.Fields {
 					fields[field.GoName] = struct{}{}
-					m.genCliFlagForField(flags, field, category, "")
+					m.genCliFlagForField(g, field, category, "")
 				}
 			}
 			if hasSignalInput {
@@ -1048,11 +1048,11 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 				}
 
 				// add -f flag to read input from json file
-				flags.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(fields *j.Group) {
-					fields.Id("Name").Op(":").Lit("signal-file")
-					fields.Id("Usage").Op(":").Lit("path to json-formatted input file")
-					fields.Id("Aliases").Op(":").Index().String().Values(j.Lit("s"))
-					fields.Id("Category").Op(":").Lit(category)
+				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+					g.Id("Name").Op(":").Lit("signal-file")
+					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
+					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("s"))
+					g.Id("Category").Op(":").Lit(category)
 				})
 
 				// add signal flags
@@ -1062,27 +1062,27 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 						prefix = handler.GoName
 						collisions[m.flagName(field, "")] = struct{}{}
 					}
-					m.genCliFlagForField(flags, field, category, prefix)
+					m.genCliFlagForField(g, field, category, prefix)
 				}
 			}
 		})
-		cmd.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(fn *j.Group) {
+		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			fn.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
-			fn.Defer().Id("c").Dot("Close").Call()
-			fn.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
+			g.Defer().Id("c").Dot("Close").Call()
+			g.Id("client").Op(":=").Id(m.toCamel("New%sClient", m.Service.GoName)).Call(j.Id("c"))
 
 			// unmarshal request
 			if hasInput {
 				inputName := m.getMessageName(method.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", m.toCamel("%s", inputName))
-				fn.List(j.Id("req"), j.Err()).Op(":=").Qual(m.goImportPathForMethod(w), unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
+				g.List(j.Id("req"), j.Err()).Op(":=").Qual(m.goImportPathForMethod(w), unmarshaller).Call(j.Id("cmd"), j.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.Dict{
 					j.Id("FromFile"): j.Lit("input-file"),
 				}))
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error unmarshalling request: %w"), j.Err())),
 				)
 			}
@@ -1091,43 +1091,43 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 			if hasSignalInput {
 				inputName := m.getMessageName(handler.Input)
 				unmarshaller := fmt.Sprintf("UnmarshalCliFlagsTo%s", m.toCamel("%s", inputName))
-				fn.List(j.Id("signal"), j.Err()).Op(":=").Qual(m.goImportPathForMethod(signal), unmarshaller).CallFunc(func(b *j.Group) {
-					b.Id("cmd")
-					b.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.DictFunc(func(d j.Dict) {
+				g.List(j.Id("signal"), j.Err()).Op(":=").Qual(m.goImportPathForMethod(signal), unmarshaller).CallFunc(func(g *j.Group) {
+					g.Id("cmd")
+					g.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.DictFunc(func(d j.Dict) {
 						d[j.Id("FromFile")] = j.Lit("signal-file")
 						if len(collisions) > 0 {
-							b.Qual(helpersPkg, "UnmarshalCliFlagsOptions").CustomFunc(multiLineValues, func(b *j.Group) {
-								b.Id("Prefix").Op(":").Lit(m.caser.ToKebab(handler.GoName))
-								b.Id("PrefixFlags").Op(":").Map(j.String()).Struct().CustomFunc(multiLineValues, func(b *j.Group) {
+							g.Qual(helpersPkg, "UnmarshalCliFlagsOptions").CustomFunc(multiLineValues, func(g *j.Group) {
+								g.Id("Prefix").Op(":").Lit(m.caser.ToKebab(handler.GoName))
+								g.Id("PrefixFlags").Op(":").Map(j.String()).Struct().CustomFunc(multiLineValues, func(g *j.Group) {
 									for _, field := range workflow.DeterministicKeys(collisions) {
-										b.Lit(field).Op(":").Values()
+										g.Lit(field).Op(":").Values()
 									}
 								})
 							})
 						}
 					}))
 				})
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error unmarshalling signal: %w"), j.Err())),
 				)
 			}
 
 			// execute operation
-			fn.List(j.Id("run"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sWith%sAsync", w, signal)).CallFunc(func(args *j.Group) {
-				args.Id("cmd").Dot("Context")
+			g.List(j.Id("run"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sWith%sAsync", w, signal)).CallFunc(func(g *j.Group) {
+				g.Id("cmd").Dot("Context")
 				if hasInput {
-					args.Id("req")
+					g.Id("req")
 				}
 				if hasSignalInput {
-					args.Id("signal")
+					g.Id("signal")
 				}
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error starting %s workflow with %s signal: %w"), j.Id(m.toCamel("%sWorkflowName", w)), j.Qual(m.goImportPathForMethod(signal), m.toCamel("%sSignalName", signal)), j.Err())),
 			)
 
 			// handle async invocation
-			fn.If(j.Id("cmd").Dot("Bool").Call(j.Lit("detach"))).Block(
+			g.If(j.Id("cmd").Dot("Bool").Call(j.Lit("detach"))).Block(
 				j.Qual("fmt", "Println").Call(j.Lit("success")),
 				j.Qual("fmt", "Printf").Call(j.Lit("workflow id: %s\n"), j.Id("run").Dot("ID").Call()),
 				j.Qual("fmt", "Printf").Call(j.Lit("run id: %s\n"), j.Id("run").Dot("RunID").Call()),
@@ -1135,13 +1135,13 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 			)
 
 			// handle synchronous invocation
-			fn.
+			g.
 				If(
-					j.ListFunc(func(returnVals *j.Group) {
+					j.ListFunc(func(g *j.Group) {
 						if hasOutput {
-							returnVals.Id("resp")
+							g.Id("resp")
 						}
-						returnVals.Err()
+						g.Err()
 					}).Op(":=").Id("run").Dot("Get").Call(j.Id("cmd").Dot("Context")),
 					j.Err().Op("!=").Nil(),
 				).
@@ -1149,12 +1149,12 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(cmds *j.Group, w, signal prot
 					j.Return(j.Err()),
 				).
 				Else().
-				BlockFunc(func(b *j.Group) {
+				BlockFunc(func(g *j.Group) {
 					// print response
 					if hasOutput {
-						genCliPrintMessage(b, "resp")
+						genCliPrintMessage(g, "resp")
 					}
-					b.Return(j.Nil())
+					g.Return(j.Nil())
 				})
 		})
 	})
@@ -1287,16 +1287,16 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 			if hasUpdateInput {
 				unmarshaller := m.Names().unmarshalCliFlagsTo(handler.Input)
 
-				g.List(j.Id("update"), j.Err()).Op(":=").Qual(m.goImportPathForMethod(update), unmarshaller).CallFunc(func(b *j.Group) {
-					b.Id("cmd")
-					b.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.DictFunc(func(d j.Dict) {
+				g.List(j.Id("update"), j.Err()).Op(":=").Qual(m.goImportPathForMethod(update), unmarshaller).CallFunc(func(g *j.Group) {
+					g.Id("cmd")
+					g.Qual(helpersPkg, "UnmarshalCliFlagsOptions").Values(j.DictFunc(func(d j.Dict) {
 						d[j.Id("FromFile")] = j.Lit("update-file")
 						if len(collisions) > 0 {
-							b.Qual(helpersPkg, "UnmarshalCliFlagsOptions").CustomFunc(multiLineValues, func(b *j.Group) {
-								b.Id("Prefix").Op(":").Lit(m.caser.ToKebab(handler.GoName))
-								b.Id("PrefixFlags").Op(":").Map(j.String()).Struct().CustomFunc(multiLineValues, func(b *j.Group) {
+							g.Qual(helpersPkg, "UnmarshalCliFlagsOptions").CustomFunc(multiLineValues, func(g *j.Group) {
+								g.Id("Prefix").Op(":").Lit(m.caser.ToKebab(handler.GoName))
+								g.Id("PrefixFlags").Op(":").Map(j.String()).Struct().CustomFunc(multiLineValues, func(g *j.Group) {
 									for _, field := range workflow.DeterministicKeys(collisions) {
-										b.Lit(field).Op(":").Values()
+										g.Lit(field).Op(":").Values()
 									}
 								})
 							})

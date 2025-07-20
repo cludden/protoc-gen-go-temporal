@@ -22,6 +22,7 @@ import (
 	enumsv1 "go.temporal.io/api/enums/v1"
 	activity "go.temporal.io/sdk/activity"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -453,6 +454,9 @@ func FooChildAsync(ctx workflow.Context, req *FooInput, options ...*FooChildOpti
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &FooChildRun{Future: workflow.ExecuteChildWorkflow(ctx, FooWorkflowName, req)}, nil
 }
 
@@ -468,6 +472,7 @@ type FooChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -518,6 +523,12 @@ func (o *FooChildOptions) Build(ctx workflow.Context, req protoreflect.Message) 
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *FooChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *FooChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *FooChildOptions) WithDataConverter(dc converter.DataConverter) *FooChildOptions {
+	o.dc = dc
 	return o
 }
 
@@ -689,6 +700,9 @@ func FooAsync(ctx workflow.Context, req *FooInput, options ...*FooActivityOption
 		return &FooFuture{Future: errF}
 	}
 	activity := FooActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &FooFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
 	return future
 }
@@ -718,6 +732,9 @@ func FooLocalAsync(ctx workflow.Context, req *FooInput, options ...*FooLocalActi
 	} else {
 		activity = FooActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &FooFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
 	return future
 }
@@ -728,6 +745,7 @@ type FooActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -773,6 +791,12 @@ func (o *FooActivityOptions) Build(ctx workflow.Context) (workflow.Context, erro
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *FooActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *FooActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *FooActivityOptions) WithDataConverter(dc converter.DataConverter) *FooActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -824,6 +848,7 @@ type FooLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context, *FooInput) (*FooOutput, error)
 }
 
@@ -858,6 +883,12 @@ func (o *FooLocalActivityOptions) Local(fn func(context.Context, *FooInput) (*Fo
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *FooLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *FooLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *FooLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *FooLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 

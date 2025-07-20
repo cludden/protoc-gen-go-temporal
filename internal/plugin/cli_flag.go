@@ -124,7 +124,7 @@ func flagType(field *protogen.Field) (t string, additionalUsage string, err erro
 }
 
 // genCliFlagForField generates a cli flag for a message field
-func (m *Manifest) genCliFlagForField(flags *j.Group, field *protogen.Field, category string, prefix string) {
+func (m *Manifest) genCliFlagForField(g *j.Group, field *protogen.Field, category string, prefix string) {
 	name := m.getFieldName(field)
 	opts := proto.GetExtension(field.Desc.Options(), temporalv1.E_Field).(*temporalv1.FieldOptions)
 
@@ -148,7 +148,7 @@ func (m *Manifest) genCliFlagForField(flags *j.Group, field *protogen.Field, cat
 	flagType += "Flag"
 
 	// generate flag
-	flags.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(flag *j.Group) {
+	g.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(flag *j.Group) {
 		flag.Id("Name").Op(":").Lit(flagName)
 		flag.Id("Usage").Op(":").Lit(strings.TrimSpace(usage))
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {

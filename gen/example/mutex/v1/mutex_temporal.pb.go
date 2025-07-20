@@ -23,6 +23,7 @@ import (
 	serviceerror "go.temporal.io/api/serviceerror"
 	activity "go.temporal.io/sdk/activity"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -1080,6 +1081,9 @@ func MutexChildAsync(ctx workflow.Context, req *MutexInput, options ...*MutexChi
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &MutexChildRun{Future: workflow.ExecuteChildWorkflow(ctx, MutexWorkflowName, req)}, nil
 }
 
@@ -1095,6 +1099,7 @@ type MutexChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -1174,6 +1179,12 @@ func (o *MutexChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *MutexChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *MutexChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *MutexChildOptions) WithDataConverter(dc converter.DataConverter) *MutexChildOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1356,6 +1367,9 @@ func SampleWorkflowWithMutexChildAsync(ctx workflow.Context, req *SampleWorkflow
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &SampleWorkflowWithMutexChildRun{Future: workflow.ExecuteChildWorkflow(ctx, SampleWorkflowWithMutexWorkflowName, req)}, nil
 }
 
@@ -1371,6 +1385,7 @@ type SampleWorkflowWithMutexChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -1443,6 +1458,12 @@ func (o *SampleWorkflowWithMutexChildOptions) Build(ctx workflow.Context, req pr
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *SampleWorkflowWithMutexChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *SampleWorkflowWithMutexChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *SampleWorkflowWithMutexChildOptions) WithDataConverter(dc converter.DataConverter) *SampleWorkflowWithMutexChildOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1670,6 +1691,9 @@ func MutexAsync(ctx workflow.Context, req *MutexInput, options ...*MutexActivity
 		return &MutexFuture{Future: errF}
 	}
 	activity := MutexActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &MutexFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
 	return future
 }
@@ -1701,6 +1725,9 @@ func MutexLocalAsync(ctx workflow.Context, req *MutexInput, options ...*MutexLoc
 	} else {
 		activity = MutexActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &MutexFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
 	return future
 }
@@ -1711,6 +1738,7 @@ type MutexActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -1756,6 +1784,12 @@ func (o *MutexActivityOptions) Build(ctx workflow.Context) (workflow.Context, er
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *MutexActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *MutexActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *MutexActivityOptions) WithDataConverter(dc converter.DataConverter) *MutexActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1807,6 +1841,7 @@ type MutexLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context, *MutexInput) error
 }
 
@@ -1841,6 +1876,12 @@ func (o *MutexLocalActivityOptions) Local(fn func(context.Context, *MutexInput) 
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *MutexLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *MutexLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *MutexLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *MutexLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 

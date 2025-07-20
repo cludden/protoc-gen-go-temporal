@@ -18,6 +18,7 @@ import (
 	v2 "github.com/urfave/cli/v2"
 	enumsv1 "go.temporal.io/api/enums/v1"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -443,6 +444,9 @@ func SleepChildAsync(ctx workflow.Context, req *SleepRequest, options ...*SleepC
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &SleepChildRun{Future: workflow.ExecuteChildWorkflow(ctx, SleepWorkflowName, req)}, nil
 }
 
@@ -458,6 +462,7 @@ type SleepChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -512,6 +517,12 @@ func (o *SleepChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *SleepChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *SleepChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *SleepChildOptions) WithDataConverter(dc converter.DataConverter) *SleepChildOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1368,6 +1379,9 @@ func CallSleepChildAsync(ctx workflow.Context, req *CallSleepRequest, options ..
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &CallSleepChildRun{Future: workflow.ExecuteChildWorkflow(ctx, CallSleepWorkflowName, req)}, nil
 }
 
@@ -1383,6 +1397,7 @@ type CallSleepChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -1433,6 +1448,12 @@ func (o *CallSleepChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *CallSleepChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *CallSleepChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *CallSleepChildOptions) WithDataConverter(dc converter.DataConverter) *CallSleepChildOptions {
+	o.dc = dc
 	return o
 }
 
