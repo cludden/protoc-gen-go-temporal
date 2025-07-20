@@ -3,14 +3,14 @@ import TabItem from '@theme/TabItem';
 
 # CLI
 
-The protoc-gen-go-temporal plugin generates complete command-line interface (CLI) applications using the [urfave/cli/v2](https://github.com/urfave/cli/v2) framework. These CLIs provide command-line access to all workflow operations including execution, signals, queries, updates, and worker management.
+The protoc-gen-go-temporal plugin generates complete command-line interface (CLI) applications using the [urfave/cli/v2](https://github.com/urfave/cli/v2) (default) or [urfave/cli/v3](https://github.com/urfave/cli/v3) (optional) framework. These CLIs provide command-line access to all workflow operations including execution, signals, queries, updates, and worker management.
 
 ## CLI Generation
 
 Each protobuf service with Temporal definitions automatically generates a CLI application with commands for all defined workflows, queries, signals, and updates.
 
 <Tabs>
-<TabItem value="cli-interface" label="Generated CLI">
+<TabItem value="cli-interface" label="Generated V2 CLI">
 ```go title="Generated CLI Interface"
 // CLI Options for configuration
 type ExampleCliOptions interface {
@@ -25,6 +25,20 @@ func NewExampleCli(options ...*ExampleCliOptions) (*cli.App, error)
 
 // CLI Command constructor (for embedding)
 func NewExampleCliCommand(options ...*ExampleCliOptions) (*cli.Command, error)
+```
+</TabItem>
+<TabItem value="cli-interface-v3" label="Generated V3 CLI">
+```go title="Generated CLI Interface"
+// CLI Options for configuration
+type ExampleCliV3Options interface {
+    WithAfter(func(context.Context, *cliv3.Command) error)
+    WithBefore(func(context.Context, *cliv3.Command) (context.Context, error))
+    WithClientForCommand(func(context.Context, *cliv3.Command) (client.Client, error))
+    WithWorker(func(context.Context, *cliv3.Command, client.Client) (worker.Worker, error))
+}
+
+// CLI Application constructor
+func NewExampleCliV3(options ...*ExampleCliOptions) (*cli.Command, error)
 ```
 </TabItem>
 <TabItem value="cli-schema" label="Schema">
@@ -70,7 +84,7 @@ service Example {
 Initialize a CLI application with basic client configuration and optional worker setup.
 
 <Tabs>
-<TabItem value="cli-basic" label="Basic Setup">
+<TabItem value="cli-basic" label="Basic Setup V2">
 ```go title="main.go"
 package main
 
@@ -96,6 +110,39 @@ func main() {
 
     // Run CLI application
     if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+<TabItem value="cli-basic-v3" label="Basic Setup V3">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    cliv3 "github.com/urfave/cli/v3"
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // Create CLI application with client factory
+    app, err := examplev1.NewExampleCliV3(
+        examplev1.NewExampleCliV3Options().
+            WithClient(func(ctx context.Context, cmd *cliv3.Command) (client.Client, error) {
+                return client.DialContext(ctx, client.Options{})
+            }),
+    )
+    if err != nil {
+        log.Fatalf("error creating CLI: %v", err)
+    }
+
+    // Run CLI application
+    if err := app.Run(context.Background(), os.Args); err != nil {
         log.Fatal(err)
     }
 }
@@ -144,6 +191,52 @@ func main() {
     }
 
     if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+<TabItem value="cli-worker-v3" label="With Worker V3">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    examplev1 "path/to/gen/example/v1"
+    cliv3 "github.com/urfave/cli/v3"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+)
+
+type (
+    Workflows struct{}
+    Activities struct{}
+)
+
+func main() {
+    app, err := examplev1.NewExampleCliV3(
+        examplev1.NewExampleCliV3Options().
+            WithClient(func(ctx context.Context, cmd *cliv3.Command) (client.Client, error) {
+                return client.DialContext(ctx, client.Options{})
+            }).
+            WithWorker(func(ctx context.Context, cmd *cliv3.Command, c client.Client) (worker.Worker, error) {
+                w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+                
+                // Register workflows and activities
+                examplev1.RegisterExampleWorkflows(w, &Workflows{})
+                examplev1.RegisterExampleActivities(w, &Activities{})
+                
+                return w, nil
+            }),
+    )
+    if err != nil {
+        log.Fatalf("error creating CLI: %v", err)
+    }
+
+    if err := app.Run(context.Background(), os.Args); err != nil {
         log.Fatal(err)
     }
 }

@@ -74,6 +74,31 @@ protoc --go_temporal_opt=cli-enabled=true
 </TabItem>
 </Tabs>
 
+### cli-v3
+
+`bool`
+
+Use [urfave/cli/v3](https://cli.urfave.org/v3/getting-started/) for CLI generation. Default is `false`, which uses [urfave/cli/v2](https://cli.urfave.org/v2/getting-started/).
+
+<Tabs>
+<TabItem value="cli-v3-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: 
+      - cli-enabled=true
+      - cli-v3=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="cli-v3-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=cli-enabled=true,cli-v3=true
+```
+</TabItem>
+</Tabs>
+
 ### disable-workflow-input-rename
 
 `bool`

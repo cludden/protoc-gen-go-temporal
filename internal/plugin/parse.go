@@ -23,12 +23,18 @@ import (
 const (
 	activityPkg     = "go.temporal.io/sdk/activity"
 	atomicPkg       = "sync/atomic"
+	base64Pkg       = "encoding/base64"
 	clientPkg       = "go.temporal.io/sdk/client"
+	cliPkg          = "github.com/urfave/cli/v2"
+	cliV3Pkg        = "github.com/urfave/cli/v3"
 	converterPkg    = "go.temporal.io/sdk/converter"
+	convertPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
 	durationpbPkg   = "google.golang.org/protobuf/types/known/durationpb"
 	enumsPkg        = "go.temporal.io/api/enums/v1"
 	expressionPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpersPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	homedirPkg      = "github.com/mitchellh/go-homedir"
+	protojsonPkg    = "google.golang.org/protobuf/encoding/protojson"
 	protoreflectPkg = "google.golang.org/protobuf/reflect/protoreflect"
 	serviceerrorPkg = "go.temporal.io/api/serviceerror"
 	temporalPkg     = "go.temporal.io/sdk/temporal"
@@ -36,8 +42,8 @@ const (
 	timestamppbPkg  = "google.golang.org/protobuf/types/known/timestamppb"
 	updatePkg       = "go.temporal.io/api/update/v1"
 	uuidPkg         = "github.com/google/uuid"
-	workflowPkg     = "go.temporal.io/sdk/workflow"
 	workerPkg       = "go.temporal.io/sdk/worker"
+	workflowPkg     = "go.temporal.io/sdk/workflow"
 )
 
 const (
@@ -49,6 +55,7 @@ const (
 )
 
 var aliases = map[string]string{
+	cliV3Pkg:      "cliv3",
 	enumsPkg:      "enumsv1",
 	temporalv1Pkg: "temporalv1",
 	updatePkg:     "updatev1",
@@ -614,8 +621,13 @@ func (m *Manifest) render() error {
 			if !details.ActivitiesOnly() {
 				m.renderTestClient(f)
 				if m.cfg.CliEnabled {
-					m.renderCLI(f)
+					if m.cfg.CliV3Enabled {
+						m.renderCLIV3(f)
+					} else {
+						m.renderCLI(f)
+					}
 				}
+
 				if m.cfg.EnableXNS {
 					m.renderXNS(xns)
 					hasXNS = true

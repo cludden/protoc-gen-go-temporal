@@ -34,6 +34,8 @@ commands:
       buf format -w
       buf lint
       buf generate
+      buf generate --template buf.patch.gen.yaml
+      buf generate --template buf.cliv3.gen.yaml
       mockery --log-level=error
       go mod tidy
 
@@ -45,6 +47,8 @@ commands:
       buf format -w
       buf lint
       buf generate --template buf.local.gen.yaml
+      buf generate --template buf.patch.gen.yaml
+      buf generate --template buf.cliv3.gen.yaml
       mockery --log-level=error
       go mod tidy
 

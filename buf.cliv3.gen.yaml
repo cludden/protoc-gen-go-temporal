@@ -10,25 +10,21 @@ managed:
     - file_option: go_package
       module: buf.build/cludden/protoc-gen-go-temporal
 plugins:
-  - local: protoc-gen-go-patch
+  - local: protoc-gen-go
     out: gen
     opt:
       - paths=source_relative
-      - plugin=go
   - local: .omni/bin/protoc-gen-go_temporal
     out: gen
     opt:
       - cli-categories=true
       - cli-enabled=true
+      - cli-v3=true
       - enable-codec=true
-      - enable-patch-support=true
-      - enable-xns=true
-      - ignore-acronyms=AWS
-      - patches=64_ENABLED
       - paths=source_relative
       - workflow-update-enabled=true
     strategy: all
 inputs:
   - directory: test
     paths:
-      - test/patch/proto/test/patch
+      - test/cliv3/proto/test/cliv3
