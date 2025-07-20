@@ -9,16 +9,18 @@ import "temporal/v1/temporal.proto";
 service Example {
   option (temporal.v1.service) = {task_queue: "mutex"};
 
-  rpc AcquireLock(AcquireLockInput) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = {};
+  // AcquireLock requests a lock on a resource identified by `resource_id`
+  // and blocks until the lock is acquired, returning a `lease_id` that
+  // can be used to release the lock.
+  rpc AcquireLock(AcquireLockInput) returns (AcquireLockOutput) {
+    option (temporal.v1.update) = {name: "mutex.v1.AcquireLock"};
   }
 
-  rpc LockAcquired(LockAcquiredInput) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = {};
-  }
-
+  // Mutex is a workflow that manages concurrent access to a resource
+  // identified by `resource_id`.
   rpc Mutex(MutexInput) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
+      name: "mutex.v1.Mutex"
       id: 'mutex:${! resourceId }'
       retry_policy: {
         initial_interval: {seconds: 1}
@@ -26,9 +28,10 @@ service Example {
         max_interval: {seconds: 60}
         max_attempts: 5
       }
-      signal: {
+      update: {
         ref: 'AcquireLock'
         start: true
+        workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
       }
       signal: {ref: 'ReleaseLock'}
     };
@@ -37,15 +40,15 @@ service Example {
     };
   }
 
+  // ReleaseLock releases a lock on a resource identified by `lease_id`.
   rpc ReleaseLock(ReleaseLockInput) returns (google.protobuf.Empty) {
-    option (temporal.v1.signal) = {};
+    option (temporal.v1.signal) = {name: "mutex.v1.ReleaseLock"};
   }
 
+  // SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+  // use the Mutex service.
   rpc SampleWorkflowWithMutex(SampleWorkflowWithMutexInput) returns (google.protobuf.Empty) {
-    option (temporal.v1.workflow) = {
-      id: 'SampleWorkflow1WithMutex_${! uuid_v4() }'
-      signal: {ref: 'LockAcquired'}
-    };
+    option (temporal.v1.workflow) = {id: 'SampleWorkflow1WithMutex_${! uuid_v4() }'};
   }
 }
 
@@ -54,11 +57,10 @@ message MutexInput {
 }
 
 message AcquireLockInput {
-  string workflow_id = 1;
-  google.protobuf.Duration timeout = 2;
+  google.protobuf.Duration timeout = 1;
 }
 
-message LockAcquiredInput {
+message AcquireLockOutput {
   string lease_id = 1;
 }
 

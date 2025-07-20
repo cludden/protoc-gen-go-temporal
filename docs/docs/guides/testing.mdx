@@ -3,4 +3,469 @@ import TabItem from '@theme/TabItem';
 
 # Testing
 
-**Coming Soon...**
+The protoc-gen-go-temporal plugin generates comprehensive testing utilities that integrate seamlessly with Temporal's test framework. These tools enable you to write unit tests, integration tests, and mock-based tests for your workflows, activities, signals, queries, and updates.
+
+## Test Client Generation
+
+The plugin generates test clients that mirror the production client interface but operate within Temporal's test environment.
+
+<Tabs>
+<TabItem value="test-client-interface" label="Generated Test Client">
+```go title="Generated Test Client Interface"
+// Constructor for test client
+func NewTestExampleClient(
+    env *testsuite.TestWorkflowEnvironment, 
+    workflows ExampleWorkflows, 
+    activities ExampleActivities,
+) *TestExampleClient
+
+// All the same methods as production client
+func (c *TestExampleClient) CreateFoo(ctx context.Context, req *CreateFooRequest, opts ...*CreateFooOptions) (*CreateFooResponse, error)
+func (c *TestExampleClient) CreateFooAsync(ctx context.Context, req *CreateFooRequest, opts ...*CreateFooOptions) (CreateFooRun, error)
+func (c *TestExampleClient) GetCreateFoo(ctx context.Context, workflowID, runID string) CreateFooRun
+
+// Signal methods
+func (c *TestExampleClient) SetFooProgress(ctx context.Context, workflowID, runID string, req *SetFooProgressRequest) error
+
+// Query methods  
+func (c *TestExampleClient) GetFooProgress(ctx context.Context, workflowID, runID string) (*GetFooProgressResponse, error)
+
+// Update methods
+func (c *TestExampleClient) UpdateFooProgress(ctx context.Context, workflowID, runID string, req *SetFooProgressRequest, opts ...*UpdateFooProgressOptions) (*GetFooProgressResponse, error)
+```
+</TabItem>
+<TabItem value="test-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress" }
+      query: { ref: "GetFooProgress" }
+      update: { ref: "UpdateFooProgress" }
+    };
+  }
+
+  rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Unit Testing Workflows
+
+Test individual workflows in isolation using the test client and Temporal's test framework.
+
+<Tabs>
+<TabItem value="basic-workflow-test" label="Basic Workflow Test">
+```go title="workflow_test.go"
+package main
+
+import (
+    "context"
+    "testing"
+
+    "github.com/google/go-cmp/cmp"
+    "github.com/stretchr/testify/require"
+    "go.temporal.io/sdk/testsuite"
+    "google.golang.org/protobuf/testing/protocmp"
+
+    examplev1 "path/to/gen/example/v1"
+)
+
+func TestCreateFooWorkflow(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    
+    // Create test client with workflow and activity implementations
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+    
+    // Execute workflow synchronously
+    result, err := client.CreateFoo(ctx, &examplev1.CreateFooRequest{
+        Name: "test-foo",
+    })
+    
+    require.NoError(t, err)
+    require.NotNil(t, result)
+    require.Empty(t, cmp.Diff(
+        &examplev1.CreateFooResponse{
+            Foo: &examplev1.Foo{
+                Name:   "test-foo",
+                Status: examplev1.Foo_FOO_STATUS_READY,
+            },
+        },
+        result,
+        protocmp.Transform(),
+    ))
+}
+```
+</TabItem>
+<TabItem value="async-workflow-test" label="Async Workflow Test">
+```go title="async_workflow_test.go"
+func TestCreateFooWorkflowAsync(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+    
+    // Start workflow asynchronously
+    run, err := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "async-test-foo",
+    })
+    require.NoError(t, err)
+    
+    // Verify workflow metadata
+    require.NotEmpty(t, run.ID())
+    require.NotEmpty(t, run.RunID())
+    
+    // Wait for completion
+    result, err := run.Get(ctx)
+    require.NoError(t, err)
+    require.NotNil(t, result)
+    require.Empty(t, cmp.Diff(
+        &examplev1.CreateFooResponse{
+            Foo: &examplev1.Foo{
+                Name:   "test-foo",
+                Status: examplev1.Foo_FOO_STATUS_READY,
+            },
+        },
+        result,
+        protocmp.Transform(),
+    ))
+}
+```
+</TabItem>
+</Tabs>
+
+## Signal and Query Testing
+
+Test workflows that handle signals and/or queries using delayed callbacks for deterministic execution.
+
+<Tabs>
+<TabItem value="signal-testing" label="Signal and Query">
+```go title="signal_test.go"
+func TestWorkflowWithSignals(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+    
+    // Start workflow asynchronously
+    run, err := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "signal-test-foo",
+    })
+    require.NoError(t, err)
+    
+    // Send signal using delayed callback for deterministic timing
+    env.RegisterDelayedCallback(func() {
+        err := run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+            Progress: 0.5,
+        })
+        require.NoError(t, err)
+    }, time.Second*5)
+
+    // Query workflow state after signal
+    env.RegisterDelayedCallback(func() {
+        progress, err := run.GetFooProgress(ctx)
+        require.NoError(t, err)
+        require.Equal(t, float32(0.5), progress.GetProgress())
+        require.Equal(t, examplev1.Foo_FOO_STATUS_CREATING, progress.GetStatus())
+    }, time.Second*10)
+    
+    // Send another signal
+    env.RegisterDelayedCallback(func() {
+        err := run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+            Progress: 1.0,
+        })
+        require.NoError(t, err)
+    }, time.Second*20)
+    
+    // Wait for workflow completion
+    result, err := run.Get(ctx)
+    require.NoError(t, err)
+    require.Equal(t, examplev1.Foo_FOO_STATUS_READY, result.Foo.Status)
+}
+```
+</TabItem>
+<TabItem value="signal-start-testing" label="Signal with Start">
+```go title="signal_query_test.go"
+func TestWorkflowSignalAndQuery(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+    
+    run, err := client.CreateFooWithSetFooProgressAsync(
+        ctx, 
+        &examplev1.CreateFooRequest{
+            Name: "signal-query-test",
+        },
+        &examplev1.SetFooProgressRequest{
+            Progress: 0.7,
+        },
+    )
+    require.NoError(t, err)
+    
+    // Query workflow state after signal
+    env.RegisterDelayedCallback(func() {
+        progress, err := run.GetFooProgress(ctx)
+        require.NoError(t, err)
+        require.Equal(t, float32(0.7), progress.GetProgress())
+        require.Equal(t, examplev1.Foo_FOO_STATUS_CREATING, progress.GetStatus())
+    }, time.Second*5)
+    
+    // Complete workflow
+    env.RegisterDelayedCallback(func() {
+        err := run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+            Progress: 1.0,
+        })
+        require.NoError(t, err)
+    }, time.Second*10)
+    
+    result, err := run.Get(ctx)
+    require.NoError(t, err)
+    require.Equal(t, examplev1.Foo_FOO_STATUS_READY, result.Foo.Status)
+}
+```
+</TabItem>
+</Tabs>
+
+## Update Testing
+
+Test workflow updates with proper staging and result verification.
+
+<Tabs>
+<TabItem value="update-testing" label="Update Testing">
+```go title="update_test.go"
+func TestWorkflowUpdates(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+    
+    run, err := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{
+        Name: "update-test-foo",
+    })
+    require.NoError(t, err)
+    
+    // Updates must be executed asynchronously
+    var updateHandle examplev1.UpdateFooProgressHandle
+    env.RegisterDelayedCallback(func() {
+        handle, err := run.UpdateFooProgressAsync(ctx, &examplev1.SetFooProgressRequest{
+            Progress: 1.0,
+        })
+        require.NoError(t, err)
+        updateHandle = handle
+    }, time.Second*20)
+    
+    result, err := run.Get(ctx)
+    require.NoError(t, err)
+    require.Equal(t, examplev1.Foo_FOO_STATUS_READY, result.GetFoo().GetStatus())
+
+    updateResult, err := updateHandle.Get(ctx)
+    require.NoError(t, err)
+    require.Equal(t, float32(1.0), updateResult.GetProgress())
+    require.Equal(t, examplev1.Foo_FOO_STATUS_READY, updateResult.GetStatus())
+}
+```
+</TabItem>
+<TabItem value="update-with-start-test" label="Update with Start Test">
+```go title="update_with_start_test.go"
+func TestUpdateWithStart(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+
+    // Complete workflow with another update
+    env.RegisterDelayedCallback(func() {
+        finalUpdate, err := run.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{
+            Progress: 1.0,
+        })
+        require.NoError(t, err)
+        require.Equal(t, examplev1.Foo_FOO_STATUS_READY, finalUpdate.Status)
+    }, time.Second*10)
+    
+    // Start workflow with initial update
+    updateResult, run, err := client.CreateFooWithUpdateFooProgress(ctx,
+        &examplev1.CreateFooRequest{Name: "update-start-test"},
+        &examplev1.SetFooProgressRequest{Progress: 0.5},
+    )
+    require.NoError(t, err)
+    
+    // Verify initial update result
+    require.Equal(t, float32(0.5), updateResult.GetProgress())
+    require.Equal(t, examplev1.Foo_FOO_STATUS_CREATING, updateResult.GetStatus())
+    
+    result, err := run.Get(ctx)
+    require.NoError(t, err)
+    require.Equal(t, examplev1.Foo_FOO_STATUS_READY, result.GetFoo().GetStatus())
+}
+```
+</TabItem>
+</Tabs>
+
+## Activity Mocking
+
+Mock activities to test workflow logic in isolation.
+
+<Tabs>
+<TabItem value="activity-mocking" label="Activity Mocking">
+```go title="activity_mock_test.go"
+func TestWorkflowWithMockedActivities(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    
+    // Mock activity behavior
+    env.OnActivity(examplev1.NotifyActivityName, mock.Anything, mock.Anything).Return(nil)
+    env.OnActivity(examplev1.ProcessDataActivityName, mock.Anything, mock.Anything).Return(
+        &examplev1.ProcessDataResponse{
+            ProcessedCount: 42,
+            Status:         "success",
+        }, nil)
+    
+    // Create client without activity implementations (using mocks)
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, nil)
+    
+    ctx := context.Background()
+    
+    result, err := client.CreateFoo(ctx, &examplev1.CreateFooRequest{
+        Name: "mocked-test",
+    })
+    
+    require.NoError(t, err)
+    require.Equal(t, "mocked-test", result.Foo.Name)
+    
+    // Verify that activities were called
+    env.AssertExpectations(t)
+}
+```
+</TabItem>
+<TabItem value="activity-error-test" label="Activity Error Testing">
+```go title="activity_error_test.go"
+func TestWorkflowWithActivityError(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    
+    // Mock activity to return an error
+    env.OnActivity(examplev1.NotifyActivityName, mock.Anything, mock.Anything).Return(
+        temporal.NewApplicationError("notification failed", "NOTIFICATION_ERROR"))
+    
+    client := examplev1.NewTestExampleClient(env, &ExampleWorkflows{}, nil)
+    
+    ctx := context.Background()
+    
+    _, err := client.CreateFoo(ctx, &examplev1.CreateFooRequest{
+        Name: "error-test",
+    })
+    
+    // Verify workflow handles activity error appropriately
+    require.Error(t, err)
+    
+    var applicationError *temporal.ApplicationError
+    require.True(t, errors.As(err, &applicationError))
+    require.Equal(t, "NOTIFICATION_ERROR", applicationError.Type())
+}
+```
+</TabItem>
+</Tabs>
+
+## Child Workflow Testing
+
+Test workflows that execute child workflows using mocking.
+
+<Tabs>
+<TabItem value="child-workflow-mock" label="Child Workflow Mocking">
+```go title="child_workflow_test.go"
+func TestParentWorkflowWithChildWorkflows(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    
+    // Mock child workflow behavior
+    env.OnWorkflow(examplev1.CreateFooWorkflowName, mock.Anything, mock.Anything).Return(
+        &examplev1.CreateFooResponse{
+            Foo: &examplev1.Foo{
+                Name:   "child-foo",
+                Status: examplev1.Foo_FOO_STATUS_READY,
+            },
+        }, nil)
+    
+    // Register parent workflow
+    client := examplev1.NewTestExampleClient(env, &ParentWorkflows{}, &ExampleActivities{})
+    
+    ctx := context.Background()
+    
+    result, err := client.ExecuteParentWorkflow(ctx, &examplev1.ParentWorkflowRequest{
+        ChildCount: 3,
+    })
+    
+    require.NoError(t, err)
+    require.Equal(t, int32(3), result.CompletedChildren)
+    
+    // Verify child workflows were called expected number of times
+    env.AssertExpectations(t)
+}
+```
+</TabItem>
+<TabItem value="child-workflow-signals" label="Child Workflow with Signals">
+```go title="child_workflow_signals_test.go"
+func TestParentWorkflowSignalsToChild(t *testing.T) {
+    var suite testsuite.WorkflowTestSuite
+    env := suite.NewTestWorkflowEnvironment()
+    
+    // Track signals sent to child workflows
+    var childSignals []examplev1.SetFooProgressRequest
+    
+    env.OnWorkflow(examplev1.CreateFooWorkflowName, mock.Anything, mock.Anything).Run(
+        func(args mock.Arguments) {
+            // Simulate child workflow receiving signals
+        }).Return(&examplev1.CreateFooResponse{}, nil)
+    
+    env.OnSignalWorkflow(examplev1.SetFooProgressSignalName, mock.Anything, mock.Anything).Run(
+        func(args mock.Arguments) {
+            signal := args.Get(1).(*examplev1.SetFooProgressRequest)
+            childSignals = append(childSignals, *signal)
+        })
+    
+    client := examplev1.NewTestExampleClient(env, &ParentWorkflows{}, nil)
+    
+    result, err := client.ExecuteParentWithSignaling(ctx, &examplev1.ParentWorkflowRequest{})
+    
+    require.NoError(t, err)
+    require.Greater(t, len(childSignals), 0, "Expected signals to be sent to child")
+    
+    // Verify signal content
+    for _, signal := range childSignals {
+        require.GreaterOrEqual(t, signal.Progress, float32(0))
+        require.LessOrEqual(t, signal.Progress, float32(1))
+    }
+}
+```
+</TabItem>
+</Tabs>

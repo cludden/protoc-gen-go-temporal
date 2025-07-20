@@ -6,24 +6,24 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func (svc *Manifest) toCamel(format string, args ...any) string {
+func (m *Manifest) toCamel(format string, args ...any) string {
 	for i, arg := range args {
 		if fn, ok := arg.(protoreflect.FullName); ok {
-			args[i] = svc.methods[fn].GoName
+			args[i] = m.methods[fn].GoName
 		}
 	}
 
 	s := fmt.Sprintf(format, args...)
-	return svc.caser.ToCamel(s)
+	return m.caser.ToCamel(s)
 }
 
-func (svc *Manifest) toLowerCamel(format string, args ...any) string {
+func (m *Manifest) toLowerCamel(format string, args ...any) string {
 	for i, arg := range args {
 		if fn, ok := arg.(protoreflect.FullName); ok {
-			args[i] = svc.methods[fn].GoName
+			args[i] = m.methods[fn].GoName
 		}
 	}
 
 	s := fmt.Sprintf(format, args...)
-	return svc.caser.ToLowerCamel(s)
+	return m.caser.ToLowerCamel(s)
 }

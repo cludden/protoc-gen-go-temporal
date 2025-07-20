@@ -5,6 +5,7 @@ modules:
   - path: examples/mutex/proto
   - path: examples/schedule/proto
   - path: examples/searchattributes/proto
+  - path: examples/shoppingcart/proto
   - path: examples/updatabletimer/proto
   - path: examples/xns/proto
   - path: proto
@@ -22,12 +23,14 @@ modules:
 deps:
   - buf.build/alta/protopatch
   - buf.build/cludden/protoc-gen-go-temporal
+  - buf.build/temporalio/api
 lint:
   use:
     - BASIC
   except:
     - FIELD_NOT_REQUIRED
     - PACKAGE_NO_IMPORT_CYCLE
+    - PACKAGE_DIRECTORY_MATCH
 breaking:
   use:
     - FILE

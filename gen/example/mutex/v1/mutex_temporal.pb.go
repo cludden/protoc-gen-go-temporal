@@ -8,15 +8,19 @@
 package mutexv1
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpers "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	scheme "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
+	testutil "github.com/cludden/protoc-gen-go-temporal/pkg/testutil"
 	gohomedir "github.com/mitchellh/go-homedir"
 	v2 "github.com/urfave/cli/v2"
 	enumsv1 "go.temporal.io/api/enums/v1"
+	serviceerror "go.temporal.io/api/serviceerror"
 	activity "go.temporal.io/sdk/activity"
 	client "go.temporal.io/sdk/client"
 	temporal "go.temporal.io/sdk/temporal"
@@ -29,6 +33,8 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -37,7 +43,7 @@ const ExampleTaskQueue = "mutex"
 
 // example.mutex.v1.Example workflow names
 const (
-	MutexWorkflowName                   = "example.mutex.v1.Example.Mutex"
+	MutexWorkflowName                   = "mutex.v1.Mutex"
 	SampleWorkflowWithMutexWorkflowName = "example.mutex.v1.Example.SampleWorkflowWithMutex"
 )
 
@@ -54,29 +60,32 @@ const (
 
 // example.mutex.v1.Example signal names
 const (
-	AcquireLockSignalName  = "example.mutex.v1.Example.AcquireLock"
-	LockAcquiredSignalName = "example.mutex.v1.Example.LockAcquired"
-	ReleaseLockSignalName  = "example.mutex.v1.Example.ReleaseLock"
+	ReleaseLockSignalName = "mutex.v1.ReleaseLock"
+)
+
+// example.mutex.v1.Example update names
+const (
+	AcquireLockUpdateName = "mutex.v1.AcquireLock"
 )
 
 // ExampleClient describes a client for a(n) example.mutex.v1.Example worker
 type ExampleClient interface {
-	// Mutex executes a(n) example.mutex.v1.Example.Mutex workflow and blocks until error or response received
+	// Mutex is a workflow that manages concurrent access to a resource
+	// identified by `resource_id`.
 	Mutex(ctx context.Context, req *MutexInput, opts ...*MutexOptions) error
 
-	// MutexAsync starts a(n) example.mutex.v1.Example.Mutex workflow and returns a handle to the workflow run
+	// MutexAsync starts a(n) mutex.v1.Mutex workflow and returns a handle to the workflow run
 	MutexAsync(ctx context.Context, req *MutexInput, opts ...*MutexOptions) (MutexRun, error)
 
-	// GetMutex retrieves a handle to an existing example.mutex.v1.Example.Mutex workflow execution
+	// GetMutex retrieves a handle to an existing mutex.v1.Mutex workflow execution
 	GetMutex(ctx context.Context, workflowID string, runID string) MutexRun
 
-	// MutexWithAcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal to a(n) example.mutex.v1.Example.Mutex workflow, starting it if necessary, and blocks until workflow completion
-	MutexWithAcquireLock(ctx context.Context, req *MutexInput, signal *AcquireLockInput, opts ...*MutexOptions) error
-
-	// MutexWithAcquireLockAsync sends a(n) example.mutex.v1.Example.AcquireLock signal to a(n) example.mutex.v1.Example.Mutex workflow, starting it if necessary, and returns a handle to the workflow execution
-	MutexWithAcquireLockAsync(ctx context.Context, req *MutexInput, signal *AcquireLockInput, opts ...*MutexOptions) (MutexRun, error)
-
-	// SampleWorkflowWithMutex executes a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow and blocks until error or response received
+	// MutexWithAcquireLock executes a(n) mutex.v1.AcquireLock update on a(n) mutex.v1.Mutex workflow, starting it if necessary, and blocks until update completion
+	MutexWithAcquireLock(ctx context.Context, req *MutexInput, update *AcquireLockInput, opts ...*MutexWithAcquireLockOptions) (*AcquireLockOutput, MutexRun, error)
+	// MutexWithAcquireLockAsync starts a(n) mutex.v1.AcquireLock update on a(n) mutex.v1.Mutex workflow, starting it if necessary, and returns a handle to the update execution
+	MutexWithAcquireLockAsync(ctx context.Context, req *MutexInput, update *AcquireLockInput, opts ...*MutexWithAcquireLockOptions) (AcquireLockHandle, MutexRun, error)
+	// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+	// use the Mutex service.
 	SampleWorkflowWithMutex(ctx context.Context, req *SampleWorkflowWithMutexInput, opts ...*SampleWorkflowWithMutexOptions) error
 
 	// SampleWorkflowWithMutexAsync starts a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow and returns a handle to the workflow run
@@ -91,14 +100,19 @@ type ExampleClient interface {
 	// TerminateWorkflow an existing workflow execution
 	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
 
-	// example.mutex.v1.Example.AcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal
-	AcquireLock(ctx context.Context, workflowID string, runID string, signal *AcquireLockInput) error
-
-	// example.mutex.v1.Example.LockAcquired sends a(n) example.mutex.v1.Example.LockAcquired signal
-	LockAcquired(ctx context.Context, workflowID string, runID string, signal *LockAcquiredInput) error
-
-	// example.mutex.v1.Example.ReleaseLock sends a(n) example.mutex.v1.Example.ReleaseLock signal
+	// ReleaseLock releases a lock on a resource identified by `lease_id`.
 	ReleaseLock(ctx context.Context, workflowID string, runID string, signal *ReleaseLockInput) error
+
+	// AcquireLock requests a lock on a resource identified by `resource_id`
+	// and blocks until the lock is acquired, returning a `lease_id` that
+	// can be used to release the lock.
+	AcquireLock(ctx context.Context, workflowID string, runID string, req *AcquireLockInput, opts ...*AcquireLockOptions) (*AcquireLockOutput, error)
+
+	// AcquireLockAsync starts a(n) mutex.v1.AcquireLock update and returns a handle to the workflow update
+	AcquireLockAsync(ctx context.Context, workflowID string, runID string, req *AcquireLockInput, opts ...*AcquireLockOptions) (AcquireLockHandle, error)
+
+	// GetAcquireLock retrieves a handle to an existing mutex.v1.AcquireLock update
+	GetAcquireLock(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (AcquireLockHandle, error)
 }
 
 // exampleClient implements a temporal client for a example.mutex.v1.Example service
@@ -166,7 +180,8 @@ func (opts *exampleClientOptions) getLogger() *slog.Logger {
 	return slog.Default()
 }
 
-// example.mutex.v1.Example.Mutex executes a example.mutex.v1.Example.Mutex workflow and blocks until error or response received
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func (c *exampleClient) Mutex(ctx context.Context, req *MutexInput, options ...*MutexOptions) error {
 	run, err := c.MutexAsync(ctx, req, options...)
 	if err != nil {
@@ -175,7 +190,8 @@ func (c *exampleClient) Mutex(ctx context.Context, req *MutexInput, options ...*
 	return run.Get(ctx)
 }
 
-// MutexAsync starts a(n) example.mutex.v1.Example.Mutex workflow and returns a handle to the workflow run
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func (c *exampleClient) MutexAsync(ctx context.Context, req *MutexInput, options ...*MutexOptions) (MutexRun, error) {
 	var o *MutexOptions
 	if len(options) > 0 && options[0] != nil {
@@ -200,7 +216,7 @@ func (c *exampleClient) MutexAsync(ctx context.Context, req *MutexInput, options
 	}, nil
 }
 
-// GetMutex fetches an existing example.mutex.v1.Example.Mutex execution
+// GetMutex fetches an existing mutex.v1.Mutex execution
 func (c *exampleClient) GetMutex(ctx context.Context, workflowID string, runID string) MutexRun {
 	return &mutexRun{
 		client: c,
@@ -208,38 +224,100 @@ func (c *exampleClient) GetMutex(ctx context.Context, workflowID string, runID s
 	}
 }
 
-// MutexWithAcquireLock starts a(n) example.mutex.v1.Example.Mutex workflow and sends a(n) example.mutex.v1.Example.AcquireLock signal in a transaction
-func (c *exampleClient) MutexWithAcquireLock(ctx context.Context, req *MutexInput, signal *AcquireLockInput, options ...*MutexOptions) error {
-	run, err := c.MutexWithAcquireLockAsync(ctx, req, signal, options...)
-	if err != nil {
-		return err
-	}
-	return run.Get(ctx)
+// MutexWithAcquireLockOptions is the options for a mutex.v1.Mutex workflow with a mutex.v1.AcquireLock update
+type MutexWithAcquireLockOptions struct {
+	options         client.UpdateWithStartWorkflowOptions
+	workflowOptions *MutexOptions
+	updateOptions   *AcquireLockOptions
 }
 
-// MutexWithAcquireLockAsync starts a(n) example.mutex.v1.Example.Mutex workflow and sends a(n) example.mutex.v1.Example.AcquireLock signal in a transaction
-func (c *exampleClient) MutexWithAcquireLockAsync(ctx context.Context, req *MutexInput, signal *AcquireLockInput, options ...*MutexOptions) (MutexRun, error) {
-	var o *MutexOptions
+// NewMutexWithAcquireLockOptions initializes a new MutexWithAcquireLockOptions value
+func NewMutexWithAcquireLockOptions() *MutexWithAcquireLockOptions {
+	return &MutexWithAcquireLockOptions{}
+}
+
+// Build transforms MutexWithAcquireLockOptions into valid client.UpdateWithStartWorkflowOptions
+func (o *MutexWithAcquireLockOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *MutexInput, update *AcquireLockInput) (options client.UpdateWithStartWorkflowOptions, err error) {
+	options = o.options
+	if o.workflowOptions == nil {
+		o.workflowOptions = NewMutexOptions()
+	}
+	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	if err != nil {
+		return options, err
+	}
+	if swo.WorkflowIDConflictPolicy == enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		swo.WorkflowIDConflictPolicy = enumsv1.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
+	}
+	options.StartWorkflowOperation = op(swo)
+	if o.updateOptions == nil {
+		o.updateOptions = NewAcquireLockOptions()
+	}
+	uo, err := o.updateOptions.Build(swo.ID, "", update)
+	if err != nil {
+		return options, err
+	}
+	options.UpdateOptions = *uo
+	return options, nil
+}
+
+// WithUpdateWithStartWorkflowOptions sets the UpdateWithStartWorkflowOptions
+func (o *MutexWithAcquireLockOptions) WithUpdateWithStartWorkflowOptions(options client.UpdateWithStartWorkflowOptions) *MutexWithAcquireLockOptions {
+	o.options = options
+	return o
+}
+
+// WithMutexOptions sets the WithMutexOptions
+func (o *MutexWithAcquireLockOptions) WithMutexOptions(options *MutexOptions) *MutexWithAcquireLockOptions {
+	o.workflowOptions = options
+	return o
+}
+
+// WithAcquireLockOptions sets the AcquireLockOptions
+func (o *MutexWithAcquireLockOptions) WithAcquireLockOptions(options *AcquireLockOptions) *MutexWithAcquireLockOptions {
+	o.updateOptions = options
+	return o
+}
+
+// MutexWithAcquireLock starts a(n) mutex.v1.Mutex workflow and executes a(n) mutex.v1.AcquireLock update in a transaction
+func (c *exampleClient) MutexWithAcquireLock(ctx context.Context, req *MutexInput, update *AcquireLockInput, options ...*MutexWithAcquireLockOptions) (*AcquireLockOutput, MutexRun, error) {
+	updateHandle, run, err := c.MutexWithAcquireLockAsync(ctx, req, update, options...)
+	if err != nil {
+		return nil, run, err
+	}
+	out, err := updateHandle.Get(ctx)
+	if err != nil {
+		return nil, run, err
+	}
+	return out, run, nil
+}
+
+// MutexWithAcquireLockAsync starts a(n) mutex.v1.Mutex workflow and executes a(n) mutex.v1.AcquireLock update in a transaction
+func (c *exampleClient) MutexWithAcquireLockAsync(ctx context.Context, req *MutexInput, update *AcquireLockInput, options ...*MutexWithAcquireLockOptions) (AcquireLockHandle, MutexRun, error) {
+	var o *MutexWithAcquireLockOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewMutexOptions()
+		o = NewMutexWithAcquireLockOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
+		return c.client.NewWithStartWorkflowOperation(swo, MutexWorkflowName, req)
+	}, req, update)
 	if err != nil {
-		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
-	run, err := c.client.SignalWithStartWorkflow(ctx, opts.ID, AcquireLockSignalName, signal, opts, MutexWorkflowName, req)
-	if run == nil || err != nil {
-		return nil, err
+	handle, err := c.client.UpdateWithStartWorkflow(ctx, opts)
+	if err != nil {
+		return nil, nil, err
 	}
-	return &mutexRun{
+	return &acquireLockHandle{
 		client: c,
-		run:    run,
-	}, nil
+		handle: handle,
+	}, c.GetMutex(ctx, handle.WorkflowID(), handle.RunID()), nil
 }
 
-// example.mutex.v1.Example.SampleWorkflowWithMutex executes a example.mutex.v1.Example.SampleWorkflowWithMutex workflow and blocks until error or response received
+// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+// use the Mutex service.
 func (c *exampleClient) SampleWorkflowWithMutex(ctx context.Context, req *SampleWorkflowWithMutexInput, options ...*SampleWorkflowWithMutexOptions) error {
 	run, err := c.SampleWorkflowWithMutexAsync(ctx, req, options...)
 	if err != nil {
@@ -248,7 +326,8 @@ func (c *exampleClient) SampleWorkflowWithMutex(ctx context.Context, req *Sample
 	return run.Get(ctx)
 }
 
-// SampleWorkflowWithMutexAsync starts a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow and returns a handle to the workflow run
+// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+// use the Mutex service.
 func (c *exampleClient) SampleWorkflowWithMutexAsync(ctx context.Context, req *SampleWorkflowWithMutexInput, options ...*SampleWorkflowWithMutexOptions) (SampleWorkflowWithMutexRun, error) {
 	var o *SampleWorkflowWithMutexOptions
 	if len(options) > 0 && options[0] != nil {
@@ -291,32 +370,77 @@ func (c *exampleClient) TerminateWorkflow(ctx context.Context, workflowID string
 	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
 }
 
-// example.mutex.v1.Example.AcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal to an existing workflow
-func (c *exampleClient) AcquireLock(ctx context.Context, workflowID string, runID string, signal *AcquireLockInput) error {
-	return c.client.SignalWorkflow(ctx, workflowID, runID, AcquireLockSignalName, signal)
-}
-
-// example.mutex.v1.Example.LockAcquired sends a(n) example.mutex.v1.Example.LockAcquired signal to an existing workflow
-func (c *exampleClient) LockAcquired(ctx context.Context, workflowID string, runID string, signal *LockAcquiredInput) error {
-	return c.client.SignalWorkflow(ctx, workflowID, runID, LockAcquiredSignalName, signal)
-}
-
-// example.mutex.v1.Example.ReleaseLock sends a(n) example.mutex.v1.Example.ReleaseLock signal to an existing workflow
+// ReleaseLock releases a lock on a resource identified by `lease_id`.
 func (c *exampleClient) ReleaseLock(ctx context.Context, workflowID string, runID string, signal *ReleaseLockInput) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, ReleaseLockSignalName, signal)
 }
 
-// MutexOptions provides configuration for a example.mutex.v1.Example.Mutex workflow operation
+// AcquireLock requests a lock on a resource identified by `resource_id`
+// and blocks until the lock is acquired, returning a `lease_id` that
+// can be used to release the lock.
+func (c *exampleClient) AcquireLock(ctx context.Context, workflowID string, runID string, req *AcquireLockInput, opts ...*AcquireLockOptions) (*AcquireLockOutput, error) {
+	// initialize update options
+	o := NewAcquireLockOptions()
+	if len(opts) > 0 && opts[0].Options != nil {
+		o = opts[0]
+	}
+
+	// call sync update with WorkflowUpdateStageCompleted wait policy
+	handle, err := c.AcquireLockAsync(ctx, workflowID, runID, req, o.WithWaitPolicy(client.WorkflowUpdateStageCompleted))
+	if err != nil {
+		return nil, err
+	}
+
+	// block on update completion
+	return handle.Get(ctx)
+}
+
+// AcquireLock requests a lock on a resource identified by `resource_id`
+// and blocks until the lock is acquired, returning a `lease_id` that
+// can be used to release the lock.
+func (c *exampleClient) AcquireLockAsync(ctx context.Context, workflowID string, runID string, req *AcquireLockInput, opts ...*AcquireLockOptions) (AcquireLockHandle, error) {
+	// initialize update options
+	var o *AcquireLockOptions
+	if len(opts) > 0 && opts[0] != nil {
+		o = opts[0]
+	} else {
+		o = NewAcquireLockOptions()
+	}
+
+	// build UpdateWorkflowOptions
+	options, err := o.Build(workflowID, runID, req)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+
+	// update workflow
+	handle, err := c.client.UpdateWorkflow(ctx, *options)
+	if err != nil {
+		return nil, err
+	}
+	return &acquireLockHandle{client: c, handle: handle}, nil
+}
+
+// GetAcquireLock retrieves a handle to an existing mutex.v1.AcquireLock update
+func (c *exampleClient) GetAcquireLock(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (AcquireLockHandle, error) {
+	return &acquireLockHandle{
+		client: c,
+		handle: c.client.GetWorkflowUpdateHandle(req),
+	}, nil
+}
+
+// MutexOptions provides configuration for a mutex.v1.Mutex workflow operation
 type MutexOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewMutexOptions initializes a new MutexOptions value
@@ -423,7 +547,13 @@ func (o *MutexOptions) WithTaskQueue(tq string) *MutexOptions {
 	return o
 }
 
-// MutexRun describes a(n) example.mutex.v1.Example.Mutex workflow run
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *MutexOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *MutexOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
+// MutexRun describes a(n) mutex.v1.Mutex workflow run
 type MutexRun interface {
 	// ID returns the workflow ID
 	ID() string
@@ -443,11 +573,18 @@ type MutexRun interface {
 	// Terminate terminates a workflow in execution, returning an error if applicable
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
 
-	// example.mutex.v1.Example.AcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal
-	AcquireLock(ctx context.Context, req *AcquireLockInput) error
-
-	// example.mutex.v1.Example.ReleaseLock sends a(n) example.mutex.v1.Example.ReleaseLock signal
+	// ReleaseLock releases a lock on a resource identified by `lease_id`.
 	ReleaseLock(ctx context.Context, req *ReleaseLockInput) error
+
+	// AcquireLock requests a lock on a resource identified by `resource_id`
+	// and blocks until the lock is acquired, returning a `lease_id` that
+	// can be used to release the lock.
+	AcquireLock(ctx context.Context, req *AcquireLockInput, opts ...*AcquireLockOptions) (*AcquireLockOutput, error)
+
+	// AcquireLock requests a lock on a resource identified by `resource_id`
+	// and blocks until the lock is acquired, returning a `lease_id` that
+	// can be used to release the lock.
+	AcquireLockAsync(ctx context.Context, req *AcquireLockInput, opts ...*AcquireLockOptions) (AcquireLockHandle, error)
 }
 
 // mutexRun provides an internal implementation of a(n) MutexRunRun
@@ -486,27 +623,37 @@ func (r *mutexRun) Terminate(ctx context.Context, reason string, details ...inte
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// example.mutex.v1.Example.AcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal
-func (r *mutexRun) AcquireLock(ctx context.Context, req *AcquireLockInput) error {
-	return r.client.AcquireLock(ctx, r.ID(), "", req)
-}
-
-// example.mutex.v1.Example.ReleaseLock sends a(n) example.mutex.v1.Example.ReleaseLock signal
+// ReleaseLock releases a lock on a resource identified by `lease_id`.
 func (r *mutexRun) ReleaseLock(ctx context.Context, req *ReleaseLockInput) error {
 	return r.client.ReleaseLock(ctx, r.ID(), "", req)
 }
 
+// AcquireLock requests a lock on a resource identified by `resource_id`
+// and blocks until the lock is acquired, returning a `lease_id` that
+// can be used to release the lock.
+func (r *mutexRun) AcquireLock(ctx context.Context, req *AcquireLockInput, opts ...*AcquireLockOptions) (*AcquireLockOutput, error) {
+	return r.client.AcquireLock(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// AcquireLock requests a lock on a resource identified by `resource_id`
+// and blocks until the lock is acquired, returning a `lease_id` that
+// can be used to release the lock.
+func (r *mutexRun) AcquireLockAsync(ctx context.Context, req *AcquireLockInput, opts ...*AcquireLockOptions) (AcquireLockHandle, error) {
+	return r.client.AcquireLockAsync(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
 // SampleWorkflowWithMutexOptions provides configuration for a example.mutex.v1.Example.SampleWorkflowWithMutex workflow operation
 type SampleWorkflowWithMutexOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSampleWorkflowWithMutexOptions initializes a new SampleWorkflowWithMutexOptions value
@@ -606,6 +753,12 @@ func (o *SampleWorkflowWithMutexOptions) WithTaskQueue(tq string) *SampleWorkflo
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SampleWorkflowWithMutexOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SampleWorkflowWithMutexOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SampleWorkflowWithMutexRun describes a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow run
 type SampleWorkflowWithMutexRun interface {
 	// ID returns the workflow ID
@@ -625,9 +778,6 @@ type SampleWorkflowWithMutexRun interface {
 
 	// Terminate terminates a workflow in execution, returning an error if applicable
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
-
-	// example.mutex.v1.Example.LockAcquired sends a(n) example.mutex.v1.Example.LockAcquired signal
-	LockAcquired(ctx context.Context, req *LockAcquiredInput) error
 }
 
 // sampleWorkflowWithMutexRun provides an internal implementation of a(n) SampleWorkflowWithMutexRunRun
@@ -666,16 +816,135 @@ func (r *sampleWorkflowWithMutexRun) Terminate(ctx context.Context, reason strin
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// example.mutex.v1.Example.LockAcquired sends a(n) example.mutex.v1.Example.LockAcquired signal
-func (r *sampleWorkflowWithMutexRun) LockAcquired(ctx context.Context, req *LockAcquiredInput) error {
-	return r.client.LockAcquired(ctx, r.ID(), "", req)
+// AcquireLockHandle describes a(n) mutex.v1.AcquireLock update handle
+type AcquireLockHandle interface {
+	// WorkflowID returns the workflow ID
+	WorkflowID() string
+	// RunID returns the workflow instance ID
+	RunID() string
+	// UpdateID returns the update ID
+	UpdateID() string
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*AcquireLockOutput, error)
+}
+
+// acquireLockHandle provides an internal implementation of a(n) AcquireLockHandle
+type acquireLockHandle struct {
+	client *exampleClient
+	handle client.WorkflowUpdateHandle
+}
+
+// WorkflowID returns the workflow ID
+func (h *acquireLockHandle) WorkflowID() string {
+	return h.handle.WorkflowID()
+}
+
+// RunID returns the execution ID
+func (h *acquireLockHandle) RunID() string {
+	return h.handle.RunID()
+}
+
+// UpdateID returns the update ID
+func (h *acquireLockHandle) UpdateID() string {
+	return h.handle.UpdateID()
+}
+
+// Get blocks until the update wait policy is met, returning the result if applicable
+func (h *acquireLockHandle) Get(ctx context.Context) (*AcquireLockOutput, error) {
+	var resp AcquireLockOutput
+	var err error
+	doneCh := make(chan struct{})
+	gctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		for {
+			var deadlineExceeded *serviceerror.DeadlineExceeded
+			if err = h.handle.Get(gctx, &resp); err != nil && ctx.Err() == nil && (errors.As(err, &deadlineExceeded) || strings.Contains(err.Error(), context.DeadlineExceeded.Error())) {
+				continue
+			}
+			break
+		}
+		close(doneCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-doneCh:
+		if err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	}
+}
+
+// AcquireLockOptions provides configuration for a mutex.v1.AcquireLock update operation
+type AcquireLockOptions struct {
+	Options    *client.UpdateWorkflowOptions
+	id         *string
+	waitPolicy client.WorkflowUpdateStage
+}
+
+// NewAcquireLockOptions initializes a new AcquireLockOptions value
+func NewAcquireLockOptions() *AcquireLockOptions {
+	return &AcquireLockOptions{Options: &client.UpdateWorkflowOptions{}}
+}
+
+// Build initializes a new client.UpdateWorkflowOptions with defaults and overrides applied
+func (o *AcquireLockOptions) Build(workflowID string, runID string, req *AcquireLockInput) (opts *client.UpdateWorkflowOptions, err error) {
+	// use user-provided UpdateWorkflowOptions if exists
+	if o.Options != nil {
+		opts = o.Options
+	} else {
+		opts = &client.UpdateWorkflowOptions{}
+	}
+
+	// set constants
+	opts.Args = []any{req}
+	opts.RunID = runID
+	opts.UpdateName = AcquireLockUpdateName
+	opts.WorkflowID = workflowID
+
+	// set UpdateID
+	if v := o.id; v != nil {
+		opts.UpdateID = *v
+	}
+
+	// set WaitPolicy
+	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
+		opts.WaitForStage = v
+	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
+		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+	}
+	return opts, nil
+}
+
+// WithUpdateID sets the UpdateID
+func (o *AcquireLockOptions) WithUpdateID(id string) *AcquireLockOptions {
+	o.id = &id
+	return o
+}
+
+// WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowOptions
+func (o *AcquireLockOptions) WithUpdateWorkflowOptions(options client.UpdateWorkflowOptions) *AcquireLockOptions {
+	o.Options = &options
+	return o
+}
+
+// WithWaitPolicy sets the WaitPolicy
+func (o *AcquireLockOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *AcquireLockOptions {
+	o.waitPolicy = policy
+	return o
 }
 
 // Reference to generated workflow functions
 var (
-	// MutexFunction implements a "example.mutex.v1.Example.Mutex" workflow
+	// Mutex is a workflow that manages concurrent access to a resource
+	// identified by `resource_id`.
 	MutexFunction func(workflow.Context, *MutexInput) error
-	// SampleWorkflowWithMutexFunction implements a "example.mutex.v1.Example.SampleWorkflowWithMutex" workflow
+	// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+	// use the Mutex service.
 	SampleWorkflowWithMutexFunction func(workflow.Context, *SampleWorkflowWithMutexInput) error
 )
 
@@ -683,9 +952,11 @@ var (
 type (
 	// ExampleWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 	ExampleWorkflowFunctions interface {
-		// Mutex executes a "example.mutex.v1.Example.Mutex" workflow inline
+		// Mutex is a workflow that manages concurrent access to a resource
+		// identified by `resource_id`.
 		Mutex(workflow.Context, *MutexInput) error
-		// SampleWorkflowWithMutex executes a "example.mutex.v1.Example.SampleWorkflowWithMutex" workflow inline
+		// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+		// use the Mutex service.
 		SampleWorkflowWithMutex(workflow.Context, *SampleWorkflowWithMutexInput) error
 	}
 	// exampleWorkflowFunctions provides an internal ExampleWorkflowFunctions implementation
@@ -696,7 +967,8 @@ func NewExampleWorkflowFunctions() ExampleWorkflowFunctions {
 	return &exampleWorkflowFunctions{}
 }
 
-// Mutex executes a "example.mutex.v1.Example.Mutex" workflow inline
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func (f *exampleWorkflowFunctions) Mutex(ctx workflow.Context, req *MutexInput) error {
 	if MutexFunction == nil {
 		return errors.New("Mutex requires workflow registration via RegisterExampleWorkflows or RegisterMutexWorkflow")
@@ -704,7 +976,8 @@ func (f *exampleWorkflowFunctions) Mutex(ctx workflow.Context, req *MutexInput) 
 	return MutexFunction(ctx, req)
 }
 
-// SampleWorkflowWithMutex executes a "example.mutex.v1.Example.SampleWorkflowWithMutex" workflow inline
+// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+// use the Mutex service.
 func (f *exampleWorkflowFunctions) SampleWorkflowWithMutex(ctx workflow.Context, req *SampleWorkflowWithMutexInput) error {
 	if SampleWorkflowWithMutexFunction == nil {
 		return errors.New("SampleWorkflowWithMutex requires workflow registration via RegisterExampleWorkflows or RegisterSampleWorkflowWithMutexWorkflow")
@@ -714,10 +987,12 @@ func (f *exampleWorkflowFunctions) SampleWorkflowWithMutex(ctx workflow.Context,
 
 // ExampleWorkflows provides methods for initializing new example.mutex.v1.Example workflow values
 type ExampleWorkflows interface {
-	// Mutex initializes a new a(n) MutexWorkflow implementation
+	// Mutex is a workflow that manages concurrent access to a resource
+	// identified by `resource_id`.
 	Mutex(ctx workflow.Context, input *MutexWorkflowInput) (MutexWorkflow, error)
 
-	// SampleWorkflowWithMutex initializes a new a(n) SampleWorkflowWithMutexWorkflow implementation
+	// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+	// use the Mutex service.
 	SampleWorkflowWithMutex(ctx workflow.Context, input *SampleWorkflowWithMutexWorkflowInput) (SampleWorkflowWithMutexWorkflow, error)
 }
 
@@ -738,9 +1013,6 @@ func buildMutex(ctor func(workflow.Context, *MutexWorkflowInput) (MutexWorkflow,
 	return func(ctx workflow.Context, req *MutexInput) error {
 		input := &MutexWorkflowInput{
 			Req: req,
-			AcquireLock: &AcquireLockSignal{
-				Channel: workflow.GetSignalChannel(ctx, AcquireLockSignalName),
-			},
 			ReleaseLock: &ReleaseLockSignal{
 				Channel: workflow.GetSignalChannel(ctx, ReleaseLockSignalName),
 			},
@@ -754,26 +1026,38 @@ func buildMutex(ctor func(workflow.Context, *MutexWorkflowInput) (MutexWorkflow,
 				return err
 			}
 		}
+		{
+			opts := workflow.UpdateHandlerOptions{}
+			if err := workflow.SetUpdateHandlerWithOptions(ctx, AcquireLockUpdateName, wf.AcquireLock, opts); err != nil {
+				return err
+			}
+		}
 		return wf.Execute(ctx)
 	}
 }
 
-// MutexWorkflowInput describes the input to a(n) example.mutex.v1.Example.Mutex workflow constructor
+// MutexWorkflowInput describes the input to a(n) mutex.v1.Mutex workflow constructor
 type MutexWorkflowInput struct {
 	Req         *MutexInput
-	AcquireLock *AcquireLockSignal
 	ReleaseLock *ReleaseLockSignal
 }
 
-// MutexWorkflow describes a(n) example.mutex.v1.Example.Mutex workflow implementation
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 //
-// workflow details: (id: "mutex:${! resourceId }")
+// workflow details: (name: "mutex.v1.Mutex", id: "mutex:${! resourceId }")
 type MutexWorkflow interface {
-	// Execute defines the entrypoint to a(n) example.mutex.v1.Example.Mutex workflow
+	// Execute defines the entrypoint to a(n) mutex.v1.Mutex workflow
 	Execute(ctx workflow.Context) error
+
+	// AcquireLock requests a lock on a resource identified by `resource_id`
+	// and blocks until the lock is acquired, returning a `lease_id` that
+	// can be used to release the lock.
+	AcquireLock(workflow.Context, *AcquireLockInput) (*AcquireLockOutput, error)
 }
 
-// MutexChild executes a child example.mutex.v1.Example.Mutex workflow and blocks until error or response received
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func MutexChild(ctx workflow.Context, req *MutexInput, options ...*MutexChildOptions) error {
 	childRun, err := MutexChildAsync(ctx, req, options...)
 	if err != nil {
@@ -782,7 +1066,8 @@ func MutexChild(ctx workflow.Context, req *MutexInput, options ...*MutexChildOpt
 	return childRun.Get(ctx)
 }
 
-// MutexChildAsync starts a child example.mutex.v1.Example.Mutex workflow and returns a handle to the child workflow run
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func MutexChildAsync(ctx workflow.Context, req *MutexInput, options ...*MutexChildOptions) (*MutexChildRun, error) {
 	var o *MutexChildOptions
 	if len(options) > 0 && options[0] != nil {
@@ -798,19 +1083,20 @@ func MutexChildAsync(ctx workflow.Context, req *MutexInput, options ...*MutexChi
 	return &MutexChildRun{Future: workflow.ExecuteChildWorkflow(ctx, MutexWorkflowName, req)}, nil
 }
 
-// MutexChildOptions provides configuration for a child example.mutex.v1.Example.Mutex workflow operation
+// MutexChildOptions provides configuration for a child mutex.v1.Mutex workflow operation
 type MutexChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewMutexChildOptions initializes a new MutexChildOptions value
@@ -951,6 +1237,12 @@ func (o *MutexChildOptions) WithWaitForCancellation(wait bool) *MutexChildOption
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *MutexChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *MutexChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // MutexChildRun describes a child Mutex workflow run
 type MutexChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -991,22 +1283,12 @@ func (r *MutexChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, er
 	return &exec, nil
 }
 
-// AcquireLock sends a(n) "example.mutex.v1.Example.AcquireLock" signal request to the child workflow
-func (r *MutexChildRun) AcquireLock(ctx workflow.Context, input *AcquireLockInput) error {
-	return r.AcquireLockAsync(ctx, input).Get(ctx, nil)
-}
-
-// AcquireLockAsync sends a(n) "example.mutex.v1.Example.AcquireLock" signal request to the child workflow
-func (r *MutexChildRun) AcquireLockAsync(ctx workflow.Context, input *AcquireLockInput) workflow.Future {
-	return r.Future.SignalChildWorkflow(ctx, AcquireLockSignalName, input)
-}
-
-// ReleaseLock sends a(n) "example.mutex.v1.Example.ReleaseLock" signal request to the child workflow
+// ReleaseLock sends a(n) "mutex.v1.ReleaseLock" signal request to the child workflow
 func (r *MutexChildRun) ReleaseLock(ctx workflow.Context, input *ReleaseLockInput) error {
 	return r.ReleaseLockAsync(ctx, input).Get(ctx, nil)
 }
 
-// ReleaseLockAsync sends a(n) "example.mutex.v1.Example.ReleaseLock" signal request to the child workflow
+// ReleaseLockAsync sends a(n) "mutex.v1.ReleaseLock" signal request to the child workflow
 func (r *MutexChildRun) ReleaseLockAsync(ctx workflow.Context, input *ReleaseLockInput) workflow.Future {
 	return r.Future.SignalChildWorkflow(ctx, ReleaseLockSignalName, input)
 }
@@ -1022,9 +1304,6 @@ func buildSampleWorkflowWithMutex(ctor func(workflow.Context, *SampleWorkflowWit
 	return func(ctx workflow.Context, req *SampleWorkflowWithMutexInput) error {
 		input := &SampleWorkflowWithMutexWorkflowInput{
 			Req: req,
-			LockAcquired: &LockAcquiredSignal{
-				Channel: workflow.GetSignalChannel(ctx, LockAcquiredSignalName),
-			},
 		}
 		wf, err := ctor(ctx, input)
 		if err != nil {
@@ -1041,19 +1320,20 @@ func buildSampleWorkflowWithMutex(ctor func(workflow.Context, *SampleWorkflowWit
 
 // SampleWorkflowWithMutexWorkflowInput describes the input to a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow constructor
 type SampleWorkflowWithMutexWorkflowInput struct {
-	Req          *SampleWorkflowWithMutexInput
-	LockAcquired *LockAcquiredSignal
+	Req *SampleWorkflowWithMutexInput
 }
 
-// SampleWorkflowWithMutexWorkflow describes a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow implementation
+// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+// use the Mutex service.
 //
-// workflow details: (id: "SampleWorkflow1WithMutex_${! uuid_v4() }")
+// workflow details: (name: "example.mutex.v1.Example.SampleWorkflowWithMutex", id: "SampleWorkflow1WithMutex_${! uuid_v4() }")
 type SampleWorkflowWithMutexWorkflow interface {
 	// Execute defines the entrypoint to a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow
 	Execute(ctx workflow.Context) error
 }
 
-// SampleWorkflowWithMutexChild executes a child example.mutex.v1.Example.SampleWorkflowWithMutex workflow and blocks until error or response received
+// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+// use the Mutex service.
 func SampleWorkflowWithMutexChild(ctx workflow.Context, req *SampleWorkflowWithMutexInput, options ...*SampleWorkflowWithMutexChildOptions) error {
 	childRun, err := SampleWorkflowWithMutexChildAsync(ctx, req, options...)
 	if err != nil {
@@ -1062,7 +1342,8 @@ func SampleWorkflowWithMutexChild(ctx workflow.Context, req *SampleWorkflowWithM
 	return childRun.Get(ctx)
 }
 
-// SampleWorkflowWithMutexChildAsync starts a child example.mutex.v1.Example.SampleWorkflowWithMutex workflow and returns a handle to the child workflow run
+// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+// use the Mutex service.
 func SampleWorkflowWithMutexChildAsync(ctx workflow.Context, req *SampleWorkflowWithMutexInput, options ...*SampleWorkflowWithMutexChildOptions) (*SampleWorkflowWithMutexChildRun, error) {
 	var o *SampleWorkflowWithMutexChildOptions
 	if len(options) > 0 && options[0] != nil {
@@ -1080,17 +1361,18 @@ func SampleWorkflowWithMutexChildAsync(ctx workflow.Context, req *SampleWorkflow
 
 // SampleWorkflowWithMutexChildOptions provides configuration for a child example.mutex.v1.Example.SampleWorkflowWithMutex workflow operation
 type SampleWorkflowWithMutexChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSampleWorkflowWithMutexChildOptions initializes a new SampleWorkflowWithMutexChildOptions value
@@ -1224,6 +1506,12 @@ func (o *SampleWorkflowWithMutexChildOptions) WithWaitForCancellation(wait bool)
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SampleWorkflowWithMutexChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SampleWorkflowWithMutexChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SampleWorkflowWithMutexChildRun describes a child SampleWorkflowWithMutex workflow run
 type SampleWorkflowWithMutexChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1264,138 +1552,12 @@ func (r *SampleWorkflowWithMutexChildRun) WaitStart(ctx workflow.Context) (*work
 	return &exec, nil
 }
 
-// LockAcquired sends a(n) "example.mutex.v1.Example.LockAcquired" signal request to the child workflow
-func (r *SampleWorkflowWithMutexChildRun) LockAcquired(ctx workflow.Context, input *LockAcquiredInput) error {
-	return r.LockAcquiredAsync(ctx, input).Get(ctx, nil)
-}
-
-// LockAcquiredAsync sends a(n) "example.mutex.v1.Example.LockAcquired" signal request to the child workflow
-func (r *SampleWorkflowWithMutexChildRun) LockAcquiredAsync(ctx workflow.Context, input *LockAcquiredInput) workflow.Future {
-	return r.Future.SignalChildWorkflow(ctx, LockAcquiredSignalName, input)
-}
-
-// AcquireLockSignal describes a(n) example.mutex.v1.Example.AcquireLock signal
-type AcquireLockSignal struct {
-	Channel workflow.ReceiveChannel
-}
-
-// NewAcquireLockSignal initializes a new example.mutex.v1.Example.AcquireLock signal wrapper
-func NewAcquireLockSignal(ctx workflow.Context) *AcquireLockSignal {
-	return &AcquireLockSignal{Channel: workflow.GetSignalChannel(ctx, AcquireLockSignalName)}
-}
-
-// Receive blocks until a(n) example.mutex.v1.Example.AcquireLock signal is received
-func (s *AcquireLockSignal) Receive(ctx workflow.Context) (*AcquireLockInput, bool) {
-	var resp AcquireLockInput
-	more := s.Channel.Receive(ctx, &resp)
-	return &resp, more
-}
-
-// ReceiveAsync checks for a example.mutex.v1.Example.AcquireLock signal without blocking
-func (s *AcquireLockSignal) ReceiveAsync() *AcquireLockInput {
-	var resp AcquireLockInput
-	if ok := s.Channel.ReceiveAsync(&resp); !ok {
-		return nil
-	}
-	return &resp
-}
-
-// ReceiveWithTimeout blocks until a(n) example.mutex.v1.Example.AcquireLock signal is received or timeout expires.
-// Returns more value of false when Channel is closed.
-// Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.
-// resp will be nil if ok is false.
-func (s *AcquireLockSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (resp *AcquireLockInput, ok bool, more bool) {
-	resp = &AcquireLockInput{}
-	if ok, more = s.Channel.ReceiveWithTimeout(ctx, timeout, &resp); !ok {
-		return nil, false, more
-	}
-	return
-}
-
-// Select checks for a(n) example.mutex.v1.Example.AcquireLock signal without blocking
-func (s *AcquireLockSignal) Select(sel workflow.Selector, fn func(*AcquireLockInput)) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		req := s.ReceiveAsync()
-		if fn != nil {
-			fn(req)
-		}
-	})
-}
-
-// AcquireLockExternal sends a(n) example.mutex.v1.Example.AcquireLock signal to an existing workflow
-func AcquireLockExternal(ctx workflow.Context, workflowID string, runID string, req *AcquireLockInput) error {
-	return AcquireLockExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
-}
-
-// AcquireLockExternalAsync sends a(n) example.mutex.v1.Example.AcquireLock signal to an existing workflow
-func AcquireLockExternalAsync(ctx workflow.Context, workflowID string, runID string, req *AcquireLockInput) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, AcquireLockSignalName, req)
-}
-
-// LockAcquiredSignal describes a(n) example.mutex.v1.Example.LockAcquired signal
-type LockAcquiredSignal struct {
-	Channel workflow.ReceiveChannel
-}
-
-// NewLockAcquiredSignal initializes a new example.mutex.v1.Example.LockAcquired signal wrapper
-func NewLockAcquiredSignal(ctx workflow.Context) *LockAcquiredSignal {
-	return &LockAcquiredSignal{Channel: workflow.GetSignalChannel(ctx, LockAcquiredSignalName)}
-}
-
-// Receive blocks until a(n) example.mutex.v1.Example.LockAcquired signal is received
-func (s *LockAcquiredSignal) Receive(ctx workflow.Context) (*LockAcquiredInput, bool) {
-	var resp LockAcquiredInput
-	more := s.Channel.Receive(ctx, &resp)
-	return &resp, more
-}
-
-// ReceiveAsync checks for a example.mutex.v1.Example.LockAcquired signal without blocking
-func (s *LockAcquiredSignal) ReceiveAsync() *LockAcquiredInput {
-	var resp LockAcquiredInput
-	if ok := s.Channel.ReceiveAsync(&resp); !ok {
-		return nil
-	}
-	return &resp
-}
-
-// ReceiveWithTimeout blocks until a(n) example.mutex.v1.Example.LockAcquired signal is received or timeout expires.
-// Returns more value of false when Channel is closed.
-// Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.
-// resp will be nil if ok is false.
-func (s *LockAcquiredSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (resp *LockAcquiredInput, ok bool, more bool) {
-	resp = &LockAcquiredInput{}
-	if ok, more = s.Channel.ReceiveWithTimeout(ctx, timeout, &resp); !ok {
-		return nil, false, more
-	}
-	return
-}
-
-// Select checks for a(n) example.mutex.v1.Example.LockAcquired signal without blocking
-func (s *LockAcquiredSignal) Select(sel workflow.Selector, fn func(*LockAcquiredInput)) workflow.Selector {
-	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
-		req := s.ReceiveAsync()
-		if fn != nil {
-			fn(req)
-		}
-	})
-}
-
-// LockAcquiredExternal sends a(n) example.mutex.v1.Example.LockAcquired signal to an existing workflow
-func LockAcquiredExternal(ctx workflow.Context, workflowID string, runID string, req *LockAcquiredInput) error {
-	return LockAcquiredExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
-}
-
-// LockAcquiredExternalAsync sends a(n) example.mutex.v1.Example.LockAcquired signal to an existing workflow
-func LockAcquiredExternalAsync(ctx workflow.Context, workflowID string, runID string, req *LockAcquiredInput) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, LockAcquiredSignalName, req)
-}
-
 // ReleaseLockSignal describes a(n) example.mutex.v1.Example.ReleaseLock signal
 type ReleaseLockSignal struct {
 	Channel workflow.ReceiveChannel
 }
 
-// NewReleaseLockSignal initializes a new example.mutex.v1.Example.ReleaseLock signal wrapper
+// NewReleaseLockSignal initializes a new mutex.v1.ReleaseLock signal wrapper
 func NewReleaseLockSignal(ctx workflow.Context) *ReleaseLockSignal {
 	return &ReleaseLockSignal{Channel: workflow.GetSignalChannel(ctx, ReleaseLockSignalName)}
 }
@@ -1438,19 +1600,20 @@ func (s *ReleaseLockSignal) Select(sel workflow.Selector, fn func(*ReleaseLockIn
 	})
 }
 
-// ReleaseLockExternal sends a(n) example.mutex.v1.Example.ReleaseLock signal to an existing workflow
+// ReleaseLock releases a lock on a resource identified by `lease_id`.
 func ReleaseLockExternal(ctx workflow.Context, workflowID string, runID string, req *ReleaseLockInput) error {
 	return ReleaseLockExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
 }
 
-// ReleaseLockExternalAsync sends a(n) example.mutex.v1.Example.ReleaseLock signal to an existing workflow
+// ReleaseLock releases a lock on a resource identified by `lease_id`.
 func ReleaseLockExternalAsync(ctx workflow.Context, workflowID string, runID string, req *ReleaseLockInput) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, ReleaseLockSignalName, req)
 }
 
 // ExampleActivities describes available worker activities
 type ExampleActivities interface {
-	// example.mutex.v1.Example.Mutex implements a(n) example.mutex.v1.Example.Mutex activity definition
+	// Mutex is a workflow that manages concurrent access to a resource
+	// identified by `resource_id`.
 	Mutex(ctx context.Context, req *MutexInput) error
 }
 
@@ -1485,12 +1648,14 @@ func (f *MutexFuture) Select(sel workflow.Selector, fn func(*MutexFuture)) workf
 	})
 }
 
-// Mutex executes a(n) example.mutex.v1.Example.Mutex activity
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func Mutex(ctx workflow.Context, req *MutexInput, options ...*MutexActivityOptions) error {
 	return MutexAsync(ctx, req, options...).Get(ctx)
 }
 
-// MutexAsync executes a(n) example.mutex.v1.Example.Mutex activity (asynchronously)
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func MutexAsync(ctx workflow.Context, req *MutexInput, options ...*MutexActivityOptions) *MutexFuture {
 	var o *MutexActivityOptions
 	if len(options) > 0 && options[0] != nil {
@@ -1509,12 +1674,14 @@ func MutexAsync(ctx workflow.Context, req *MutexInput, options ...*MutexActivity
 	return future
 }
 
-// MutexLocal executes a(n) example.mutex.v1.Example.Mutex activity (locally)
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func MutexLocal(ctx workflow.Context, req *MutexInput, options ...*MutexLocalActivityOptions) error {
 	return MutexLocalAsync(ctx, req, options...).Get(ctx)
 }
 
-// MutexLocalAsync executes a(n) example.mutex.v1.Example.Mutex activity (asynchronously, locally)
+// Mutex is a workflow that manages concurrent access to a resource
+// identified by `resource_id`.
 func MutexLocalAsync(ctx workflow.Context, req *MutexInput, options ...*MutexLocalActivityOptions) *MutexFuture {
 	var o *MutexLocalActivityOptions
 	if len(options) > 0 && options[0] != nil {
@@ -1714,7 +1881,7 @@ func NewTestExampleClient(env *testsuite.TestWorkflowEnvironment, workflows Exam
 	return &TestExampleClient{env, workflows}
 }
 
-// Mutex executes a(n) example.mutex.v1.Example.Mutex workflow in the test environment
+// Mutex executes a(n) mutex.v1.Mutex workflow in the test environment
 func (c *TestExampleClient) Mutex(ctx context.Context, req *MutexInput, opts ...*MutexOptions) error {
 	run, err := c.MutexAsync(ctx, req, opts...)
 	if err != nil {
@@ -1723,7 +1890,7 @@ func (c *TestExampleClient) Mutex(ctx context.Context, req *MutexInput, opts ...
 	return run.Get(ctx)
 }
 
-// MutexAsync executes a(n) example.mutex.v1.Example.Mutex workflow in the test environment
+// MutexAsync executes a(n) mutex.v1.Mutex workflow in the test environment
 func (c *TestExampleClient) MutexAsync(ctx context.Context, req *MutexInput, options ...*MutexOptions) (MutexRun, error) {
 	var o *MutexOptions
 	if len(options) > 0 && options[0] != nil {
@@ -1743,20 +1910,64 @@ func (c *TestExampleClient) GetMutex(ctx context.Context, workflowID string, run
 	return &testMutexRun{env: c.env, workflows: c.workflows}
 }
 
-// MutexWithAcquireLock sends a(n) example.mutex.v1.Example.AcquireLock signal to a(n) example.mutex.v1.Example.Mutex workflow, starting it if necessary
-func (c *TestExampleClient) MutexWithAcquireLock(ctx context.Context, req *MutexInput, signal *AcquireLockInput, opts ...*MutexOptions) error {
-	c.env.RegisterDelayedCallback(func() {
-		c.env.SignalWorkflow(AcquireLockSignalName, signal)
-	}, 0)
-	return c.Mutex(ctx, req, opts...)
+// MutexWithAcquireLock executes a(n) mutex.v1.Mutex workflow and a(n) mutex.v1.AcquireLock update in the test environment
+func (c *TestExampleClient) MutexWithAcquireLock(ctx context.Context, input *MutexInput, update *AcquireLockInput, options ...*MutexWithAcquireLockOptions) (*AcquireLockOutput, MutexRun, error) {
+	var o *MutexWithAcquireLockOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewMutexWithAcquireLockOptions()
+	}
+	handle, run, err := c.MutexWithAcquireLockAsync(ctx, input, update, o)
+	if err != nil {
+		return nil, run, err
+	}
+	run.Get(ctx)
+	out, err := handle.Get(ctx)
+	if err != nil {
+		return nil, run, err
+	}
+	return out, run, nil
 }
 
-// MutexWithAcquireLockAsync sends a(n) example.mutex.v1.Example.AcquireLock signal to a(n) example.mutex.v1.Example.Mutex workflow, starting it if necessary
-func (c *TestExampleClient) MutexWithAcquireLockAsync(ctx context.Context, req *MutexInput, signal *AcquireLockInput, opts ...*MutexOptions) (MutexRun, error) {
+// MutexWithAcquireLockAsync executes a(n) mutex.v1.Mutex workflow and a(n) mutex.v1.AcquireLock update in the test environment
+func (c *TestExampleClient) MutexWithAcquireLockAsync(ctx context.Context, input *MutexInput, update *AcquireLockInput, options ...*MutexWithAcquireLockOptions) (AcquireLockHandle, MutexRun, error) {
+	var o *MutexWithAcquireLockOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewMutexWithAcquireLockOptions()
+	}
+	if o.workflowOptions == nil {
+		o.workflowOptions = NewMutexOptions()
+	}
+	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing workflowOptions: %w", err)
+	}
+	if o.updateOptions == nil {
+		o.updateOptions = NewAcquireLockOptions()
+	}
+	uo, err := o.updateOptions.Build(swo.ID, "", update)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing updateOptions: %w", err)
+	}
+	run, err := c.MutexAsync(ctx, input)
+	if err != nil {
+		return nil, nil, err
+	}
+	uc := testutil.NewUpdateCallbacks()
 	c.env.RegisterDelayedCallback(func() {
-		c.env.SignalWorkflow(AcquireLockSignalName, signal)
+		c.env.UpdateWorkflow(AcquireLockUpdateName, uo.UpdateID, uc, update)
 	}, 0)
-	return c.MutexAsync(ctx, req, opts...)
+	return &testAcquireLockHandle{
+		callbacks:  uc,
+		env:        c.env,
+		opts:       uo,
+		req:        update,
+		runID:      "",
+		workflowID: swo.ID,
+	}, run, nil
 }
 
 // SampleWorkflowWithMutex executes a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow in the test environment
@@ -1799,30 +2010,106 @@ func (c *TestExampleClient) TerminateWorkflow(ctx context.Context, workflowID st
 	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
-// AcquireLock executes a example.mutex.v1.Example.AcquireLock signal
-func (c *TestExampleClient) AcquireLock(ctx context.Context, workflowID string, runID string, req *AcquireLockInput) error {
-	c.env.SignalWorkflow(AcquireLockSignalName, req)
-	return nil
-}
-
-// LockAcquired executes a example.mutex.v1.Example.LockAcquired signal
-func (c *TestExampleClient) LockAcquired(ctx context.Context, workflowID string, runID string, req *LockAcquiredInput) error {
-	c.env.SignalWorkflow(LockAcquiredSignalName, req)
-	return nil
-}
-
-// ReleaseLock executes a example.mutex.v1.Example.ReleaseLock signal
+// ReleaseLock executes a mutex.v1.ReleaseLock signal
 func (c *TestExampleClient) ReleaseLock(ctx context.Context, workflowID string, runID string, req *ReleaseLockInput) error {
 	c.env.SignalWorkflow(ReleaseLockSignalName, req)
 	return nil
 }
 
+// AcquireLock executes a(n) mutex.v1.AcquireLock update in the test environment
+func (c *TestExampleClient) AcquireLock(ctx context.Context, workflowID string, runID string, req *AcquireLockInput, opts ...*AcquireLockOptions) (*AcquireLockOutput, error) {
+	options := NewAcquireLockOptions()
+	if len(opts) > 0 && opts[0].Options != nil {
+		options = opts[0]
+	}
+	options.Options.WaitForStage = client.WorkflowUpdateStageCompleted
+	handle, err := c.AcquireLockAsync(ctx, workflowID, runID, req, options)
+	if err != nil {
+		return nil, err
+	}
+	return handle.Get(ctx)
+}
+
+// AcquireLockAsync executes a(n) mutex.v1.AcquireLock update in the test environment
+func (c *TestExampleClient) AcquireLockAsync(ctx context.Context, workflowID string, runID string, req *AcquireLockInput, opts ...*AcquireLockOptions) (AcquireLockHandle, error) {
+	var o *AcquireLockOptions
+	if len(opts) > 0 && opts[0] != nil {
+		o = opts[0]
+	} else {
+		o = NewAcquireLockOptions()
+	}
+	options, err := o.Build(workflowID, runID, req)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
+	uc := testutil.NewUpdateCallbacks()
+	c.env.UpdateWorkflow(AcquireLockUpdateName, options.UpdateID, uc, req)
+	return &testAcquireLockHandle{
+		callbacks:  uc,
+		env:        c.env,
+		opts:       options,
+		runID:      runID,
+		workflowID: workflowID,
+		req:        req,
+	}, nil
+}
+
+// GetAcquireLock retrieves a handle to an existing mutex.v1.AcquireLock update
+func (c *TestExampleClient) GetAcquireLock(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (AcquireLockHandle, error) {
+	return nil, errors.New("unimplemented")
+}
+
+var _ AcquireLockHandle = &testAcquireLockHandle{}
+
+// testAcquireLockHandle provides an internal implementation of a(n) AcquireLockHandle
+type testAcquireLockHandle struct {
+	callbacks  *testutil.UpdateCallbacks
+	env        *testsuite.TestWorkflowEnvironment
+	opts       *client.UpdateWorkflowOptions
+	req        *AcquireLockInput
+	runID      string
+	workflowID string
+}
+
+// Get retrieves a test mutex.v1.AcquireLock update result
+func (h *testAcquireLockHandle) Get(ctx context.Context) (*AcquireLockOutput, error) {
+	if resp, err := h.callbacks.Get(ctx); err != nil {
+		return nil, err
+	} else {
+		return resp.(*AcquireLockOutput), nil
+	}
+}
+
+// RunID implementation
+func (h *testAcquireLockHandle) RunID() string {
+	return h.runID
+}
+
+// UpdateID implementation
+func (h *testAcquireLockHandle) UpdateID() string {
+	if h.opts != nil {
+		return h.opts.UpdateID
+	}
+	return ""
+}
+
+// WorkflowID implementation
+func (h *testAcquireLockHandle) WorkflowID() string {
+	return h.workflowID
+}
+
 var _ MutexRun = &testMutexRun{}
 
-// testMutexRun provides convenience methods for interacting with a(n) example.mutex.v1.Example.Mutex workflow in the test environment
+// testMutexRun provides convenience methods for interacting with a(n) mutex.v1.Mutex workflow in the test environment
 type testMutexRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *MutexInput
 	workflows ExampleWorkflows
@@ -1833,9 +2120,11 @@ func (r *testMutexRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
-// Get retrieves a test example.mutex.v1.Example.Mutex workflow result
+// Get retrieves a test mutex.v1.Mutex workflow result
 func (r *testMutexRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(MutexWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(MutexWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -1845,7 +2134,7 @@ func (r *testMutexRun) Get(context.Context) error {
 	return nil
 }
 
-// ID returns a test example.mutex.v1.Example.Mutex workflow run's workflow ID
+// ID returns a test mutex.v1.Mutex workflow run's workflow ID
 func (r *testMutexRun) ID() string {
 	if r.opts != nil {
 		return r.opts.ID
@@ -1868,14 +2157,19 @@ func (r *testMutexRun) Terminate(ctx context.Context, reason string, details ...
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// AcquireLock executes a example.mutex.v1.Example.AcquireLock signal against a test example.mutex.v1.Example.Mutex workflow
-func (r *testMutexRun) AcquireLock(ctx context.Context, req *AcquireLockInput) error {
-	return r.client.AcquireLock(ctx, r.ID(), r.RunID(), req)
-}
-
-// ReleaseLock executes a example.mutex.v1.Example.ReleaseLock signal against a test example.mutex.v1.Example.Mutex workflow
+// ReleaseLock executes a mutex.v1.ReleaseLock signal against a test mutex.v1.Mutex workflow
 func (r *testMutexRun) ReleaseLock(ctx context.Context, req *ReleaseLockInput) error {
 	return r.client.ReleaseLock(ctx, r.ID(), r.RunID(), req)
+}
+
+// AcquireLock executes a(n) mutex.v1.AcquireLock update against a test mutex.v1.Mutex workflow
+func (r *testMutexRun) AcquireLock(ctx context.Context, req *AcquireLockInput, opts ...*AcquireLockOptions) (*AcquireLockOutput, error) {
+	return r.client.AcquireLock(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// AcquireLockAsync executes a(n) mutex.v1.AcquireLock update against a test mutex.v1.Mutex workflow
+func (r *testMutexRun) AcquireLockAsync(ctx context.Context, req *AcquireLockInput, opts ...*AcquireLockOptions) (AcquireLockHandle, error) {
+	return r.client.AcquireLockAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
 var _ SampleWorkflowWithMutexRun = &testSampleWorkflowWithMutexRun{}
@@ -1884,6 +2178,7 @@ var _ SampleWorkflowWithMutexRun = &testSampleWorkflowWithMutexRun{}
 type testSampleWorkflowWithMutexRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *SampleWorkflowWithMutexInput
 	workflows ExampleWorkflows
@@ -1896,7 +2191,9 @@ func (r *testSampleWorkflowWithMutexRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test example.mutex.v1.Example.SampleWorkflowWithMutex workflow result
 func (r *testSampleWorkflowWithMutexRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(SampleWorkflowWithMutexWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SampleWorkflowWithMutexWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -1927,11 +2224,6 @@ func (r *testSampleWorkflowWithMutexRun) RunID() string {
 // Terminate terminates a workflow in execution, returning an error if applicable
 func (r *testSampleWorkflowWithMutexRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
-}
-
-// LockAcquired executes a example.mutex.v1.Example.LockAcquired signal against a test example.mutex.v1.Example.SampleWorkflowWithMutex workflow
-func (r *testSampleWorkflowWithMutexRun) LockAcquired(ctx context.Context, req *LockAcquiredInput) error {
-	return r.client.LockAcquired(ctx, r.ID(), r.RunID(), req)
 }
 
 // ExampleCliOptions describes runtime configuration for example.mutex.v1.Example cli
@@ -2009,8 +2301,8 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 	}
 	commands := []*v2.Command{
 		{
-			Name:                   "acquire-lock",
-			Usage:                  "executes a example.mutex.v1.Example.AcquireLock signal",
+			Name:                   "release-lock",
+			Usage:                  "ReleaseLock releases a lock on a resource identified by `lease_id`.",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2028,13 +2320,63 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "lease-id",
+					Usage:    "set the value of the operation's \"LeaseId\" parameter",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				c, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer c.Close()
+				client := NewExampleClient(c)
+				req, err := UnmarshalCliFlagsToReleaseLockInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				if err := client.ReleaseLock(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
+					return fmt.Errorf("error sending %q signal: %w", ReleaseLockSignalName, err)
+				}
+				fmt.Println("success")
+				return nil
+			},
+		},
+		{
+			Name:                   "acquire-lock",
+			Usage:                  "AcquireLock requests a lock on a resource identified by `resource_id` and blocks until the lock is acquired, returning a `lease_id` that can be used to release the lock.",
+			Category:               "UPDATES",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Name:    "detach",
+					Usage:   "run workflow update in the background and print workflow, execution, and udpate id",
+					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
 					Name:     "workflow-id",
-					Usage:    "set the value of the operation's \"WorkflowId\" parameter",
+					Usage:    "workflow id",
+					Required: true,
+					Aliases:  []string{"w"},
+				},
+				&v2.StringFlag{
+					Name:    "run-id",
+					Usage:   "run id",
+					Aliases: []string{"r"},
+				},
+				&v2.StringFlag{
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
 				&v2.DurationFlag{
@@ -2050,116 +2392,40 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToAcquireLockInput(cmd)
+				req, err := UnmarshalCliFlagsToAcquireLockInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				if err := client.AcquireLock(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
-					return fmt.Errorf("error sending %q signal: %w", AcquireLockSignalName, err)
-				}
-				fmt.Println("success")
-				return nil
-			},
-		},
-		{
-			Name:                   "lock-acquired",
-			Usage:                  "executes a example.mutex.v1.Example.LockAcquired signal",
-			Category:               "SIGNALS",
-			UseShortOptionHandling: true,
-			Before:                 opts.before,
-			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.StringFlag{
-					Name:     "workflow-id",
-					Usage:    "workflow id",
-					Required: true,
-					Aliases:  []string{"w"},
-				},
-				&v2.StringFlag{
-					Name:    "run-id",
-					Usage:   "run id",
-					Aliases: []string{"r"},
-				},
-				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
-				},
-				&v2.StringFlag{
-					Name:     "lease-id",
-					Usage:    "set the value of the operation's \"LeaseId\" parameter",
-					Category: "INPUT",
-				},
-			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
+				handle, err := client.AcquireLockAsync(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req)
 				if err != nil {
-					return fmt.Errorf("error initializing client for command: %w", err)
+					return fmt.Errorf("error executing %s update: %w", AcquireLockUpdateName, err)
 				}
-				defer c.Close()
-				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToLockAcquiredInput(cmd)
-				if err != nil {
-					return fmt.Errorf("error unmarshalling request: %w", err)
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", handle.WorkflowID())
+					fmt.Printf("run id: %s\n", handle.RunID())
+					fmt.Printf("update id: %s\n", handle.UpdateID())
+					return nil
 				}
-				if err := client.LockAcquired(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
-					return fmt.Errorf("error sending %q signal: %w", LockAcquiredSignalName, err)
+				if resp, err := handle.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(resp)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
 				}
-				fmt.Println("success")
-				return nil
-			},
-		},
-		{
-			Name:                   "release-lock",
-			Usage:                  "executes a example.mutex.v1.Example.ReleaseLock signal",
-			Category:               "SIGNALS",
-			UseShortOptionHandling: true,
-			Before:                 opts.before,
-			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.StringFlag{
-					Name:     "workflow-id",
-					Usage:    "workflow id",
-					Required: true,
-					Aliases:  []string{"w"},
-				},
-				&v2.StringFlag{
-					Name:    "run-id",
-					Usage:   "run id",
-					Aliases: []string{"r"},
-				},
-				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
-				},
-				&v2.StringFlag{
-					Name:     "lease-id",
-					Usage:    "set the value of the operation's \"LeaseId\" parameter",
-					Category: "INPUT",
-				},
-			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
-				if err != nil {
-					return fmt.Errorf("error initializing client for command: %w", err)
-				}
-				defer c.Close()
-				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToReleaseLockInput(cmd)
-				if err != nil {
-					return fmt.Errorf("error unmarshalling request: %w", err)
-				}
-				if err := client.ReleaseLock(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
-					return fmt.Errorf("error sending %q signal: %w", ReleaseLockSignalName, err)
-				}
-				fmt.Println("success")
-				return nil
 			},
 		},
 		{
 			Name:                   "mutex",
-			Usage:                  "executes a(n) example.mutex.v1.Example.Mutex workflow",
+			Usage:                  "Mutex is a workflow that manages concurrent access to a resource identified by `resource_id`.",
 			Category:               "WORKFLOWS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2178,9 +2444,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "mutex",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "resource-id",
@@ -2195,7 +2462,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToMutexInput(cmd)
+				req, err := UnmarshalCliFlagsToMutexInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2220,41 +2487,8 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 			},
 		},
-		// sends a example.mutex.v1.Example.AcquireLock signal to a example.mutex.v1.Example.Mutex workflow, starting it if necessary,
+		// executes a(n) example.mutex.v1.Example.AcquireLock update on a example.mutex.v1.Example.Mutex workflow, starting it if necessary,
 		{
-			Name:                   "mutex-with-acquire-lock",
-			Usage:                  "sends a example.mutex.v1.Example.AcquireLock signal to a example.mutex.v1.Example.Mutex workflow, starting it if necessary",
-			Category:               "WORKFLOWS",
-			UseShortOptionHandling: true,
-			Before:                 opts.before,
-			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.BoolFlag{
-					Name:    "detach",
-					Usage:   "run workflow in the background and print workflow and execution id",
-					Aliases: []string{"d"},
-				},
-				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
-				},
-				&v2.StringFlag{
-					Name:     "resource-id",
-					Usage:    "set the value of the operation's \"ResourceId\" parameter",
-					Category: "INPUT",
-				},
-				&v2.StringFlag{
-					Name:     "workflow-id",
-					Usage:    "set the value of the operation's \"WorkflowId\" parameter",
-					Category: "SIGNAL",
-				},
-				&v2.DurationFlag{
-					Name:     "timeout",
-					Usage:    "set the value of the operation's \"Timeout\" parameter (e.g. \"3.000000001s\")",
-					Category: "SIGNAL",
-				},
-			},
 			Action: func(cmd *v2.Context) error {
 				c, err := opts.clientForCommand(cmd)
 				if err != nil {
@@ -2262,34 +2496,79 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				req, err := UnmarshalCliFlagsToMutexInput(cmd)
+				input, err := UnmarshalCliFlagsToMutexInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
-					return fmt.Errorf("error unmarshalling request: %w", err)
+					return fmt.Errorf("error unmarshalling input: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToAcquireLockInput(cmd)
+				update, err := UnmarshalCliFlagsToAcquireLockInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "update-file"})
 				if err != nil {
-					return fmt.Errorf("error unmarshalling signal: %w", err)
+					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				run, err := client.MutexWithAcquireLockAsync(cmd.Context, req, signal)
+				handle, _, err := client.MutexWithAcquireLockAsync(cmd.Context, input, update)
 				if err != nil {
-					return fmt.Errorf("error starting %s workflow with %s signal: %w", MutexWorkflowName, AcquireLockSignalName, err)
+					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
 				if cmd.Bool("detach") {
 					fmt.Println("success")
-					fmt.Printf("workflow id: %s\n", run.ID())
-					fmt.Printf("run id: %s\n", run.RunID())
+					fmt.Printf("workflow id: %s\n", handle.WorkflowID())
+					fmt.Printf("run id: %s\n", handle.RunID())
+					fmt.Printf("update id: %s\n", handle.UpdateID())
 					return nil
 				}
-				if err := run.Get(cmd.Context); err != nil {
+				if out, err := handle.Get(cmd.Context); err != nil {
 					return err
 				} else {
+					b, err := protojson.Marshal(out)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
 					return nil
 				}
 			},
+			After:    opts.after,
+			Before:   opts.before,
+			Category: "WORKFLOWS",
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Aliases: []string{"d"},
+					Name:    "detach",
+					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+				},
+				&v2.StringFlag{
+					Name:     "resource-id",
+					Usage:    "set the value of the operation's \"ResourceId\" parameter",
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Aliases:  []string{"u"},
+					Category: "UPDATE",
+					Name:     "update-file",
+					Usage:    "path to json-formatted update file",
+				},
+				&v2.DurationFlag{
+					Name:     "timeout",
+					Usage:    "set the value of the operation's \"Timeout\" parameter (e.g. \"3.000000001s\")",
+					Category: "UPDATE",
+				},
+			},
+			Name:                   "mutex-with-acquire-lock",
+			Usage:                  "executes a(n) example.mutex.v1.Example.AcquireLock update on a example.mutex.v1.Example.Mutex workflow, starting it if necessary",
+			UseShortOptionHandling: true,
 		},
 		{
 			Name:                   "sample-workflow-with-mutex",
-			Usage:                  "executes a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow",
+			Usage:                  "SampleWorkflowWithMutex is a sample workflow that demonstrates how to use the Mutex service.",
 			Category:               "WORKFLOWS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2308,9 +2587,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "mutex",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "resource-id",
@@ -2330,7 +2610,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd)
+				req, err := UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -2392,29 +2672,46 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 	return commands, nil
 }
 
-// UnmarshalCliFlagsToAcquireLockInput unmarshals a AcquireLockInput from command line flags
-func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*AcquireLockInput, error) {
-	var result AcquireLockInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+// UnmarshalCliFlagsToReleaseLockInput unmarshals a ReleaseLockInput from command line flags
+func UnmarshalCliFlagsToReleaseLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ReleaseLockInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
+	var result ReleaseLockInput
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
 	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
-	if flag := opts.FlagName("workflow-id"); cmd.IsSet(flag) {
+	if flag := opts.FlagName("lease-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
-		result.WorkflowId = value
+		result.LeaseId = value
+	}
+	return &result, nil
+}
+
+// UnmarshalCliFlagsToAcquireLockInput unmarshals a AcquireLockInput from command line flags
+func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*AcquireLockInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
+	var result AcquireLockInput
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
+		if err != nil {
+			f = cmd.String(opts.FromFile)
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
+		}
+		if err := protojson.Unmarshal(b, &result); err != nil {
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
+		}
 	}
 	if flag := opts.FlagName("timeout"); cmd.IsSet(flag) {
 		value := durationpb.New(cmd.Duration(flag))
@@ -2423,79 +2720,22 @@ func UnmarshalCliFlagsToAcquireLockInput(cmd *v2.Context, options ...helpers.Unm
 	return &result, nil
 }
 
-// UnmarshalCliFlagsToLockAcquiredInput unmarshals a LockAcquiredInput from command line flags
-func UnmarshalCliFlagsToLockAcquiredInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*LockAcquiredInput, error) {
-	var result LockAcquiredInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
-		if err != nil {
-			inputFile = cmd.String("input-file")
-		}
-		b, err := os.ReadFile(inputFile)
-		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
-		}
-		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
-		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
-	if flag := opts.FlagName("lease-id"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.LeaseId = value
-	}
-	return &result, nil
-}
-
-// UnmarshalCliFlagsToReleaseLockInput unmarshals a ReleaseLockInput from command line flags
-func UnmarshalCliFlagsToReleaseLockInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ReleaseLockInput, error) {
-	var result ReleaseLockInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
-		if err != nil {
-			inputFile = cmd.String("input-file")
-		}
-		b, err := os.ReadFile(inputFile)
-		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
-		}
-		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
-		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
-	}
-	if flag := opts.FlagName("lease-id"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.LeaseId = value
-	}
-	return &result, nil
-}
-
 // UnmarshalCliFlagsToMutexInput unmarshals a MutexInput from command line flags
 func UnmarshalCliFlagsToMutexInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*MutexInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result MutexInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("resource-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -2506,23 +2746,20 @@ func UnmarshalCliFlagsToMutexInput(cmd *v2.Context, options ...helpers.Unmarshal
 
 // UnmarshalCliFlagsToSampleWorkflowWithMutexInput unmarshals a SampleWorkflowWithMutexInput from command line flags
 func UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SampleWorkflowWithMutexInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SampleWorkflowWithMutexInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("resource-id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -2539,9 +2776,9 @@ func UnmarshalCliFlagsToSampleWorkflowWithMutexInput(cmd *v2.Context, options ..
 func WithExampleSchemeTypes() scheme.Option {
 	return func(s *scheme.Scheme) {
 		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("MutexInput"))
-		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("AcquireLockInput"))
-		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("LockAcquiredInput"))
 		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("ReleaseLockInput"))
+		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("AcquireLockInput"))
+		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("AcquireLockOutput"))
 		s.RegisterType(File_example_mutex_v1_mutex_proto.Messages().ByName("SampleWorkflowWithMutexInput"))
 	}
 }

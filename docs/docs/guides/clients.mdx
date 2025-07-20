@@ -3,6 +3,724 @@ import TabItem from '@theme/TabItem';
 
 # Clients
 
-**Coming Soon...**
+The protoc-gen-go-temporal plugin generates comprehensive client libraries that provide type-safe interfaces for interacting with Temporal workflows. These clients wrap the standard Temporal Go SDK to provide structured access to workflow execution, signals, queries, and updates.
+
+## Client Interface
+
+Each protobuf service generates a client interface (e.g., `ExampleClient`) that provides methods for all workflow operations defined in your schema.
+
+<Tabs>
+<TabItem value="client-interface" label="Interface">
+```go title="Generated Client Interface"
+type ExampleClient interface {
+    // Workflow execution methods
+    CreateFoo(ctx context.Context, req *CreateFooRequest, opts ...*CreateFooOptions) (*CreateFooResponse, error)
+    CreateFooAsync(ctx context.Context, req *CreateFooRequest, opts ...*CreateFooOptions) (CreateFooRun, error)
+    GetCreateFoo(ctx context.Context, workflowID, runID string) CreateFooRun
+
+    // Signal methods  
+    SetFooProgress(ctx context.Context, workflowID, runID string, req *SetFooProgressRequest) error
+
+    // Query methods
+    GetFooProgress(ctx context.Context, workflowID, runID string) (*GetFooProgressResponse, error)
+
+    // Update methods
+    UpdateFooProgress(ctx context.Context, workflowID, runID string, req *SetFooProgressRequest, opts ...*UpdateFooProgressOptions) (*GetFooProgressResponse, error)
+    UpdateFooProgressAsync(ctx context.Context, workflowID, runID string, req *SetFooProgressRequest, opts ...*UpdateFooProgressOptions) (UpdateFooProgressHandle, error)
+
+    // Workflow management
+    CancelWorkflow(ctx context.Context, workflowID, runID string) error
+    TerminateWorkflow(ctx context.Context, workflowID, runID string, reason string, details ...any) error
+}
+```
+</TabItem>
+<TabItem value="client-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      query: { ref: "GetFooProgress" }
+      signal: { ref: "SetFooProgress" }
+      update: { ref: "UpdateFooProgress" }
+    };
+  }
+
+  rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Client Initialization
+
+Initialize a client by providing a Temporal client instance and optional configuration.
+
+<Tabs>
+<TabItem value="client-init" label="Basic Initialization">
+```go title="main.go"
+package main
+
+import (
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // Initialize Temporal client
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatalf("error initializing temporal client: %v", err)
+    }
+    defer c.Close()
+
+    // Initialize generated client
+    client := examplev1.NewExampleClient(c)
+    
+    // Use client...
+}
+```
+</TabItem>
+<TabItem value="client-init-options" label="With Options">
+```go title="main.go"
+package main
+
+import (
+    "log"
+    "log/slog"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // Initialize Temporal client with options
+    c, err := client.Dial(client.Options{})
+    if err != nil {
+        log.Fatalf("error initializing temporal client: %v", err)
+    }
+    defer c.Close()
+
+    // Initialize generated client with structured logging
+    logger := slog.Default()
+    client := examplev1.NewExampleClientWithOptions(c, client.Options{
+        Namespace: "example-namespace",
+    }, examplev1.NewExampleClientOptions().WithLogger(logger))
+    
+    // Use client...
+}
+```
+</TabItem>
+</Tabs>
+
+## Workflow Execution
+
+Clients provide both synchronous and asynchronous methods for workflow execution.
+
+### Synchronous Execution
+
+Synchronous methods execute the workflow and block until completion.
+
+<Tabs>
+<TabItem value="sync-execution" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client := examplev1.NewExampleClient(c)
+
+    // Execute workflow synchronously - blocks until completion
+    result, err := client.CreateFoo(context.Background(), &examplev1.CreateFooRequest{
+        Name: "my-foo",
+    })
+    if err != nil {
+        log.Fatalf("workflow execution failed: %v", err)
+    }
+
+    log.Printf("workflow completed: %s", result.String())
+}
+```
+</TabItem>
+<TabItem value="sync-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+
+message CreateFooRequest {
+  string name = 1;
+}
+
+message CreateFooResponse {
+  string id = 1;
+  string status = 2;
+}
+```
+</TabItem>
+</Tabs>
+
+### Asynchronous Execution
+
+Asynchronous methods start the workflow and return immediately with a workflow run handle.
+
+<Tabs>
+<TabItem value="async-execution" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client := examplev1.NewExampleClient(c)
+
+    // Start workflow asynchronously
+    run, err := client.CreateFooAsync(context.Background(), &examplev1.CreateFooRequest{
+        Name: "my-foo",
+    })
+    if err != nil {
+        log.Fatalf("workflow start failed: %v", err)
+    }
+
+    log.Printf("workflow started: id=%s, run_id=%s", run.ID(), run.RunID())
+
+    // Get result when ready
+    result, err := run.Get(context.Background())
+    if err != nil {
+        log.Fatalf("workflow execution failed: %v", err)
+    }
+
+    log.Printf("workflow completed: %s", result.String())
+}
+```
+</TabItem>
+<TabItem value="async-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
 
 ## Workflow Run
+
+Workflow run handles provide access to workflow metadata and operations for running workflows.
+
+<Tabs>
+<TabItem value="run-interface" label="Interface">
+```go title="Generated Run Interface"
+type CreateFooRun interface {
+    // Workflow metadata
+    ID() string
+    RunID() string
+    Run() client.WorkflowRun
+
+    // Result retrieval
+    Get(ctx context.Context) (*CreateFooResponse, error)
+
+    // Lifecycle management
+    Cancel(ctx context.Context) error
+    Terminate(ctx context.Context, reason string, details ...any) error
+
+    // Signal methods (if workflow defines signals)
+    SetFooProgress(ctx context.Context, req *SetFooProgressRequest) error
+
+    // Query methods (if workflow defines queries) 
+    GetFooProgress(ctx context.Context) (*GetFooProgressResponse, error)
+
+    // Update methods (if workflow defines updates)
+    UpdateFooProgress(ctx context.Context, req *SetFooProgressRequest, opts ...*UpdateFooProgressOptions) (*GetFooProgressResponse, error)
+    UpdateFooProgressAsync(ctx context.Context, req *SetFooProgressRequest, opts ...*UpdateFooProgressOptions) (UpdateFooProgressHandle, error)
+}
+```
+</TabItem>
+<TabItem value="run-usage" label="Usage">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client := examplev1.NewExampleClient(c)
+    ctx := context.Background()
+
+    // Start workflow
+    run, err := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: "test"})
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("workflow started: %s", run.ID())
+
+    // Send signals
+    err = run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 25.0})
+    if err != nil {
+        log.Printf("signal failed: %v", err)
+    }
+
+    // Query workflow state
+    progress, err := run.GetFooProgress(ctx)
+    if err != nil {
+        log.Printf("query failed: %v", err)
+    } else {
+        log.Printf("current progress: %.1f%%", progress.Progress)
+    }
+
+    // Update workflow
+    update, err := run.UpdateFooProgress(ctx, &examplev1.SetFooProgressRequest{Progress: 100.0})
+    if err != nil {
+        log.Printf("update failed: %v", err)
+    } else {
+        log.Printf("updated progress: %.1f%%", update.Progress)
+    }
+
+    // Wait for completion
+    result, err := run.Get(ctx)
+    if err != nil {
+        log.Fatalf("workflow failed: %v", err)
+    }
+
+    log.Printf("workflow completed: %s", result.String())
+}
+```
+</TabItem>
+</Tabs>
+
+## Signals
+
+Send signals to running workflows using client methods or workflow run handles.
+
+<Tabs>
+<TabItem value="signals-client" label="Client Methods">
+```go title="main.go"
+func sendSignals(client examplev1.ExampleClient) {
+    ctx := context.Background()
+
+    // Send signal using client method
+    err := client.SetFooProgress(ctx, "workflow-id", "run-id", &examplev1.SetFooProgressRequest{
+        Progress: 50.0,
+    })
+    if err != nil {
+        log.Printf("signal failed: %v", err)
+    }
+}
+```
+</TabItem>
+<TabItem value="signals-run" label="Run Methods">
+```go title="main.go"
+func sendSignalsViaRun(run examplev1.CreateFooRun) {
+    ctx := context.Background()
+
+    // Send signal using run handle
+    err := run.SetFooProgress(ctx, &examplev1.SetFooProgressRequest{
+        Progress: 75.0,
+    })
+    if err != nil {
+        log.Printf("signal failed: %v", err)
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+## Queries
+
+Execute queries against running workflows to retrieve current state.
+
+<Tabs>
+<TabItem value="queries-client" label="Client Methods">
+```go title="main.go"
+func executeQueries(client examplev1.ExampleClient) {
+    ctx := context.Background()
+
+    // Execute query using client method
+    progress, err := client.GetFooProgress(ctx, "workflow-id", "run-id")
+    if err != nil {
+        log.Printf("query failed: %v", err)
+        return
+    }
+
+    log.Printf("current progress: %.1f%%", progress.Progress)
+}
+```
+</TabItem>
+<TabItem value="queries-run" label="Run Methods">
+```go title="main.go"
+func executeQueriesViaRun(run examplev1.CreateFooRun) {
+    ctx := context.Background()
+
+    // Execute query using run handle
+    progress, err := run.GetFooProgress(ctx)
+    if err != nil {
+        log.Printf("query failed: %v", err)
+        return
+    }
+
+    log.Printf("current progress: %.1f%%", progress.Progress)
+}
+```
+</TabItem>
+</Tabs>
+
+## Updates
+
+Execute updates to modify workflow state and receive return values.
+
+<Tabs>
+<TabItem value="updates-sync" label="Synchronous">
+```go title="main.go"
+func executeUpdates(client examplev1.ExampleClient) {
+    ctx := context.Background()
+
+    // Execute update synchronously - blocks until completion
+    result, err := client.UpdateFooProgress(ctx, "workflow-id", "run-id", 
+        &examplev1.SetFooProgressRequest{Progress: 100.0})
+    if err != nil {
+        log.Printf("update failed: %v", err)
+        return
+    }
+
+    log.Printf("update completed: %.1f%%", result.Progress)
+}
+```
+</TabItem>
+<TabItem value="updates-async" label="Asynchronous">
+```go title="main.go"
+func executeUpdatesAsync(run examplev1.CreateFooRun) {
+    ctx := context.Background()
+
+    // Execute update asynchronously
+    handle, err := run.UpdateFooProgressAsync(ctx, 
+        &examplev1.SetFooProgressRequest{Progress: 100.0})
+    if err != nil {
+        log.Printf("update start failed: %v", err)
+        return
+    }
+
+    log.Printf("update started: %s", handle.UpdateID())
+
+    // Get result when ready
+    result, err := handle.Get(ctx)
+    if err != nil {
+        log.Printf("update failed: %v", err)
+        return
+    }
+
+    log.Printf("update completed: %.1f%%", result.Progress)
+}
+```
+</TabItem>
+</Tabs>
+
+## Signal-with-Start
+
+Execute workflows with an initial signal, allowing workflows to be started in a specific state.
+
+<Tabs>
+<TabItem value="signal-with-start" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client := examplev1.NewExampleClient(c)
+    ctx := context.Background()
+
+    // Start workflow with initial signal
+    result, err := client.CreateFooWithSetFooProgress(ctx,
+        &examplev1.CreateFooRequest{Name: "test"},
+        &examplev1.SetFooProgressRequest{Progress: 25.0},
+    )
+    if err != nil {
+        log.Fatalf("signal-with-start failed: %v", err)
+    }
+
+    log.Printf("workflow completed with initial progress: %s", result.String())
+}
+```
+</TabItem>
+<TabItem value="signal-with-start-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      signal: { ref: "SetFooProgress", start: true }
+    };
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Update-with-Start
+
+Execute workflows with an initial update, allowing workflows to be started and immediately updated atomically.
+
+:::warning
+Update-with-start is considered experimental.
+:::
+
+<Tabs>
+<TabItem value="update-with-start" label="Go">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "log"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, _ := client.Dial(client.Options{})
+    client := examplev1.NewExampleClient(c)
+    ctx := context.Background()
+
+    // Start workflow with initial update
+    updateResult, workflowRun, err := client.CreateFooWithUpdateFooProgress(ctx,
+        &examplev1.CreateFooRequest{Name: "test"},
+        &examplev1.SetFooProgressRequest{Progress: 50.0},
+    )
+    if err != nil {
+        log.Fatalf("update-with-start failed: %v", err)
+    }
+
+    log.Printf("workflow started with initial update: %s", updateResult.String())
+    log.Printf("workflow ID: %s", workflowRun.ID())
+
+    // Continue with workflow execution
+    finalResult, err := workflowRun.Get(ctx)
+    if err != nil {
+        log.Fatalf("workflow execution failed: %v", err)
+    }
+
+    log.Printf("workflow completed: %s", finalResult.String())
+}
+```
+</TabItem>
+<TabItem value="update-with-start-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      update: { ref: "UpdateFooProgress", start: true }
+    };
+  }
+
+  rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Options
+
+Configure workflow execution, updates, and other operations using the generated options builders.
+
+### Workflow Options
+
+<Tabs>
+<TabItem value="workflow-options" label="Workflow Execution">
+```go title="main.go"
+package main
+
+import (
+    "context"
+    "time"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/api/enums/v1"
+    "go.temporal.io/sdk/temporal"
+)
+
+func executeWithOptions(client examplev1.ExampleClient) {
+    ctx := context.Background()
+
+    // Execute workflow with custom options
+    run, err := client.CreateFooAsync(ctx, &examplev1.CreateFooRequest{Name: "test"},
+        examplev1.NewCreateFooOptions().
+            WithID("custom-workflow-id").
+            WithExecutionTimeout(time.Hour * 2).
+            WithTaskQueue("custom-task-queue").
+            WithRetryPolicy(&temporal.RetryPolicy{
+                MaximumAttempts: 3,
+            }).
+            WithSearchAttributes(map[string]any{
+                "environment": "staging",
+                "team": "backend",
+            }).
+            WithIDReusePolicy(enums.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE),
+    )
+    if err != nil {
+        log.Printf("workflow start failed: %v", err)
+        return
+    }
+
+    // Use run...
+}
+```
+</TabItem>
+<TabItem value="workflow-options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      id: 'create-foo/${! name.slug() }'
+      execution_timeout: { seconds: 3600 }
+      task_queue: "example-v1"
+      retry_policy: {
+        max_attempts: 5
+      }
+      search_attributes: 'environment = "production"'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### Update Options
+
+<Tabs>
+<TabItem value="update-options" label="Update Configuration">
+```go title="main.go"
+func executeUpdateWithOptions(run examplev1.CreateFooRun) {
+    ctx := context.Background()
+
+    // Execute update with custom options
+    result, err := run.UpdateFooProgress(ctx, 
+        &examplev1.SetFooProgressRequest{Progress: 100.0},
+        examplev1.NewUpdateFooProgressOptions().
+            WithUpdateID("custom-update-id").
+            WithWaitPolicy(enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED),
+    )
+    if err != nil {
+        log.Printf("update failed: %v", err)
+        return
+    }
+
+    log.Printf("update completed: %s", result.String())
+}
+```
+</TabItem>
+<TabItem value="update-options-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
+    option (temporal.v1.update) = {
+      id: 'update-progress/${! progress.string() }'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>

@@ -16,4 +16,5 @@
     ```shell
     go run examples/mutex/main.go sample-workflow-with-mutex --resource-id foo -d
     go run examples/mutex/main.go sample-workflow-with-mutex --resource-id foo -d
+    go run examples/mutex/main.go sample-workflow-with-mutex --resource-id foo -d
     ```

@@ -90,6 +90,9 @@ func RegisterOpaqueActivities(r worker.ActivityRegistry, c opaque.OpaqueClient, 
 	if name := opaqueOptions.filterActivity(opaque.PutOpaqueExampleWorkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.PutOpaqueExample, activity.RegisterOptions{Name: name})
 	}
+	if name := opaqueOptions.filterActivity("test.opaque.Opaque.GetPutOpaqueExample"); name != "" {
+		r.RegisterActivityWithOptions(a.GetPutOpaqueExample, activity.RegisterOptions{Name: name})
+	}
 	if name := opaqueOptions.filterActivity("test.opaque.Opaque.PutOpaqueExampleWithSignalOpaque"); name != "" {
 		r.RegisterActivityWithOptions(a.PutOpaqueExampleWithSignalOpaque, activity.RegisterOptions{Name: name})
 	}
@@ -103,6 +106,7 @@ type PutOpaqueExampleWorkflowOptions struct {
 	ActivityOptions      *workflow.ActivityOptions
 	Detached             bool
 	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
 	ParentClosePolicy    enumsv1.ParentClosePolicy
 	StartWorkflowOptions *client.StartWorkflowOptions
 }
@@ -110,6 +114,87 @@ type PutOpaqueExampleWorkflowOptions struct {
 // NewPutOpaqueExampleWorkflowOptions initializes a new PutOpaqueExampleWorkflowOptions value
 func NewPutOpaqueExampleWorkflowOptions() *PutOpaqueExampleWorkflowOptions {
 	return &PutOpaqueExampleWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *PutOpaqueExampleWorkflowOptions) Build(ctx workflow.Context, input *opaque.OpaqueExample) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
+	}
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
+	}
+
+	// marshal workflow request protobuf message
+	inputpb, err := anypb.New(input)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
+	var parentClosePolicy temporalv1.ParentClosePolicy
+	switch opts.ParentClosePolicy {
+	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
+	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
+	}
+
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
+	}, nil
 }
 
 // WithActivityOptions can be used to customize the activity options
@@ -127,6 +212,12 @@ func (opts *PutOpaqueExampleWorkflowOptions) WithDetached(d bool) *PutOpaqueExam
 // WithHeartbeatInterval can be used to customize the activity heartbeat interval
 func (opts *PutOpaqueExampleWorkflowOptions) WithHeartbeatInterval(d time.Duration) *PutOpaqueExampleWorkflowOptions {
 	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *PutOpaqueExampleWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *PutOpaqueExampleWorkflowOptions {
+	opts.HeartbeatTimeout = d
 	return opts
 }
 
@@ -165,9 +256,12 @@ type PutOpaqueExampleRun interface {
 
 // putOpaqueExampleRun provides a(n) PutOpaqueExampleRun implementation
 type putOpaqueExampleRun struct {
-	cancel func()
-	future workflow.Future
-	id     string
+	cancel            func()
+	ctx               workflow.Context
+	future            workflow.Future
+	id                string
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
 }
 
 // Cancel the underlying workflow execution
@@ -184,11 +278,22 @@ func (r *putOpaqueExampleRun) Cancel(ctx workflow.Context) error {
 
 // Future returns the underlying activity future
 func (r *putOpaqueExampleRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetPutOpaqueExampleAsync(r.ctx, r.id, "").(*putOpaqueExampleRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
 	return r.future
 }
 
 // Get blocks on activity completion and returns the underlying workflow result
 func (r *putOpaqueExampleRun) Get(ctx workflow.Context) (*opaque.OpaqueExample, error) {
+	ctx, cancel := workflow.WithCancel(ctx)
+	if r.future == nil {
+		rr := GetPutOpaqueExampleAsync(ctx, r.id, "", NewGetPutOpaqueExampleOptions().WithParentClosePolicy(r.parentClosePolicy).WithHeartbeatInterval(r.heartbeatInterval)).(*putOpaqueExampleRun)
+		r.future = rr.future
+		r.cancel = cancel
+	}
 	var resp opaque.OpaqueExample
 	if err := r.future.Get(ctx, &resp); err != nil {
 		return nil, err
@@ -221,7 +326,7 @@ func PutOpaqueExample(ctx workflow.Context, req *opaque.OpaqueExample, opts ...*
 }
 
 // PutOpaqueExampleAsync executes a(n) test.opaque.Opaque.PutOpaqueExample workflow and returns a handle to the underlying activity
-func PutOpaqueExampleAsync(ctx workflow.Context, req *opaque.OpaqueExample, opts ...*PutOpaqueExampleWorkflowOptions) (PutOpaqueExampleRun, error) {
+func PutOpaqueExampleAsync(ctx workflow.Context, input *opaque.OpaqueExample, opts ...*PutOpaqueExampleWorkflowOptions) (PutOpaqueExampleRun, error) {
 	activityName := opaqueOptions.filterActivity(opaque.PutOpaqueExampleWorkflowName)
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -231,21 +336,94 @@ func PutOpaqueExampleAsync(ctx workflow.Context, req *opaque.OpaqueExample, opts
 		)
 	}
 
-	opt := &PutOpaqueExampleWorkflowOptions{}
+	var opt *PutOpaqueExampleWorkflowOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewPutOpaqueExampleWorkflowOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, opaqueOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &putOpaqueExampleRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetPutOpaqueExample returns a(n) test.opaque.Opaque.PutOpaqueExample workflow execution
+func GetPutOpaqueExample(ctx workflow.Context, workflowID string, runID string, options ...*GetPutOpaqueExampleOptions) (out *opaque.OpaqueExample, err error) {
+	out, err = GetPutOpaqueExampleAsync(ctx, workflowID, runID, options...).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetPutOpaqueExampleAsync returns a handle to a(n) test.opaque.Opaque.PutOpaqueExample workflow execution
+func GetPutOpaqueExampleAsync(ctx workflow.Context, workflowID string, runID string, options ...*GetPutOpaqueExampleOptions) PutOpaqueExampleRun {
+	activityName := opaqueOptions.filterActivity("test.opaque.Opaque.GetPutOpaqueExample")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &putOpaqueExampleRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	var opt *GetPutOpaqueExampleOptions
+	if len(options) > 0 && options[0] != nil {
+		opt = options[0]
+	} else {
+		opt = NewGetPutOpaqueExampleOptions()
+	}
+	ctx, req, err := opt.Build(ctx, workflowID, runID)
+	if err != nil {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(opaqueOptions.convertError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil)))
+		return &putOpaqueExampleRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &putOpaqueExampleRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     workflowID,
+	}
+}
+
+// GetPutOpaqueExampleOptions are used to configure a(n) test.opaque.Opaque.PutOpaqueExample workflow execution getter activity
+type GetPutOpaqueExampleOptions struct {
+	activityOptions   *workflow.ActivityOptions
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
+}
+
+// NewGetPutOpaqueExampleOptions initializes a new GetPutOpaqueExampleOptions value
+func NewGetPutOpaqueExampleOptions() *GetPutOpaqueExampleOptions {
+	return &GetPutOpaqueExampleOptions{}
+}
+
+// Build initializes the activity context and input
+func (opt *GetPutOpaqueExampleOptions) Build(ctx workflow.Context, workflowID string, runID string) (workflow.Context, *xnsv1.GetWorkflowRequest, error) {
+	if opt.heartbeatInterval == 0 {
+		opt.heartbeatInterval = 30000000000 // 30 seconds
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
+	var ao workflow.ActivityOptions
+	if opt.activityOptions != nil {
+		ao = *opt.activityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
 	}
 	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
 	ao.WaitForCancellation = true
@@ -255,12 +433,57 @@ func PutOpaqueExampleAsync(ctx workflow.Context, req *opaque.OpaqueExample, opts
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
+	return ctx, &xnsv1.GetWorkflowRequest{
+		HeartbeatInterval: durationpb.New(opt.heartbeatInterval),
+		ParentClosePolicy: opt.parentClosePolicy,
+		RunId:             runID,
+		WorkflowId:        workflowID,
+	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (o *GetPutOpaqueExampleOptions) WithActivityOptions(ao workflow.ActivityOptions) *GetPutOpaqueExampleOptions {
+	o.activityOptions = &ao
+	return o
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (o *GetPutOpaqueExampleOptions) WithHeartbeatInterval(d time.Duration) *GetPutOpaqueExampleOptions {
+	o.heartbeatInterval = d
+	return o
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (o *GetPutOpaqueExampleOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *GetPutOpaqueExampleOptions {
+	o.parentClosePolicy = policy
+	return o
+}
+
+// PutOpaqueExampleWithSignalOpaqueOptions are used to configure a(n) test.opaque.Opaque.PutOpaqueExampleWithSignalOpaque activity
+type PutOpaqueExampleWithSignalOpaqueOptions struct {
+	ActivityOptions      *workflow.ActivityOptions
+	Detached             bool
+	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
+	ParentClosePolicy    enumsv1.ParentClosePolicy
+	StartWorkflowOptions *client.StartWorkflowOptions
+}
+
+// NewPutOpaqueExampleWithSignalOpaqueOptions initializes a new PutOpaqueExampleWithSignalOpaqueOptions value
+func NewPutOpaqueExampleWithSignalOpaqueOptions() *PutOpaqueExampleWithSignalOpaqueOptions {
+	return &PutOpaqueExampleWithSignalOpaqueOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) Build(ctx workflow.Context, input *opaque.OpaqueExample, signal *opaque.OpaqueExample) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
 	}
-	if wo.ID == "" {
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
 		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			id, err := uuid.NewRandom()
 			if err != nil {
@@ -268,28 +491,35 @@ func PutOpaqueExampleAsync(ctx workflow.Context, req *opaque.OpaqueExample, opts
 				return nil
 			}
 			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
 		}
 	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
 	}
 
 	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
+	inputpb, err := anypb.New(input)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
 	}
 
+	// marshal signal request protobuf message
+	signalpb, err := anypb.New(signal)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling signal request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
 	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
+	switch opts.ParentClosePolicy {
 	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
 	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
@@ -298,31 +528,87 @@ func PutOpaqueExampleAsync(ctx workflow.Context, req *opaque.OpaqueExample, opts
 		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
 	}
 
-	ctx, cancel := workflow.WithCancel(ctx)
-	return &putOpaqueExampleRun{
-		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			StartWorkflowOptions: swo,
-		}),
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		Signal:               signalpb,
+		StartWorkflowOptions: swopb,
 	}, nil
 }
 
-// PutOpaqueExampleWithSignalOpaque sends a(n) test.opaque.Opaque.SignalOpaque signal to a test.opaque.Opaque.PutOpaqueExample workflow, starting it if necessary, and blocks until the workflow completes
-func PutOpaqueExampleWithSignalOpaque(ctx workflow.Context, req *opaque.OpaqueExample, signal *opaque.OpaqueExample, opts ...*PutOpaqueExampleWorkflowOptions) (*opaque.OpaqueExample, error) {
-	run, err := PutOpaqueExampleWithSignalOpaqueAsync(ctx, req, signal, opts...)
+// WithActivityOptions can be used to customize the activity options
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) WithActivityOptions(ao workflow.ActivityOptions) *PutOpaqueExampleWithSignalOpaqueOptions {
+	opts.ActivityOptions = &ao
+	return opts
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) WithDetached(d bool) *PutOpaqueExampleWithSignalOpaqueOptions {
+	opts.Detached = d
+	return opts
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) WithHeartbeatInterval(d time.Duration) *PutOpaqueExampleWithSignalOpaqueOptions {
+	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) WithHeartbeatTimeout(d time.Duration) *PutOpaqueExampleWithSignalOpaqueOptions {
+	opts.HeartbeatTimeout = d
+	return opts
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *PutOpaqueExampleWithSignalOpaqueOptions {
+	opts.ParentClosePolicy = policy
+	return opts
+}
+
+// WithStartWorkflowOptions can be used to customize the start workflow options
+func (opts *PutOpaqueExampleWithSignalOpaqueOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *PutOpaqueExampleWithSignalOpaqueOptions {
+	opts.StartWorkflowOptions = &swo
+	return opts
+}
+
+// PutOpaqueExampleWithSignalOpaque executes a(n) test.opaque.Opaque.PutOpaqueExampleWithSignalOpaque activity and blocks until completion
+func PutOpaqueExampleWithSignalOpaque(ctx workflow.Context, input *opaque.OpaqueExample, signal *opaque.OpaqueExample, opts ...*PutOpaqueExampleWithSignalOpaqueOptions) (*opaque.OpaqueExample, error) {
+	run, err := PutOpaqueExampleWithSignalOpaqueAsync(ctx, input, signal, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return run.Get(ctx)
 }
 
-// PutOpaqueExampleWithSignalOpaqueAsync sends a(n) test.opaque.Opaque.SignalOpaque signal to a(n) test.opaque.Opaque.PutOpaqueExample workflow, starting it if necessary, and returns a handle to the underlying activity
-func PutOpaqueExampleWithSignalOpaqueAsync(ctx workflow.Context, req *opaque.OpaqueExample, signal *opaque.OpaqueExample, opts ...*PutOpaqueExampleWorkflowOptions) (PutOpaqueExampleRun, error) {
+// PutOpaqueExampleWithSignalOpaqueAsync executes a(n) test.opaque.Opaque.PutOpaqueExampleWithSignalOpaque activity and returns a handle to the activity
+func PutOpaqueExampleWithSignalOpaqueAsync(ctx workflow.Context, input *opaque.OpaqueExample, signal *opaque.OpaqueExample, opts ...*PutOpaqueExampleWithSignalOpaqueOptions) (PutOpaqueExampleRun, error) {
 	activityName := opaqueOptions.filterActivity("test.opaque.Opaque.PutOpaqueExampleWithSignalOpaque")
 	if activityName == "" {
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -332,91 +618,21 @@ func PutOpaqueExampleWithSignalOpaqueAsync(ctx workflow.Context, req *opaque.Opa
 		)
 	}
 
-	opt := &PutOpaqueExampleWorkflowOptions{}
+	var opt *PutOpaqueExampleWithSignalOpaqueOptions
 	if len(opts) > 0 && opts[0] != nil {
 		opt = opts[0]
+	} else {
+		opt = NewPutOpaqueExampleWithSignalOpaqueOptions()
 	}
-	if opt.HeartbeatInterval == 0 {
-		opt.HeartbeatInterval = time.Second * 30
-	}
-
-	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
-	if opt.ActivityOptions != nil {
-		ao = *opt.ActivityOptions
-	}
-	if ao.HeartbeatTimeout == 0 {
-		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
-	}
-	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
-	ao.WaitForCancellation = true
-
-	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
-		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	// configure start workflow options
-	wo := client.StartWorkflowOptions{}
-	if opt.StartWorkflowOptions != nil {
-		wo = *opt.StartWorkflowOptions
-	}
-	if wo.ID == "" {
-		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			id, err := uuid.NewRandom()
-			if err != nil {
-				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
-				return nil
-			}
-			return id
-		}).Get(&wo.ID); err != nil {
-			return nil, err
-		}
-	}
-	if wo.ID == "" {
-		return nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
-	}
-
-	// marshal start workflow options protobuf message
-	swo, err := xns.MarshalStartWorkflowOptions(wo)
+	ctx, req, err := opt.Build(ctx, input, signal)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+		return nil, err
 	}
-
-	// marshal workflow request protobuf message
-	wreq, err := anypb.New(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling workflow request: %w", err)
-	}
-
-	// marshal signal request protobuf message
-	wsignal, err := anypb.New(signal)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling signal request: %w", err)
-	}
-
-	var parentClosePolicy temporalv1.ParentClosePolicy
-	switch opt.ParentClosePolicy {
-	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
-	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
-	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
-		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
-	}
-
 	ctx, cancel := workflow.WithCancel(ctx)
 	return &putOpaqueExampleRun{
 		cancel: cancel,
-		id:     wo.ID,
-		future: workflow.ExecuteActivity(ctx, activityName, &xnsv1.WorkflowRequest{
-			Detached:             opt.Detached,
-			HeartbeatInterval:    durationpb.New(opt.HeartbeatInterval),
-			ParentClosePolicy:    parentClosePolicy,
-			Request:              wreq,
-			Signal:               wsignal,
-			StartWorkflowOptions: swo,
-		}),
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
 	}, nil
 }
 
@@ -508,9 +724,11 @@ func SignalOpaqueAsync(ctx workflow.Context, workflowID string, runID string, re
 	}
 
 	// configure activity options
-	ao := workflow.GetActivityOptions(ctx)
+	var ao workflow.ActivityOptions
 	if opt.ActivityOptions != nil {
 		ao = *opt.ActivityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
 	}
 	if ao.HeartbeatTimeout == 0 {
 		ao.HeartbeatTimeout = opt.HeartbeatInterval * 2
@@ -576,6 +794,75 @@ func (a *opaqueActivities) CancelWorkflow(ctx context.Context, workflowID string
 	return a.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
+// GetPutOpaqueExample retrieves a(n) test.opaque.Opaque.PutOpaqueExample workflow via an activity
+func (a *opaqueActivities) GetPutOpaqueExample(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *opaque.OpaqueExample, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+
+	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
+	actx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	run := a.client.GetPutOpaqueExample(actx, input.GetWorkflowId(), input.GetRunId())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = run.Get(actx)
+	}()
+
+	for {
+		select {
+		// send heartbeats periodically
+		case <-time.After(heartbeatInterval):
+			activity.GetLogger(ctx).Debug("record hearbeat")
+			activity.RecordHeartbeat(ctx)
+
+		// return retryable error if the worker is stopping
+		case <-activity.GetWorkerStopChannel(ctx):
+			activity.GetLogger(ctx).Debug("worker is stopping")
+			return nil, opaqueOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
+
+		// catch parent activity context cancellation. in most cases, this should indicate a
+		// server-sent cancellation, but there's a non-zero possibility that this cancellation
+		// is received due to the worker stopping, prior to detecting the closing of the worker
+		// stop channel. to give us an opportunity to detect a cancellation stemming from the
+		// worker closing, we again check to see if the worker stop channel is closed before
+		// propagating the cancellation
+		case <-ctx.Done():
+			activity.GetLogger(ctx).Debug("activity context canceled")
+			select {
+			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Info("worker is stopping")
+				return nil, opaqueOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
+			default:
+				parentClosePolicy := input.GetParentClosePolicy()
+				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
+				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
+					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+					defer cancel()
+					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						activity.GetLogger(ctx).Debug("cancel workflow")
+						err = run.Cancel(disconnectedCtx)
+					} else {
+						activity.GetLogger(ctx).Debug("terminate workflow")
+						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
+					}
+					if err != nil {
+						return nil, opaqueOptions.convertError(err)
+					}
+				}
+				return nil, opaqueOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+			}
+
+		// handle workflow completion
+		case <-done:
+			activity.GetLogger(ctx).Debug("workflow completed")
+			return out, opaqueOptions.convertError(err)
+		}
+	}
+}
+
 // PutOpaqueExample executes a(n) test.opaque.Opaque.PutOpaqueExample workflow via an activity
 func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *opaque.OpaqueExample, err error) {
 	// unmarshal workflow request
@@ -589,8 +876,15 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 	}
 
 	// initialize workflow execution
+	activity.GetLogger(ctx).Debug("starting workflow")
+	actx := ctx
+	if !input.GetDetached() {
+		var cancel context.CancelFunc
+		actx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
 	var run opaque.PutOpaqueExampleRun
-	run, err = a.client.PutOpaqueExampleAsync(ctx, &req, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
+	run, err = a.client.PutOpaqueExampleAsync(actx, &req, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -605,7 +899,7 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 	// otherwise, wait for execution to complete in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = run.Get(ctx)
+		resp, err = run.Get(actx)
 		close(doneCh)
 	}()
 
@@ -619,10 +913,12 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
+			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
+			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -632,17 +928,22 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
+			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
+				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
+						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -654,6 +955,7 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 
 		// handle workflow completion
 		case <-doneCh:
+			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, opaqueOptions.convertError(err)
 		}
 	}
@@ -682,8 +984,15 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 	}
 
 	// initialize workflow execution
+	activity.GetLogger(ctx).Debug("starting workflow")
+	actx := ctx
+	if !input.GetDetached() {
+		var cancel context.CancelFunc
+		actx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
 	var run opaque.PutOpaqueExampleRun
-	run, err = a.client.PutOpaqueExampleWithSignalOpaqueAsync(ctx, &req, &signal, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
+	run, err = a.client.PutOpaqueExampleWithSignalOpaqueAsync(actx, &req, &signal, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -698,7 +1007,7 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 	// otherwise, wait for execution to complete in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = run.Get(ctx)
+		resp, err = run.Get(actx)
 		close(doneCh)
 	}()
 
@@ -712,10 +1021,12 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
+			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
+			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -725,17 +1036,22 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
+			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
+				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
+						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -747,6 +1063,7 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 
 		// handle workflow completion
 		case <-doneCh:
+			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, opaqueOptions.convertError(err)
 		}
 	}

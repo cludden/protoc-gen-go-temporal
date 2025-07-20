@@ -31,6 +31,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -229,15 +230,16 @@ func (c *optionalClient) SignalOptional(ctx context.Context, workflowID string, 
 
 // PutOptionalExampleOptions provides configuration for a test.opaque.Optional.PutOptionalExample workflow operation
 type PutOptionalExampleOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewPutOptionalExampleOptions initializes a new PutOptionalExampleOptions value
@@ -328,6 +330,12 @@ func (o *PutOptionalExampleOptions) WithTaskTimeout(d time.Duration) *PutOptiona
 // WithTaskQueue sets the TaskQueue value
 func (o *PutOptionalExampleOptions) WithTaskQueue(tq string) *PutOptionalExampleOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *PutOptionalExampleOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOptionalExampleOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -507,17 +515,18 @@ func PutOptionalExampleChildAsync(ctx workflow.Context, req *OptionalExample, op
 
 // PutOptionalExampleChildOptions provides configuration for a child test.opaque.Optional.PutOptionalExample workflow operation
 type PutOptionalExampleChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewPutOptionalExampleChildOptions initializes a new PutOptionalExampleChildOptions value
@@ -626,6 +635,12 @@ func (o *PutOptionalExampleChildOptions) WithTaskQueue(tq string) *PutOptionalEx
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutOptionalExampleChildOptions) WithWaitForCancellation(wait bool) *PutOptionalExampleChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *PutOptionalExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOptionalExampleChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -831,6 +846,7 @@ var _ PutOptionalExampleRun = &testPutOptionalExampleRun{}
 type testPutOptionalExampleRun struct {
 	client    *TestOptionalClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *OptionalExample
 	workflows OptionalWorkflows
@@ -843,7 +859,9 @@ func (r *testPutOptionalExampleRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test test.opaque.Optional.PutOptionalExample workflow result
 func (r *testPutOptionalExampleRun) Get(context.Context) (*OptionalExample, error) {
-	r.env.ExecuteWorkflow(PutOptionalExampleWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(PutOptionalExampleWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -979,9 +997,10 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1251,7 +1270,7 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 				}
 				defer c.Close()
 				client := NewOptionalClient(c)
-				req, err := UnmarshalCliFlagsToOptionalExample(cmd)
+				req, err := UnmarshalCliFlagsToOptionalExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1283,9 +1302,10 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 					Value:   "opaque-optional",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1555,7 +1575,7 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 				}
 				defer tc.Close()
 				c := NewOptionalClient(tc)
-				req, err := UnmarshalCliFlagsToOptionalExample(cmd)
+				req, err := UnmarshalCliFlagsToOptionalExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1604,9 +1624,10 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "name",
@@ -1867,6 +1888,12 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 					Name:     "oneof-address",
 					Usage:    "set the value of the operation's \"OneofAddress\" parameter (json-encoded: {street: <string>, city: <string>, state: <string>, zip: <string>})",
 					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 				&v2.StringFlag{
 					Name:     "signal-optional-name",
@@ -2136,11 +2163,11 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 				}
 				defer c.Close()
 				client := NewOptionalClient(c)
-				req, err := UnmarshalCliFlagsToOptionalExample(cmd)
+				req, err := UnmarshalCliFlagsToOptionalExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToOptionalExample(cmd, helpers.UnmarshalCliFlagsOptions{
+				signal, err := UnmarshalCliFlagsToOptionalExample(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"}, helpers.UnmarshalCliFlagsOptions{
 					Prefix: "signal-optional",
 					PrefixFlags: map[string]struct{}{
 						"address":             {},
@@ -2265,23 +2292,20 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 
 // UnmarshalCliFlagsToOptionalExample unmarshals a OptionalExample from command line flags
 func UnmarshalCliFlagsToOptionalExample(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OptionalExample, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OptionalExample
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

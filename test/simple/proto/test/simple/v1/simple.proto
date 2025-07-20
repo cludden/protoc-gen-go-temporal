@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package mycompany.simple;
 
 import "google/protobuf/duration.proto";
@@ -34,7 +33,10 @@ service Simple {
         ref: 'SomeSignal1'
         start: true
       }
-      update: {ref: 'SomeUpdate1'}
+      update: {
+        ref: 'SomeUpdate1'
+        start: true
+      }
       patches: [
         {
           version: PV_64

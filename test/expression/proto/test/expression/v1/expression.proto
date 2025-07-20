@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package temporal.v1.test.expression.v1;
 
 message Request {

@@ -3,4 +3,686 @@ import TabItem from '@theme/TabItem';
 
 # CLI
 
-**Coming Soon...**
+The protoc-gen-go-temporal plugin generates complete command-line interface (CLI) applications using the [urfave/cli/v2](https://github.com/urfave/cli/v2) framework. These CLIs provide command-line access to all workflow operations including execution, signals, queries, updates, and worker management.
+
+## CLI Generation
+
+Each protobuf service with Temporal definitions automatically generates a CLI application with commands for all defined workflows, queries, signals, and updates.
+
+<Tabs>
+<TabItem value="cli-interface" label="Generated CLI">
+```go title="Generated CLI Interface"
+// CLI Options for configuration
+type ExampleCliOptions interface {
+    WithAfter(func(*cli.Context) error)
+    WithBefore(func(*cli.Context) error)
+    WithClientForCommand(func(*cli.Context) (client.Client, error))
+    WithWorker(func(*cli.Context, client.Client) (worker.Worker, error))
+}
+
+// CLI Application constructor
+func NewExampleCli(options ...*ExampleCliOptions) (*cli.App, error)
+
+// CLI Command constructor (for embedding)
+func NewExampleCliCommand(options ...*ExampleCliOptions) (*cli.Command, error)
+```
+</TabItem>
+<TabItem value="cli-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service) = {
+    task_queue: "example-v1"
+  };
+
+  // Creates a new foo workflow
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      query: { ref: "GetFooProgress" }
+      signal: { ref: "SetFooProgress" }
+      update: { ref: "UpdateFooProgress" }
+    };
+  }
+
+  rpc GetFooProgress(google.protobuf.Empty) returns (GetFooProgressResponse) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc SetFooProgress(SetFooProgressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc UpdateFooProgress(SetFooProgressRequest) returns (GetFooProgressResponse) {
+    option (temporal.v1.update) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## CLI Application Setup
+
+Initialize a CLI application with basic client configuration and optional worker setup.
+
+<Tabs>
+<TabItem value="cli-basic" label="Basic Setup">
+```go title="main.go"
+package main
+
+import (
+    "log"
+    "os"
+
+    examplev1 "path/to/gen/example/v1"
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    // Create CLI application with client factory
+    app, err := examplev1.NewExampleCli(
+        examplev1.NewExampleCliOptions().
+            WithClient(func(cmd *cli.Context) (client.Client, error) {
+                return client.Dial(client.Options{})
+            }),
+    )
+    if err != nil {
+        log.Fatalf("error creating CLI: %v", err)
+    }
+
+    // Run CLI application
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+<TabItem value="cli-worker" label="With Worker">
+```go title="main.go"
+package main
+
+import (
+    "log"
+    "os"
+
+    examplev1 "path/to/gen/example/v1"
+    "github.com/urfave/cli/v2"
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+)
+
+type (
+    Workflows struct{}
+    Activities struct{}
+)
+
+func main() {
+    app, err := examplev1.NewExampleCli(
+        examplev1.NewExampleCliOptions().
+            WithClient(func(cmd *cli.Context) (client.Client, error) {
+                return client.Dial(client.Options{
+                    HostPort:  cmd.String("address"),
+                    Namespace: cmd.String("namespace"),
+                })
+            }).
+            WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+                w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+                
+                // Register workflows and activities
+                examplev1.RegisterExampleWorkflows(w, &Workflows{})
+                examplev1.RegisterExampleActivities(w, &Activities{})
+                
+                return w, nil
+            }),
+    )
+    if err != nil {
+        log.Fatalf("error creating CLI: %v", err)
+    }
+
+    if err := app.Run(os.Args); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+## Command Structure
+
+The generated CLI organizes commands by type and provides comprehensive help text.
+
+<Tabs>
+<TabItem value="cli-help" label="CLI Help">
+```sh title="example -h"
+NAME:
+   example - an example temporal cli
+
+USAGE:
+   example [global options] command [command options] [arguments...]
+
+COMMANDS:
+   help, h  Shows a list of commands or help for one command
+   QUERIES:
+     get-foo-progress  GetFooProgress returns the current progress
+   SIGNALS:
+     set-foo-progress  SetFooProgress updates the current progress
+   UPDATES:
+     update-foo-progress  UpdateFooProgress modifies and returns progress
+   WORKFLOWS:
+     create-foo                         CreateFoo creates a new foo operation
+     create-foo-with-set-foo-progress   CreateFoo creates a new foo with signal
+     worker                             run worker process
+
+GLOBAL OPTIONS:
+   --address value, -a value    temporal server host:port (default: "localhost:7233")
+   --namespace value, -n value  temporal namespace (default: "default")
+   --help, -h                   show help
+```
+</TabItem>
+<TabItem value="cli-workflow-help" label="Workflow Help">
+```sh title="example create-foo -h"
+NAME:
+   example create-foo - CreateFoo creates a new foo operation
+
+USAGE:
+   example create-foo [command options] [arguments...]
+
+CATEGORY:
+   WORKFLOWS
+
+OPTIONS:
+   --detach, -d                  run workflow in the background (default: false)
+   --help, -h                    show help
+   --input-file value, -f value  path to json-formatted input file
+   --task-queue value, -t value  task queue name (default: "example-v1")
+
+   INPUT:
+   --name value     Name of the foo to create
+   --priority value Priority level (1-10) (default: 5)
+```
+</TabItem>
+</Tabs>
+
+## Workflow Execution
+
+Execute workflows synchronously or asynchronously using command-line flags.
+
+<Tabs>
+<TabItem value="workflow-sync" label="Synchronous">
+```sh title="Synchronous Execution"
+# Execute workflow and wait for completion
+example create-foo --name "my-foo" --priority 8
+
+# Output:
+{
+  "foo": {
+    "name": "my-foo",
+    "status": "FOO_STATUS_READY"
+  }
+}
+```
+</TabItem>
+<TabItem value="workflow-async" label="Asynchronous">
+```sh title="Asynchronous Execution"
+# Start workflow in background using --detach flag
+example create-foo --name "my-foo" --detach
+
+# Output:
+workflow started successfully
+workflow_id: create-foo/my-foo
+run_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+</TabItem>
+<TabItem value="workflow-json" label="JSON Input">
+```sh title="JSON File Input"
+# Create input file
+echo '{"name": "my-foo", "priority": 8}' > input.json
+
+# Execute using input file
+example create-foo --input-file input.json
+
+# Can combine with flags (flags override file values)
+example create-foo --input-file input.json --priority 10
+```
+</TabItem>
+</Tabs>
+
+## Signal Operations
+
+Send signals to running workflows using workflow ID and optional run ID.
+
+<Tabs>
+<TabItem value="signal-basic" label="Send Signal">
+```sh title="Send Signal"
+# Send signal to workflow by ID
+example set-foo-progress --workflow-id "create-foo/my-foo" --progress 50.5
+
+# Send signal to specific run
+example set-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --run-id "a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  --progress 75.0
+
+# Success output:
+signal sent successfully
+```
+</TabItem>
+<TabItem value="signal-json" label="JSON Input">
+```sh title="Signal with JSON"
+# Create signal input file
+echo '{"progress": 85.5}' > signal.json
+
+# Send signal using input file
+example set-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --input-file signal.json
+```
+</TabItem>
+</Tabs>
+
+## Query Operations
+
+Execute queries to retrieve current workflow state.
+
+<Tabs>
+<TabItem value="query-basic" label="Execute Query">
+```sh title="Execute Query"
+# Query workflow state
+example get-foo-progress --workflow-id "create-foo/my-foo"
+
+# Output:
+{
+  "progress": 75.0,
+  "status": "FOO_STATUS_CREATING"
+}
+
+# Query specific run
+example get-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --run-id "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+```
+</TabItem>
+<TabItem value="query-params" label="Query with Parameters">
+```sh title="Query with Input Parameters"
+# Some queries may accept input parameters
+example get-detailed-progress \
+  --workflow-id "create-foo/my-foo" \
+  --include-metrics true \
+  --format "detailed"
+
+# Using JSON input for complex queries
+echo '{"includeMetrics": true, "format": "detailed"}' > query.json
+example get-detailed-progress \
+  --workflow-id "create-foo/my-foo" \
+  --input-file query.json
+```
+</TabItem>
+</Tabs>
+
+## Update Operations
+
+Execute workflow updates to modify state and receive return values.
+
+<Tabs>
+<TabItem value="update-sync" label="Synchronous Update">
+```sh title="Synchronous Update"
+# Execute update and wait for completion
+example update-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --progress 100.0
+
+# Output:
+{
+  "progress": 100.0,
+  "status": "FOO_STATUS_READY"
+}
+```
+</TabItem>
+<TabItem value="update-async" label="Asynchronous Update">
+```sh title="Asynchronous Update"
+# Start update in background
+example update-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --progress 100.0 \
+  --detach
+
+# Output:
+update started successfully
+workflow_id: create-foo/my-foo
+run_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+update_id: update-progress/100.0
+```
+</TabItem>
+<TabItem value="update-options" label="Update Options">
+```sh title="Update with Options"
+# Execute update with custom update ID
+example update-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --progress 90.0 \
+  --update-id "custom-update-id"
+
+# Execute update with specific run ID
+example update-foo-progress \
+  --workflow-id "create-foo/my-foo" \
+  --run-id "specific-run-id" \
+  --progress 90.0
+```
+</TabItem>
+</Tabs>
+
+## Signal/Update-with-Start
+
+Start workflows with initial signals or updates using combined commands.
+
+<Tabs>
+<TabItem value="signal-with-start" label="Signal-with-Start">
+```sh title="Start Workflow with Signal"
+# Start workflow with initial signal
+example create-foo-with-set-foo-progress \
+  --name "my-foo" \
+  --priority 5 \
+  --progress 25.0
+
+# Output (workflow completes with initial signal):
+{
+  "foo": {
+    "name": "my-foo", 
+    "status": "FOO_STATUS_CREATING"
+  }
+}
+```
+</TabItem>
+<TabItem value="update-with-start" label="Update-with-Start">
+```sh title="Start Workflow with Update"
+# Start workflow with initial update
+example create-foo-with-update-foo-progress \
+  --name "my-foo" \
+  --progress 50.0
+
+# Output includes update result and workflow ID:
+{
+  "update": {
+    "progress": 50.0,
+    "status": "FOO_STATUS_CREATING"
+  },
+  "workflowId": "create-foo/my-foo",
+  "runId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+</TabItem>
+</Tabs>
+
+## Worker Management
+
+Run worker processes to handle workflow and activity execution.
+
+<Tabs>
+<TabItem value="worker-basic" label="Worker Process">
+```sh title="Start Worker"
+# Start worker process (requires worker configuration in CLI setup)
+example worker
+
+# Output:
+starting worker...
+worker started successfully
+press Ctrl+C to stop
+```
+</TabItem>
+<TabItem value="worker-options" label="Worker with Options">
+```sh title="Worker with Custom Options"
+# Start worker with custom options
+example worker \
+  --address "my-temporal:7233" \
+  --namespace "production" \
+  --task-queue "custom-queue"
+
+# Worker configuration can also be set via environment variables:
+export TEMPORAL_ADDRESS="my-temporal:7233"
+export TEMPORAL_NAMESPACE="production"
+example worker
+```
+</TabItem>
+</Tabs>
+
+## Flag Types and Options
+
+The CLI automatically generates typed flags based on protobuf field definitions.
+
+<Tabs>
+<TabItem value="flag-types" label="Generated Flag Types">
+```protobuf title="Supported Field Types"
+message ExampleRequest {
+  // String fields become --string-field flags
+  string name = 1;
+  
+  // Integer fields become --int-field flags  
+  int32 priority = 2;
+  int64 timeout = 3;
+  
+  // Float fields become --float-field flags
+  float progress = 4;
+  double precision = 5;
+  
+  // Boolean fields become --bool-field flags
+  bool enabled = 6;
+  
+  // Enum fields become --enum-field flags with validation
+  Status status = 7;
+  
+  // Duration fields become --duration-field flags (e.g., "1h30m")
+  google.protobuf.Duration timeout = 8;
+  
+  // Timestamp fields become --timestamp-field flags (RFC3339)
+  google.protobuf.Timestamp created_at = 9;
+  
+  // Repeated fields become --field-name flags (can be specified multiple times)
+  repeated string tags = 10;
+  
+  // Message fields become --message-field flags (JSON encoded)
+  SomeMessage config = 11;
+  
+  // Map fields become --map-field flags (JSON encoded)
+  map<string, string> labels = 12;
+}
+```
+</TabItem>
+<TabItem value="flag-usage" label="Flag Usage Examples">
+```sh title="CLI Flag Usage"
+# String and numeric flags
+example create-foo --name "test" --priority 5 --progress 25.5
+
+# Boolean flags
+example create-foo --name "test" --enabled
+
+# Duration flags (accepts various formats)
+example create-foo --name "test" --timeout "1h30m45s"
+example create-foo --name "test" --timeout "90m"
+
+# Timestamp flags (RFC3339 format)
+example create-foo --name "test" --created-at "2023-12-01T10:30:00Z"
+
+# Repeated flags (specify multiple times)
+example create-foo --name "test" --tags "env:prod" --tags "team:backend"
+
+# Enum flags (validates against enum values)
+example create-foo --name "test" --status "FOO_STATUS_CREATING"
+
+# Complex message fields (JSON)
+example create-foo --name "test" --config '{"retries": 3, "timeout": "30s"}'
+
+# Map fields (JSON)
+example create-foo --name "test" --labels '{"env": "prod", "team": "backend"}'
+```
+</TabItem>
+</Tabs>
+
+## Configuration and Customization
+
+Customize CLI generation using protobuf options and CLI configuration.
+
+<Tabs>
+<TabItem value="cli-options" label="CLI Options">
+```protobuf title="CLI Configuration Options"
+service Example {
+  // Disable CLI generation for entire service
+  option (temporal.v1.cli) = {ignore: true};
+  
+  rpc CreateFoo(CreateFooRequest) returns (CreateFooResponse) {
+    option (temporal.v1.workflow) = {
+      cli: {
+        name: "create"              // Override command name
+        usage: "Create a new foo"   // Override command description
+        aliases: ["c", "new"]       // Command aliases
+        ignore: true                // Skip CLI generation for this method
+      }
+    };
+  }
+}
+
+message CreateFooRequest {
+  string name = 1 [(temporal.v1.field).cli = {
+    name: "foo-name"              // Override flag name  
+    usage: "Name of the foo"      // Override flag description
+    aliases: ["n"]                // Flag aliases (short flags)
+  }];
+}
+```
+</TabItem>
+<TabItem value="cli-embedding" label="Embedding in Larger CLI">
+```go title="Embed in Existing CLI"
+package main
+
+import (
+    "github.com/urfave/cli/v2"
+    examplev1 "path/to/gen/example/v1"
+)
+
+func main() {
+    // Create main application
+    app := &cli.App{
+        Name: "myapp",
+        Commands: []*cli.Command{
+            {
+                Name: "other-command",
+                Action: func(c *cli.Context) error {
+                    // Other functionality
+                    return nil
+                },
+            },
+        },
+    }
+    
+    // Add generated temporal commands
+    temporalCommand, err := examplev1.NewExampleCliCommand(
+        examplev1.NewExampleCliOptions().WithClient(clientFactory),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    app.Commands = append(app.Commands, temporalCommand)
+    app.Run(os.Args)
+}
+```
+</TabItem>
+</Tabs>
+
+## Environment Variables
+
+The CLI supports standard Temporal environment variables for configuration.
+
+<Tabs>
+<TabItem value="env-vars" label="Environment Variables">
+```sh title="Supported Environment Variables"
+# Temporal server configuration
+export TEMPORAL_ADDRESS="localhost:7233"
+export TEMPORAL_NAMESPACE="my-namespace" 
+
+# Task queue configuration
+export TEMPORAL_TASK_QUEUE_NAME="my-task-queue"
+export TEMPORAL_TASK_QUEUE="my-task-queue"
+export TASK_QUEUE_NAME="my-task-queue"  
+export TASK_QUEUE="my-task-queue"
+
+# Use environment variables
+example create-foo --name "test"  # Uses env vars for connection
+
+# Override environment variables with flags
+example create-foo --name "test" --task-queue "override-queue"
+```
+</TabItem>
+<TabItem value="env-example" label="Configuration Example">
+```sh title="Production Configuration"
+# Set production environment
+export TEMPORAL_ADDRESS="temporal.prod.company.com:7233"
+export TEMPORAL_NAMESPACE="production"
+export TEMPORAL_TASK_QUEUE="production-v1"
+
+# Run commands without connection flags
+example create-foo --name "prod-foo"
+example worker  # Connects to production
+```
+</TabItem>
+</Tabs>
+
+## Error Handling and Output
+
+The CLI provides clear error messages and structured output for all operations.
+
+<Tabs>
+<TabItem value="error-handling" label="Error Handling">
+```sh title="Common Error Scenarios"
+# Missing required parameters
+$ example create-foo
+Error: Required flag "name" not set
+
+# Invalid enum values  
+$ example create-foo --name "test" --status "INVALID_STATUS"
+Error: invalid value "INVALID_STATUS" for flag --status
+
+# Connection errors
+$ example create-foo --name "test" --address "invalid:7233"
+Error: failed to connect to temporal server: connection refused
+
+# Workflow execution errors
+$ example create-foo --name "test"
+Error: workflow execution failed: some workflow error
+
+# Missing workflow for signals/queries
+$ example get-foo-progress --workflow-id "nonexistent"
+Error: workflow not found: nonexistent
+```
+</TabItem>
+<TabItem value="output-format" label="Output Format">
+```sh title="CLI Output Examples"
+# Successful workflow execution (JSON formatted)
+$ example create-foo --name "test"
+{
+  "foo": {
+    "name": "test",
+    "status": "FOO_STATUS_READY"
+  }
+}
+
+# Successful signal (simple confirmation)
+$ example set-foo-progress --workflow-id "test" --progress 50
+signal sent successfully
+
+# Async workflow start (workflow identifiers)
+$ example create-foo --name "test" --detach
+workflow started successfully
+workflow_id: create-foo/test
+run_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+# Worker startup (status updates)
+$ example worker
+starting worker...
+worker started successfully
+press Ctrl+C to stop
+```
+</TabItem>
+</Tabs>

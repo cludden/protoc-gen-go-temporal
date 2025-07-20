@@ -38,6 +38,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -121,6 +122,10 @@ type SimpleClient interface {
 	// SomeWorkflow2WithSomeSignal1Async sends a(n) mycompany.simple.Simple.SomeSignal1 signal to a(n) mycompany.simple.SomeWorkflow2 workflow, starting it if necessary, and returns a handle to the workflow execution
 	SomeWorkflow2WithSomeSignal1Async(ctx context.Context, opts ...*SomeWorkflow2Options) (SomeWorkflow2Run, error)
 
+	// SomeWorkflow2WithSomeUpdate1 executes a(n) mycompany.simple.Simple.SomeUpdate1 update on a(n) mycompany.simple.SomeWorkflow2 workflow, starting it if necessary, and blocks until update completion
+	SomeWorkflow2WithSomeUpdate1(ctx context.Context, update *SomeUpdate1Request, opts ...*SomeWorkflow2WithSomeUpdate1Options) (*SomeUpdate1Response, SomeWorkflow2Run, error)
+	// SomeWorkflow2WithSomeUpdate1Async starts a(n) mycompany.simple.Simple.SomeUpdate1 update on a(n) mycompany.simple.SomeWorkflow2 workflow, starting it if necessary, and returns a handle to the update execution
+	SomeWorkflow2WithSomeUpdate1Async(ctx context.Context, update *SomeUpdate1Request, opts ...*SomeWorkflow2WithSomeUpdate1Options) (SomeUpdate1Handle, SomeWorkflow2Run, error)
 	// SomeWorkflow3 does some workflow thing.
 	// Deprecated: Use SomeWorkflow2 instead.
 	SomeWorkflow3(ctx context.Context, req *SomeWorkflow3Request, opts ...*SomeWorkflow3Options) error
@@ -365,6 +370,98 @@ func (c *simpleClient) SomeWorkflow2WithSomeSignal1Async(ctx context.Context, op
 	}, nil
 }
 
+// SomeWorkflow2WithSomeUpdate1Options is the options for a mycompany.simple.SomeWorkflow2 workflow with a mycompany.simple.Simple.SomeUpdate1 update
+type SomeWorkflow2WithSomeUpdate1Options struct {
+	options         client.UpdateWithStartWorkflowOptions
+	workflowOptions *SomeWorkflow2Options
+	updateOptions   *SomeUpdate1Options
+}
+
+// NewSomeWorkflow2WithSomeUpdate1Options initializes a new SomeWorkflow2WithSomeUpdate1Options value
+func NewSomeWorkflow2WithSomeUpdate1Options() *SomeWorkflow2WithSomeUpdate1Options {
+	return &SomeWorkflow2WithSomeUpdate1Options{}
+}
+
+// Build transforms SomeWorkflow2WithSomeUpdate1Options into valid client.UpdateWithStartWorkflowOptions
+func (o *SomeWorkflow2WithSomeUpdate1Options) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, update *SomeUpdate1Request) (options client.UpdateWithStartWorkflowOptions, err error) {
+	options = o.options
+	if o.workflowOptions == nil {
+		o.workflowOptions = NewSomeWorkflow2Options()
+	}
+	swo, err := o.workflowOptions.Build(nil)
+	if err != nil {
+		return options, err
+	}
+	if swo.WorkflowIDConflictPolicy == enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		swo.WorkflowIDConflictPolicy = enumsv1.WORKFLOW_ID_CONFLICT_POLICY_FAIL
+	}
+	options.StartWorkflowOperation = op(swo)
+	if o.updateOptions == nil {
+		o.updateOptions = NewSomeUpdate1Options()
+	}
+	uo, err := o.updateOptions.Build(swo.ID, "", update)
+	if err != nil {
+		return options, err
+	}
+	options.UpdateOptions = *uo
+	return options, nil
+}
+
+// WithUpdateWithStartWorkflowOptions sets the UpdateWithStartWorkflowOptions
+func (o *SomeWorkflow2WithSomeUpdate1Options) WithUpdateWithStartWorkflowOptions(options client.UpdateWithStartWorkflowOptions) *SomeWorkflow2WithSomeUpdate1Options {
+	o.options = options
+	return o
+}
+
+// WithSomeWorkflow2Options sets the WithSomeWorkflow2Options
+func (o *SomeWorkflow2WithSomeUpdate1Options) WithSomeWorkflow2Options(options *SomeWorkflow2Options) *SomeWorkflow2WithSomeUpdate1Options {
+	o.workflowOptions = options
+	return o
+}
+
+// WithSomeUpdate1Options sets the SomeUpdate1Options
+func (o *SomeWorkflow2WithSomeUpdate1Options) WithSomeUpdate1Options(options *SomeUpdate1Options) *SomeWorkflow2WithSomeUpdate1Options {
+	o.updateOptions = options
+	return o
+}
+
+// SomeWorkflow2WithSomeUpdate1 starts a(n) mycompany.simple.SomeWorkflow2 workflow and executes a(n) mycompany.simple.Simple.SomeUpdate1 update in a transaction
+func (c *simpleClient) SomeWorkflow2WithSomeUpdate1(ctx context.Context, update *SomeUpdate1Request, options ...*SomeWorkflow2WithSomeUpdate1Options) (*SomeUpdate1Response, SomeWorkflow2Run, error) {
+	updateHandle, run, err := c.SomeWorkflow2WithSomeUpdate1Async(ctx, update, options...)
+	if err != nil {
+		return nil, run, err
+	}
+	out, err := updateHandle.Get(ctx)
+	if err != nil {
+		return nil, run, err
+	}
+	return out, run, nil
+}
+
+// SomeWorkflow2WithSomeUpdate1Async starts a(n) mycompany.simple.SomeWorkflow2 workflow and executes a(n) mycompany.simple.Simple.SomeUpdate1 update in a transaction
+func (c *simpleClient) SomeWorkflow2WithSomeUpdate1Async(ctx context.Context, update *SomeUpdate1Request, options ...*SomeWorkflow2WithSomeUpdate1Options) (SomeUpdate1Handle, SomeWorkflow2Run, error) {
+	var o *SomeWorkflow2WithSomeUpdate1Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow2WithSomeUpdate1Options()
+	}
+	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
+		return c.client.NewWithStartWorkflowOperation(swo, SomeWorkflow2WorkflowName)
+	}, update)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+	handle, err := c.client.UpdateWithStartWorkflow(ctx, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &someUpdate1Handle{
+		client: c,
+		handle: handle,
+	}, c.GetSomeWorkflow2(ctx, handle.WorkflowID(), handle.RunID()), nil
+}
+
 // SomeWorkflow3 does some workflow thing.
 // Deprecated: Use SomeWorkflow2 instead.
 func (c *simpleClient) SomeWorkflow3(ctx context.Context, req *SomeWorkflow3Request, options ...*SomeWorkflow3Options) error {
@@ -591,15 +688,16 @@ func (c *simpleClient) GetSomeUpdate1(ctx context.Context, req client.GetWorkflo
 
 // SomeWorkflow1Options provides configuration for a mycompany.simple.SomeWorkflow1 workflow operation
 type SomeWorkflow1Options struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomeWorkflow1Options initializes a new SomeWorkflow1Options value
@@ -699,6 +797,12 @@ func (o *SomeWorkflow1Options) WithTaskQueue(tq string) *SomeWorkflow1Options {
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow1Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow1Options {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SomeWorkflow1Run describes a(n) mycompany.simple.SomeWorkflow1 workflow run
 type SomeWorkflow1Run interface {
 	// ID returns the workflow ID
@@ -794,15 +898,16 @@ func (r *someWorkflow1Run) SomeSignal2(ctx context.Context, req *SomeSignal2Requ
 
 // SomeWorkflow2Options provides configuration for a mycompany.simple.SomeWorkflow2 workflow operation
 type SomeWorkflow2Options struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomeWorkflow2Options initializes a new SomeWorkflow2Options value
@@ -902,6 +1007,12 @@ func (o *SomeWorkflow2Options) WithTaskQueue(tq string) *SomeWorkflow2Options {
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow2Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow2Options {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SomeWorkflow2Run describes a(n) mycompany.simple.SomeWorkflow2 workflow run
 type SomeWorkflow2Run interface {
 	// ID returns the workflow ID
@@ -985,15 +1096,16 @@ func (r *someWorkflow2Run) SomeUpdate1Async(ctx context.Context, req *SomeUpdate
 
 // SomeWorkflow3Options provides configuration for a mycompany.simple.Simple.SomeWorkflow3 workflow operation
 type SomeWorkflow3Options struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomeWorkflow3Options initializes a new SomeWorkflow3Options value
@@ -1101,6 +1213,12 @@ func (o *SomeWorkflow3Options) WithTaskQueue(tq string) *SomeWorkflow3Options {
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow3Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow3Options {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SomeWorkflow3Run describes a(n) mycompany.simple.Simple.SomeWorkflow3 workflow run
 type SomeWorkflow3Run interface {
 	// ID returns the workflow ID
@@ -1168,15 +1286,16 @@ func (r *someWorkflow3Run) SomeSignal2(ctx context.Context, req *SomeSignal2Requ
 
 // SomeWorkflow4Options provides configuration for a mycompany.simple.Simple.SomeWorkflow4 workflow operation
 type SomeWorkflow4Options struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomeWorkflow4Options initializes a new SomeWorkflow4Options value
@@ -1273,6 +1392,12 @@ func (o *SomeWorkflow4Options) WithTaskTimeout(d time.Duration) *SomeWorkflow4Op
 // WithTaskQueue sets the TaskQueue value
 func (o *SomeWorkflow4Options) WithTaskQueue(tq string) *SomeWorkflow4Options {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow4Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow4Options {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1643,17 +1768,18 @@ func SomeWorkflow1ChildAsync(ctx workflow.Context, req *SomeWorkflow1Request, op
 
 // SomeWorkflow1ChildOptions provides configuration for a child mycompany.simple.SomeWorkflow1 workflow operation
 type SomeWorkflow1ChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomeWorkflow1ChildOptions initializes a new SomeWorkflow1ChildOptions value
@@ -1784,6 +1910,12 @@ func (o *SomeWorkflow1ChildOptions) WithTaskQueue(tq string) *SomeWorkflow1Child
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeWorkflow1ChildOptions) WithWaitForCancellation(wait bool) *SomeWorkflow1ChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow1ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow1ChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1927,17 +2059,18 @@ func SomeWorkflow2ChildAsync(ctx workflow.Context, options ...*SomeWorkflow2Chil
 
 // SomeWorkflow2ChildOptions provides configuration for a child mycompany.simple.SomeWorkflow2 workflow operation
 type SomeWorkflow2ChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomeWorkflow2ChildOptions initializes a new SomeWorkflow2ChildOptions value
@@ -2058,6 +2191,12 @@ func (o *SomeWorkflow2ChildOptions) WithTaskQueue(tq string) *SomeWorkflow2Child
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeWorkflow2ChildOptions) WithWaitForCancellation(wait bool) *SomeWorkflow2ChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow2ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow2ChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -2185,17 +2324,18 @@ func SomeWorkflow3ChildAsync(ctx workflow.Context, req *SomeWorkflow3Request, op
 
 // SomeWorkflow3ChildOptions provides configuration for a child mycompany.simple.Simple.SomeWorkflow3 workflow operation
 type SomeWorkflow3ChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomeWorkflow3ChildOptions initializes a new SomeWorkflow3ChildOptions value
@@ -2321,6 +2461,12 @@ func (o *SomeWorkflow3ChildOptions) WithWaitForCancellation(wait bool) *SomeWork
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow3ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow3ChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SomeWorkflow3ChildRun describes a child SomeWorkflow3 workflow run
 type SomeWorkflow3ChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -2436,17 +2582,18 @@ func SomeWorkflow4ChildAsync(ctx workflow.Context, req *v1.PaginatedRequest, opt
 
 // SomeWorkflow4ChildOptions provides configuration for a child mycompany.simple.Simple.SomeWorkflow4 workflow operation
 type SomeWorkflow4ChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomeWorkflow4ChildOptions initializes a new SomeWorkflow4ChildOptions value
@@ -2577,6 +2724,12 @@ func (o *SomeWorkflow4ChildOptions) WithTaskQueue(tq string) *SomeWorkflow4Child
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeWorkflow4ChildOptions) WithWaitForCancellation(wait bool) *SomeWorkflow4ChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeWorkflow4ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow4ChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -4848,6 +5001,66 @@ func (c *TestSimpleClient) SomeWorkflow2WithSomeSignal1Async(ctx context.Context
 	return c.SomeWorkflow2Async(ctx, opts...)
 }
 
+// SomeWorkflow2WithSomeUpdate1 executes a(n) mycompany.simple.SomeWorkflow2 workflow and a(n) mycompany.simple.Simple.SomeUpdate1 update in the test environment
+func (c *TestSimpleClient) SomeWorkflow2WithSomeUpdate1(ctx context.Context, update *SomeUpdate1Request, options ...*SomeWorkflow2WithSomeUpdate1Options) (*SomeUpdate1Response, SomeWorkflow2Run, error) {
+	var o *SomeWorkflow2WithSomeUpdate1Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow2WithSomeUpdate1Options()
+	}
+	handle, run, err := c.SomeWorkflow2WithSomeUpdate1Async(ctx, update, o)
+	if err != nil {
+		return nil, run, err
+	}
+	run.Get(ctx)
+	out, err := handle.Get(ctx)
+	if err != nil {
+		return nil, run, err
+	}
+	return out, run, nil
+}
+
+// SomeWorkflow2WithSomeUpdate1Async executes a(n) mycompany.simple.SomeWorkflow2 workflow and a(n) mycompany.simple.Simple.SomeUpdate1 update in the test environment
+func (c *TestSimpleClient) SomeWorkflow2WithSomeUpdate1Async(ctx context.Context, update *SomeUpdate1Request, options ...*SomeWorkflow2WithSomeUpdate1Options) (SomeUpdate1Handle, SomeWorkflow2Run, error) {
+	var o *SomeWorkflow2WithSomeUpdate1Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow2WithSomeUpdate1Options()
+	}
+	if o.workflowOptions == nil {
+		o.workflowOptions = NewSomeWorkflow2Options()
+	}
+	swo, err := o.workflowOptions.Build(nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing workflowOptions: %w", err)
+	}
+	if o.updateOptions == nil {
+		o.updateOptions = NewSomeUpdate1Options()
+	}
+	uo, err := o.updateOptions.Build(swo.ID, "", update)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing updateOptions: %w", err)
+	}
+	run, err := c.SomeWorkflow2Async(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	uc := testutil.NewUpdateCallbacks()
+	c.env.RegisterDelayedCallback(func() {
+		c.env.UpdateWorkflow(SomeUpdate1UpdateName, uo.UpdateID, uc, update)
+	}, 0)
+	return &testSomeUpdate1Handle{
+		callbacks:  uc,
+		env:        c.env,
+		opts:       uo,
+		req:        update,
+		runID:      "",
+		workflowID: swo.ID,
+	}, run, nil
+}
+
 // SomeWorkflow3 executes a(n) mycompany.simple.Simple.SomeWorkflow3 workflow in the test environment
 func (c *TestSimpleClient) SomeWorkflow3(ctx context.Context, req *SomeWorkflow3Request, opts ...*SomeWorkflow3Options) error {
 	run, err := c.SomeWorkflow3Async(ctx, req, opts...)
@@ -5076,6 +5289,7 @@ var _ SomeWorkflow1Run = &testSomeWorkflow1Run{}
 type testSomeWorkflow1Run struct {
 	client    *TestSimpleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *SomeWorkflow1Request
 	workflows SimpleWorkflows
@@ -5088,7 +5302,9 @@ func (r *testSomeWorkflow1Run) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.SomeWorkflow1 workflow result
 func (r *testSomeWorkflow1Run) Get(context.Context) (*SomeWorkflow1Response, error) {
-	r.env.ExecuteWorkflow(SomeWorkflow1WorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SomeWorkflow1WorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -5151,6 +5367,7 @@ var _ SomeWorkflow2Run = &testSomeWorkflow2Run{}
 type testSomeWorkflow2Run struct {
 	client    *TestSimpleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	workflows SimpleWorkflows
 }
@@ -5162,7 +5379,9 @@ func (r *testSomeWorkflow2Run) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.SomeWorkflow2 workflow result
 func (r *testSomeWorkflow2Run) Get(context.Context) error {
-	r.env.ExecuteWorkflow(SomeWorkflow2WorkflowName)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SomeWorkflow2WorkflowName)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -5216,6 +5435,7 @@ var _ SomeWorkflow3Run = &testSomeWorkflow3Run{}
 type testSomeWorkflow3Run struct {
 	client    *TestSimpleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *SomeWorkflow3Request
 	workflows SimpleWorkflows
@@ -5228,7 +5448,9 @@ func (r *testSomeWorkflow3Run) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.Simple.SomeWorkflow3 workflow result
 func (r *testSomeWorkflow3Run) Get(context.Context) error {
-	r.env.ExecuteWorkflow(SomeWorkflow3WorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SomeWorkflow3WorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -5272,6 +5494,7 @@ var _ SomeWorkflow4Run = &testSomeWorkflow4Run{}
 type testSomeWorkflow4Run struct {
 	client    *TestSimpleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *v1.PaginatedRequest
 	workflows SimpleWorkflows
@@ -5284,7 +5507,9 @@ func (r *testSomeWorkflow4Run) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.Simple.SomeWorkflow4 workflow result
 func (r *testSomeWorkflow4Run) Get(context.Context) (*v1.PaginatedResponse, error) {
-	r.env.ExecuteWorkflow(SomeWorkflow4WorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SomeWorkflow4WorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -5458,9 +5683,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "request-val",
@@ -5475,7 +5701,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewSimpleClient(c)
-				req, err := UnmarshalCliFlagsToSomeQuery2Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeQuery2Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -5549,9 +5775,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "request-val",
@@ -5566,7 +5793,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewSimpleClient(c)
-				req, err := UnmarshalCliFlagsToSomeSignal2Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeSignal2Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -5597,9 +5824,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "request-val",
@@ -5614,7 +5842,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewSimpleClient(c)
-				req, err := UnmarshalCliFlagsToSomeSignal3Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeSignal3Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -5650,9 +5878,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "request-val",
@@ -5667,7 +5896,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewSimpleClient(c)
-				req, err := UnmarshalCliFlagsToSomeUpdate1Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeUpdate1Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -5719,9 +5948,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Value:   "my-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "request-val",
@@ -5741,7 +5971,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewSimpleClient(tc)
-				req, err := UnmarshalCliFlagsToSomeWorkflow1Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeWorkflow1Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -5863,6 +6093,70 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 			},
 		},
+		// executes a(n) mycompany.simple.Simple.SomeUpdate1 update on a mycompany.simple.Simple.SomeWorkflow2 workflow, starting it if necessary,
+		{
+			Action: func(cmd *v2.Context) error {
+				c, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer c.Close()
+				client := NewSimpleClient(c)
+				update, err := UnmarshalCliFlagsToSomeUpdate1Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "update-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling update: %w", err)
+				}
+				handle, _, err := client.SomeWorkflow2WithSomeUpdate1Async(cmd.Context, update)
+				if err != nil {
+					return fmt.Errorf("error starting workflow with update: %w", err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", handle.WorkflowID())
+					fmt.Printf("run id: %s\n", handle.RunID())
+					fmt.Printf("update id: %s\n", handle.UpdateID())
+					return nil
+				}
+				if out, err := handle.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(out)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
+				}
+			},
+			After:    opts.after,
+			Before:   opts.before,
+			Category: "WORKFLOWS",
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Aliases: []string{"d"},
+					Name:    "detach",
+					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Aliases:  []string{"u"},
+					Category: "UPDATE",
+					Name:     "update-file",
+					Usage:    "path to json-formatted update file",
+				},
+				&v2.StringFlag{
+					Name:     "request-val",
+					Usage:    "set the value of the operation's \"RequestVal\" parameter",
+					Category: "UPDATE",
+				},
+			},
+			Name:                   "some-workflow-2-with-some-update-1",
+			Usage:                  "executes a(n) mycompany.simple.Simple.SomeUpdate1 update on a mycompany.simple.Simple.SomeWorkflow2 workflow, starting it if necessary",
+			UseShortOptionHandling: true,
+		},
 		{
 			Name:                   "some-workflow-3",
 			Usage:                  "SomeWorkflow3 does some workflow thing. Deprecated: Use SomeWorkflow2 instead.",
@@ -5884,9 +6178,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Value:   "my-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "id",
@@ -5906,7 +6201,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewSimpleClient(tc)
-				req, err := UnmarshalCliFlagsToSomeWorkflow3Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeWorkflow3Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -5946,9 +6241,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "id",
@@ -5959,6 +6255,12 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Name:     "request-val",
 					Usage:    "set the value of the operation's \"RequestVal\" parameter",
 					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 				&v2.StringFlag{
 					Name:     "some-signal-2-request-val",
@@ -5973,11 +6275,11 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewSimpleClient(c)
-				req, err := UnmarshalCliFlagsToSomeWorkflow3Request(cmd)
+				req, err := UnmarshalCliFlagsToSomeWorkflow3Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToSomeSignal2Request(cmd, helpers.UnmarshalCliFlagsOptions{
+				signal, err := UnmarshalCliFlagsToSomeSignal2Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"}, helpers.UnmarshalCliFlagsOptions{
 					Prefix: "some-signal-2",
 					PrefixFlags: map[string]struct{}{
 						"request-val": {},
@@ -6024,9 +6326,10 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Value:   "my-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.Uint64Flag{
 					Name:     "limit",
@@ -6046,7 +6349,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewSimpleClient(tc)
-				req, err := UnmarshalCliFlagsToPaginatedRequest(cmd)
+				req, err := UnmarshalCliFlagsToPaginatedRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -6119,23 +6422,20 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSomeQuery2Request unmarshals a SomeQuery2Request from command line flags
 func UnmarshalCliFlagsToSomeQuery2Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeQuery2Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeQuery2Request
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("request-val"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -6146,23 +6446,20 @@ func UnmarshalCliFlagsToSomeQuery2Request(cmd *v2.Context, options ...helpers.Un
 
 // UnmarshalCliFlagsToSomeSignal2Request unmarshals a SomeSignal2Request from command line flags
 func UnmarshalCliFlagsToSomeSignal2Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeSignal2Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeSignal2Request
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("request-val"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -6173,23 +6470,20 @@ func UnmarshalCliFlagsToSomeSignal2Request(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToSomeSignal3Request unmarshals a SomeSignal3Request from command line flags
 func UnmarshalCliFlagsToSomeSignal3Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeSignal3Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeSignal3Request
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("request-val"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -6200,23 +6494,20 @@ func UnmarshalCliFlagsToSomeSignal3Request(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToSomeUpdate1Request unmarshals a SomeUpdate1Request from command line flags
 func UnmarshalCliFlagsToSomeUpdate1Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeUpdate1Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeUpdate1Request
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("request-val"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -6227,23 +6518,20 @@ func UnmarshalCliFlagsToSomeUpdate1Request(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToSomeWorkflow1Request unmarshals a SomeWorkflow1Request from command line flags
 func UnmarshalCliFlagsToSomeWorkflow1Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeWorkflow1Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeWorkflow1Request
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("request-val"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -6258,23 +6546,20 @@ func UnmarshalCliFlagsToSomeWorkflow1Request(cmd *v2.Context, options ...helpers
 
 // UnmarshalCliFlagsToSomeWorkflow3Request unmarshals a SomeWorkflow3Request from command line flags
 func UnmarshalCliFlagsToSomeWorkflow3Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeWorkflow3Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeWorkflow3Request
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("id"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -6289,23 +6574,20 @@ func UnmarshalCliFlagsToSomeWorkflow3Request(cmd *v2.Context, options ...helpers
 
 // UnmarshalCliFlagsToPaginatedRequest unmarshals a PaginatedRequest from command line flags
 func UnmarshalCliFlagsToPaginatedRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*v1.PaginatedRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result v1.PaginatedRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("limit"); cmd.IsSet(flag) {
 		value, err := convert.SafeCast[uint64, uint32](cmd.Uint64(flag))
@@ -6600,15 +6882,16 @@ func (c *otherClient) GetOtherUpdate(ctx context.Context, req client.GetWorkflow
 
 // OtherWorkflowOptions provides configuration for a mycompany.simple.Other.OtherWorkflow workflow operation
 type OtherWorkflowOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewOtherWorkflowOptions initializes a new OtherWorkflowOptions value
@@ -6705,6 +6988,12 @@ func (o *OtherWorkflowOptions) WithTaskTimeout(d time.Duration) *OtherWorkflowOp
 // WithTaskQueue sets the TaskQueue value
 func (o *OtherWorkflowOptions) WithTaskQueue(tq string) *OtherWorkflowOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *OtherWorkflowOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflowOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -7002,17 +7291,18 @@ func OtherWorkflowChildAsync(ctx workflow.Context, req *OtherWorkflowRequest, op
 
 // OtherWorkflowChildOptions provides configuration for a child mycompany.simple.Other.OtherWorkflow workflow operation
 type OtherWorkflowChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewOtherWorkflowChildOptions initializes a new OtherWorkflowChildOptions value
@@ -7134,6 +7424,12 @@ func (o *OtherWorkflowChildOptions) WithTaskQueue(tq string) *OtherWorkflowChild
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *OtherWorkflowChildOptions) WithWaitForCancellation(wait bool) *OtherWorkflowChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *OtherWorkflowChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflowChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -7661,6 +7957,7 @@ var _ OtherWorkflowRun = &testOtherWorkflowRun{}
 type testOtherWorkflowRun struct {
 	client    *TestOtherClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *OtherWorkflowRequest
 	workflows OtherWorkflows
@@ -7673,7 +7970,9 @@ func (r *testOtherWorkflowRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.Other.OtherWorkflow workflow result
 func (r *testOtherWorkflowRun) Get(context.Context) (*OtherWorkflowResponse, error) {
-	r.env.ExecuteWorkflow(OtherWorkflowWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(OtherWorkflowWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -7852,9 +8151,10 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "mode",
@@ -7869,7 +8169,7 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewOtherClient(c)
-				req, err := UnmarshalCliFlagsToOtherUpdateRequest(cmd)
+				req, err := UnmarshalCliFlagsToOtherUpdateRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -7921,9 +8221,10 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 					Value:   "other-task-queue",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "some-val",
@@ -8059,7 +8360,7 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewOtherClient(tc)
-				req, err := UnmarshalCliFlagsToOtherWorkflowRequest(cmd)
+				req, err := UnmarshalCliFlagsToOtherWorkflowRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -8132,23 +8433,20 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToOtherUpdateRequest unmarshals a OtherUpdateRequest from command line flags
 func UnmarshalCliFlagsToOtherUpdateRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OtherUpdateRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OtherUpdateRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("mode"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -8159,23 +8457,20 @@ func UnmarshalCliFlagsToOtherUpdateRequest(cmd *v2.Context, options ...helpers.U
 
 // UnmarshalCliFlagsToOtherWorkflowRequest unmarshals a OtherWorkflowRequest from command line flags
 func UnmarshalCliFlagsToOtherWorkflowRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*OtherWorkflowRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result OtherWorkflowRequest
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("some-val"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
@@ -8504,15 +8799,16 @@ func (c *ignoredClient) TerminateWorkflow(ctx context.Context, workflowID string
 
 // WhatOptions provides configuration for a mycompany.simple.Ignored.What workflow operation
 type WhatOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewWhatOptions initializes a new WhatOptions value
@@ -8609,6 +8905,12 @@ func (o *WhatOptions) WithTaskTimeout(d time.Duration) *WhatOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *WhatOptions) WithTaskQueue(tq string) *WhatOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *WhatOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *WhatOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -8774,17 +9076,18 @@ func WhatChildAsync(ctx workflow.Context, req *WhatRequest, options ...*WhatChil
 
 // WhatChildOptions provides configuration for a child mycompany.simple.Ignored.What workflow operation
 type WhatChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewWhatChildOptions initializes a new WhatChildOptions value
@@ -8918,6 +9221,12 @@ func (o *WhatChildOptions) WithWaitForCancellation(wait bool) *WhatChildOptions 
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *WhatChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *WhatChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // WhatChildRun describes a child What workflow run
 type WhatChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -9029,6 +9338,7 @@ var _ WhatRun = &testWhatRun{}
 type testWhatRun struct {
 	client    *TestIgnoredClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *WhatRequest
 	workflows IgnoredWorkflows
@@ -9041,7 +9351,9 @@ func (r *testWhatRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.Ignored.What workflow result
 func (r *testWhatRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(WhatWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(WhatWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -9903,15 +10215,16 @@ func (c *deprecatedClient) GetSomeDeprecatedUpdate2(ctx context.Context, req cli
 
 // SomeDeprecatedWorkflow1Options provides configuration for a mycompany.simple.Deprecated.SomeDeprecatedWorkflow1 workflow operation
 type SomeDeprecatedWorkflow1Options struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomeDeprecatedWorkflow1Options initializes a new SomeDeprecatedWorkflow1Options value
@@ -10002,6 +10315,12 @@ func (o *SomeDeprecatedWorkflow1Options) WithTaskTimeout(d time.Duration) *SomeD
 // WithTaskQueue sets the TaskQueue value
 func (o *SomeDeprecatedWorkflow1Options) WithTaskQueue(tq string) *SomeDeprecatedWorkflow1Options {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeDeprecatedWorkflow1Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeDeprecatedWorkflow1Options {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -10116,15 +10435,16 @@ func (r *someDeprecatedWorkflow1Run) SomeDeprecatedUpdate1Async(ctx context.Cont
 
 // SomeDeprecatedWorkflow2Options provides configuration for a mycompany.simple.Deprecated.SomeDeprecatedWorkflow2 workflow operation
 type SomeDeprecatedWorkflow2Options struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSomeDeprecatedWorkflow2Options initializes a new SomeDeprecatedWorkflow2Options value
@@ -10215,6 +10535,12 @@ func (o *SomeDeprecatedWorkflow2Options) WithTaskTimeout(d time.Duration) *SomeD
 // WithTaskQueue sets the TaskQueue value
 func (o *SomeDeprecatedWorkflow2Options) WithTaskQueue(tq string) *SomeDeprecatedWorkflow2Options {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeDeprecatedWorkflow2Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeDeprecatedWorkflow2Options {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -10739,17 +11065,18 @@ func SomeDeprecatedWorkflow1ChildAsync(ctx workflow.Context, req *SomeDeprecated
 
 // SomeDeprecatedWorkflow1ChildOptions provides configuration for a child mycompany.simple.Deprecated.SomeDeprecatedWorkflow1 workflow operation
 type SomeDeprecatedWorkflow1ChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomeDeprecatedWorkflow1ChildOptions initializes a new SomeDeprecatedWorkflow1ChildOptions value
@@ -10858,6 +11185,12 @@ func (o *SomeDeprecatedWorkflow1ChildOptions) WithTaskQueue(tq string) *SomeDepr
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeDeprecatedWorkflow1ChildOptions) WithWaitForCancellation(wait bool) *SomeDeprecatedWorkflow1ChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeDeprecatedWorkflow1ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeDeprecatedWorkflow1ChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -11008,17 +11341,18 @@ func SomeDeprecatedWorkflow2ChildAsync(ctx workflow.Context, req *SomeDeprecated
 
 // SomeDeprecatedWorkflow2ChildOptions provides configuration for a child mycompany.simple.Deprecated.SomeDeprecatedWorkflow2 workflow operation
 type SomeDeprecatedWorkflow2ChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSomeDeprecatedWorkflow2ChildOptions initializes a new SomeDeprecatedWorkflow2ChildOptions value
@@ -11127,6 +11461,12 @@ func (o *SomeDeprecatedWorkflow2ChildOptions) WithTaskQueue(tq string) *SomeDepr
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeDeprecatedWorkflow2ChildOptions) WithWaitForCancellation(wait bool) *SomeDeprecatedWorkflow2ChildOptions {
 	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SomeDeprecatedWorkflow2ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeDeprecatedWorkflow2ChildOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -12172,6 +12512,7 @@ var _ SomeDeprecatedWorkflow1Run = &testSomeDeprecatedWorkflow1Run{}
 type testSomeDeprecatedWorkflow1Run struct {
 	client    *TestDeprecatedClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *SomeDeprecatedMessage
 	workflows DeprecatedWorkflows
@@ -12184,7 +12525,9 @@ func (r *testSomeDeprecatedWorkflow1Run) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.Deprecated.SomeDeprecatedWorkflow1 workflow result
 func (r *testSomeDeprecatedWorkflow1Run) Get(context.Context) (*SomeDeprecatedMessage, error) {
-	r.env.ExecuteWorkflow(SomeDeprecatedWorkflow1WorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SomeDeprecatedWorkflow1WorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -12247,6 +12590,7 @@ var _ SomeDeprecatedWorkflow2Run = &testSomeDeprecatedWorkflow2Run{}
 type testSomeDeprecatedWorkflow2Run struct {
 	client    *TestDeprecatedClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *SomeDeprecatedMessage
 	workflows DeprecatedWorkflows
@@ -12259,7 +12603,9 @@ func (r *testSomeDeprecatedWorkflow2Run) Cancel(ctx context.Context) error {
 
 // Get retrieves a test mycompany.simple.Deprecated.SomeDeprecatedWorkflow2 workflow result
 func (r *testSomeDeprecatedWorkflow2Run) Get(context.Context) (*SomeDeprecatedMessage, error) {
-	r.env.ExecuteWorkflow(SomeDeprecatedWorkflow2WorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SomeDeprecatedWorkflow2WorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return nil, errors.New("workflow in progress")
 	}
@@ -12410,9 +12756,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12422,7 +12769,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12462,9 +12809,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12474,7 +12822,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12514,9 +12862,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12526,7 +12875,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12557,9 +12906,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12569,7 +12919,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12605,9 +12955,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12617,7 +12968,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12673,9 +13024,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"r"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12685,7 +13037,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12737,9 +13089,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Required: true,
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12749,7 +13102,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer tc.Close()
 				c := NewDeprecatedClient(tc)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12798,9 +13151,16 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12810,11 +13170,11 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				signal, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
@@ -12865,9 +13225,10 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Required: true,
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12877,7 +13238,7 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer tc.Close()
 				c := NewDeprecatedClient(tc)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -12926,9 +13287,16 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "signal-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"s"},
+					Category: "SIGNAL",
 				},
 			},
 			Action: func(cmd *v2.Context) error {
@@ -12938,11 +13306,11 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewDeprecatedClient(c)
-				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				req, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				signal, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd)
+				signal, err := UnmarshalCliFlagsToSomeDeprecatedMessage(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "signal-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
@@ -13011,18 +13379,19 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 
 // UnmarshalCliFlagsToSomeDeprecatedMessage unmarshals a SomeDeprecatedMessage from command line flags
 func UnmarshalCliFlagsToSomeDeprecatedMessage(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeDeprecatedMessage, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SomeDeprecatedMessage
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
 	}
 	return &result, nil

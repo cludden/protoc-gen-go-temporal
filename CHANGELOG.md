@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠ BREAKING CHANGES
 
 ### Added
+- [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) add support for experimental update with start
 
 ### Changed
 
 ### Fixed
+- [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) support parsing files for signals, updates
+- [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) fix input collision handling for signals, updates
+- [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) fix race condition in xns activity cancellation
 
 
 

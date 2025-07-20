@@ -180,6 +180,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'examples/shoppingcart',
+      label: 'Shopping Cart'
+    },
+    {
+      type: 'doc',
       id: 'examples/updatabletimer',
       label: 'Updatable Timer'
     }

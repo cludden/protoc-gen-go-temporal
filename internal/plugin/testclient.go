@@ -1,7 +1,7 @@
 package plugin
 
 import (
-	g "github.com/dave/jennifer/jen"
+	j "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -10,174 +10,205 @@ const (
 	testutilPkg  = "github.com/cludden/protoc-gen-go-temporal/pkg/testutil"
 )
 
+func (n *names) testClient() string {
+	return n.toCamel("Test%sClient", n.Manifest.Service.GoName)
+}
+
+func (n *names) testClientUpdateHandle(update protoreflect.FullName) string {
+	return n.toLowerCamel("test%sHandle", update)
+}
+
 // genTestClientImpl generates a TestClient struct
-func (svc *Manifest) genTestClientImpl(f *g.File) {
+func (m *Manifest) genTestClientImpl(f *j.File) {
 	f.Comment("TestClient provides a testsuite-compatible Client")
-	f.Type().Id(svc.toCamel("Test%sClient", svc.Service.GoName)).Struct(
-		g.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment"),
-		g.Id("workflows").Id(svc.toCamel("%sWorkflows", svc.Service.GoName)),
+	f.Type().Id(m.toCamel("Test%sClient", m.Service.GoName)).Struct(
+		j.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment"),
+		j.Id("workflows").Id(m.toCamel("%sWorkflows", m.Service.GoName)),
 	)
 }
 
 // genTestClientImplNewMethod generates a NewTestClient constructor function
-func (svc *Manifest) genTestClientImplNewMethod(f *g.File) {
-	interfaceName := svc.toCamel("%sClient", svc.Service.GoName)
-	typeName := svc.toCamel("Test%sClient", svc.Service.GoName)
+func (m *Manifest) genTestClientImplNewMethod(f *j.File) {
+	interfaceName := m.toCamel("%sClient", m.Service.GoName)
+	typeName := m.toCamel("Test%sClient", m.Service.GoName)
 	functionName := "New" + typeName
 
 	f.Var().Id("_").Id(interfaceName).Op("=").Op("&").Id(typeName).Values()
 	f.Commentf("%s initializes a new %s value", functionName, typeName)
 	f.Func().Id(functionName).
 		Params(
-			g.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment"),
-			g.Id("workflows").Id(svc.toCamel("%sWorkflows", svc.Service.GoName)),
-			g.Id("activities").Id(svc.toCamel("%sActivities", svc.Service.GoName)),
+			j.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment"),
+			j.Id("workflows").Id(m.toCamel("%sWorkflows", m.Service.GoName)),
+			j.Id("activities").Id(m.toCamel("%sActivities", m.Service.GoName)),
 		).
 		Params(
-			g.Op("*").Id(typeName),
+			j.Op("*").Id(typeName),
 		).
 		Block(
-			g.If(g.Id("workflows").Op("!=").Nil()).Block(
-				g.Id(svc.toCamel("Register%sWorkflows", svc.Service.GoName)).Call(g.Id("env"), g.Id("workflows")),
+			j.If(j.Id("workflows").Op("!=").Nil()).Block(
+				j.Id(m.toCamel("Register%sWorkflows", m.Service.GoName)).Call(j.Id("env"), j.Id("workflows")),
 			),
-			g.If(g.Id("activities").Op("!=").Nil()).Block(
-				g.Id(svc.toCamel("Register%sActivities", svc.Service.GoName)).Call(g.Id("env"), g.Id("activities")),
+			j.If(j.Id("activities").Op("!=").Nil()).Block(
+				j.Id(m.toCamel("Register%sActivities", m.Service.GoName)).Call(j.Id("env"), j.Id("activities")),
 			),
-			g.Return(g.Op("&").Id(typeName).Values(g.Id("env"), g.Id("workflows"))),
+			j.Return(j.Op("&").Id(typeName).Values(j.Id("env"), j.Id("workflows"))),
 		)
 }
 
 // genTestClientImplQueryMethod genereates a TestClient <Query> method
-func (svc *Manifest) genTestClientImplQueryMethod(f *g.File, query protoreflect.FullName) {
-	handler := svc.methods[query]
+func (m *Manifest) genTestClientImplQueryMethod(f *j.File, query protoreflect.FullName) {
+	handler := m.methods[query]
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	f.Commentf("%s executes a %s query", svc.methods[query].GoName, svc.fqnForQuery(query))
+	f.Commentf("%s executes a %s query", m.methods[query].GoName, m.fqnForQuery(query))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
-		Id(svc.methods[query].GoName).
-		ParamsFunc(func(args *g.Group) {
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(m.methods[query].GoName).
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).
-		BlockFunc(func(fn *g.Group) {
-			fn.List(g.Id("val"), g.Err()).Op(":=").Id("c").Dot("env").Dot("QueryWorkflow").CallFunc(func(args *g.Group) {
-				args.Id(svc.toCamel("%sQueryName", query))
+		BlockFunc(func(fn *j.Group) {
+			fn.List(j.Id("val"), j.Err()).Op(":=").Id("c").Dot("env").Dot("QueryWorkflow").CallFunc(func(args *j.Group) {
+				args.Id(m.toCamel("%sQueryName", query))
 				if hasInput {
 					args.Id("req")
 				}
 			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(returnVals *j.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Err()
 				}),
-			).Else().If(g.Op("!").Id("val").Dot("HasValue").Call()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			).Else().If(j.Op("!").Id("val").Dot("HasValue").Call()).Block(
+				j.ReturnFunc(func(returnVals *j.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Nil()
 				}),
-			).Else().BlockFunc(func(bl *g.Group) {
+			).Else().BlockFunc(func(bl *j.Group) {
 				if !hasOutput {
-					bl.Return(g.Nil())
+					bl.Return(j.Nil())
 				} else {
-					bl.Var().Id("result").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
-					bl.If(g.Err().Op(":=").Id("val").Dot("Get").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
-						g.Return(
-							g.Nil(),
-							g.Err(),
+					bl.Var().Id("result").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+					bl.If(j.Err().Op(":=").Id("val").Dot("Get").Call(j.Op("&").Id("result")), j.Err().Op("!=").Nil()).Block(
+						j.Return(
+							j.Nil(),
+							j.Err(),
 						),
 					)
-					bl.Return(g.Op("&").Id("result"), g.Nil())
+					bl.Return(j.Op("&").Id("result"), j.Nil())
 				}
 			})
 		})
 }
 
 // genTestClientImplSignalMethod genereates a TestClient <Signal> method
-func (svc *Manifest) genTestClientImplSignalMethod(f *g.File, signal protoreflect.FullName) {
-	handler := svc.methods[signal]
+func (m *Manifest) genTestClientImplSignalMethod(f *j.File, signal protoreflect.FullName) {
+	handler := m.methods[signal]
 	hasInput := !isEmpty(handler.Input)
 
-	f.Commentf("%s executes a %s signal", svc.methods[signal].GoName, svc.fqnForSignal(signal))
+	f.Commentf("%s executes a %s signal", m.methods[signal].GoName, m.fqnForSignal(signal))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
-		Id(svc.methods[signal].GoName).
-		ParamsFunc(func(args *g.Group) {
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(m.methods[signal].GoName).
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 		}).
 		Params(
-			g.Error(),
+			j.Error(),
 		).
 		Block(
-			g.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
-				args.Id(svc.toCamel("%sSignalName", signal))
+			j.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
+				args.Id(m.toCamel("%sSignalName", signal))
 				if hasInput {
 					args.Id("req")
 				} else {
 					args.Nil()
 				}
 			}),
-			g.Return(g.Nil()),
+			j.Return(j.Nil()),
+		)
+}
+
+func (m *Manifest) genTestClientImplUpdateGetMethod(f *j.File, update protoreflect.FullName) {
+	methodName := m.toCamel("Get%s", update)
+
+	f.Commentf("%s retrieves a handle to an existing %s update", methodName, m.fqnForUpdate(update))
+	f.Func().
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(methodName).
+		ParamsFunc(func(args *j.Group) {
+			args.Id("ctx").Qual("context", "Context")
+			args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
+		}).
+		Params(
+			j.Id(m.toCamel("%sHandle", update)),
+			j.Error(),
+		).
+		Block(
+			j.Return(
+				j.Nil(),
+				j.Qual("errors", "New").Call(j.Lit("unimplemented")),
+			),
 		)
 }
 
 // genTestClientImplUpdateMethod genereates a TestClient <Update> method
-func (svc *Manifest) genTestClientImplUpdateMethod(f *g.File, update protoreflect.FullName) {
-	method := svc.methods[update]
+func (m *Manifest) genTestClientImplUpdateMethod(f *j.File, update protoreflect.FullName) {
+	method := m.methods[update]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	asyncName := svc.toCamel("%sAsync", update)
+	asyncName := m.toCamel("%sAsync", update)
 
-	f.Commentf("%s executes a(n) %s update in the test environment", svc.methods[update].GoName, svc.fqnForUpdate(update))
+	f.Commentf("%s executes a(n) %s update in the test environment", m.methods[update].GoName, m.fqnForUpdate(update))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
-		Id(svc.methods[update].GoName).
-		ParamsFunc(func(args *g.Group) {
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(m.methods[update].GoName).
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		Block(
 			// initialize update request options
-			g.Id("options").Op(":=").Id(svc.toCamel("New%sOptions", update)).Call(),
-			g.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
-				g.Id("options").Op("=").Id("opts").Index(g.Lit(0)),
+			j.Id("options").Op(":=").Id(m.toCamel("New%sOptions", update)).Call(),
+			j.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Dot("Options").Op("!=").Nil()).Block(
+				j.Id("options").Op("=").Id("opts").Index(j.Lit(0)),
 			),
 
 			// override wait policy
-			g.Id("options").Dot("Options").Dot("WaitForStage").Op("=").Qual(clientPkg, "WorkflowUpdateStageCompleted"),
-			g.List(g.Id("handle"), g.Err()).Op(":=").Id("c").Dot(asyncName).CallFunc(func(args *g.Group) {
+			j.Id("options").Dot("Options").Dot("WaitForStage").Op("=").Qual(clientPkg, "WorkflowUpdateStageCompleted"),
+			j.List(j.Id("handle"), j.Err()).Op(":=").Id("c").Dot(asyncName).CallFunc(func(args *j.Group) {
 				args.Id("ctx")
 				args.Id("workflowID")
 				args.Id("runID")
@@ -186,70 +217,70 @@ func (svc *Manifest) genTestClientImplUpdateMethod(f *g.File, update protoreflec
 				}
 				args.Id("options")
 			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			j.If(j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(returnVals *j.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Err()
 				}),
 			),
-			g.Return(g.Id("handle").Dot("Get").Call(g.Id("ctx"))),
+			j.Return(j.Id("handle").Dot("Get").Call(j.Id("ctx"))),
 		)
 }
 
-// genTestClientImplUpdateAsyncMethod genereates a TestClient <UpdateAsync> method
-func (svc *Manifest) genTestClientImplUpdateAsyncMethod(f *g.File, update protoreflect.FullName) {
-	method := svc.methods[update]
+// genTestClientImplUpdateMethodAsync genereates a TestClient <UpdateAsync> method
+func (m *Manifest) genTestClientImplUpdateMethodAsync(f *j.File, update protoreflect.FullName) {
+	method := m.methods[update]
 	hasInput := !isEmpty(method.Input)
-	methodName := svc.toCamel("%sAsync", update)
+	methodName := m.toCamel("%sAsync", update)
 
-	f.Commentf("%s executes a(n) %s update in the test environment", methodName, svc.fqnForUpdate(update))
+	f.Commentf("%s executes a(n) %s update in the test environment", methodName, m.fqnForUpdate(update))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
 		Id(methodName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			args.Id("workflowID").String()
 			args.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
 		Params(
-			g.Id(svc.toCamel("%sHandle", update)),
-			g.Error(),
+			j.Id(m.toCamel("%sHandle", update)),
+			j.Error(),
 		).
-		BlockFunc(func(fn *g.Group) {
+		BlockFunc(func(fn *j.Group) {
 			// initialize options
-			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", update))
-			fn.If(g.Len(g.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(g.Lit(0)).Op("!=").Nil()).Block(
-				g.Id("o").Op("=").Id("opts").Index(g.Lit(0)),
+			fn.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", update))
+			fn.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				j.Id("o").Op("=").Id("opts").Index(j.Lit(0)),
 			).Else().Block(
-				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", update)).Call(),
+				j.Id("o").Op("=").Id(m.toCamel("New%sOptions", update)).Call(),
 			)
 
 			// build UpdateWorkflowWithOptions
-			fn.List(g.Id("options"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+			fn.List(j.Id("options"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
 				args.Id("workflowID")
 				args.Id("runID")
 				if hasInput {
 					args.Id("req")
 				}
 			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing UpdateWorkflowWithOptions: %w"), g.Err())),
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing UpdateWorkflowWithOptions: %w"), j.Err())),
 			).Line()
 
-			fn.If(g.Id("options").Dot("UpdateID").Op("==").Lit("")).Block(
-				g.Id("options").Dot("UpdateID").Op("=").Id("workflowID"),
+			fn.If(j.Id("options").Dot("UpdateID").Op("==").Lit("")).Block(
+				j.Id("options").Dot("UpdateID").Op("=").Id("workflowID"),
 			).Line()
 
 			// update workflow
 			fn.Id("uc").Op(":=").Qual(testutilPkg, "NewUpdateCallbacks").Call()
-			fn.Id("c").Dot("env").Dot("UpdateWorkflow").CallFunc(func(args *g.Group) {
-				args.Id(svc.toCamel("%sUpdateName", update))
+			fn.Id("c").Dot("env").Dot("UpdateWorkflow").CallFunc(func(args *j.Group) {
+				args.Id(m.toCamel("%sUpdateName", update))
 				args.Id("options").Dot("UpdateID")
 				args.Id("uc")
 				if hasInput {
@@ -258,7 +289,7 @@ func (svc *Manifest) genTestClientImplUpdateAsyncMethod(f *g.File, update protor
 			})
 
 			fn.Return(
-				g.Op("&").Id(svc.toLowerCamel("test%sHandle", update)).CustomFunc(multiLineValues, func(fields *g.Group) {
+				j.Op("&").Id(m.toLowerCamel("test%sHandle", update)).CustomFunc(multiLineValues, func(fields *j.Group) {
 					fields.Id("callbacks").Op(":").Id("uc")
 					fields.Id("env").Op(":").Id("c").Dot("env")
 					fields.Id("opts").Op(":").Id("options")
@@ -268,120 +299,363 @@ func (svc *Manifest) genTestClientImplUpdateAsyncMethod(f *g.File, update protor
 						fields.Id("req").Op(":").Id("req")
 					}
 				}),
-				g.Nil(),
+				j.Nil(),
 			)
 		})
 }
 
-func (svc *Manifest) genTestClientImplUpdateGetMethod(f *g.File, update protoreflect.FullName) {
-	methodName := svc.toCamel("Get%s", update)
+func (m *Manifest) genTestClientImplUpdateWithStartMethod(f *j.File, workflow, update protoreflect.FullName) {
+	method := m.methods[workflow]
+	hasWorkflowInput := !isEmpty(method.Input)
+	handler := m.methods[update]
+	hasUpdateInput := !isEmpty(handler.Input)
+	hasUpdateOutput := !isEmpty(handler.Output)
 
-	f.Commentf("%s retrieves a handle to an existing %s update", methodName, svc.fqnForUpdate(update))
+	asyncName := m.Names().clientUpdateWithStartAsync(workflow, update)
+	client := m.Names().testClient()
+	options := m.Names().clientUpdateWithStartOptions(workflow, update)
+	optionsCtor := m.Names().clientUpdateWithStartOptionsCtor(workflow, update)
+	run := m.Names().clientWorkflowRun(workflow)
+
+	methodName := m.Names().clientUpdateWithStart(workflow, update)
+	f.Commentf("%s executes a(n) %s workflow and a(n) %s update in the test environment", methodName, m.fqnForWorkflow(workflow), m.fqnForUpdate(update))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
+		Params(j.Id("c").Op("*").Id(client)).
 		Id(methodName).
-		ParamsFunc(func(args *g.Group) {
-			args.Id("ctx").Qual("context", "Context")
-			args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			if hasWorkflowInput {
+				g.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+			}
+			if hasUpdateInput {
+				g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+			}
+			g.Id("options").Op("...").Op("*").Id(options)
+		}).
+		ParamsFunc(func(g *j.Group) {
+			if hasUpdateOutput {
+				g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+			}
+			g.Id(run)
+			g.Error()
+		}).
+		BlockFunc(func(g *j.Group) {
+			// initialize method options
+			g.Var().Id("o").Op("*").Id(options)
+			g.IfFunc(func(g *j.Group) {
+				g.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()
+			}).BlockFunc(func(g *j.Group) {
+				g.Id("o").Op("=").Id("options").Index(j.Lit(0))
+			}).Else().BlockFunc(func(g *j.Group) {
+				g.Id("o").Op("=").Id(optionsCtor).Call()
+			})
+
+			// invoke async method
+			g.List(j.Id("handle"), j.Id("run"), j.Err()).Op(":=").Id("c").Dot(asyncName).CallFunc(func(g *j.Group) {
+				g.Id("ctx")
+				if hasWorkflowInput {
+					g.Id("input")
+				}
+				if hasUpdateInput {
+					g.Id("update")
+				}
+				g.Id("o")
+			})
+			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.ReturnFunc(func(g *j.Group) {
+					if hasUpdateOutput {
+						g.Nil()
+					}
+					g.Id("run")
+					g.Err()
+				})
+			})
+
+			// execute workflow to prevent deadlock on update callback
+			g.Id("run").Dot("Get").Call(j.Id("ctx"))
+
+			// await update result
+			if hasUpdateOutput {
+				g.List(j.Id("out"), j.Err()).Op(":=").Id("handle").Dot("Get").Call(j.Id("ctx"))
+				g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+					g.Return(j.Nil(), j.Id("run"), j.Err())
+				})
+			} else {
+				g.IfFunc(func(g *j.Group) {
+					g.Err().Op(":=").Id("handle").Dot("Get").Call(j.Id("ctx"))
+					g.Err().Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.Return(j.Id("run"), j.Err())
+				})
+			}
+
+			g.ReturnFunc(func(g *j.Group) {
+				if hasUpdateOutput {
+					g.Id("out")
+				}
+				g.Id("run")
+				g.Nil()
+			})
+		})
+}
+
+func (m *Manifest) genTestClientImplUpdateWithStartMethodAsync(f *j.File, workflow, update protoreflect.FullName) {
+	method := m.methods[workflow]
+	hasWorkflowInput := !isEmpty(method.Input)
+	handler := m.methods[update]
+	hasUpdateInput := !isEmpty(handler.Input)
+
+	async := m.Names().clientUpdateWithStartAsync(workflow, update)
+	client := m.Names().testClient()
+	options := m.Names().clientUpdateWithStartOptions(workflow, update)
+	optionsCtor := m.Names().clientUpdateWithStartOptionsCtor(workflow, update)
+	workflowOptionsCtor := m.Names().clientWorkflowOptionsCtor(workflow)
+	updateOptionsCtor := m.Names().clientUpdateOptionsCtor(update)
+	run := m.Names().clientWorkflowRun(workflow)
+	handle := m.Names().clientUpdateHandleIface(update)
+	testHandle := m.Names().testClientUpdateHandle(update)
+	updateName := m.Names().updateName(update)
+
+	f.Commentf("%s executes a(n) %s workflow and a(n) %s update in the test environment", async, m.fqnForWorkflow(workflow), m.fqnForUpdate(update))
+	f.Func().
+		Params(j.Id("c").Op("*").Id(client)).
+		Id(async).
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			if hasWorkflowInput {
+				g.Id("input").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+			}
+			if hasUpdateInput {
+				g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+			}
+			g.Id("options").Op("...").Op("*").Id(options)
 		}).
 		Params(
-			g.Id(svc.toCamel("%sHandle", update)),
-			g.Error(),
+			j.Id(handle),
+			j.Id(run),
+			j.Error(),
+		).
+		BlockFunc(func(g *j.Group) {
+			// initialize method options
+			g.Var().Id("o").Op("*").Id(options)
+			g.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.Id("o").Op("=").Id("options").Index(j.Lit(0))
+			}).Else().BlockFunc(func(g *j.Group) {
+				g.Id("o").Op("=").Id(optionsCtor).Call()
+			})
+
+			// initialize start workflow options
+			g.If(j.Id("o").Dot("workflowOptions").Op("==").Nil()).BlockFunc(func(g *j.Group) {
+				g.Id("o").Dot("workflowOptions").Op("=").Id(workflowOptionsCtor).Call()
+			})
+			g.List(j.Id("swo"), j.Err()).Op(":=").Id("o").Dot("workflowOptions").Dot("Build").CallFunc(func(g *j.Group) {
+				if hasWorkflowInput {
+					g.Id("input").Dot("ProtoReflect").Call()
+				} else {
+					g.Nil()
+				}
+			})
+			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.Return(j.Nil(), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing workflowOptions: %w"), j.Err()))
+			})
+
+			// initialize update workflow options
+			g.If(j.Id("o").Dot("updateOptions").Op("==").Nil()).BlockFunc(func(g *j.Group) {
+				g.Id("o").Dot("updateOptions").Op("=").Id(updateOptionsCtor).Call()
+			})
+			g.List(j.Id("uo"), j.Err()).Op(":=").Id("o").Dot("updateOptions").Dot("Build").CallFunc(func(g *j.Group) {
+				g.Id("swo").Dot("ID")
+				g.Lit("")
+				if hasUpdateInput {
+					g.Id("update")
+				}
+			})
+			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.Return(j.Nil(), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing updateOptions: %w"), j.Err()))
+			})
+
+			// initialize test run
+			g.List(j.Id("run"), j.Err()).Op(":=").Id("c").Dot(m.Names().clientWorkflowAsync(workflow)).CallFunc(func(g *j.Group) {
+				g.Id("ctx")
+				if hasWorkflowInput {
+					g.Id("input")
+				}
+			})
+			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+				g.Return(j.Nil(), j.Nil(), j.Err())
+			})
+
+			// initialize update callbacks
+			g.Id("uc").Op(":=").Qual(testutilPkg, "NewUpdateCallbacks").Call()
+
+			// register delayed callback
+			g.Id("c").Dot("env").Dot("RegisterDelayedCallback").CallFunc(func(g *j.Group) {
+				g.Func().Params().BlockFunc(func(g *j.Group) {
+					g.Id("c").Dot("env").Dot("UpdateWorkflow").CallFunc(func(g *j.Group) {
+						g.Id(updateName)
+						g.Id("uo").Dot("UpdateID")
+						g.Id("uc")
+						if hasUpdateInput {
+							g.Id("update")
+						} else {
+							g.Nil()
+						}
+					})
+				})
+				g.Lit(0)
+			})
+
+			g.ReturnFunc(func(g *j.Group) {
+				g.Op("&").Id(testHandle).Values(j.DictFunc(func(d j.Dict) {
+					d[j.Id("callbacks")] = j.Id("uc")
+					d[j.Id("env")] = j.Id("c").Dot("env")
+					d[j.Id("opts")] = j.Id("uo")
+					d[j.Id("runID")] = j.Lit("")
+					d[j.Id("workflowID")] = j.Id("swo").Dot("ID")
+					if hasUpdateInput {
+						d[j.Id("req")] = j.Id("update")
+					}
+				}))
+				g.Id("run")
+				g.Nil()
+			})
+		})
+
+}
+
+// genClientImplWorkflowCancelMethod generates a Cancel<Workflow> client method
+func (m *Manifest) genTestClientImplWorkflowCancelMethod(f *j.File) {
+	clientType := m.toCamel("Test%sClient", m.Service.GoName)
+	methodName := "CancelWorkflow"
+
+	f.Commentf("%s requests cancellation of an existing workflow execution", methodName)
+	f.Func().
+		Params(j.Id("c").Op("*").Id(clientType)).
+		Id(methodName).
+		Params(
+			j.Id("ctx").Qual("context", "Context"),
+			j.Id("workflowID").String(),
+			j.Id("runID").String(),
+		).
+		Params(
+			j.Error(),
 		).
 		Block(
-			g.Return(
-				g.Nil(),
-				g.Qual("errors", "New").Call(g.Lit("unimplemented")),
+			j.Id("c").Dot("env").Dot("CancelWorkflow").Call(),
+			j.Return(j.Nil()),
+		)
+}
+
+// genTestClientImplWorkflowGetMethod generates a TestClient's Get<workflow> method
+func (m *Manifest) genTestClientImplWorkflowGetMethod(f *j.File, workflow protoreflect.FullName) {
+	f.Commentf("%s is a noop", m.toCamel("Get%s", workflow))
+	f.Func().
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(m.toCamel("Get%s", workflow)).
+		Params(
+			j.Id("ctx").Qual("context", "Context"),
+			j.Id("workflowID").String(),
+			j.Id("runID").String(),
+		).
+		Params(
+			j.Id(m.toCamel("%sRun", workflow)),
+		).
+		Block(
+			j.Return(
+				j.Op("&").Id(m.toLowerCamel("test%sRun", workflow)).Values(
+					j.Id("env").Op(":").Id("c").Dot("env"),
+					j.Id("workflows").Op(":").Id("c").Dot("workflows"),
+				),
 			),
 		)
 }
 
 // genTestClientImplWorkflowMethod generates a TestClient <Workflow> method
-func (svc *Manifest) genTestClientImplWorkflowMethod(f *g.File, workflow protoreflect.FullName) {
-	method := svc.methods[workflow]
+func (m *Manifest) genTestClientImplWorkflowMethod(f *j.File, workflow protoreflect.FullName) {
+	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("%s executes a(n) %s workflow in the test environment", svc.methods[workflow].GoName, svc.fqnForWorkflow(workflow))
+	f.Commentf("%s executes a(n) %s workflow in the test environment", m.methods[workflow].GoName, m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
-		Id(svc.methods[workflow].GoName).
-		ParamsFunc(func(args *g.Group) {
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(m.methods[workflow].GoName).
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		Block(
-			g.List(g.Id("run"), g.Err()).Op(":=").Id("c").Dot(svc.toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
+			j.List(j.Id("run"), j.Err()).Op(":=").Id("c").Dot(m.toCamel("%sAsync", workflow)).CallFunc(func(args *j.Group) {
 				args.Id("ctx")
 				if hasInput {
 					args.Id("req")
 				}
 				args.Id("opts").Op("...")
 			}),
-			g.If(g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			j.If(j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(returnVals *j.Group) {
 					if hasOutput {
 						returnVals.Nil()
 					}
 					returnVals.Err()
 				}),
 			),
-			g.Return(g.Id("run").Dot("Get").Call(g.Id("ctx"))),
+			j.Return(j.Id("run").Dot("Get").Call(j.Id("ctx"))),
 		)
 }
 
-// genTestClientImplWorkflowAsyncMethod generates a TestClient's <workflow>Async method
-func (svc *Manifest) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow protoreflect.FullName) {
-	method := svc.methods[workflow]
+// genTestClientImplWorkflowMethodAsync generates a TestClient's <workflow>Async method
+func (m *Manifest) genTestClientImplWorkflowMethodAsync(f *j.File, workflow protoreflect.FullName) {
+	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 
-	f.Commentf("%sAsync executes a(n) %s workflow in the test environment", svc.methods[workflow].GoName, svc.fqnForWorkflow(workflow))
+	f.Commentf("%sAsync executes a(n) %s workflow in the test environment", m.methods[workflow].GoName, m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
-		Id(svc.toCamel("%sAsync", workflow)).
-		ParamsFunc(func(args *g.Group) {
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
+		Id(m.toCamel("%sAsync", workflow)).
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			args.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
 		Params(
-			g.Id(svc.toCamel("%sRun", workflow)),
-			g.Error(),
+			j.Id(m.toCamel("%sRun", workflow)),
+			j.Error(),
 		).
-		BlockFunc(func(fn *g.Group) {
+		BlockFunc(func(fn *j.Group) {
 			// initialize options
-			fn.Var().Id("o").Op("*").Id(svc.toCamel("%sOptions", workflow))
-			fn.If(g.Len(g.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(g.Lit(0)).Op("!=").Nil()).Block(
-				g.Id("o").Op("=").Id("options").Index(g.Lit(0)),
+			fn.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", workflow))
+			fn.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				j.Id("o").Op("=").Id("options").Index(j.Lit(0)),
 			).Else().Block(
-				g.Id("o").Op("=").Id(svc.toCamel("New%sOptions", workflow)).Call(),
+				j.Id("o").Op("=").Id(m.toCamel("New%sOptions", workflow)).Call(),
 			)
 
 			// initialize client.StartWorkfowOptions
-			fn.List(g.Id("opts"), g.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *g.Group) {
+			fn.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
 				if hasInput {
 					args.Id("req").Dot("ProtoReflect").Call()
 				} else {
 					args.Nil()
 				}
 			})
-			fn.If(g.Err().Op("!=").Nil()).Block(
-				g.Return(g.Nil(), g.Qual("fmt", "Errorf").Call(g.Lit("error initializing client.StartWorkflowOptions: %w"), g.Err())),
+			fn.If(j.Err().Op("!=").Nil()).Block(
+				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
 			)
 
 			fn.Return(
-				g.Op("&").Id(svc.toLowerCamel("test%sRun", workflow)).ValuesFunc(func(fields *g.Group) {
+				j.Op("&").Id(m.toLowerCamel("test%sRun", workflow)).ValuesFunc(func(fields *j.Group) {
 					fields.Id("client").Op(":").Id("c")
 					fields.Id("env").Op(":").Id("c").Dot("env")
 					fields.Id("opts").Op(":").Op("&").Id("opts")
@@ -390,92 +664,75 @@ func (svc *Manifest) genTestClientImplWorkflowAsyncMethod(f *g.File, workflow pr
 					}
 					fields.Id("workflows").Op(":").Id("c").Dot("workflows")
 				}),
-				g.Nil(),
+				j.Nil(),
 			)
 		})
 }
 
-// genClientImplWorkflowCancelMethod generates a Cancel<Workflow> client method
-func (svc *Manifest) genTestClientImplWorkflowCancelMethod(f *g.File) {
-	clientType := svc.toCamel("Test%sClient", svc.Service.GoName)
-	methodName := "CancelWorkflow"
+// genClientImplWorkflowTerminateMethod generates a Terminate<Workflow> client method
+func (m *Manifest) genTestClientImplWorkflowTerminateMethod(f *j.File) {
+	clientType := m.toCamel("Test%sClient", m.Service.GoName)
+	methodName := "TerminateWorkflow"
 
-	f.Commentf("%s requests cancellation of an existing workflow execution", methodName)
+	f.Commentf("%s terminates an existing workflow execution", methodName)
 	f.Func().
-		Params(g.Id("c").Op("*").Id(clientType)).
+		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(methodName).
 		Params(
-			g.Id("ctx").Qual("context", "Context"),
-			g.Id("workflowID").String(),
-			g.Id("runID").String(),
+			j.Id("ctx").Qual("context", "Context"),
+			j.Id("workflowID").String(),
+			j.Id("runID").String(),
+			j.Id("reason").String(),
+			j.Id("details").Op("...").Interface(),
 		).
 		Params(
-			g.Error(),
+			j.Error(),
 		).
 		Block(
-			g.Id("c").Dot("env").Dot("CancelWorkflow").Call(),
-			g.Return(g.Nil()),
-		)
-}
-
-// genTestClientImplWorkflowGetMethod generates a TestClient's Get<workflow> method
-func (svc *Manifest) genTestClientImplWorkflowGetMethod(f *g.File, workflow protoreflect.FullName) {
-	f.Commentf("%s is a noop", svc.toCamel("Get%s", workflow))
-	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
-		Id(svc.toCamel("Get%s", workflow)).
-		Params(
-			g.Id("ctx").Qual("context", "Context"),
-			g.Id("workflowID").String(),
-			g.Id("runID").String(),
-		).
-		Params(
-			g.Id(svc.toCamel("%sRun", workflow)),
-		).
-		Block(
-			g.Return(
-				g.Op("&").Id(svc.toLowerCamel("test%sRun", workflow)).Values(
-					g.Id("env").Op(":").Id("c").Dot("env"),
-					g.Id("workflows").Op(":").Id("c").Dot("workflows"),
+			j.Return(
+				j.Id("c").Dot("CancelWorkflow").Call(
+					j.Id("ctx"),
+					j.Id("workflowID"),
+					j.Id("runID"),
 				),
 			),
 		)
 }
 
 // genTestClientImplWorkflowWithSignalMethod generates a TestClient's <workflow>With<signal> method
-func (svc *Manifest) genTestClientImplWorkflowWithSignalMethod(f *g.File, workflow, signal protoreflect.FullName) {
-	method := svc.methods[workflow]
-	methodName := svc.toCamel("%sWith%s", workflow, signal)
+func (m *Manifest) genTestClientImplWorkflowWithSignalMethod(f *j.File, workflow, signal protoreflect.FullName) {
+	method := m.methods[workflow]
+	methodName := m.toCamel("%sWith%s", workflow, signal)
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
-	handler := svc.methods[signal]
+	handler := m.methods[signal]
 	hasSignalInput := !isEmpty(handler.Input)
 
-	f.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
+	f.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
 		Id(methodName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		Block(
-			g.Id("c").Dot("env").Dot("RegisterDelayedCallback").Call(
-				g.Func().Params().Block(
-					g.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
-						args.Qual(svc.goImportPathForMethod(signal), svc.toCamel("%sSignalName", signal))
+			j.Id("c").Dot("env").Dot("RegisterDelayedCallback").Call(
+				j.Func().Params().Block(
+					j.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
+						args.Qual(m.goImportPathForMethod(signal), m.toCamel("%sSignalName", signal))
 						if hasSignalInput {
 							args.Id("signal")
 						} else {
@@ -483,10 +740,10 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalMethod(f *g.File, workfl
 						}
 					}),
 				),
-				g.Lit(0),
+				j.Lit(0),
 			),
-			g.Return(
-				g.Id("c").Dot(svc.methods[workflow].GoName).CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id("c").Dot(m.methods[workflow].GoName).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					if hasInput {
 						args.Id("req")
@@ -497,37 +754,37 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalMethod(f *g.File, workfl
 		)
 }
 
-// genTestClientImplWorkflowWithSignalAsyncMethod generates a TestClient's <workflow>With<signal>Async method
-func (svc *Manifest) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, workflow, signal protoreflect.FullName) {
-	method := svc.methods[workflow]
-	methodName := svc.toCamel("%sWith%sAsync", workflow, signal)
+// genTestClientImplWorkflowWithSignalMethodAsync generates a TestClient's <workflow>With<signal>Async method
+func (m *Manifest) genTestClientImplWorkflowWithSignalMethodAsync(f *j.File, workflow, signal protoreflect.FullName) {
+	method := m.methods[workflow]
+	methodName := m.toCamel("%sWith%sAsync", workflow, signal)
 	hasInput := !isEmpty(method.Input)
-	handler := svc.methods[signal]
+	handler := m.methods[signal]
 	hasSignalInput := !isEmpty(handler.Input)
 
-	f.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary", methodName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
+	f.Commentf("%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("c").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))).
+		Params(j.Id("c").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))).
 		Id(methodName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", workflow))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
 		Params(
-			g.Id(svc.toCamel("%sRun", workflow)),
-			g.Error(),
+			j.Id(m.toCamel("%sRun", workflow)),
+			j.Error(),
 		).
 		Block(
-			g.Id("c").Dot("env").Dot("RegisterDelayedCallback").Call(
-				g.Func().Params().Block(
-					g.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
-						args.Qual(svc.goImportPathForMethod(signal), svc.toCamel("%sSignalName", signal))
+			j.Id("c").Dot("env").Dot("RegisterDelayedCallback").Call(
+				j.Func().Params().Block(
+					j.Id("c").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
+						args.Qual(m.goImportPathForMethod(signal), m.toCamel("%sSignalName", signal))
 						if hasSignalInput {
 							args.Id("signal")
 						} else {
@@ -535,10 +792,10 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, w
 						}
 					}),
 				),
-				g.Lit(0),
+				j.Lit(0),
 			),
-			g.Return(
-				g.Id("c").Dot(svc.toCamel("%sAsync", workflow)).CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id("c").Dot(m.toCamel("%sAsync", workflow)).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					if hasInput {
 						args.Id("req")
@@ -549,40 +806,10 @@ func (svc *Manifest) genTestClientImplWorkflowWithSignalAsyncMethod(f *g.File, w
 		)
 }
 
-// genClientImplWorkflowTerminateMethod generates a Terminate<Workflow> client method
-func (svc *Manifest) genTestClientImplWorkflowTerminateMethod(f *g.File) {
-	clientType := svc.toCamel("Test%sClient", svc.Service.GoName)
-	methodName := "TerminateWorkflow"
-
-	f.Commentf("%s terminates an existing workflow execution", methodName)
-	f.Func().
-		Params(g.Id("c").Op("*").Id(clientType)).
-		Id(methodName).
-		Params(
-			g.Id("ctx").Qual("context", "Context"),
-			g.Id("workflowID").String(),
-			g.Id("runID").String(),
-			g.Id("reason").String(),
-			g.Id("details").Op("...").Interface(),
-		).
-		Params(
-			g.Error(),
-		).
-		Block(
-			g.Return(
-				g.Id("c").Dot("CancelWorkflow").Call(
-					g.Id("ctx"),
-					g.Id("workflowID"),
-					g.Id("runID"),
-				),
-			),
-		)
-}
-
-func (svc *Manifest) genTestClientUpdateHandleImpl(f *g.File, update protoreflect.FullName) {
-	typeName := svc.toLowerCamel("test%sHandle", update)
-	interfaceName := svc.toCamel("%sHandle", update)
-	handler := svc.methods[update]
+func (m *Manifest) genTestClientUpdateHandleImpl(f *j.File, update protoreflect.FullName) {
+	typeName := m.toLowerCamel("test%sHandle", update)
+	interfaceName := m.toCamel("%sHandle", update)
+	handler := m.methods[update]
 	hasInput := !isEmpty(handler.Input)
 
 	// generate struct
@@ -590,44 +817,44 @@ func (svc *Manifest) genTestClientUpdateHandleImpl(f *g.File, update protoreflec
 	f.Commentf("%s provides an internal implementation of a(n) %s", typeName, interfaceName)
 	f.Type().
 		Id(typeName).
-		StructFunc(func(fields *g.Group) {
+		StructFunc(func(fields *j.Group) {
 			fields.Id("callbacks").Op("*").Qual(testutilPkg, "UpdateCallbacks")
 			fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
 			fields.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowOptions")
 			if hasInput {
-				fields.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				fields.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 			fields.Id("runID").String()
 			fields.Id("workflowID").String()
 		})
 }
 
-func (svc *Manifest) genTestClientUpdateHandleImplGetMethod(f *g.File, update protoreflect.FullName) {
-	method := svc.methods[update]
+func (m *Manifest) genTestClientUpdateHandleImplGetMethod(f *j.File, update protoreflect.FullName) {
+	method := m.methods[update]
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("Get retrieves a test %s update result", svc.fqnForUpdate(update))
+	f.Commentf("Get retrieves a test %s update result", m.fqnForUpdate(update))
 	f.Func().
-		Params(g.Id("h").Op("*").Id(svc.toLowerCamel("test%sHandle", update))).
+		Params(j.Id("h").Op("*").Id(m.toLowerCamel("test%sHandle", update))).
 		Id("Get").
-		Params(g.Id("ctx").Qual("context", "Context")).
-		ParamsFunc(func(returnVals *g.Group) {
+		Params(j.Id("ctx").Qual("context", "Context")).
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
 			returnVals.Error()
 		}).
 		Block(
-			g.If(g.ListFunc(func(ls *g.Group) {
+			j.If(j.ListFunc(func(ls *j.Group) {
 				if hasOutput {
 					ls.Id("resp")
 				} else {
 					ls.Id("_")
 				}
 				ls.Err()
-			}).Op(":=").Id("h").Dot("callbacks").Dot("Get").Call(g.Id("ctx")), g.Err().Op("!=").Nil()).
+			}).Op(":=").Id("h").Dot("callbacks").Dot("Get").Call(j.Id("ctx")), j.Err().Op("!=").Nil()).
 				Block(
-					g.ReturnFunc(func(returnVals *g.Group) {
+					j.ReturnFunc(func(returnVals *j.Group) {
 						if hasOutput {
 							returnVals.Nil()
 						}
@@ -636,9 +863,9 @@ func (svc *Manifest) genTestClientUpdateHandleImplGetMethod(f *g.File, update pr
 				).
 				Else().
 				Block(
-					g.ReturnFunc(func(returnVals *g.Group) {
+					j.ReturnFunc(func(returnVals *j.Group) {
 						if hasOutput {
-							returnVals.Id("resp").Op(".").Parens(g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output)))
+							returnVals.Id("resp").Op(".").Parens(j.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output)))
 						}
 						returnVals.Nil()
 					}),
@@ -646,77 +873,78 @@ func (svc *Manifest) genTestClientUpdateHandleImplGetMethod(f *g.File, update pr
 		)
 }
 
-func (svc *Manifest) genTestClientUpdateHandleImplRunIDMethod(f *g.File, update protoreflect.FullName) {
+func (m *Manifest) genTestClientUpdateHandleImplRunIDMethod(f *j.File, update protoreflect.FullName) {
 	f.Comment("RunID implementation")
 	f.Func().
-		Params(g.Id("h").Op("*").Id(svc.toLowerCamel("test%sHandle", update))).
+		Params(j.Id("h").Op("*").Id(m.toLowerCamel("test%sHandle", update))).
 		Id("RunID").
 		Params().
-		Params(g.String()).
+		Params(j.String()).
 		Block(
-			g.Return(g.Id("h").Dot("runID")),
+			j.Return(j.Id("h").Dot("runID")),
 		)
 }
 
-func (svc *Manifest) genTestClientUpdateHandleImplUpdateIDMethod(f *g.File, update protoreflect.FullName) {
+func (m *Manifest) genTestClientUpdateHandleImplUpdateIDMethod(f *j.File, update protoreflect.FullName) {
 	f.Comment("UpdateID implementation")
 	f.Func().
-		Params(g.Id("h").Op("*").Id(svc.toLowerCamel("test%sHandle", update))).
+		Params(j.Id("h").Op("*").Id(m.toLowerCamel("test%sHandle", update))).
 		Id("UpdateID").
 		Params().
-		Params(g.String()).
+		Params(j.String()).
 		Block(
-			g.If(g.Id("h").Dot("opts").Op("!=").Nil()).Block(
-				g.Return(g.Id("h").Dot("opts").Dot("UpdateID")),
+			j.If(j.Id("h").Dot("opts").Op("!=").Nil()).Block(
+				j.Return(j.Id("h").Dot("opts").Dot("UpdateID")),
 			),
-			g.Return(g.Lit("")),
+			j.Return(j.Lit("")),
 		)
 }
 
-func (svc *Manifest) genTestClientUpdateHandleImplWorkflowIDMethod(f *g.File, update protoreflect.FullName) {
+func (m *Manifest) genTestClientUpdateHandleImplWorkflowIDMethod(f *j.File, update protoreflect.FullName) {
 	f.Comment("WorkflowID implementation")
 	f.Func().
-		Params(g.Id("h").Op("*").Id(svc.toLowerCamel("test%sHandle", update))).
+		Params(j.Id("h").Op("*").Id(m.toLowerCamel("test%sHandle", update))).
 		Id("WorkflowID").
 		Params().
-		Params(g.String()).
+		Params(j.String()).
 		Block(
-			g.Return(g.Id("h").Dot("workflowID")),
+			j.Return(j.Id("h").Dot("workflowID")),
 		)
 }
 
 // genTestClientWorkflowRunImpl generates a test<Workflow>Run struct
-func (svc *Manifest) genTestClientWorkflowRunImpl(f *g.File, workflow protoreflect.FullName) {
-	method := svc.methods[workflow]
-	methodName := svc.toLowerCamel("test%sRun", workflow)
+func (m *Manifest) genTestClientWorkflowRunImpl(f *j.File, workflow protoreflect.FullName) {
+	method := m.methods[workflow]
+	methodName := m.toLowerCamel("test%sRun", workflow)
 	hasInput := !isEmpty(method.Input)
 	// generate test<Workflow>Run struct
-	f.Var().Id("_").Id(svc.toCamel("%sRun", workflow)).Op("=").Op("&").Id(svc.toLowerCamel("test%sRun", workflow)).Values()
-	f.Commentf("%s provides convenience methods for interacting with a(n) %s workflow in the test environment", methodName, svc.fqnForWorkflow(workflow))
-	f.Type().Id(methodName).StructFunc(func(fields *g.Group) {
-		fields.Id("client").Op("*").Id(svc.toCamel("Test%sClient", svc.Service.GoName))
+	f.Var().Id("_").Id(m.toCamel("%sRun", workflow)).Op("=").Op("&").Id(m.toLowerCamel("test%sRun", workflow)).Values()
+	f.Commentf("%s provides convenience methods for interacting with a(n) %s workflow in the test environment", methodName, m.fqnForWorkflow(workflow))
+	f.Type().Id(methodName).StructFunc(func(fields *j.Group) {
+		fields.Id("client").Op("*").Id(m.toCamel("Test%sClient", m.Service.GoName))
 		fields.Id("env").Op("*").Qual(testsuitePkg, "TestWorkflowEnvironment")
+		fields.Id("isStarted").Qual(atomicPkg, "Bool")
 		fields.Id("opts").Op("*").Qual(clientPkg, "StartWorkflowOptions")
 		if hasInput {
-			fields.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), svc.getMessageName(method.Input))
+			fields.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 		}
-		fields.Id("workflows").Id(svc.toCamel("%sWorkflows", svc.Service.GoName))
+		fields.Id("workflows").Id(m.toCamel("%sWorkflows", m.Service.GoName))
 	})
 }
 
 // genClientWorkflowRunImplCancelMethod generates a <Workflow>Run's Cancel method
-func (svc *Manifest) genTestClientWorkflowRunImplCancelMethod(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toLowerCamel("Test%sRun", workflow)
+func (m *Manifest) genTestClientWorkflowRunImplCancelMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toLowerCamel("Test%sRun", workflow)
 
 	f.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
 	f.Func().
-		Params(g.Id("r").Op("*").Id(typeName)).
+		Params(j.Id("r").Op("*").Id(typeName)).
 		Id("Cancel").
-		Params(g.Id("ctx").Qual("context", "Context")).
-		Params(g.Error()).
+		Params(j.Id("ctx").Qual("context", "Context")).
+		Params(j.Error()).
 		Block(
-			g.Return(
-				g.Id("r").Dot("client").Dot("CancelWorkflow").CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id("r").Dot("client").Dot("CancelWorkflow").CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -726,102 +954,106 @@ func (svc *Manifest) genTestClientWorkflowRunImplCancelMethod(f *g.File, workflo
 }
 
 // genTestClientWorkflowRunImplGetMethod generates a test<Workflow>Run's Get method
-func (svc *Manifest) genTestClientWorkflowRunImplGetMethod(f *g.File, workflow protoreflect.FullName) {
-	method := svc.methods[workflow]
+func (m *Manifest) genTestClientWorkflowRunImplGetMethod(f *j.File, workflow protoreflect.FullName) {
+	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 
-	f.Commentf("Get retrieves a test %s workflow result", svc.fqnForWorkflow(workflow))
+	f.Commentf("Get retrieves a test %s workflow result", m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id("Get").
-		Params(g.Qual("context", "Context")).
-		ParamsFunc(func(returnVals *g.Group) {
+		Params(j.Qual("context", "Context")).
+		ParamsFunc(func(g *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
+				g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
-			returnVals.Error()
+			g.Error()
 		}).
-		BlockFunc(func(fn *g.Group) {
+		BlockFunc(func(g *j.Group) {
 			// execute workflow
-			fn.Id("r").Dot("env").Dot("ExecuteWorkflow").CallFunc(func(args *g.Group) {
-				args.Id(svc.toCamel("%sWorkflowName", workflow))
-				if hasInput {
-					args.Id("r").Dot("req")
-				}
+			g.IfFunc(func(g *j.Group) {
+				g.Id("r").Dot("isStarted").Dot("CompareAndSwap").Call(j.False(), j.True())
+			}).BlockFunc(func(g *j.Group) {
+				g.Id("r").Dot("env").Dot("ExecuteWorkflow").CallFunc(func(g *j.Group) {
+					g.Id(m.toCamel("%sWorkflowName", workflow))
+					if hasInput {
+						g.Id("r").Dot("req")
+					}
+				})
 			})
 			// ensure completed
-			fn.If(g.Op("!").Id("r").Dot("env").Dot("IsWorkflowCompleted").Call()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			g.If(j.Op("!").Id("r").Dot("env").Dot("IsWorkflowCompleted").Call()).Block(
+				j.ReturnFunc(func(g *j.Group) {
 					if hasOutput {
-						returnVals.Nil()
+						g.Nil()
 					}
-					returnVals.Qual("errors", "New").Call(g.Lit("workflow in progress"))
+					g.Qual("errors", "New").Call(j.Lit("workflow in progress"))
 				}),
 			)
 			// return workflow error if applicable
-			fn.If(g.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowError").Call(), g.Err().Op("!=").Nil()).Block(
-				g.ReturnFunc(func(returnVals *g.Group) {
+			g.If(j.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowError").Call(), j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(g *j.Group) {
 					if hasOutput {
-						returnVals.Nil()
+						g.Nil()
 					}
-					returnVals.Err()
+					g.Err()
 				}),
 			)
 			// return workflow result
 			if hasOutput {
-				fn.Var().Id("result").Qual(string(method.Output.GoIdent.GoImportPath), svc.getMessageName(method.Output))
-				fn.If(g.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowResult").Call(g.Op("&").Id("result")), g.Err().Op("!=").Nil()).Block(
-					g.Return(g.Nil(), g.Err()),
+				g.Var().Id("result").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+				g.If(j.Err().Op(":=").Id("r").Dot("env").Dot("GetWorkflowResult").Call(j.Op("&").Id("result")), j.Err().Op("!=").Nil()).Block(
+					j.Return(j.Nil(), j.Err()),
 				)
-				fn.Return(g.Op("&").Id("result"), g.Nil())
+				g.Return(j.Op("&").Id("result"), j.Nil())
 			} else {
-				fn.Return(g.Nil())
+				g.Return(j.Nil())
 			}
 		})
 }
 
 // genTestClientWorkflowRunImplIDMethod generates a test<Workflow>Run's workflow ID
-func (svc *Manifest) genTestClientWorkflowRunImplIDMethod(f *g.File, workflow protoreflect.FullName) {
-	f.Commentf("ID returns a test %s workflow run's workflow ID", svc.fqnForWorkflow(workflow))
+func (m *Manifest) genTestClientWorkflowRunImplIDMethod(f *j.File, workflow protoreflect.FullName) {
+	f.Commentf("ID returns a test %s workflow run's workflow ID", m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id("ID").
 		Params().
-		Params(g.String()).
+		Params(j.String()).
 		Block(
-			g.If(g.Id("r").Dot("opts").Op("!=").Nil()).Block(
-				g.Return(g.Id("r").Dot("opts").Dot("ID")),
+			j.If(j.Id("r").Dot("opts").Op("!=").Nil()).Block(
+				j.Return(j.Id("r").Dot("opts").Dot("ID")),
 			),
-			g.Return(g.Lit("")),
+			j.Return(j.Lit("")),
 		)
 }
 
 // genTestClientWorkflowRunImplQueryMethod generates a test<Workflow>Run's <Query> method
-func (svc *Manifest) genTestClientWorkflowRunImplQueryMethod(f *g.File, workflow, query protoreflect.FullName) {
-	handler := svc.methods[query]
-	handlerName := svc.methods[query].GoName
+func (m *Manifest) genTestClientWorkflowRunImplQueryMethod(f *j.File, workflow, query protoreflect.FullName) {
+	handler := m.methods[query]
+	handlerName := m.methods[query].GoName
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	f.Commentf("%s executes a %s query against a test %s workflow", handlerName, svc.fqnForQuery(query), svc.fqnForWorkflow(workflow))
+	f.Commentf("%s executes a %s query against a test %s workflow", handlerName, m.fqnForQuery(query), m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id(handlerName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).Block(
-		g.Return(
-			g.Id("r").Dot("client").Dot(svc.methods[query].GoName).CallFunc(func(args *g.Group) {
+		j.Return(
+			j.Id("r").Dot("client").Dot(m.methods[query].GoName).CallFunc(func(args *j.Group) {
 				args.Id("ctx")
 				args.Id("r").Dot("ID").Call()
 				args.Id("r").Dot("RunID").Call()
@@ -834,53 +1066,53 @@ func (svc *Manifest) genTestClientWorkflowRunImplQueryMethod(f *g.File, workflow
 }
 
 // genTestClientWorkflowRunImplRunMethod generates a test<Workflow>Run's Run method
-func (svc *Manifest) genTestClientWorkflowRunImplRunMethod(f *g.File, workflow protoreflect.FullName) {
+func (m *Manifest) genTestClientWorkflowRunImplRunMethod(f *j.File, workflow protoreflect.FullName) {
 	f.Comment("Run noop implementation")
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id("Run").
 		Params().
 		Qual(clientPkg, "WorkflowRun").
 		Block(
-			g.Return(g.Nil()),
+			j.Return(j.Nil()),
 		)
 }
 
 // genTestClientWorkflowRunImplRunIDMethod generates a test<Workflow>Run's RunID method
-func (svc *Manifest) genTestClientWorkflowRunImplRunIDMethod(f *g.File, workflow protoreflect.FullName) {
+func (m *Manifest) genTestClientWorkflowRunImplRunIDMethod(f *j.File, workflow protoreflect.FullName) {
 	f.Comment("RunID noop implementation")
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id("RunID").
 		Params().
-		Params(g.String()).
+		Params(j.String()).
 		Block(
-			g.Return(g.Lit("")),
+			j.Return(j.Lit("")),
 		)
 }
 
 // genTestClientWorkflowRunImplQueryMethod generates a test<Workflow>Run's <Signal> method
-func (svc *Manifest) genTestClientWorkflowRunImplSignalMethod(f *g.File, workflow, signal protoreflect.FullName) {
-	handler := svc.methods[signal]
-	handlerName := svc.methods[signal].GoName
+func (m *Manifest) genTestClientWorkflowRunImplSignalMethod(f *j.File, workflow, signal protoreflect.FullName) {
+	handler := m.methods[signal]
+	handlerName := m.methods[signal].GoName
 	hasInput := !isEmpty(handler.Input)
 
-	f.Commentf("%s executes a %s signal against a test %s workflow", handlerName, svc.fqnForSignal(signal), svc.fqnForWorkflow(workflow))
+	f.Commentf("%s executes a %s signal against a test %s workflow", handlerName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id(handlerName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 		}).
 		Params(
-			g.Error(),
+			j.Error(),
 		).
-		BlockFunc(func(fn *g.Group) {
-			if svc.methodsFromSameService(signal, workflow) {
-				fn.Return().Id("r").Dot("client").Dot(handlerName).CallFunc(func(args *g.Group) {
+		BlockFunc(func(fn *j.Group) {
+			if m.methodsFromSameService(signal, workflow) {
+				fn.Return().Id("r").Dot("client").Dot(handlerName).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -889,36 +1121,36 @@ func (svc *Manifest) genTestClientWorkflowRunImplSignalMethod(f *g.File, workflo
 					}
 				})
 			} else {
-				fn.Id("r").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *g.Group) {
-					args.Add(svc.Qual(signal, svc.toCamel("%sSignalName", signal)))
+				fn.Id("r").Dot("env").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
+					args.Add(m.Qual(signal, m.toCamel("%sSignalName", signal)))
 					if hasInput {
 						args.Id("req")
 					} else {
 						args.Nil()
 					}
 				})
-				fn.Return(g.Nil())
+				fn.Return(j.Nil())
 			}
 		})
 }
 
 // genClientWorkflowRunImplTerminateMethod generates a <Workflow>Run's Terminate method
-func (svc *Manifest) genTestClientWorkflowRunImplTerminateMethod(f *g.File, workflow protoreflect.FullName) {
-	typeName := svc.toLowerCamel("Test%sRun", workflow)
+func (m *Manifest) genTestClientWorkflowRunImplTerminateMethod(f *j.File, workflow protoreflect.FullName) {
+	typeName := m.toLowerCamel("Test%sRun", workflow)
 
 	f.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
 	f.Func().
-		Params(g.Id("r").Op("*").Id(typeName)).
+		Params(j.Id("r").Op("*").Id(typeName)).
 		Id("Terminate").
 		Params(
-			g.Id("ctx").Qual("context", "Context"),
-			g.Id("reason").String(),
-			g.Id("details").Op("...").Interface(),
+			j.Id("ctx").Qual("context", "Context"),
+			j.Id("reason").String(),
+			j.Id("details").Op("...").Interface(),
 		).
-		Params(g.Error()).
+		Params(j.Error()).
 		Block(
-			g.Return(
-				g.Id("r").Dot("client").Dot("TerminateWorkflow").CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id("r").Dot("client").Dot("TerminateWorkflow").CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -930,32 +1162,32 @@ func (svc *Manifest) genTestClientWorkflowRunImplTerminateMethod(f *g.File, work
 }
 
 // genTestClientWorkflowRunImplQueryMethod generates a test<Workflow>Run's <Update> method
-func (svc *Manifest) genTestClientWorkflowRunImplUpdateMethod(f *g.File, workflow, update protoreflect.FullName) {
-	handler := svc.methods[update]
-	handlerName := svc.methods[update].GoName
+func (m *Manifest) genTestClientWorkflowRunImplUpdateMethod(f *j.File, workflow, update protoreflect.FullName) {
+	handler := m.methods[update]
+	handlerName := m.methods[update].GoName
 	hasInput := !isEmpty(handler.Input)
 	hasOutput := !isEmpty(handler.Output)
 
-	f.Commentf("%s executes a(n) %s update against a test %s workflow", handlerName, svc.fqnForUpdate(update), svc.fqnForWorkflow(workflow))
+	f.Commentf("%s executes a(n) %s update against a test %s workflow", handlerName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id(handlerName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
-		ParamsFunc(func(returnVals *g.Group) {
+		ParamsFunc(func(returnVals *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), svc.getMessageName(handler.Output))
+				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 			}
 			returnVals.Error()
 		}).
 		Block(
-			g.Return(
-				g.Id("r").Dot("client").Dot(svc.methods[update].GoName).CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id("r").Dot("client").Dot(m.methods[update].GoName).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -969,29 +1201,29 @@ func (svc *Manifest) genTestClientWorkflowRunImplUpdateMethod(f *g.File, workflo
 }
 
 // genTestClientWorkflowRunImplQueryMethod generates a test<Workflow>Run's <Update>Async method
-func (svc *Manifest) genTestClientWorkflowRunImplUpdateAsyncMethod(f *g.File, workflow, update protoreflect.FullName) {
-	handler := svc.methods[update]
+func (m *Manifest) genTestClientWorkflowRunImplUpdateMethodAsync(f *j.File, workflow, update protoreflect.FullName) {
+	handler := m.methods[update]
 	hasInput := !isEmpty(handler.Input)
-	methodName := svc.toCamel("%sAsync", update)
+	methodName := m.toCamel("%sAsync", update)
 
-	f.Commentf("%s executes a(n) %s update against a test %s workflow", methodName, svc.fqnForUpdate(update), svc.fqnForWorkflow(workflow))
+	f.Commentf("%s executes a(n) %s update against a test %s workflow", methodName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
 	f.Func().
-		Params(g.Id("r").Op("*").Id(svc.toLowerCamel("test%sRun", workflow))).
+		Params(j.Id("r").Op("*").Id(m.toLowerCamel("test%sRun", workflow))).
 		Id(methodName).
-		ParamsFunc(func(args *g.Group) {
+		ParamsFunc(func(args *j.Group) {
 			args.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), svc.getMessageName(handler.Input))
+				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(svc.toCamel("%sOptions", update))
+			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
 		Params(
-			g.Id(svc.toCamel("%sHandle", update)),
-			g.Error(),
+			j.Id(m.toCamel("%sHandle", update)),
+			j.Error(),
 		).
 		Block(
-			g.Return(
-				g.Id("r").Dot("client").Dot(methodName).CallFunc(func(args *g.Group) {
+			j.Return(
+				j.Id("r").Dot("client").Dot(methodName).CallFunc(func(args *j.Group) {
 					args.Id("ctx")
 					args.Id("r").Dot("ID").Call()
 					args.Id("r").Dot("RunID").Call()
@@ -1004,89 +1236,96 @@ func (svc *Manifest) genTestClientWorkflowRunImplUpdateAsyncMethod(f *g.File, wo
 		)
 }
 
-func (svc *Manifest) renderTestClient(f *g.File) {
+func (m *Manifest) renderTestClient(f *j.File) {
 	// generate test client
-	svc.genTestClientImpl(f)
-	svc.genTestClientImplNewMethod(f)
-	for _, workflow := range svc.workflowsOrdered {
-		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+	m.genTestClientImpl(f)
+	m.genTestClientImplNewMethod(f)
+	for _, workflow := range m.workflowsOrdered {
+		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		svc.genTestClientImplWorkflowMethod(f, workflow)
-		svc.genTestClientImplWorkflowAsyncMethod(f, workflow)
-		svc.genTestClientImplWorkflowGetMethod(f, workflow)
-		for _, signal := range svc.workflows[workflow].GetSignal() {
+		m.genTestClientImplWorkflowMethod(f, workflow)
+		m.genTestClientImplWorkflowMethodAsync(f, workflow)
+		m.genTestClientImplWorkflowGetMethod(f, workflow)
+		for _, signal := range m.workflows[workflow].GetSignal() {
 			if !signal.GetStart() {
 				continue
 			}
-			svc.genTestClientImplWorkflowWithSignalMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
-			svc.genTestClientImplWorkflowWithSignalAsyncMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+			m.genTestClientImplWorkflowWithSignalMethod(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+			m.genTestClientImplWorkflowWithSignalMethodAsync(f, workflow, getFullyQualifiedRef(workflow, signal.GetRef()))
+		}
+		for _, update := range m.workflows[workflow].GetUpdate() {
+			if !update.GetStart() {
+				continue
+			}
+			m.genTestClientImplUpdateWithStartMethod(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
+			m.genTestClientImplUpdateWithStartMethodAsync(f, workflow, getFullyQualifiedRef(workflow, update.GetRef()))
 		}
 	}
 
-	svc.genTestClientImplWorkflowCancelMethod(f)
-	svc.genTestClientImplWorkflowTerminateMethod(f)
+	m.genTestClientImplWorkflowCancelMethod(f)
+	m.genTestClientImplWorkflowTerminateMethod(f)
 
 	// generate test client query methods
-	for _, query := range svc.queriesOrdered {
-		if svc.methods[query].Desc.Parent() != svc.Service.Desc {
+	for _, query := range m.queriesOrdered {
+		if m.methods[query].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		svc.genTestClientImplQueryMethod(f, query)
+		m.genTestClientImplQueryMethod(f, query)
 	}
 
 	// generate test client signal methods
-	for _, signal := range svc.signalsOrdered {
-		if svc.methods[signal].Desc.Parent() != svc.Service.Desc {
+	for _, signal := range m.signalsOrdered {
+		if m.methods[signal].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		svc.genTestClientImplSignalMethod(f, signal)
+		m.genTestClientImplSignalMethod(f, signal)
 	}
 
 	// generate test client update methods
-	for _, update := range svc.updatesOrdered {
-		if svc.methods[update].Desc.Parent() != svc.Service.Desc {
+	for _, update := range m.updatesOrdered {
+		if m.methods[update].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		svc.genTestClientImplUpdateMethod(f, update)
-		svc.genTestClientImplUpdateAsyncMethod(f, update)
-		svc.genTestClientImplUpdateGetMethod(f, update)
+		m.genTestClientImplUpdateMethod(f, update)
+		m.genTestClientImplUpdateMethodAsync(f, update)
+		m.genTestClientImplUpdateGetMethod(f, update)
 
-		svc.genTestClientUpdateHandleImpl(f, update)
-		svc.genTestClientUpdateHandleImplGetMethod(f, update)
-		svc.genTestClientUpdateHandleImplRunIDMethod(f, update)
-		svc.genTestClientUpdateHandleImplUpdateIDMethod(f, update)
-		svc.genTestClientUpdateHandleImplWorkflowIDMethod(f, update)
+		m.genTestClientUpdateHandleImpl(f, update)
+		m.genTestClientUpdateHandleImplGetMethod(f, update)
+		m.genTestClientUpdateHandleImplRunIDMethod(f, update)
+		m.genTestClientUpdateHandleImplUpdateIDMethod(f, update)
+		m.genTestClientUpdateHandleImplWorkflowIDMethod(f, update)
 	}
 
 	// generate workflow test runs
-	for _, workflow := range svc.workflowsOrdered {
-		if svc.methods[workflow].Desc.Parent() != svc.Service.Desc {
+	for _, workflow := range m.workflowsOrdered {
+		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		opts := svc.workflows[workflow]
-		svc.genTestClientWorkflowRunImpl(f, workflow)
-		svc.genTestClientWorkflowRunImplCancelMethod(f, workflow)
-		svc.genTestClientWorkflowRunImplGetMethod(f, workflow)
-		svc.genTestClientWorkflowRunImplIDMethod(f, workflow)
-		svc.genTestClientWorkflowRunImplRunMethod(f, workflow)
-		svc.genTestClientWorkflowRunImplRunIDMethod(f, workflow)
-		svc.genTestClientWorkflowRunImplTerminateMethod(f, workflow)
+		opts := m.workflows[workflow]
+		m.genTestClientWorkflowRunImpl(f, workflow)
+		m.genTestClientWorkflowRunImplCancelMethod(f, workflow)
+		m.genTestClientWorkflowRunImplGetMethod(f, workflow)
+		m.genTestClientWorkflowRunImplIDMethod(f, workflow)
+		m.genTestClientWorkflowRunImplRunMethod(f, workflow)
+		m.genTestClientWorkflowRunImplRunIDMethod(f, workflow)
+		m.genTestClientWorkflowRunImplTerminateMethod(f, workflow)
 
 		// generate query methods
 		for _, queryOpts := range opts.GetQuery() {
-			svc.genTestClientWorkflowRunImplQueryMethod(f, workflow, getFullyQualifiedRef(workflow, queryOpts.GetRef()))
+			m.genTestClientWorkflowRunImplQueryMethod(f, workflow, getFullyQualifiedRef(workflow, queryOpts.GetRef()))
 		}
 
 		// generate signal methods
 		for _, signalOpts := range opts.GetSignal() {
-			svc.genTestClientWorkflowRunImplSignalMethod(f, workflow, getFullyQualifiedRef(workflow, signalOpts.GetRef()))
+			m.genTestClientWorkflowRunImplSignalMethod(f, workflow, getFullyQualifiedRef(workflow, signalOpts.GetRef()))
 		}
 
 		// generate update methods
 		for _, updateOpts := range opts.GetUpdate() {
-			svc.genTestClientWorkflowRunImplUpdateMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
-			svc.genTestClientWorkflowRunImplUpdateAsyncMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
+			m.genTestClientWorkflowRunImplUpdateMethod(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
+			m.genTestClientWorkflowRunImplUpdateMethodAsync(f, workflow, getFullyQualifiedRef(workflow, updateOpts.GetRef()))
 		}
 	}
 }

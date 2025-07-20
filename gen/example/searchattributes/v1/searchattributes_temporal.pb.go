@@ -28,6 +28,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 )
 
@@ -186,15 +187,16 @@ func (c *exampleClient) TerminateWorkflow(ctx context.Context, workflowID string
 
 // SearchAttributesOptions provides configuration for a example.searchattributes.v1.Example.SearchAttributes workflow operation
 type SearchAttributesOptions struct {
-	options          client.StartWorkflowOptions
-	executionTimeout *time.Duration
-	id               *string
-	idReusePolicy    enumsv1.WorkflowIdReusePolicy
-	retryPolicy      *temporal.RetryPolicy
-	runTimeout       *time.Duration
-	searchAttributes map[string]any
-	taskQueue        *string
-	taskTimeout      *time.Duration
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
 // NewSearchAttributesOptions initializes a new SearchAttributesOptions value
@@ -305,6 +307,12 @@ func (o *SearchAttributesOptions) WithTaskTimeout(d time.Duration) *SearchAttrib
 // WithTaskQueue sets the TaskQueue value
 func (o *SearchAttributesOptions) WithTaskQueue(tq string) *SearchAttributesOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SearchAttributesOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SearchAttributesOptions {
+	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -470,17 +478,18 @@ func SearchAttributesChildAsync(ctx workflow.Context, req *SearchAttributesInput
 
 // SearchAttributesChildOptions provides configuration for a child example.searchattributes.v1.Example.SearchAttributes workflow operation
 type SearchAttributesChildOptions struct {
-	options             workflow.ChildWorkflowOptions
-	executionTimeout    *time.Duration
-	id                  *string
-	idReusePolicy       enumsv1.WorkflowIdReusePolicy
-	retryPolicy         *temporal.RetryPolicy
-	runTimeout          *time.Duration
-	searchAttributes    map[string]any
-	taskQueue           *string
-	taskTimeout         *time.Duration
-	parentClosePolicy   enumsv1.ParentClosePolicy
-	waitForCancellation *bool
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
 }
 
 // NewSearchAttributesChildOptions initializes a new SearchAttributesChildOptions value
@@ -652,6 +661,12 @@ func (o *SearchAttributesChildOptions) WithWaitForCancellation(wait bool) *Searc
 	return o
 }
 
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *SearchAttributesChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SearchAttributesChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
 // SearchAttributesChildRun describes a child SearchAttributes workflow run
 type SearchAttributesChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -763,6 +778,7 @@ var _ SearchAttributesRun = &testSearchAttributesRun{}
 type testSearchAttributesRun struct {
 	client    *TestExampleClient
 	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
 	opts      *client.StartWorkflowOptions
 	req       *SearchAttributesInput
 	workflows ExampleWorkflows
@@ -775,7 +791,9 @@ func (r *testSearchAttributesRun) Cancel(ctx context.Context) error {
 
 // Get retrieves a test example.searchattributes.v1.Example.SearchAttributes workflow result
 func (r *testSearchAttributesRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(SearchAttributesWorkflowName, r.req)
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(SearchAttributesWorkflowName, r.req)
+	}
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -903,9 +921,10 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Value:   "searchattributes",
 				},
 				&v2.StringFlag{
-					Name:    "input-file",
-					Usage:   "path to json-formatted input file",
-					Aliases: []string{"f"},
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
 				},
 				&v2.StringFlag{
 					Name:     "custom-keyword-field",
@@ -946,7 +965,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 				defer tc.Close()
 				c := NewExampleClient(tc)
-				req, err := UnmarshalCliFlagsToSearchAttributesInput(cmd)
+				req, err := UnmarshalCliFlagsToSearchAttributesInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1010,23 +1029,20 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 
 // UnmarshalCliFlagsToSearchAttributesInput unmarshals a SearchAttributesInput from command line flags
 func UnmarshalCliFlagsToSearchAttributesInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SearchAttributesInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SearchAttributesInput
-	if cmd.IsSet("input-file") {
-		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
 		if err != nil {
-			inputFile = cmd.String("input-file")
+			f = cmd.String(opts.FromFile)
 		}
-		b, err := os.ReadFile(inputFile)
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return nil, fmt.Errorf("error reading input-file: %w", err)
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
 		}
 		if err := protojson.Unmarshal(b, &result); err != nil {
-			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
-	}
-	opts := helpers.UnmarshalCliFlagsOptions{}
-	if len(options) > 0 {
-		opts = options[0]
 	}
 	if flag := opts.FlagName("custom-keyword-field"); cmd.IsSet(flag) {
 		value := cmd.String(flag)

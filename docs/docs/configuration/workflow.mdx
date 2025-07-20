@@ -399,6 +399,38 @@ service Example {
 }
 ```
 
+### wait_for_cancellation
+
+`bool`
+
+Whether to wait for canceled [child workflow](https://docs.temporal.io/workflows#child-workflow) to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled). Defaults to `false`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      wait_for_cancellation: false
+    };
+  }
+}
+```
+
+### workflow_id_conflict_policy
+
+[temporal.api.enums.v1.WorkflowIdConflictPolicy](https://buf.build/temporalio/api/docs/master:temporal.api.enums.v1#temporal.api.enums.v1.WorkflowIdConflictPolicy)
+
+Specifies the [Workflow ID conflict policy](https://docs.temporal.io/workflow-execution/workflowid-runid#workflow-id-conflict-policy) to use when starting a workflow. Defaults to `WORKFLOW_ID_CONFLICT_POLICY_FAIL`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_FAIL
+    };
+  }
+}
+```
+
 ### xns
 
 [temporal.v1.XNSActivityOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.XNSActivityOptions)
@@ -418,22 +450,6 @@ service Example {
         heartbeat_interval: { seconds: 10 }
         start_to_close_timeout: { seconds: 300 }
       }
-    };
-  }
-}
-```
-
-### wait_for_cancellation
-
-`bool`
-
-Whether to wait for canceled [child workflow](https://docs.temporal.io/workflows#child-workflow) to be ended (child workflow can be ended as: completed/failed/timedout/terminated/canceled). Defaults to `false`.
-
-```protobuf
-service Example {
-  rpc Hello(HelloInput) returns (HelloOutput) {
-    option (temporal.v1.workflow) = {
-      wait_for_cancellation: false
     };
   }
 }

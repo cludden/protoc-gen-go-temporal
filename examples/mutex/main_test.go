@@ -11,6 +11,7 @@ import (
 
 	mutexv1 "github.com/cludden/protoc-gen-go-temporal/gen/example/mutex/v1"
 	"github.com/cludden/protoc-gen-go-temporal/gen/example/mutex/v1/mutexv1xns"
+	"github.com/hairyhenderson/go-which"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
@@ -20,14 +21,20 @@ import (
 )
 
 func TestSampleWorkflowWithMutexWorkflow(t *testing.T) {
-	if testing.Short() {
+	existingPath := which.Which("temporal")
+	if testing.Short() || existingPath == "" {
 		t.SkipNow()
 	}
 
 	ctx, require := context.Background(), require.New(t)
 	srv, err := testsuite.StartDevServer(ctx, testsuite.DevServerOptions{
+		ExistingPath: existingPath,
 		ClientOptions: &client.Options{
-			Logger: log.NewStructuredLogger(slog.New(slog.NewJSONHandler(io.Discard, nil))),
+			Logger: log.NewStructuredLogger(
+				slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
+					Level: slog.LevelDebug,
+				})),
+			),
 		},
 	})
 	require.NoError(err)
@@ -63,5 +70,9 @@ func TestSampleWorkflowWithMutexWorkflow(t *testing.T) {
 		b = time.Now()
 	}()
 	g.Wait()
-	require.GreaterOrEqual(math.Abs(a.Sub(b).Seconds()), float64(3), "one workflow should finish at least 3s after the other")
+	require.GreaterOrEqual(
+		math.Abs(a.Sub(b).Seconds()),
+		float64(3),
+		"one workflow should finish at least 3s after the other",
+	)
 }
