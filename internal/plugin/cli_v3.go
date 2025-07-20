@@ -93,12 +93,13 @@ func (m *Manifest) renderCLIV3(f *j.File) {
 	}
 }
 
-// genCliV3New generates a New<Service>Cli constructor function for CLI v3
+// genCliNew generates a New<Service>Cli constructor function for CLI v3
 func (m *Manifest) genCliV3New(f *j.File) {
-	functionName := m.toCamel("New%sCliV3", m.Service.GoName)
-	optionsName := m.toCamel("%sCliV3Options", m.Service.GoName)
+	functionName := m.Names().cliV3Ctor()
+	optionsName := m.Names().cliV3Options()
+	commandsCtor := m.Names().cliV3CommandsCtor()
 
-	f.Commentf("%s initializes a cli v3 app for a(n) %s service", functionName, m.Service.Desc.FullName())
+	f.Commentf("%s initializes a cli app for a(n) %s service", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).
 		Params(
 			j.Id("options").Op("...").Op("*").Id(optionsName),
@@ -108,7 +109,7 @@ func (m *Manifest) genCliV3New(f *j.File) {
 			j.Error(),
 		).
 		Block(
-			j.List(j.Id("commands"), j.Err()).Op(":=").Id(m.toLowerCamel("new%sCommandsV3", m.Service.GoName)).Call(j.Id("options").Op("...")),
+			j.List(j.Id("commands"), j.Err()).Op(":=").Id(commandsCtor).Call(j.Id("options").Op("...")),
 			j.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing subcommands: %w"), j.Err())),
 			),
@@ -123,12 +124,12 @@ func (m *Manifest) genCliV3New(f *j.File) {
 		)
 }
 
-// genCliV3NewCommands generates a new<Service>CommandsV3 constructor function
+// genCliNewCommands generates a new<Service>CommandsV3 constructor function
 func (m *Manifest) genCliV3NewCommands(f *j.File) {
-	functionName := m.toLowerCamel("new%sCommandsV3", m.Service.GoName)
-	optionsName := m.toCamel("%sCliV3Options", m.Service.GoName)
+	functionName := m.Names().cliV3CommandsCtor()
+	optionsName := m.Names().cliV3Options()
 
-	f.Commentf("%s initializes (sub)commands for a %s cli v3 or command", functionName, m.Service.Desc.FullName())
+	f.Commentf("%s initializes (sub)commands for a %s cli or command", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).
 		Params(
 			j.Id("options").Op("...").Op("*").Id(optionsName),
@@ -263,7 +264,7 @@ func (m *Manifest) genCliV3NewCommands(f *j.File) {
 
 // genCliV3OptionsImpl generates a CLIV3Options struct
 func (m *Manifest) genCliV3OptionsImpl(f *j.File) {
-	typeName := m.toCamel("%sCliV3Options", m.Service.GoName)
+	typeName := m.Names().cliV3Options()
 
 	// generate type definition
 	f.Commentf("%s describes runtime configuration for %s cli v3", typeName, m.Service.Desc.FullName())
@@ -298,8 +299,8 @@ func (m *Manifest) genCliV3OptionsImpl(f *j.File) {
 			Params(j.Qual(workerPkg, "Worker"), j.Error()),
 	)
 
-	// generate New<Service>CliV3Options
-	functionName := m.toCamel("New%s", typeName)
+	// generate New<Service>CliOptions
+	functionName := m.Names().cliV3OptionsCtor()
 	f.Commentf("%s initializes a new %s value", functionName, typeName)
 	f.Func().Id(functionName).Params().Op("*").Id(typeName).Block(
 		j.Return(j.Op("&").Id(typeName).Values()),
@@ -389,4 +390,20 @@ func (m *Manifest) genCliV3OptionsImpl(f *j.File) {
 			j.Id("opts").Dot("worker").Op("=").Id("fn"),
 			j.Return(j.Id("opts")),
 		)
+}
+
+func (n *names) cliV3CommandsCtor() string {
+	return n.toLowerCamel("new%sCommands", n.Service.GoName)
+}
+
+func (n *names) cliV3Ctor() string {
+	return n.toCamel("New%sCli", n.Service.GoName)
+}
+
+func (n *names) cliV3Options() string {
+	return n.toCamel("%sCliOptions", n.Service.GoName)
+}
+
+func (n *names) cliV3OptionsCtor() string {
+	return n.toCamel("New%sCliOptions", n.Service.GoName)
 }

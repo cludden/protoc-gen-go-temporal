@@ -186,9 +186,6 @@ func parse(p *Plugin) (*Manifest, error) {
 				}
 
 				if opts, ok := proto.GetExtension(method.Desc.Options(), temporalv1.E_Update).(*temporalv1.UpdateOptions); ok && opts != nil {
-					if !m.cfg.WorkflowUpdateEnabled {
-						return nil, fmt.Errorf("method %q includes an update configuration, but workflow updates are not enabled: enable them with \"workflow-update-enabled=true\" plugin option", name)
-					}
 					m.updates[name] = opts
 					m.updatesOrdered = append(m.updatesOrdered, name)
 					details.updates = append(details.updates, name)

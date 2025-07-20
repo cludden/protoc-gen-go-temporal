@@ -16,8 +16,8 @@ plugins:
     opt:
       - cli-categories=true
       - cli-enabled=true
+      - cli-v3=true
       - docs-out=./proto/README.md
-      - workflow-update-enabled=true
 `
 
 export let buf_yaml = `version: v2

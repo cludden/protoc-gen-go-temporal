@@ -28,6 +28,8 @@ plugins:
     strategy: all
 inputs:
   - directory: examples
+    exclude_paths:
+      - examples/example/proto/example/v1
   - directory: proto
   - directory: test
     exclude_paths:

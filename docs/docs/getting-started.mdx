@@ -24,14 +24,12 @@ buf mod init
 Configure buf module and add `buf.build/cludden/protoc-gen-go-temporal` as a proto dependency to `proto/buf.yaml`
 
 ```yaml title="proto/buf.yaml"
-version: v1
+version: v2
+modules:
+  - path: proto
 deps:
   - buf.build/cludden/protoc-gen-go-temporal
-breaking:
-  use:
-    - FILE
 lint:
-  allow_comment_ignores: true
   use:
     - BASIC
 ```
@@ -41,36 +39,30 @@ lint:
 Configure buf code generation
 
 ```yaml title="buf.gen.yaml"
-version: v1
+version: v2
 managed:
   enabled: true
-  go_package_prefix:
-    default: example/gen
-    except:
-      - buf.build/cludden/protoc-gen-go-temporal
+  override:
+    - file_option: go_package_prefix
+      value: example/gen
 plugins:
-  - plugin: go
+  - local: protoc-gen-go
     out: gen
-    opt: paths=source_relative
-  - plugin: go_temporal
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-go_temporal
     out: gen
-    opt: paths=source_relative,cli-enabled=true,cli-categories=true,workflow-update-enabled=true,docs-out=./proto/README.md
     strategy: all
-```
-
-### 4. Create `buf.work.yaml`
-
-Configure buf workspace
-
-```yaml title="buf.work.yaml"
-version: v1
-directories:
-  - proto
+    opt:
+      - cli-categories=true
+      - cli-enabled=true
+      - cli-v3=true
+      - docs-out=./proto/README.md
 ```
 
 ## Generate
 
-### 5. Define schema
+### 4. Define schema
 
 ```protobuf title="proto/example/v1/example.proto"
 syntax="proto3";
@@ -166,7 +158,7 @@ message SetFooProgressRequest {
 }
 ```
 
-### 6. Generate go code
+### 5. Generate go code
 
 Generate temporal worker, client, and cli types, methods, interfaces, and functions
 
@@ -178,7 +170,7 @@ buf generate
 
 ## Implement
 
-### 7. Implement worker
+### 6. Implement worker
 
 Implement the required Workflow and Activity interfaces and create a new Temporal worker using the generated helpers
 
@@ -193,7 +185,7 @@ import (
 
 	examplev1 "example/gen/example/v1"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	sdklog "go.temporal.io/sdk/log"
@@ -292,20 +284,21 @@ func (a *Activities) Notify(ctx context.Context, req *examplev1.NotifyRequest) e
 func main() {
 	// initialize the generated cli application
 	app, err := examplev1.NewExampleCli(
-		examplev1.NewExampleCliOptions().WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-			// register activities and workflows using generated helpers
-			w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
-			examplev1.RegisterExampleActivities(w, &Activities{})
-			examplev1.RegisterExampleWorkflows(w, &Workflows{})
-			return w, nil
-		}),
+		examplev1.NewExampleCliOptions().
+			WithWorker(func(ctx context.Context, cmd *cli.Command, c client.Client) (worker.Worker, error) {
+				// register activities and workflows using generated helpers
+				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
+				examplev1.RegisterExampleActivities(w, &Activities{})
+				examplev1.RegisterExampleWorkflows(w, &Workflows{})
+				return w, nil
+			}),
 	)
 	if err != nil {
 		log.Fatalf("error initializing example cli: %v", err)
 	}
 
 	// run cli
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -313,7 +306,7 @@ func main() {
 
 ## Run
 
-### 8. Start Temporal
+### 7. Start Temporal
 
 Start temporal and visit the UI at http://localhost:8233.
 
@@ -323,7 +316,7 @@ temporal server start-dev \
   --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true"
 ```
 
-### 9. Start worker
+### 8. Start worker
 
 In a different terminal, start the worker.
 
@@ -332,7 +325,7 @@ go mod tidy
 go run main.go worker
 ```
 
-### 10. Start a workflow
+### 9. Start a workflow
 
 In a different terminal, start a workflow.
 

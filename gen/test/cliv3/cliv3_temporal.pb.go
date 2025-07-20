@@ -1433,46 +1433,46 @@ func (r *testCreateFooRun) UpdateFooAsync(ctx context.Context, req *UpdateFooInp
 	return r.client.UpdateFooAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// ExampleServiceCliV3Options describes runtime configuration for test.cliv3.ExampleService cli v3
-type ExampleServiceCliV3Options struct {
+// ExampleServiceCliOptions describes runtime configuration for test.cliv3.ExampleService cli v3
+type ExampleServiceCliOptions struct {
 	after            func(context.Context, *cliv3.Command) error
 	before           func(context.Context, *cliv3.Command) (context.Context, error)
 	clientForCommand func(context.Context, *cliv3.Command) (client.Client, error)
 	worker           func(context.Context, *cliv3.Command, client.Client) (worker.Worker, error)
 }
 
-// NewExampleServiceCliV3Options initializes a new ExampleServiceCliV3Options value
-func NewExampleServiceCliV3Options() *ExampleServiceCliV3Options {
-	return &ExampleServiceCliV3Options{}
+// NewExampleServiceCliOptions initializes a new ExampleServiceCliOptions value
+func NewExampleServiceCliOptions() *ExampleServiceCliOptions {
+	return &ExampleServiceCliOptions{}
 }
 
 // WithAfter injects a custom After hook to be run after any command invocation
-func (opts *ExampleServiceCliV3Options) WithAfter(fn func(context.Context, *cliv3.Command) error) *ExampleServiceCliV3Options {
+func (opts *ExampleServiceCliOptions) WithAfter(fn func(context.Context, *cliv3.Command) error) *ExampleServiceCliOptions {
 	opts.after = fn
 	return opts
 }
 
 // WithBefore injects a custom Before hook to be run prior to any command invocation
-func (opts *ExampleServiceCliV3Options) WithBefore(fn func(context.Context, *cliv3.Command) (context.Context, error)) *ExampleServiceCliV3Options {
+func (opts *ExampleServiceCliOptions) WithBefore(fn func(context.Context, *cliv3.Command) (context.Context, error)) *ExampleServiceCliOptions {
 	opts.before = fn
 	return opts
 }
 
 // WithClient provides a Temporal client factory for use by commands
-func (opts *ExampleServiceCliV3Options) WithClient(fn func(context.Context, *cliv3.Command) (client.Client, error)) *ExampleServiceCliV3Options {
+func (opts *ExampleServiceCliOptions) WithClient(fn func(context.Context, *cliv3.Command) (client.Client, error)) *ExampleServiceCliOptions {
 	opts.clientForCommand = fn
 	return opts
 }
 
 // WithWorker provides an method for initializing a worker
-func (opts *ExampleServiceCliV3Options) WithWorker(fn func(context.Context, *cliv3.Command, client.Client) (worker.Worker, error)) *ExampleServiceCliV3Options {
+func (opts *ExampleServiceCliOptions) WithWorker(fn func(context.Context, *cliv3.Command, client.Client) (worker.Worker, error)) *ExampleServiceCliOptions {
 	opts.worker = fn
 	return opts
 }
 
-// NewExampleServiceCliV3 initializes a cli v3 app for a(n) test.cliv3.ExampleService service
-func NewExampleServiceCliV3(options ...*ExampleServiceCliV3Options) (*cliv3.Command, error) {
-	commands, err := newExampleServiceCommandsV3(options...)
+// NewExampleServiceCli initializes a cli app for a(n) test.cliv3.ExampleService service
+func NewExampleServiceCli(options ...*ExampleServiceCliOptions) (*cliv3.Command, error) {
+	commands, err := newExampleServiceCommands(options...)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing subcommands: %w", err)
 	}
@@ -1483,9 +1483,9 @@ func NewExampleServiceCliV3(options ...*ExampleServiceCliV3Options) (*cliv3.Comm
 	}, nil
 }
 
-// newExampleServiceCommandsV3 initializes (sub)commands for a test.cliv3.ExampleService cli v3 or command
-func newExampleServiceCommandsV3(options ...*ExampleServiceCliV3Options) ([]*cliv3.Command, error) {
-	opts := &ExampleServiceCliV3Options{}
+// newExampleServiceCommands initializes (sub)commands for a test.cliv3.ExampleService cli or command
+func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.Command, error) {
+	opts := &ExampleServiceCliOptions{}
 	if len(options) > 0 {
 		opts = options[0]
 	}
