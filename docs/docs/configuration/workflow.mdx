@@ -372,10 +372,6 @@ service Example {
 
 Identifies an [update](https://docs.temporal.io/workflows#update) supported by the workflow. Can be specified 0, 1, or more times. See the [update docs](/docs/guides/updates) for more details.
 
-:::note
-This requires the [workflow-update-enabled](/docs/configuration/plugin#workflow-update-enabled) plugin option to be enabled.
-:::
-
 ```protobuf
 service Example {
   rpc Hello(HelloInput) returns (HelloOutput) {
@@ -385,6 +381,8 @@ service Example {
       update: {
         // can reference an update definition from another service
         ref: 'example.v2.Example.SomeUpdate3'
+        start: true
+        validate: true
       }
     };
   }

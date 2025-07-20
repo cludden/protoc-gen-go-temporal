@@ -97,6 +97,23 @@ func (s *someWorkflow1) SomeQuery2(req *simplepb.SomeQuery2Request) (*simplepb.S
 	}, nil
 }
 
+func (s *someWorkflow1) SomeUpdate1(ctx workflow.Context, req *simplepb.SomeUpdate1Request) (*simplepb.SomeUpdate1Response, error) {
+	s.events = append(s.events, "some update 1 with param "+req.RequestVal)
+	return &simplepb.SomeUpdate1Response{ResponseVal: strings.ToUpper(req.RequestVal)}, nil
+}
+
+func (s *someWorkflow1) SomeUpdate2(ctx workflow.Context, req *simplepb.SomeUpdate2Request) (*simplepb.SomeUpdate2Response, error) {
+	s.events = append(s.events, "some update 2 with param "+req.RequestVal)
+	return &simplepb.SomeUpdate2Response{ResponseVal: strings.ToUpper(req.RequestVal)}, nil
+}
+
+func (s *someWorkflow1) ValidateSomeUpdate2(ctx workflow.Context, req *simplepb.SomeUpdate2Request) error {
+	if l := len(req.GetRequestVal()); l < 3 || l > 10 {
+		return fmt.Errorf("request val length must be between 3 and 10")
+	}
+	return nil
+}
+
 // ============================================================================
 
 type someWorkflow2 struct {

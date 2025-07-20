@@ -333,6 +333,9 @@ message WorkflowOptions {
     // Include convenience method for update with start
     bool start = 3;
 
+    // Include convenience method for update with start and validation
+    optional bool validate = 6;
+
     // Default workflow id conflict policy for update with start
     temporal.api.enums.v1.WorkflowIdConflictPolicy workflow_id_conflict_policy = 5;
 
