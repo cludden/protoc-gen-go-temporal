@@ -21,6 +21,7 @@ import (
 	serviceerror "go.temporal.io/api/serviceerror"
 	activity "go.temporal.io/sdk/activity"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -711,6 +712,9 @@ func WorkflowWithInputChildAsync(ctx workflow.Context, req *WorkflowWithInputReq
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &WorkflowWithInputChildRun{Future: workflow.ExecuteChildWorkflow(ctx, WorkflowWithInputWorkflowName, req)}, nil
 }
 
@@ -726,6 +730,7 @@ type WorkflowWithInputChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -852,6 +857,12 @@ func (o *WorkflowWithInputChildOptions) Build(ctx workflow.Context, req protoref
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *WorkflowWithInputChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *WorkflowWithInputChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *WorkflowWithInputChildOptions) WithDataConverter(dc converter.DataConverter) *WorkflowWithInputChildOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1022,6 +1033,9 @@ func ActivityWithInputAsync(ctx workflow.Context, req *ActivityWithInputRequest,
 		return &ActivityWithInputFuture{Future: errF}
 	}
 	activity := ActivityWithInputActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &ActivityWithInputFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
 	return future
 }
@@ -1051,6 +1065,9 @@ func ActivityWithInputLocalAsync(ctx workflow.Context, req *ActivityWithInputReq
 	} else {
 		activity = ActivityWithInputActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &ActivityWithInputFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
 	return future
 }
@@ -1061,6 +1078,7 @@ type ActivityWithInputActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -1119,6 +1137,12 @@ func (o *ActivityWithInputActivityOptions) WithActivityOptions(options workflow.
 	return o
 }
 
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *ActivityWithInputActivityOptions) WithDataConverter(dc converter.DataConverter) *ActivityWithInputActivityOptions {
+	o.dc = dc
+	return o
+}
+
 // WithHeartbeatTimeout sets the HeartbeatTimeout value
 func (o *ActivityWithInputActivityOptions) WithHeartbeatTimeout(d time.Duration) *ActivityWithInputActivityOptions {
 	o.heartbeatTimeout = &d
@@ -1167,6 +1191,7 @@ type ActivityWithInputLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context, *ActivityWithInputRequest) (*ActivityWithInputResponse, error)
 }
 
@@ -1205,6 +1230,12 @@ func (o *ActivityWithInputLocalActivityOptions) Local(fn func(context.Context, *
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *ActivityWithInputLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *ActivityWithInputLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *ActivityWithInputLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *ActivityWithInputLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 

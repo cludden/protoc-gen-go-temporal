@@ -18,7 +18,7 @@ plugins:
       - cli-enabled=true
       - docs-out=./proto/README.md
       - enable-codec=true
-      - enable-debug-logging=true
+      # - enable-debug-logging=true
       - enable-patch-support=true
       - enable-xns=true
       - ignore-acronyms=AWS;URN

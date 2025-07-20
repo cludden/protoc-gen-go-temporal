@@ -91,9 +91,9 @@ func (m *Manifest) genClientImpl(f *j.File) {
 	f.Commentf("%s implements a temporal client for a %s service", typeName, m.Service.Desc.FullName())
 	f.Type().
 		Id(typeName).
-		StructFunc(func(fields *j.Group) {
-			fields.Id("client").Qual(clientPkg, "Client")
-			fields.Id("log").Op("*").Qual("log/slog", "Logger")
+		StructFunc(func(g *j.Group) {
+			g.Id("client").Qual(clientPkg, "Client")
+			g.Id("log").Op("*").Qual("log/slog", "Logger")
 		})
 }
 
@@ -182,31 +182,31 @@ func (m *Manifest) genClientImplQueryMethod(f *j.File, query protoreflect.FullNa
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(m.methods[query].GoName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
-			args.Id("workflowID").String()
-			args.Id("runID").String()
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			g.Id("workflowID").String()
+			g.Id("runID").String()
 			if hasInput {
-				args.Id("query").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				g.Id("query").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 		}).
 		Params(
 			j.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output)),
 			j.Error(),
 		).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if isDeprecated(method) {
-				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", query)), j.Lit("query"), j.Id(m.toCamel("%sQueryName", query))).Line()
+				g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", query)), j.Lit("query"), j.Id(m.toCamel("%sQueryName", query))).Line()
 			}
-			fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
-			fn.If(
-				j.List(j.Id("val"), j.Err()).Op(":=").Id("c").Dot("client").Dot("QueryWorkflow").CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("workflowID")
-					args.Id("runID")
-					args.Id(m.toCamel("%sQueryName", query))
+			g.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+			g.If(
+				j.List(j.Id("val"), j.Err()).Op(":=").Id("c").Dot("client").Dot("QueryWorkflow").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("workflowID")
+					g.Id("runID")
+					g.Id(m.toCamel("%sQueryName", query))
 					if hasInput {
-						args.Id("query")
+						g.Id("query")
 					}
 				}),
 				j.Err().Op("!=").Nil(),
@@ -220,7 +220,7 @@ func (m *Manifest) genClientImplQueryMethod(f *j.File, query protoreflect.FullNa
 			).Block(
 				j.Return(j.Nil(), j.Err()),
 			)
-			fn.Return(
+			g.Return(
 				j.Op("&").Id("resp"), j.Nil(),
 			)
 		})
@@ -236,30 +236,30 @@ func (m *Manifest) genClientImplSignalMethod(f *j.File, signal protoreflect.Full
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(m.methods[signal].GoName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
-			args.Id("workflowID").String()
-			args.Id("runID").String()
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
+			g.Id("workflowID").String()
+			g.Id("runID").String()
 			if hasInput {
-				args.Id("signal").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				g.Id("signal").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 		}).
 		Params(j.Error()).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if isDeprecated(method) {
-				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", signal)), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
-				fn.Line()
+				g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(m.toCamel("%s", signal)), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
+				g.Line()
 			}
-			fn.Return(
-				j.Id("c").Dot("client").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("workflowID")
-					args.Id("runID")
-					args.Id(m.toCamel("%sSignalName", signal))
+			g.Return(
+				j.Id("c").Dot("client").Dot("SignalWorkflow").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("workflowID")
+					g.Id("runID")
+					g.Id(m.toCamel("%sSignalName", signal))
 					if hasInput {
-						args.Id("signal")
+						g.Id("signal")
 					} else {
-						args.Nil()
+						g.Nil()
 					}
 				}),
 			)
@@ -280,52 +280,52 @@ func (m *Manifest) genClientImplSignalWithStartMethod(f *j.File, workflow, signa
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(name).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasWorkflowInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+			g.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
-		ParamsFunc(func(returnVals *j.Group) {
+		ParamsFunc(func(g *j.Group) {
 			if hasWorkflowOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+				g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
-			returnVals.Error()
+			g.Error()
 		}).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if workflowDeprecated, signalDeprecated := isDeprecated(method), isDeprecated(handler); workflowDeprecated || signalDeprecated {
 				if workflowDeprecated {
-					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow)))
+					g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow)))
 				}
 				if signalDeprecated {
-					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
+					g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
 				}
-				fn.Line()
+				g.Line()
 			}
 			// signal with start workflow
-			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot(m.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(args *j.Group) {
-				args.Id("ctx")
+			g.Id("run").Op(",").Err().Op(":=").Id("c").Dot(m.toCamel("%sWith%sAsync", workflow, signal)).CallFunc(func(g *j.Group) {
+				g.Id("ctx")
 				if hasWorkflowInput {
-					args.Id("req")
+					g.Id("req")
 				}
 				if hasSignalInput {
-					args.Id("signal")
+					g.Id("signal")
 				}
-				args.Id("options").Op("...")
+				g.Id("options").Op("...")
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
-				j.ReturnFunc(func(returnVals *j.Group) {
+			g.If(j.Err().Op("!=").Nil()).Block(
+				j.ReturnFunc(func(g *j.Group) {
 					if hasWorkflowOutput {
-						returnVals.Nil()
+						g.Nil()
 					}
-					returnVals.Err()
+					g.Err()
 				}),
 			)
-			fn.Return(
+			g.Return(
 				j.Id("run").Dot("Get").Call(j.Id("ctx")),
 			)
 		})
@@ -345,71 +345,71 @@ func (m *Manifest) genClientImplSignalWithStartMethodAsync(f *j.File, workflow, 
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(name).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasWorkflowInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
 			if hasSignalInput {
-				args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+			g.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
 		Params(
 			j.Id(m.toCamel("%sRun", workflow)),
 			j.Error(),
 		).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if workflowDeprecated, signalDeprecated := isDeprecated(method), isDeprecated(handler); workflowDeprecated || signalDeprecated {
 				if workflowDeprecated {
-					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow)))
+					g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow)))
 				}
 				if signalDeprecated {
-					fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
+					g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(name), j.Lit("signal"), j.Id(m.toCamel("%sSignalName", signal)))
 				}
-				fn.Line()
+				g.Line()
 			}
 
 			// initialize options
-			fn.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", workflow))
-			fn.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
+			g.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", workflow))
+			g.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
 				j.Id("o").Op("=").Id("options").Index(j.Lit(0)),
 			).Else().Block(
 				j.Id("o").Op("=").Id(m.toCamel("New%sOptions", workflow)).Call(),
 			)
 
 			// initialize client.StartWorkfowOptions
-			fn.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
+			g.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(g *j.Group) {
 				if hasWorkflowInput {
-					args.Id("req").Dot("ProtoReflect").Call()
+					g.Id("req").Dot("ProtoReflect").Call()
 				} else {
-					args.Nil()
+					g.Nil()
 				}
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
 			)
 
 			// signal with start workflow
-			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(args *j.Group) {
-				args.Id("ctx")
-				args.Id("opts").Dot("ID")
-				args.Qual(m.goImportPathForMethod(signal), m.toCamel("%sSignalName", signal))
+			g.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("SignalWithStartWorkflow").CallFunc(func(g *j.Group) {
+				g.Id("ctx")
+				g.Id("opts").Dot("ID")
+				g.Qual(m.goImportPathForMethod(signal), m.toCamel("%sSignalName", signal))
 				if hasSignalInput {
-					args.Id("signal")
+					g.Id("signal")
 				} else {
-					args.Nil()
+					g.Nil()
 				}
-				args.Id("opts")
-				args.Id(m.toCamel("%sWorkflowName", workflow))
+				g.Id("opts")
+				g.Id(m.toCamel("%sWorkflowName", workflow))
 				if hasWorkflowInput {
-					args.Id("req")
+					g.Id("req")
 				}
 			})
-			fn.If(j.Id("run").Op("==").Nil().Op("||").Err().Op("!=").Nil()).Block(
+			g.If(j.Id("run").Op("==").Nil().Op("||").Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Err()),
 			)
-			fn.Return(
+			g.Return(
 				j.Op("&").Id(runName).Block(
 					j.Id("client").Op(":").Id("c").Op(","),
 					j.Id("run").Op(":").Id("run").Op(","),
@@ -921,10 +921,10 @@ func (m *Manifest) genClientImplWorkflowCancelMethod(f *j.File) {
 		).
 		Block(
 			j.Return(
-				j.Id("c").Dot("client").Dot(methodName).CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("workflowID")
-					args.Id("runID")
+				j.Id("c").Dot("client").Dot(methodName).CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("workflowID")
+					g.Id("runID")
 				}),
 			),
 		)
@@ -1025,58 +1025,58 @@ func (m *Manifest) genClientImplWorkflowMethodAsync(f *j.File, workflow protoref
 	f.Func().
 		Params(j.Id("c").Op("*").Id(clientType)).
 		Id(methodName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+				g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 			}
-			args.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+			g.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 		}).
 		Params(
 			j.Id(runInterfaceType),
 			j.Error(),
 		).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if deprecated {
-				fn.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(methodName), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow))).Line()
+				g.Id("c").Dot("log").Dot("WarnContext").Call(j.Id("ctx"), j.Lit("use of deprecated client method detected"), j.Lit("method"), j.Lit(methodName), j.Lit("workflow"), j.Id(m.toCamel("%sWorkflowName", workflow))).Line()
 			}
 
 			// initialize options
-			fn.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", workflow))
-			fn.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
+			g.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", workflow))
+			g.If(j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
 				j.Id("o").Op("=").Id("options").Index(j.Lit(0)),
 			).Else().Block(
 				j.Id("o").Op("=").Id(m.toCamel("New%sOptions", workflow)).Call(),
 			)
 
 			// initialize client.StartWorkfowOptions
-			fn.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
+			g.List(j.Id("opts"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(g *j.Group) {
 				if hasInput {
-					args.Id("req").Dot("ProtoReflect").Call()
+					g.Id("req").Dot("ProtoReflect").Call()
 				} else {
-					args.Nil()
+					g.Nil()
 				}
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
 			)
 
 			// execute workflow
-			fn.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(args *j.Group) {
-				args.Id("ctx")
-				args.Id("opts")
-				args.Id(m.toCamel("%sWorkflowName", workflow))
+			g.Id("run").Op(",").Err().Op(":=").Id("c").Dot("client").Dot("ExecuteWorkflow").CallFunc(func(g *j.Group) {
+				g.Id("ctx")
+				g.Id("opts")
+				g.Id(m.toCamel("%sWorkflowName", workflow))
 				if hasInput {
-					args.Id("req")
+					g.Id("req")
 				}
 			})
-			fn.If(j.Err().Op("!=").Nil()).Block(
+			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Err()),
 			)
-			fn.If(j.Id("run").Op("==").Nil()).Block(
+			g.If(j.Id("run").Op("==").Nil()).Block(
 				j.Return(j.Nil(), j.Qual("errors", "New").Call(j.Lit("execute workflow returned nil run"))),
 			)
-			fn.Return(
+			g.Return(
 				j.Op("&").Id(runImplType).Block(
 					j.Id("client").Op(":").Id("c").Op(","),
 					j.Id("run").Op(":").Id("run").Op(","),
@@ -1107,12 +1107,12 @@ func (m *Manifest) genClientImplWorkflowTerminateMethod(f *j.File) {
 		).
 		Block(
 			j.Return(
-				j.Id("c").Dot("client").Dot(methodName).CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("workflowID")
-					args.Id("runID")
-					args.Id("reason")
-					args.Id("details").Op("...")
+				j.Id("c").Dot("client").Dot(methodName).CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("workflowID")
+					g.Id("runID")
+					g.Id("reason")
+					g.Id("details").Op("...")
 				}),
 			),
 		)
@@ -1123,7 +1123,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 	typeName := m.toCamel("%sClient", m.Service.GoName)
 
 	f.Commentf("%s describes a client for a(n) %s worker", typeName, m.Service.Desc.FullName())
-	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
+	f.Type().Id(typeName).InterfaceFunc(func(g *j.Group) {
 		for _, workflow := range m.workflowsOrdered {
 			if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 				continue
@@ -1137,33 +1137,33 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 			// generate <Workflow> method
 			methodName := m.toCamel("%s", workflow)
-			commentWithDefaultf(methods, methodSet(method), "%s executes a(n) %s workflow and blocks until error or response received", methodName, m.fqnForWorkflow(workflow))
-			methods.Id(methodName).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
+			commentWithDefaultf(g, methodSet(method), "%s executes a(n) %s workflow and blocks until error or response received", methodName, m.fqnForWorkflow(workflow))
+			g.Id(methodName).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+						g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+					g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 				}).
-				ParamsFunc(func(returnVals *j.Group) {
+				ParamsFunc(func(g *j.Group) {
 					if hasOutput {
-						returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+						g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 					}
-					returnVals.Error()
+					g.Error()
 				}).
 				Line()
 
 			// generate <Workflow>Async method
 			methodName = m.toCamel("%sAsync", workflow)
-			commentf(methods, methodSet(method), "%s starts a(n) %s workflow and returns a handle to the workflow run", methodName, m.fqnForWorkflow(workflow))
-			methods.Id(methodName).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
+			commentf(g, methodSet(method), "%s starts a(n) %s workflow and returns a handle to the workflow run", methodName, m.fqnForWorkflow(workflow))
+			g.Id(methodName).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+						g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+					g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 				}).
 				Params(
 					j.Id(runInterfaceType),
@@ -1173,8 +1173,8 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 			// generate Get<Workflow> method
 			methodName = m.toCamel("Get%s", workflow)
-			commentf(methods, methodSet(method), "%s retrieves a handle to an existing %s workflow execution", methodName, m.fqnForWorkflow(workflow))
-			methods.Id(m.toCamel("Get%s", workflow)).
+			commentf(g, methodSet(method), "%s retrieves a handle to an existing %s workflow execution", methodName, m.fqnForWorkflow(workflow))
+			g.Id(m.toCamel("Get%s", workflow)).
 				Params(
 					j.Id("ctx").Qual("context", "Context"),
 					j.Id("workflowID").String(),
@@ -1199,39 +1199,39 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 				// add synchronous flavor
 				methodName := m.toCamel("%sWith%s", workflow, signal)
-				commentf(methods, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and blocks until workflow completion", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
-				methods.Id(methodName).
-					ParamsFunc(func(args *j.Group) {
-						args.Id("ctx").Qual("context", "Context")
+				commentf(g, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and blocks until workflow completion", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
+				g.Id(methodName).
+					ParamsFunc(func(g *j.Group) {
+						g.Id("ctx").Qual("context", "Context")
 						if hasWorkflowInput {
-							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+							g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 						}
 						if hasSignalInput {
-							args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+							g.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 						}
-						args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+						g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 					}).
-					ParamsFunc(func(returnVals *j.Group) {
+					ParamsFunc(func(g *j.Group) {
 						if hasWorkflowOutput {
-							returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+							g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 						}
-						returnVals.Error()
+						g.Error()
 					}).
 					Line()
 
 				// add async flavor
 				methodName += "Async"
-				commentf(methods, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the workflow execution", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
-				methods.Id(methodName).
-					ParamsFunc(func(args *j.Group) {
-						args.Id("ctx").Qual("context", "Context")
+				commentf(g, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the workflow execution", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
+				g.Id(methodName).
+					ParamsFunc(func(g *j.Group) {
+						g.Id("ctx").Qual("context", "Context")
 						if hasWorkflowInput {
-							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+							g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 						}
 						if hasSignalInput {
-							args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+							g.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 						}
-						args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
+						g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", workflow))
 					}).
 					Params(
 						j.Id(runInterfaceType),
@@ -1256,38 +1256,38 @@ func (m *Manifest) genClientInterface(f *j.File) {
 				handleName := m.Names().clientUpdateHandleIface(update)
 
 				methodName := m.Names().clientUpdateWithStart(workflow, update)
-				commentf(methods, methodSet(method, handler), "%s executes a(n) %s update on a(n) %s workflow, starting it if necessary, and blocks until update completion", methodName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
-				methods.Id(methodName).
-					ParamsFunc(func(args *j.Group) {
-						args.Id("ctx").Qual("context", "Context")
+				commentf(g, methodSet(method, handler), "%s executes a(n) %s update on a(n) %s workflow, starting it if necessary, and blocks until update completion", methodName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
+				g.Id(methodName).
+					ParamsFunc(func(g *j.Group) {
+						g.Id("ctx").Qual("context", "Context")
 						if hasWorkflowInput {
-							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+							g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 						}
 						if hasUpdateInput {
-							args.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+							g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 						}
-						args.Id("opts").Op("...").Op("*").Id(optionsName)
+						g.Id("opts").Op("...").Op("*").Id(optionsName)
 					}).
-					ParamsFunc(func(returnVals *j.Group) {
+					ParamsFunc(func(g *j.Group) {
 						if hasUpdateOutput {
-							returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+							g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 						}
-						returnVals.Id(runName)
-						returnVals.Error()
+						g.Id(runName)
+						g.Error()
 					})
 
 				asyncName := m.Names().clientUpdateWithStartAsync(workflow, update)
-				commentf(methods, methodSet(method, handler), "%s starts a(n) %s update on a(n) %s workflow, starting it if necessary, and returns a handle to the update execution", asyncName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
-				methods.Id(asyncName).
-					ParamsFunc(func(args *j.Group) {
-						args.Id("ctx").Qual("context", "Context")
+				commentf(g, methodSet(method, handler), "%s starts a(n) %s update on a(n) %s workflow, starting it if necessary, and returns a handle to the update execution", asyncName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
+				g.Id(asyncName).
+					ParamsFunc(func(g *j.Group) {
+						g.Id("ctx").Qual("context", "Context")
 						if hasWorkflowInput {
-							args.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+							g.Id("req").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
 						}
 						if hasUpdateInput {
-							args.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+							g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 						}
-						args.Id("opts").Op("...").Op("*").Id(optionsName)
+						g.Id("opts").Op("...").Op("*").Id(optionsName)
 					}).
 					Params(j.Id(handleName), j.Id(runName), j.Error())
 			}
@@ -1295,8 +1295,8 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 		// generate CancelWorkflow method
 		methodName := "CancelWorkflow"
-		methods.Commentf("%s requests cancellation of an existing workflow execution", methodName)
-		methods.Id(methodName).
+		g.Commentf("%s requests cancellation of an existing workflow execution", methodName)
+		g.Id(methodName).
 			Params(
 				j.Id("ctx").Qual("context", "Context"),
 				j.Id("workflowID").String(),
@@ -1307,8 +1307,8 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 		// generate TerminateWorkflow method
 		methodName = "TerminateWorkflow"
-		methods.Commentf("%s an existing workflow execution", methodName)
-		methods.Id(methodName).
+		g.Commentf("%s an existing workflow execution", methodName)
+		g.Id(methodName).
 			Params(
 				j.Id("ctx").Qual("context", "Context"),
 				j.Id("workflowID").String(),
@@ -1326,14 +1326,14 @@ func (m *Manifest) genClientInterface(f *j.File) {
 			}
 			handler := m.methods[query]
 			hasInput := !isEmpty(handler.Input)
-			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, m.fqnForQuery(query))
-			methods.Id(m.toCamel("%s", query)).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
-					args.Id("workflowID").String()
-					args.Id("runID").String()
+			commentWithDefaultf(g, methodSet(handler), "%s executes a(n) %s query", query, m.fqnForQuery(query))
+			g.Id(m.toCamel("%s", query)).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
+					g.Id("workflowID").String()
+					g.Id("runID").String()
 					if hasInput {
-						args.Id("query").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("query").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
 				}).
 				Params(
@@ -1350,14 +1350,14 @@ func (m *Manifest) genClientInterface(f *j.File) {
 			}
 			handler := m.methods[signal]
 			hasInput := !isEmpty(handler.Input)
-			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, m.fqnForSignal(signal))
-			methods.Id(m.toCamel("%s", signal)).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
-					args.Id("workflowID").String()
-					args.Id("runID").String()
+			commentWithDefaultf(g, methodSet(handler), "%s sends a(n) %s signal", signal, m.fqnForSignal(signal))
+			g.Id(m.toCamel("%s", signal)).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
+					g.Id("workflowID").String()
+					g.Id("runID").String()
 					if hasInput {
-						args.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("signal").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
 				}).
 				Params(j.Error()).
@@ -1375,37 +1375,37 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 			// add synchronous flavor
 			methodName := m.toCamel("%s", update)
-			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update and blocks until update completion", methodName, m.fqnForUpdate(update))
-			methods.Id(methodName).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
-					args.Id("workflowID").String()
-					args.Id("runID").String()
+			commentWithDefaultf(g, methodSet(handler), "%s executes a(n) %s update and blocks until update completion", methodName, m.fqnForUpdate(update))
+			g.Id(methodName).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
+					g.Id("workflowID").String()
+					g.Id("runID").String()
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
+					g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 				}).
-				ParamsFunc(func(returnVals *j.Group) {
+				ParamsFunc(func(g *j.Group) {
 					if hasOutput {
-						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+						g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 					}
-					returnVals.Error()
+					g.Error()
 				}).
 				Line()
 
 			// add async flavor
 			methodName = m.toCamel("%sAsync", update)
-			commentf(methods, methodSet(handler), "%s starts a(n) %s update and returns a handle to the workflow update", methodName, m.fqnForUpdate(update))
-			methods.Id(methodName).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
-					args.Id("workflowID").String()
-					args.Id("runID").String()
+			commentf(g, methodSet(handler), "%s starts a(n) %s update and returns a handle to the workflow update", methodName, m.fqnForUpdate(update))
+			g.Id(methodName).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
+					g.Id("workflowID").String()
+					g.Id("runID").String()
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
+					g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 				}).
 				Params(
 					j.Id(m.toCamel("%sHandle", update)),
@@ -1415,11 +1415,11 @@ func (m *Manifest) genClientInterface(f *j.File) {
 
 			// add getter
 			methodName = m.toCamel("Get%s", update)
-			commentf(methods, methodSet(handler), "%s retrieves a handle to an existing %s update", methodName, m.fqnForUpdate(update))
-			methods.Id(methodName).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
-					args.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
+			commentf(g, methodSet(handler), "%s retrieves a handle to an existing %s update", methodName, m.fqnForUpdate(update))
+			g.Id(methodName).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
+					g.Id("req").Qual(clientPkg, "GetWorkflowUpdateHandleOptions")
 				}).
 				Params(
 					j.Id(m.toCamel("%sHandle", update)),
@@ -1498,32 +1498,32 @@ func (m *Manifest) genClientUpdateHandleImplGetMethod(f *j.File, update protoref
 		Params(j.Id("h").Op("*").Id(typeName)).
 		Id("Get").
 		Params(j.Id("ctx").Qual("context", "Context")).
-		ParamsFunc(func(returnVals *j.Group) {
+		ParamsFunc(func(g *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+				g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
-			returnVals.Error()
+			g.Error()
 		}).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+				g.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
-			fn.Var().Err().Error()
-			fn.Id("doneCh").Op(":=").Make(j.Chan().Struct())
-			fn.List(j.Id("gctx"), j.Id("cancel")).Op(":=").Qual("context", "WithCancel").Call(j.Qual("context", "Background").Call())
-			fn.Defer().Id("cancel").Call()
-			fn.Line()
+			g.Var().Err().Error()
+			g.Id("doneCh").Op(":=").Make(j.Chan().Struct())
+			g.List(j.Id("gctx"), j.Id("cancel")).Op(":=").Qual("context", "WithCancel").Call(j.Qual("context", "Background").Call())
+			g.Defer().Id("cancel").Call()
+			g.Line()
 
-			fn.Go().Func().Params().Block(
+			g.Go().Func().Params().Block(
 				j.For().Block(
 					j.Var().Id("deadlineExceeded").Op("*").Qual(serviceerrorPkg, "DeadlineExceeded"),
 					j.If(
-						j.Err().Op("=").Id("h").Dot("handle").Dot("Get").CallFunc(func(args *j.Group) {
-							args.Id("gctx")
+						j.Err().Op("=").Id("h").Dot("handle").Dot("Get").CallFunc(func(g *j.Group) {
+							g.Id("gctx")
 							if hasOutput {
-								args.Op("&").Id("resp")
+								g.Op("&").Id("resp")
 							} else {
-								args.Nil()
+								g.Nil()
 							}
 						}),
 						j.Err().Op("!=").Nil().Op("&&").
@@ -1542,25 +1542,25 @@ func (m *Manifest) genClientUpdateHandleImplGetMethod(f *j.File, update protoref
 				),
 				j.Close(j.Id("doneCh")),
 			).Call()
-			fn.Line()
+			g.Line()
 
-			fn.Select().Block(
+			g.Select().Block(
 				j.Case(j.Op("<-").Id("ctx").Dot("Done").Call()).Block(
-					j.ReturnFunc(func(returnVals *j.Group) {
+					j.ReturnFunc(func(g *j.Group) {
 						if hasOutput {
-							returnVals.Nil()
+							g.Nil()
 						}
-						returnVals.Id("ctx").Dot("Err").Call()
+						g.Id("ctx").Dot("Err").Call()
 					}),
 				),
-				j.Case(j.Op("<-").Id("doneCh")).BlockFunc(func(bl *j.Group) {
+				j.Case(j.Op("<-").Id("doneCh")).BlockFunc(func(g *j.Group) {
 					if hasOutput {
-						bl.If(j.Err().Op("!=").Nil()).Block(
+						g.If(j.Err().Op("!=").Nil()).Block(
 							j.Return(j.Nil(), j.Err()),
 						)
-						bl.Return(j.Op("&").Id("resp"), j.Nil())
+						g.Return(j.Op("&").Id("resp"), j.Nil())
 					} else {
-						bl.Return(j.Err())
+						g.Return(j.Err())
 					}
 				}),
 			)
@@ -1619,24 +1619,24 @@ func (m *Manifest) genClientUpdateHandleInterface(f *j.File, update protoreflect
 	hasOutput := !isEmpty(method.Output)
 
 	f.Commentf("%s describes a(n) %s update handle", typeName, m.fqnForUpdate(update))
-	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
-		methods.Comment("WorkflowID returns the workflow ID")
-		methods.Id("WorkflowID").Params().String()
+	f.Type().Id(typeName).InterfaceFunc(func(g *j.Group) {
+		g.Comment("WorkflowID returns the workflow ID")
+		g.Id("WorkflowID").Params().String()
 
-		methods.Comment("RunID returns the workflow instance ID")
-		methods.Id("RunID").Params().String()
+		g.Comment("RunID returns the workflow instance ID")
+		g.Id("RunID").Params().String()
 
-		methods.Comment("UpdateID returns the update ID")
-		methods.Id("UpdateID").Params().String()
+		g.Comment("UpdateID returns the update ID")
+		g.Id("UpdateID").Params().String()
 
-		methods.Comment("Get blocks until the workflow is complete and returns the result")
-		methods.Id("Get").
+		g.Comment("Get blocks until the workflow is complete and returns the result")
+		g.Id("Get").
 			Params(j.Id("ctx").Qual("context", "Context")).
-			ParamsFunc(func(returnVals *j.Group) {
+			ParamsFunc(func(g *j.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+					g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 				}
-				returnVals.Error()
+				g.Error()
 			})
 	})
 }
@@ -1666,59 +1666,59 @@ func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullNam
 	f.Func().
 		Params(j.Id("o").Op("*").Id(typeName)).
 		Id("Build").
-		ParamsFunc(func(args *j.Group) {
-			args.Id("workflowID").String()
-			args.Id("runID").String()
+		ParamsFunc(func(g *j.Group) {
+			g.Id("workflowID").String()
+			g.Id("runID").String()
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(m.methods[update].Input.GoIdent.GoImportPath), m.getMessageName(m.methods[update].Input))
+				g.Id("req").Op("*").Qual(string(m.methods[update].Input.GoIdent.GoImportPath), m.getMessageName(m.methods[update].Input))
 			}
 		}).
 		Params(
 			j.Id("opts").Op("*").Qual(clientPkg, "UpdateWorkflowOptions"),
 			j.Err().Error(),
 		).
-		BlockFunc(func(fn *j.Group) {
-			fn.Comment("use user-provided UpdateWorkflowOptions if exists")
-			fn.If(j.Id("o").Dot("Options").Op("!=").Nil()).Block(
+		BlockFunc(func(g *j.Group) {
+			g.Comment("use user-provided UpdateWorkflowOptions if exists")
+			g.If(j.Id("o").Dot("Options").Op("!=").Nil()).Block(
 				j.Id("opts").Op("=").Id("o").Dot("Options"),
 			).Else().Block(
 				j.Id("opts").Op("=").Op("&").Qual(clientPkg, "UpdateWorkflowOptions").Values(),
 			)
 
-			fn.Line()
-			fn.Comment("set constants")
+			g.Line()
+			g.Comment("set constants")
 			if hasInput {
-				fn.Id("opts").Dot("Args").Op("=").Index().Any().Values(j.Id("req"))
+				g.Id("opts").Dot("Args").Op("=").Index().Any().Values(j.Id("req"))
 			}
-			fn.Id("opts").Dot("RunID").Op("=").Id("runID")
-			fn.Id("opts").Dot("UpdateName").Op("=").Id(m.toCamel("%sUpdateName", update))
-			fn.Id("opts").Dot("WorkflowID").Op("=").Id("workflowID")
+			g.Id("opts").Dot("RunID").Op("=").Id("runID")
+			g.Id("opts").Dot("UpdateName").Op("=").Id(m.toCamel("%sUpdateName", update))
+			g.Id("opts").Dot("WorkflowID").Op("=").Id("workflowID")
 
-			fn.Line()
-			fn.Comment("set UpdateID")
-			id := fn.If(j.Id("v").Op(":=").Id("o").Dot("id"), j.Id("v").Op("!=").Nil()).Block(
+			g.Line()
+			g.Comment("set UpdateID")
+			id := g.If(j.Id("v").Op(":=").Id("o").Dot("id"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("UpdateID").Op("=").Op("*").Id("v"),
 			)
 			if idExpr := updateOpts.GetId(); idExpr != "" {
-				id.Else().If(j.Id("opts").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(b *j.Group) {
-					b.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
-						args.Id(m.toCamel("%sIDExpression", update))
+				id.Else().If(j.Id("opts").Dot("UpdateID").Op("==").Lit("")).BlockFunc(func(g *j.Group) {
+					g.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(g *j.Group) {
+						g.Id(m.toCamel("%sIDExpression", update))
 						if hasInput {
-							args.Id("req").Dot("ProtoReflect").Call()
+							g.Id("req").Dot("ProtoReflect").Call()
 						} else {
-							args.Nil()
+							g.Nil()
 						}
 					})
-					b.If(j.Err().Op("!=").Nil()).Block(
+					g.If(j.Err().Op("!=").Nil()).Block(
 						j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q update: %w"), j.Id(m.toCamel("%sUpdateName", update)), j.Err())),
 					)
-					b.Id("opts").Dot("UpdateID").Op("=").Id("id")
+					g.Id("opts").Dot("UpdateID").Op("=").Id("id")
 				})
 			}
 
-			fn.Line()
-			fn.Comment("set WaitPolicy")
-			waitPolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("waitPolicy"), j.Id("v").Op("!=").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
+			g.Line()
+			g.Comment("set WaitPolicy")
+			waitPolicy := g.If(j.Id("v").Op(":=").Id("o").Dot("waitPolicy"), j.Id("v").Op("!=").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
 				j.Id("opts").Dot("WaitForStage").Op("=").Id("v"),
 			)
 			wp := updateOpts.GetWaitForStage()
@@ -1738,7 +1738,7 @@ func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullNam
 				j.Id("opts").Dot("WaitForStage").Op("=").Qual(clientPkg, stage),
 			)
 
-			fn.Return(j.Id("opts"), j.Nil())
+			g.Return(j.Id("opts"), j.Nil())
 		})
 
 	f.Comment("WithUpdateID sets the UpdateID")
@@ -1803,10 +1803,10 @@ func (m *Manifest) genClientWorkflowRunImplCancelMethod(f *j.File, workflow prot
 		Params(j.Error()).
 		Block(
 			j.Return(
-				j.Id("r").Dot("client").Dot("CancelWorkflow").CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("r").Dot("ID").Call()
-					args.Id("r").Dot("RunID").Call()
+				j.Id("r").Dot("client").Dot("CancelWorkflow").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("r").Dot("ID").Call()
+					g.Id("r").Dot("RunID").Call()
 				}),
 			),
 		)
@@ -1823,16 +1823,16 @@ func (m *Manifest) genClientWorkflowRunImplGetMethod(f *j.File, workflow protore
 		Params(j.Id("r").Op("*").Id(typeName)).
 		Id("Get").
 		Params(j.Id("ctx").Qual("context", "Context")).
-		ParamsFunc(func(returnVals *j.Group) {
+		ParamsFunc(func(g *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+				g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 			}
-			returnVals.Error()
+			g.Error()
 		}).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if hasOutput {
-				fn.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
-				fn.If(
+				g.Var().Id("resp").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+				g.If(
 					j.Err().Op(":=").Id("r").Dot("run").Dot("Get").Call(
 						j.Id("ctx"),
 						j.Op("&").Id("resp"),
@@ -1843,11 +1843,11 @@ func (m *Manifest) genClientWorkflowRunImplGetMethod(f *j.File, workflow protore
 						j.Nil(), j.Err(),
 					),
 				)
-				fn.Return(
+				g.Return(
 					j.Op("&").Id("resp"), j.Nil(),
 				)
 			} else {
-				fn.Return(
+				g.Return(
 					j.Id("r").Dot("run").Dot("Get").Call(
 						j.Id("ctx"),
 						j.Nil(),
@@ -1882,10 +1882,10 @@ func (m *Manifest) genClientWorkflowRunImplQueryMethod(f *j.File, workflow proto
 	f.Func().
 		Params(j.Id("r").Op("*").Id(typeName)).
 		Id(m.methods[query].GoName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 		}).
 		Params(
@@ -1894,12 +1894,12 @@ func (m *Manifest) genClientWorkflowRunImplQueryMethod(f *j.File, workflow proto
 		).
 		Block(
 			j.Return(
-				j.Id("r").Dot("client").Dot(m.methods[query].GoName).CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("r").Dot("ID").Call()
-					args.Lit("")
+				j.Id("r").Dot("client").Dot(m.methods[query].GoName).CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("r").Dot("ID").Call()
+					g.Lit("")
 					if hasInput {
-						args.Id("req")
+						g.Id("req")
 					}
 				}),
 			),
@@ -1947,34 +1947,34 @@ func (m *Manifest) genClientWorkflowRunImplSignalMethod(f *j.File, workflow prot
 	f.Func().
 		Params(j.Id("r").Op("*").Id(typeName)).
 		Id(m.methods[signal].GoName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
 		}).
 		Params(j.Error()).
 		Block(
-			j.ReturnFunc(func(returnVals *j.Group) {
+			j.ReturnFunc(func(g *j.Group) {
 				if m.methodsFromSameService(signal, workflow) {
-					returnVals.Id("r").Dot("client").Dot(m.methods[signal].GoName).CallFunc(func(args *j.Group) {
-						args.Id("ctx")
-						args.Id("r").Dot("ID").Call()
-						args.Lit("")
+					g.Id("r").Dot("client").Dot(m.methods[signal].GoName).CallFunc(func(g *j.Group) {
+						g.Id("ctx")
+						g.Id("r").Dot("ID").Call()
+						g.Lit("")
 						if hasInput {
-							args.Id("req")
+							g.Id("req")
 						}
 					})
 				} else {
-					returnVals.Id("r").Dot("client").Dot("client").Dot("SignalWorkflow").CallFunc(func(args *j.Group) {
-						args.Id("ctx")
-						args.Id("r").Dot("ID").Call()
-						args.Id("r").Dot("RunID").Call()
-						args.Add(m.Qual(signal, m.toCamel("%sSignalName", signal)))
+					g.Id("r").Dot("client").Dot("client").Dot("SignalWorkflow").CallFunc(func(g *j.Group) {
+						g.Id("ctx")
+						g.Id("r").Dot("ID").Call()
+						g.Id("r").Dot("RunID").Call()
+						g.Add(m.Qual(signal, m.toCamel("%sSignalName", signal)))
 						if hasInput {
-							args.Id("req")
+							g.Id("req")
 						} else {
-							args.Nil()
+							g.Nil()
 						}
 					})
 				}
@@ -1998,12 +1998,12 @@ func (m *Manifest) genClientWorkflowRunImplTerminateMethod(f *j.File, workflow p
 		Params(j.Error()).
 		Block(
 			j.Return(
-				j.Id("r").Dot("client").Dot("TerminateWorkflow").CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("r").Dot("ID").Call()
-					args.Id("r").Dot("RunID").Call()
-					args.Id("reason")
-					args.Id("details").Op("...")
+				j.Id("r").Dot("client").Dot("TerminateWorkflow").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("r").Dot("ID").Call()
+					g.Id("r").Dot("RunID").Call()
+					g.Id("reason")
+					g.Id("details").Op("...")
 				}),
 			),
 		)
@@ -2020,58 +2020,58 @@ func (m *Manifest) genClientWorkflowRunImplUpdateAsyncMethod(f *j.File, workflow
 	f.Func().
 		Params(j.Id("r").Op("*").Id(typeName)).
 		Id(methodName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
+			g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
 		Params(
 			j.Add(m.Qual(update, m.toCamel("%sHandle", update))),
 			j.Error(),
 		).
-		BlockFunc(func(fn *j.Group) {
+		BlockFunc(func(g *j.Group) {
 			if m.methodsFromSamePackage(workflow, update) {
-				fn.Return(
-					j.Id("r").Dot("client").Dot(m.toCamel("%sAsync", update)).CallFunc(func(args *j.Group) {
-						args.Id("ctx")
-						args.Id("r").Dot("ID").Call()
-						args.Id("r").Dot("RunID").Call()
+				g.Return(
+					j.Id("r").Dot("client").Dot(m.toCamel("%sAsync", update)).CallFunc(func(g *j.Group) {
+						g.Id("ctx")
+						g.Id("r").Dot("ID").Call()
+						g.Id("r").Dot("RunID").Call()
 						if hasInput {
-							args.Id("req")
+							g.Id("req")
 						}
-						args.Id("opts").Op("...")
+						g.Id("opts").Op("...")
 					}),
 				)
 			} else {
 				// initialize options
-				fn.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", update))
-				fn.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Op("!=").Nil()).Block(
+				g.Var().Id("o").Op("*").Id(m.toCamel("%sOptions", update))
+				g.If(j.Len(j.Id("opts")).Op(">").Lit(0).Op("&&").Id("opts").Index(j.Lit(0)).Op("!=").Nil()).Block(
 					j.Id("o").Op("=").Id("opts").Index(j.Lit(0)),
 				).Else().Block(
 					j.Id("o").Op("=").Id(m.toCamel("New%sOptions", update)).Call(),
 				)
 
 				// build UpdateWorkflowWithOptions
-				fn.List(j.Id("options"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(args *j.Group) {
-					args.Id("r").Dot("ID").Call()
-					args.Id("r").Dot("RunID").Call()
+				g.List(j.Id("options"), j.Err()).Op(":=").Id("o").Dot("Build").CallFunc(func(g *j.Group) {
+					g.Id("r").Dot("ID").Call()
+					g.Id("r").Dot("RunID").Call()
 					if hasInput {
-						args.Id("req")
+						g.Id("req")
 					}
 				})
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing UpdateWorkflowWithOptions: %w"), j.Err())),
 				)
 
 				// update workflow
-				fn.List(j.Id("handle"), j.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(j.Id("ctx"), j.Id("options"))
-				fn.If(j.Err().Op("!=").Nil()).Block(
+				g.List(j.Id("handle"), j.Err()).Op(":=").Id("c").Dot("client").Dot("UpdateWorkflowWithOptions").Call(j.Id("ctx"), j.Id("options"))
+				g.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Nil(), j.Err()),
 				)
 
-				fn.Return(
+				g.Return(
 					j.Op("&").Add(m.Qual(update, m.toCamel("%sHandle", update))).Values(
 						j.Id("client").Op(":").Id("c"),
 						j.Id("handle").Op(":").Id("handle"),
@@ -2093,29 +2093,29 @@ func (m *Manifest) genClientWorkflowRunImplUpdateMethod(f *j.File, workflow prot
 	f.Func().
 		Params(j.Id("r").Op("*").Id(typeName)).
 		Id(m.methods[update].GoName).
-		ParamsFunc(func(args *j.Group) {
-			args.Id("ctx").Qual("context", "Context")
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual("context", "Context")
 			if hasInput {
-				args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+				g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
-			args.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
+			g.Id("opts").Op("...").Op("*").Id(m.toCamel("%sOptions", update))
 		}).
-		ParamsFunc(func(returnVals *j.Group) {
+		ParamsFunc(func(g *j.Group) {
 			if hasOutput {
-				returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+				g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 			}
-			returnVals.Error()
+			g.Error()
 		}).
 		Block(
 			j.Return(
-				j.Id("r").Dot("client").Dot(m.methods[update].GoName).CallFunc(func(args *j.Group) {
-					args.Id("ctx")
-					args.Id("r").Dot("ID").Call()
-					args.Id("r").Dot("RunID").Call()
+				j.Id("r").Dot("client").Dot(m.methods[update].GoName).CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("r").Dot("ID").Call()
+					g.Id("r").Dot("RunID").Call()
 					if hasInput {
-						args.Id("req")
+						g.Id("req")
 					}
-					args.Id("opts").Op("...")
+					g.Id("opts").Op("...")
 				}),
 			),
 		)
@@ -2129,33 +2129,33 @@ func (m *Manifest) genClientWorkflowRunInterface(f *j.File, workflow protoreflec
 	hasOutput := !isEmpty(method.Output)
 
 	f.Commentf("%s describes a(n) %s workflow run", typeName, m.fqnForWorkflow(workflow))
-	f.Type().Id(typeName).InterfaceFunc(func(methods *j.Group) {
-		methods.Comment("ID returns the workflow ID")
-		methods.Id("ID").Params().String().Line()
+	f.Type().Id(typeName).InterfaceFunc(func(g *j.Group) {
+		g.Comment("ID returns the workflow ID")
+		g.Id("ID").Params().String().Line()
 
-		methods.Comment("RunID returns the workflow instance ID")
-		methods.Id("RunID").Params().String().Line()
+		g.Comment("RunID returns the workflow instance ID")
+		g.Id("RunID").Params().String().Line()
 
-		methods.Comment("Run returns the inner client.WorkflowRun")
-		methods.Id("Run").Params().Qual(clientPkg, "WorkflowRun").Line()
+		g.Comment("Run returns the inner client.WorkflowRun")
+		g.Id("Run").Params().Qual(clientPkg, "WorkflowRun").Line()
 
-		methods.Comment("Get blocks until the workflow is complete and returns the result")
-		methods.Id("Get").
+		g.Comment("Get blocks until the workflow is complete and returns the result")
+		g.Id("Get").
 			Params(j.Id("ctx").Qual("context", "Context")).
-			ParamsFunc(func(returnVals *j.Group) {
+			ParamsFunc(func(g *j.Group) {
 				if hasOutput {
-					returnVals.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+					g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
 				}
-				returnVals.Error()
+				g.Error()
 			}).Line()
 
-		methods.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
-		methods.Id("Cancel").
+		g.Comment("Cancel requests cancellation of a workflow in execution, returning an error if applicable")
+		g.Id("Cancel").
 			Params(j.Id("ctx").Qual("context", "Context")).
 			Params(j.Error()).Line()
 
-		methods.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
-		methods.Id("Terminate").
+		g.Comment("Terminate terminates a workflow in execution, returning an error if applicable")
+		g.Id("Terminate").
 			Params(
 				j.Id("ctx").Qual("context", "Context"),
 				j.Id("reason").String(),
@@ -2168,12 +2168,12 @@ func (m *Manifest) genClientWorkflowRunInterface(f *j.File, workflow protoreflec
 			handler := m.methods[query]
 			hasInput := !isEmpty(handler.Input)
 
-			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s query", query, m.fqnForQuery(query))
-			methods.Id(m.toCamel("%s", query)).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
+			commentWithDefaultf(g, methodSet(handler), "%s executes a(n) %s query", query, m.fqnForQuery(query))
+			g.Id(m.toCamel("%s", query)).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
 				}).
 				Params(
@@ -2187,12 +2187,12 @@ func (m *Manifest) genClientWorkflowRunInterface(f *j.File, workflow protoreflec
 			handler := m.methods[signal]
 			hasInput := !isEmpty(handler.Input)
 
-			commentWithDefaultf(methods, methodSet(handler), "%s sends a(n) %s signal", signal, m.fqnForSignal(signal))
-			methods.Id(m.toCamel("%s", signal)).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
+			commentWithDefaultf(g, methodSet(handler), "%s sends a(n) %s signal", signal, m.fqnForSignal(signal))
+			g.Id(m.toCamel("%s", signal)).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
 				}).
 				Params(j.Error()).Line()
@@ -2205,31 +2205,31 @@ func (m *Manifest) genClientWorkflowRunInterface(f *j.File, workflow protoreflec
 			hasOutput := !isEmpty(handler.Output)
 
 			// add synchronous flavor
-			commentWithDefaultf(methods, methodSet(handler), "%s executes a(n) %s update", update, m.fqnForUpdate(update))
-			methods.Id(m.toCamel("%s", update)).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
+			commentWithDefaultf(g, methodSet(handler), "%s executes a(n) %s update", update, m.fqnForUpdate(update))
+			g.Id(m.toCamel("%s", update)).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Add(m.Qual(update, m.toCamel("%sOptions", update)))
+					g.Id("opts").Op("...").Op("*").Add(m.Qual(update, m.toCamel("%sOptions", update)))
 				}).
-				ParamsFunc(func(returnVals *j.Group) {
+				ParamsFunc(func(g *j.Group) {
 					if hasOutput {
-						returnVals.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
+						g.Op("*").Qual(string(handler.Output.GoIdent.GoImportPath), m.getMessageName(handler.Output))
 					}
-					returnVals.Error()
+					g.Error()
 				}).Line()
 
 			// add async flavor
-			commentWithDefaultf(methods, methodSet(handler), "%sAsync sends a(n) %s update to the workflow", update, m.fqnForUpdate(update))
-			methods.Id(m.toCamel("%sAsync", update)).
-				ParamsFunc(func(args *j.Group) {
-					args.Id("ctx").Qual("context", "Context")
+			commentWithDefaultf(g, methodSet(handler), "%sAsync sends a(n) %s update to the workflow", update, m.fqnForUpdate(update))
+			g.Id(m.toCamel("%sAsync", update)).
+				ParamsFunc(func(g *j.Group) {
+					g.Id("ctx").Qual("context", "Context")
 					if hasInput {
-						args.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
+						g.Id("req").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 					}
-					args.Id("opts").Op("...").Op("*").Add(m.Qual(update, m.toCamel("%sOptions", update)))
+					g.Id("opts").Op("...").Op("*").Add(m.Qual(update, m.toCamel("%sOptions", update)))
 				}).
 				Params(
 					j.Add(m.Qual(update, m.toCamel("%sHandle", update))),
@@ -2255,20 +2255,21 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 	opts := m.workflows[workflow]
 
 	f.Commentf("%s provides configuration for a %s%s workflow operation", typeName, childQualifier, m.fqnForWorkflow(workflow))
-	f.Type().Id(typeName).StructFunc(func(values *j.Group) {
-		values.Id("options").Qual(optionsPkg, optionsType)
-		values.Id("executionTimeout").Op("*").Qual("time", "Duration")
-		values.Id("id").Op("*").String()
-		values.Id("idReusePolicy").Qual(enumsPkg, "WorkflowIdReusePolicy")
-		values.Id("retryPolicy").Op("*").Qual(temporalPkg, "RetryPolicy")
-		values.Id("runTimeout").Op("*").Qual("time", "Duration")
-		values.Id("searchAttributes").Map(j.String()).Any()
-		values.Id("taskQueue").Op("*").String()
-		values.Id("taskTimeout").Op("*").Qual("time", "Duration")
-		values.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
+	f.Type().Id(typeName).StructFunc(func(g *j.Group) {
+		g.Id("options").Qual(optionsPkg, optionsType)
+		g.Id("executionTimeout").Op("*").Qual("time", "Duration")
+		g.Id("id").Op("*").String()
+		g.Id("idReusePolicy").Qual(enumsPkg, "WorkflowIdReusePolicy")
+		g.Id("retryPolicy").Op("*").Qual(temporalPkg, "RetryPolicy")
+		g.Id("runTimeout").Op("*").Qual("time", "Duration")
+		g.Id("searchAttributes").Map(j.String()).Any()
+		g.Id("taskQueue").Op("*").String()
+		g.Id("taskTimeout").Op("*").Qual("time", "Duration")
+		g.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		if child {
-			values.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
-			values.Id("waitForCancellation").Op("*").Bool()
+			g.Id("dc").Qual(converterPkg, "DataConverter")
+			g.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
+			g.Id("waitForCancellation").Op("*").Bool()
 		}
 	})
 
@@ -2281,51 +2282,51 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 	f.Func().
 		Params(j.Id("o").Op("*").Id(typeName)).
 		Id("Build").
-		ParamsFunc(func(args *j.Group) {
+		ParamsFunc(func(g *j.Group) {
 			if child {
-				args.Id("ctx").Qual(workflowPkg, "Context")
+				g.Id("ctx").Qual(workflowPkg, "Context")
 			}
-			args.Id("req").Qual(protoreflectPkg, "Message")
+			g.Id("req").Qual(protoreflectPkg, "Message")
 		}).
 		Params(
 			j.Qual(optionsPkg, optionsType),
 			j.Error(),
 		).
-		BlockFunc(func(fn *j.Group) {
-			fn.Id("opts").Op(":=").Id("o").Dot("options")
+		BlockFunc(func(g *j.Group) {
+			g.Id("opts").Op(":=").Id("o").Dot("options")
 
 			// set ID
 			idFieldName := "ID"
 			if child {
 				idFieldName = "WorkflowID"
 			}
-			id := fn.If(j.Id("v").Op(":=").Id("o").Dot("id"), j.Id("v").Op("!=").Nil()).Block(
+			id := g.If(j.Id("v").Op(":=").Id("o").Dot("id"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot(idFieldName).Op("=").Op("*").Id("v"),
 			)
 			if idExpr := opts.GetId(); idExpr != "" {
-				id.Else().If(j.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(b *j.Group) {
+				id.Else().If(j.Id("opts").Dot(idFieldName).Op("==").Lit("")).BlockFunc(func(g *j.Group) {
 					// original expression evaluation logic
-					origFn := func(b *j.Group, errorReturn j.Code) {
-						b.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(args *j.Group) {
-							args.Id(m.toCamel("%sIDExpression", workflow))
-							args.Id("req")
+					origFn := func(g *j.Group, errorReturn j.Code) {
+						g.List(j.Id("id"), j.Err()).Op(":=").Qual(expressionPkg, "EvalExpression").CallFunc(func(g *j.Group) {
+							g.Id(m.toCamel("%sIDExpression", workflow))
+							g.Id("req")
 						})
-						b.If(j.Err().Op("!=").Nil()).BlockFunc(func(returnVals *j.Group) {
-							returnVals.Return(errorReturn, j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q workflow: %w"), j.Id(m.toCamel("%sWorkflowName", workflow)), j.Err()))
+						g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+							g.Return(errorReturn, j.Qual("fmt", "Errorf").Call(j.Lit("error evaluating id expression for %q workflow: %w"), j.Id(m.toCamel("%sWorkflowName", workflow)), j.Err()))
 						})
 					}
 
 					if child {
 						// local activity wrapper
-						fixFn := func(b *j.Group) {
-							b.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(j.Id("ctx"))
-							b.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
-							b.If(
+						fixFn := func(g *j.Group) {
+							g.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(j.Id("ctx"))
+							g.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
+							g.If(
 								j.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").Call(
 									j.Qual(workflowPkg, "WithLocalActivityOptions").Call(j.Id("ctx"), j.Id("lao")),
-									j.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.String(), j.Error()).BlockFunc(func(bl *j.Group) {
-										origFn(bl, j.Lit(""))
-										bl.Return(j.Id("id"), j.Nil())
+									j.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.String(), j.Error()).BlockFunc(func(g *j.Group) {
+										origFn(g, j.Lit(""))
+										g.Return(j.Id("id"), j.Nil())
 									}),
 								).Dot("Get").Call(j.Id("ctx"), j.Op("&").Id("opts").Dot(idFieldName)),
 								j.Err().Op("!=").Nil(),
@@ -2337,35 +2338,35 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 						// introduce local activity wrapper behind workflow versioning
 						switch pvm := m.patchMode(temporalv1.Patch_PV_64, workflow); pvm {
 						case temporalv1.Patch_PVM_ENABLED:
-							patchComment(b, temporalv1.Patch_PV_64)
-							b.If(j.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
+							patchComment(g, temporalv1.Patch_PV_64)
+							g.If(j.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
 								fixFn,
-							).Else().BlockFunc(func(b *j.Group) {
-								origFn(b, j.Id("opts"))
-								b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+							).Else().BlockFunc(func(g *j.Group) {
+								origFn(g, j.Id("opts"))
+								g.Id("opts").Dot(idFieldName).Op("=").Id("id")
 							})
 						case temporalv1.Patch_PVM_MARKER:
-							b.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
-							fixFn(b)
+							g.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
+							fixFn(g)
 						case temporalv1.Patch_PVM_REMOVED:
-							fixFn(b)
+							fixFn(g)
 						default:
-							origFn(b, j.Id("opts"))
-							b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+							origFn(g, j.Id("opts"))
+							g.Id("opts").Dot(idFieldName).Op("=").Id("id")
 						}
 					} else {
-						origFn(b, j.Id("opts"))
-						b.Id("opts").Dot(idFieldName).Op("=").Id("id")
+						origFn(g, j.Id("opts"))
+						g.Id("opts").Dot(idFieldName).Op("=").Id("id")
 					}
 				})
 			}
 
 			// set WorkflowIDReusePolicy
-			idReusePolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("idReusePolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).Block(
+			idReusePolicy := g.If(j.Id("v").Op(":=").Id("o").Dot("idReusePolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).Block(
 				j.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Id("v"),
 			)
 			if opts.GetIdReusePolicy() != temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
-				idReusePolicy.Else().If(j.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).BlockFunc(func(bl *j.Group) {
+				idReusePolicy.Else().If(j.Id("opts").Dot("WorkflowIDReusePolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED")).BlockFunc(func(g *j.Group) {
 					var policy string
 					switch opts.GetIdReusePolicy() {
 					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE:
@@ -2377,14 +2378,14 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 					case temporalv1.IDReusePolicy_WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING:
 						policy = "WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING"
 					}
-					bl.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, policy)
+					g.Id("opts").Dot("WorkflowIDReusePolicy").Op("=").Qual(enumsPkg, policy)
 				})
 			}
 
 			// set TaskQueue
-			fn.If(j.Id("v").Op(":=").Id("o").Dot("taskQueue"), j.Id("v").Op("!=").Nil()).Block(
+			g.If(j.Id("v").Op(":=").Id("o").Dot("taskQueue"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
-			).Else().If(j.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(bl *j.Group) {
+			).Else().If(j.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(g *j.Group) {
 				var taskQueueVar j.Code
 				if tq := opts.GetTaskQueue(); tq != "" {
 					taskQueueVar = j.Lit(tq)
@@ -2392,37 +2393,37 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 					taskQueueVar = j.Id(m.toCamel("%sTaskQueue", m.Service.GoName))
 				}
 				if taskQueueVar != nil {
-					bl.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueueVar)
+					g.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueueVar)
 				} else if child {
-					bl.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(j.Id("ctx")).Dot("TaskQueueName")
+					g.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(j.Id("ctx")).Dot("TaskQueueName")
 				} else {
-					bl.Return(j.Id("opts"), j.Qual("errors", "New").Call(j.Lit("TaskQueue is required")))
+					g.Return(j.Id("opts"), j.Qual("errors", "New").Call(j.Lit("TaskQueue is required")))
 				}
 			})
 
 			// set RetryPolicy
-			retryPolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("retryPolicy"), j.Id("v").Op("!=").Nil()).Block(
+			retryPolicy := g.If(j.Id("v").Op(":=").Id("o").Dot("retryPolicy"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("RetryPolicy").Op("=").Id("v"),
 			)
 			if policy := opts.GetRetryPolicy(); policy != nil {
 				retryPolicy.Else().If(j.Id("opts").Dot("RetryPolicy").Op("==").Nil()).Block(
-					j.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(fields *j.Group) {
+					j.Id("opts").Dot("RetryPolicy").Op("=").Op("&").Qual(temporalPkg, "RetryPolicy").CustomFunc(multiLineValues, func(g *j.Group) {
 						if d := policy.GetInitialInterval(); d.IsValid() {
-							fields.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+							g.Id("InitialInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 						}
 						if d := policy.GetMaxInterval(); d.IsValid() {
-							fields.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
+							g.Id("MaximumInterval").Op(":").Id(strconv.FormatInt(d.AsDuration().Nanoseconds(), 10))
 						}
 						if n := policy.GetBackoffCoefficient(); n != 0 {
-							fields.Id("BackoffCoefficient").Op(":").Lit(n)
+							g.Id("BackoffCoefficient").Op(":").Lit(n)
 						}
 						if n := policy.GetMaxAttempts(); n != 0 {
-							fields.Id("MaximumAttempts").Op(":").Lit(n)
+							g.Id("MaximumAttempts").Op(":").Lit(n)
 						}
 						if errs := policy.GetNonRetryableErrorTypes(); len(errs) > 0 {
-							fields.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(vals *j.Group) {
+							g.Id("NonRetryableErrorTypes").Op(":").Index().String().CustomFunc(multiLineValues, func(g *j.Group) {
 								for _, err := range errs {
-									vals.Lit(err)
+									g.Lit(err)
 								}
 							})
 						}
@@ -2431,44 +2432,44 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			}
 
 			// set SearchAttributes
-			searchAttributes := fn.If(j.Id("v").Op(":=").Id("o").Dot("searchAttributes"), j.Id("v").Op("!=").Nil()).Block(
+			searchAttributes := g.If(j.Id("v").Op(":=").Id("o").Dot("searchAttributes"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("SearchAttributes").Op("=").Id("o").Dot("searchAttributes"),
 			)
 			if mapping := opts.GetSearchAttributes(); mapping != "" {
 				searchAttributes.Else().If(j.Id("opts").Dot("SearchAttributes").Op("==").Nil()).
-					BlockFunc(func(b *j.Group) {
+					BlockFunc(func(g *j.Group) {
 						// original expression evaluation logic
-						origFn := func(b *j.Group, errorResult j.Code) {
+						origFn := func(g *j.Group, errorResult j.Code) {
 							// convert input to generic mapping input
-							b.List(j.Id("structured"), j.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(j.Id("req"))
-							b.If(j.Err().Op("!=").Nil()).Block(
+							g.List(j.Id("structured"), j.Err()).Op(":=").Qual(expressionPkg, "ToStructured").Call(j.Id("req"))
+							g.If(j.Err().Op("!=").Nil()).Block(
 								j.Return(errorResult, j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("error serializing input for %q search attribute mapping: %%v", m.methods[workflow].GoName)), j.Err())),
 							)
 
 							// execute mapping
-							b.List(j.Id("result"), j.Err()).Op(":=").Id(m.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(j.Id("structured"))
-							b.If(j.Err().Op("!=").Nil()).Block(
+							g.List(j.Id("result"), j.Err()).Op(":=").Id(m.toCamel("%sSearchAttributesMapping", workflow)).Dot("Query").Call(j.Id("structured"))
+							g.If(j.Err().Op("!=").Nil()).Block(
 								j.Return(errorResult, j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("error executing %q search attribute mapping: %%v", m.methods[workflow].GoName)), j.Err())),
 							)
 
 							// coerce mapping result to map[string]any
-							b.List(j.Id("searchAttributes"), j.Id("ok")).Op(":=").Id("result").Op(".").Parens(j.Map(j.String()).Any())
-							b.If(j.Op("!").Id("ok")).Block(
+							g.List(j.Id("searchAttributes"), j.Id("ok")).Op(":=").Id("result").Op(".").Parens(j.Map(j.String()).Any())
+							g.If(j.Op("!").Id("ok")).Block(
 								j.Return(errorResult, j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("expected %q search attribute mapping to return map[string]any, got: %%T", m.methods[workflow].GoName)), j.Id("result"))),
 							)
 						}
 
 						if child {
 							// local activity wrapper
-							fixFn := func(b *j.Group) {
-								b.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(j.Id("ctx"))
-								b.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
-								b.If(
+							fixFn := func(g *j.Group) {
+								g.Id("lao").Op(":=").Qual(workflowPkg, "GetLocalActivityOptions").Call(j.Id("ctx"))
+								g.Id("lao").Dot("ScheduleToCloseTimeout").Op("=").Qual("time", "Second").Op("*").Lit(10)
+								g.If(
 									j.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").Call(
 										j.Qual(workflowPkg, "WithLocalActivityOptions").Call(j.Id("ctx"), j.Id("lao")),
-										j.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.Map(j.String()).Any(), j.Error()).BlockFunc(func(b *j.Group) {
-											origFn(b, j.Nil())
-											b.Return(j.Id("searchAttributes"), j.Nil())
+										j.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.Map(j.String()).Any(), j.Error()).BlockFunc(func(g *j.Group) {
+											origFn(g, j.Nil())
+											g.Return(j.Id("searchAttributes"), j.Nil())
 										}),
 									).Dot("Get").Call(j.Id("ctx"), j.Op("&").Id("opts").Dot("SearchAttributes")),
 									j.Err().Op("!=").Nil(),
@@ -2480,31 +2481,31 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 							// introduce local activity wrapper behind workflow versioning
 							switch pvm := m.patchMode(temporalv1.Patch_PV_64, workflow); pvm {
 							case temporalv1.Patch_PVM_ENABLED:
-								patchComment(b, temporalv1.Patch_PV_64)
-								b.If(j.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
+								patchComment(g, temporalv1.Patch_PV_64)
+								g.If(j.Add(patchVersion(temporalv1.Patch_PV_64, pvm)).Op("==").Lit(1)).BlockFunc(
 									fixFn,
-								).Else().BlockFunc(func(b *j.Group) {
-									origFn(b, j.Id("opts"))
-									b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+								).Else().BlockFunc(func(g *j.Group) {
+									origFn(g, j.Id("opts"))
+									g.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
 								})
 							case temporalv1.Patch_PVM_MARKER:
-								b.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
-								fixFn(b)
+								g.Add(patchVersion(temporalv1.Patch_PV_64, pvm))
+								fixFn(g)
 							case temporalv1.Patch_PVM_REMOVED:
-								fixFn(b)
+								fixFn(g)
 							default:
-								origFn(b, j.Id("opts"))
-								b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+								origFn(g, j.Id("opts"))
+								g.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
 							}
 						} else {
-							origFn(b, j.Id("opts"))
-							b.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
+							origFn(g, j.Id("opts"))
+							g.Id("opts").Dot("SearchAttributes").Op("=").Id("searchAttributes")
 						}
 					})
 			}
 
 			// set WorkflowExecutionTimeout
-			executionTimeout := fn.If(j.Id("v").Op(":=").Id("o").Dot("executionTimeout"), j.Id("v").Op("!=").Nil()).Block(
+			executionTimeout := g.If(j.Id("v").Op(":=").Id("o").Dot("executionTimeout"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Op("*").Id("v"),
 			)
 			if d := opts.GetExecutionTimeout().AsDuration(); d > 0 {
@@ -2514,7 +2515,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			}
 
 			// set WorkflowRunTimeout
-			runTimeout := fn.If(j.Id("v").Op(":=").Id("o").Dot("runTimeout"), j.Id("v").Op("!=").Nil()).Block(
+			runTimeout := g.If(j.Id("v").Op(":=").Id("o").Dot("runTimeout"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("WorkflowRunTimeout").Op("=").Op("*").Id("v"),
 			)
 			if d := opts.GetRunTimeout().AsDuration(); d > 0 {
@@ -2524,7 +2525,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			}
 
 			// set WorkflowTaskTimeout
-			taskTimeout := fn.If(j.Id("v").Op(":=").Id("o").Dot("taskTimeout"), j.Id("v").Op("!=").Nil()).Block(
+			taskTimeout := g.If(j.Id("v").Op(":=").Id("o").Dot("taskTimeout"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("WorkflowTaskTimeout").Op("=").Op("*").Id("v"),
 			)
 			if d := opts.GetTaskTimeout().AsDuration(); d > 0 {
@@ -2535,11 +2536,11 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 
 			// set ParentClosePolicy
 			if child {
-				parentClosePolicy := fn.If(j.Id("v").Op(":=").Id("o").Dot("parentClosePolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).Block(
+				parentClosePolicy := g.If(j.Id("v").Op(":=").Id("o").Dot("parentClosePolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).Block(
 					j.Id("opts").Dot("ParentClosePolicy").Op("=").Id("v"),
 				)
 				if opts.GetParentClosePolicy() != temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_UNSPECIFIED {
-					parentClosePolicy.Else().If(j.Id("opts").Dot("ParentClosePolicy").Op("==").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).BlockFunc(func(bl *j.Group) {
+					parentClosePolicy.Else().If(j.Id("opts").Dot("ParentClosePolicy").Op("==").Qual(enumsPkg, "PARENT_CLOSE_POLICY_UNSPECIFIED")).BlockFunc(func(g *j.Group) {
 						var policy string
 						switch opts.GetParentClosePolicy() {
 						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON:
@@ -2549,14 +2550,14 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 						case temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE:
 							policy = "PARENT_CLOSE_POLICY_TERMINATE"
 						}
-						bl.Id("opts").Dot("ParentClosePolicy").Op("=").Qual(enumsPkg, policy)
+						g.Id("opts").Dot("ParentClosePolicy").Op("=").Qual(enumsPkg, policy)
 					})
 				}
 			}
 
 			// set WaitForCancellation
 			if child {
-				waitForCancellation := fn.If(j.Id("v").Op(":=").Id("o").Dot("waitForCancellation"), j.Id("v").Op("!=").Nil()).Block(
+				waitForCancellation := g.If(j.Id("v").Op(":=").Id("o").Dot("waitForCancellation"), j.Id("v").Op("!=").Nil()).Block(
 					j.Id("opts").Dot("WaitForCancellation").Op("=").Op("*").Id("v"),
 				)
 				if opts.GetWaitForCancellation() {
@@ -2567,7 +2568,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			}
 
 			if p := opts.GetWorkflowIdConflictPolicy(); p != enums.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
-				fn.If(j.Id("opts").Dot("workflowIdConflictPolicy").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).BlockFunc(func(bl *j.Group) {
+				g.If(j.Id("opts").Dot("workflowIdConflictPolicy").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).BlockFunc(func(g *j.Group) {
 					var policy string
 					switch p {
 					case enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL:
@@ -2577,11 +2578,11 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 					case enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING:
 						policy = "WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING"
 					}
-					bl.Id("opts").Dot("WorkflowIdConflictPolicy").Op("=").Qual(enumsPkg, policy)
+					g.Id("opts").Dot("WorkflowIdConflictPolicy").Op("=").Qual(enumsPkg, policy)
 				})
 			}
 
-			fn.Return(j.Id("opts"), j.Nil())
+			g.Return(j.Id("opts"), j.Nil())
 		})
 
 	baseName := m.toCamel("With%s", optionsType)
@@ -2595,6 +2596,19 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			j.Id("o").Dot("options").Op("=").Id("options"),
 			j.Return(j.Id("o")),
 		)
+
+	if child {
+		f.Comment("WithDataConverter registers a DataConverter for the child workflow")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithDataConverter").
+			Params(j.Id("dc").Qual(converterPkg, "DataConverter")).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("dc").Op("=").Id("dc"),
+				j.Return(j.Id("o")),
+			)
+	}
 
 	f.Comment("WithExecutionTimeout sets the WorkflowExecutionTimeout value")
 	f.Func().

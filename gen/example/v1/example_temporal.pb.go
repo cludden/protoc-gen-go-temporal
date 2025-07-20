@@ -24,6 +24,7 @@ import (
 	serviceerror "go.temporal.io/api/serviceerror"
 	activity "go.temporal.io/sdk/activity"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -790,6 +791,9 @@ func CreateFooChildAsync(ctx workflow.Context, req *CreateFooRequest, options ..
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &CreateFooChildRun{Future: workflow.ExecuteChildWorkflow(ctx, CreateFooWorkflowName, req)}, nil
 }
 
@@ -805,6 +809,7 @@ type CreateFooChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -881,6 +886,12 @@ func (o *CreateFooChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *CreateFooChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *CreateFooChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *CreateFooChildOptions) WithDataConverter(dc converter.DataConverter) *CreateFooChildOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1116,6 +1127,9 @@ func NotifyAsync(ctx workflow.Context, req *NotifyRequest, options ...*NotifyAct
 		return &NotifyFuture{Future: errF}
 	}
 	activity := NotifyActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &NotifyFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
 	return future
 }
@@ -1145,6 +1159,9 @@ func NotifyLocalAsync(ctx workflow.Context, req *NotifyRequest, options ...*Noti
 	} else {
 		activity = NotifyActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &NotifyFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
 	return future
 }
@@ -1155,6 +1172,7 @@ type NotifyActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -1202,6 +1220,12 @@ func (o *NotifyActivityOptions) Build(ctx workflow.Context) (workflow.Context, e
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *NotifyActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *NotifyActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *NotifyActivityOptions) WithDataConverter(dc converter.DataConverter) *NotifyActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -1253,6 +1277,7 @@ type NotifyLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context, *NotifyRequest) error
 }
 
@@ -1289,6 +1314,12 @@ func (o *NotifyLocalActivityOptions) Local(fn func(context.Context, *NotifyReque
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *NotifyLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *NotifyLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *NotifyLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *NotifyLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 

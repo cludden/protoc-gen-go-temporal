@@ -20,6 +20,7 @@ import (
 	v2 "github.com/urfave/cli/v2"
 	enumsv1 "go.temporal.io/api/enums/v1"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -484,6 +485,9 @@ func HelloChildAsync(ctx workflow.Context, req *HelloRequest, options ...*HelloC
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &HelloChildRun{Future: workflow.ExecuteChildWorkflow(ctx, HelloWorkflowName, req)}, nil
 }
 
@@ -499,6 +503,7 @@ type HelloChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -571,6 +576,12 @@ func (o *HelloChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *HelloChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *HelloChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *HelloChildOptions) WithDataConverter(dc converter.DataConverter) *HelloChildOptions {
+	o.dc = dc
 	return o
 }
 

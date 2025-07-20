@@ -21,6 +21,7 @@ import (
 	v2 "github.com/urfave/cli/v2"
 	enumsv1 "go.temporal.io/api/enums/v1"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -510,6 +511,9 @@ func PutHybridExampleChildAsync(ctx workflow.Context, req *HybridExample, option
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &PutHybridExampleChildRun{Future: workflow.ExecuteChildWorkflow(ctx, PutHybridExampleWorkflowName, req)}, nil
 }
 
@@ -525,6 +529,7 @@ type PutHybridExampleChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -575,6 +580,12 @@ func (o *PutHybridExampleChildOptions) Build(ctx workflow.Context, req protorefl
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *PutHybridExampleChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *PutHybridExampleChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *PutHybridExampleChildOptions) WithDataConverter(dc converter.DataConverter) *PutHybridExampleChildOptions {
+	o.dc = dc
 	return o
 }
 

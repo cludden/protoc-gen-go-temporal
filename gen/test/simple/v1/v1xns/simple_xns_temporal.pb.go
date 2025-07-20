@@ -3051,7 +3051,6 @@ func (a *simpleActivities) GetSomeWorkflow1(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetSomeWorkflow1(actx, input.GetWorkflowId(), input.GetRunId())
@@ -3065,12 +3064,10 @@ func (a *simpleActivities) GetSomeWorkflow1(ctx context.Context, input *xnsv1.Ge
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3080,22 +3077,18 @@ func (a *simpleActivities) GetSomeWorkflow1(ctx context.Context, input *xnsv1.Ge
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3107,7 +3100,6 @@ func (a *simpleActivities) GetSomeWorkflow1(ctx context.Context, input *xnsv1.Ge
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return out, simpleOptions.convertError(err)
 		}
 	}
@@ -3126,7 +3118,6 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -3163,12 +3154,10 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3178,22 +3167,17 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3205,7 +3189,6 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, simpleOptions.convertError(err)
 		}
 	}
@@ -3218,7 +3201,6 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetSomeWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
@@ -3232,12 +3214,10 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3247,22 +3227,18 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3274,7 +3250,6 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return simpleOptions.convertError(err)
 		}
 	}
@@ -3283,7 +3258,6 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 // SomeWorkflow2 executes a(n) mycompany.simple.SomeWorkflow2 workflow via an activity
 func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -3320,12 +3294,10 @@ func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.Workf
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3335,22 +3307,17 @@ func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.Workf
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3362,7 +3329,6 @@ func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.Workf
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return simpleOptions.convertError(err)
 		}
 	}
@@ -3371,7 +3337,6 @@ func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.Workf
 // SomeWorkflow2WithSomeSignal1 sends a(n) mycompany.simple.Simple.SomeSignal1 signal to a(n) mycompany.simple.SomeWorkflow2 workflow via an activity
 func (a *simpleActivities) SomeWorkflow2WithSomeSignal1(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -3408,12 +3373,10 @@ func (a *simpleActivities) SomeWorkflow2WithSomeSignal1(ctx context.Context, inp
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3423,22 +3386,17 @@ func (a *simpleActivities) SomeWorkflow2WithSomeSignal1(ctx context.Context, inp
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3450,7 +3408,6 @@ func (a *simpleActivities) SomeWorkflow2WithSomeSignal1(ctx context.Context, inp
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return simpleOptions.convertError(err)
 		}
 	}
@@ -3562,7 +3519,6 @@ func (a *simpleActivities) GetSomeWorkflow3(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetSomeWorkflow3(actx, input.GetWorkflowId(), input.GetRunId())
@@ -3576,12 +3532,10 @@ func (a *simpleActivities) GetSomeWorkflow3(ctx context.Context, input *xnsv1.Ge
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3591,22 +3545,18 @@ func (a *simpleActivities) GetSomeWorkflow3(ctx context.Context, input *xnsv1.Ge
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3618,7 +3568,6 @@ func (a *simpleActivities) GetSomeWorkflow3(ctx context.Context, input *xnsv1.Ge
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return simpleOptions.convertError(err)
 		}
 	}
@@ -3641,7 +3590,6 @@ func (a *simpleActivities) SomeWorkflow3(ctx context.Context, input *xnsv1.Workf
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -3678,12 +3626,10 @@ func (a *simpleActivities) SomeWorkflow3(ctx context.Context, input *xnsv1.Workf
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3693,22 +3639,17 @@ func (a *simpleActivities) SomeWorkflow3(ctx context.Context, input *xnsv1.Workf
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3720,7 +3661,6 @@ func (a *simpleActivities) SomeWorkflow3(ctx context.Context, input *xnsv1.Workf
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return simpleOptions.convertError(err)
 		}
 	}
@@ -3753,7 +3693,6 @@ func (a *simpleActivities) SomeWorkflow3WithSomeSignal2(ctx context.Context, inp
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -3790,12 +3729,10 @@ func (a *simpleActivities) SomeWorkflow3WithSomeSignal2(ctx context.Context, inp
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3805,22 +3742,17 @@ func (a *simpleActivities) SomeWorkflow3WithSomeSignal2(ctx context.Context, inp
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3832,7 +3764,6 @@ func (a *simpleActivities) SomeWorkflow3WithSomeSignal2(ctx context.Context, inp
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return simpleOptions.convertError(err)
 		}
 	}
@@ -3845,7 +3776,6 @@ func (a *simpleActivities) GetSomeWorkflow4(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetSomeWorkflow4(actx, input.GetWorkflowId(), input.GetRunId())
@@ -3859,12 +3789,10 @@ func (a *simpleActivities) GetSomeWorkflow4(ctx context.Context, input *xnsv1.Ge
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3874,22 +3802,18 @@ func (a *simpleActivities) GetSomeWorkflow4(ctx context.Context, input *xnsv1.Ge
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3901,7 +3825,6 @@ func (a *simpleActivities) GetSomeWorkflow4(ctx context.Context, input *xnsv1.Ge
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return out, simpleOptions.convertError(err)
 		}
 	}
@@ -3920,7 +3843,6 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -3957,12 +3879,10 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -3972,22 +3892,17 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -3999,7 +3914,6 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, simpleOptions.convertError(err)
 		}
 	}
@@ -5153,7 +5067,6 @@ func (a *otherActivities) GetOtherWorkflow(ctx context.Context, input *xnsv1.Get
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetOtherWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
@@ -5167,12 +5080,10 @@ func (a *otherActivities) GetOtherWorkflow(ctx context.Context, input *xnsv1.Get
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, otherOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -5182,22 +5093,18 @@ func (a *otherActivities) GetOtherWorkflow(ctx context.Context, input *xnsv1.Get
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return nil, otherOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -5209,7 +5116,6 @@ func (a *otherActivities) GetOtherWorkflow(ctx context.Context, input *xnsv1.Get
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return out, otherOptions.convertError(err)
 		}
 	}
@@ -5228,7 +5134,6 @@ func (a *otherActivities) OtherWorkflow(ctx context.Context, input *xnsv1.Workfl
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -5265,12 +5170,10 @@ func (a *otherActivities) OtherWorkflow(ctx context.Context, input *xnsv1.Workfl
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -5280,22 +5183,17 @@ func (a *otherActivities) OtherWorkflow(ctx context.Context, input *xnsv1.Workfl
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -5307,7 +5205,6 @@ func (a *otherActivities) OtherWorkflow(ctx context.Context, input *xnsv1.Workfl
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, otherOptions.convertError(err)
 		}
 	}
@@ -5911,7 +5808,6 @@ func (a *ignoredActivities) GetWhat(ctx context.Context, input *xnsv1.GetWorkflo
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetWhat(actx, input.GetWorkflowId(), input.GetRunId())
@@ -5925,12 +5821,10 @@ func (a *ignoredActivities) GetWhat(ctx context.Context, input *xnsv1.GetWorkflo
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return ignoredOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -5940,22 +5834,18 @@ func (a *ignoredActivities) GetWhat(ctx context.Context, input *xnsv1.GetWorkflo
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return ignoredOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -5967,7 +5857,6 @@ func (a *ignoredActivities) GetWhat(ctx context.Context, input *xnsv1.GetWorkflo
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return ignoredOptions.convertError(err)
 		}
 	}
@@ -5986,7 +5875,6 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -6023,12 +5911,10 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -6038,22 +5924,17 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -6065,7 +5946,6 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return ignoredOptions.convertError(err)
 		}
 	}
@@ -8347,7 +8227,6 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow1(ctx context.Context, i
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetSomeDeprecatedWorkflow1(actx, input.GetWorkflowId(), input.GetRunId())
@@ -8361,12 +8240,10 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow1(ctx context.Context, i
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, deprecatedOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -8376,22 +8253,18 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow1(ctx context.Context, i
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return nil, deprecatedOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -8403,7 +8276,6 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow1(ctx context.Context, i
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return out, deprecatedOptions.convertError(err)
 		}
 	}
@@ -8426,7 +8298,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1(ctx context.Context, inpu
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -8463,12 +8334,10 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1(ctx context.Context, inpu
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -8478,22 +8347,17 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1(ctx context.Context, inpu
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -8505,7 +8369,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1(ctx context.Context, inpu
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, deprecatedOptions.convertError(err)
 		}
 	}
@@ -8539,7 +8402,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1(
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -8576,12 +8438,10 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1(
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -8591,22 +8451,17 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1(
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -8618,7 +8473,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1(
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, deprecatedOptions.convertError(err)
 		}
 	}
@@ -8635,7 +8489,6 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow2(ctx context.Context, i
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetSomeDeprecatedWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
@@ -8649,12 +8502,10 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow2(ctx context.Context, i
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, deprecatedOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -8664,22 +8515,18 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow2(ctx context.Context, i
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return nil, deprecatedOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -8691,7 +8538,6 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow2(ctx context.Context, i
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return out, deprecatedOptions.convertError(err)
 		}
 	}
@@ -8714,7 +8560,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2(ctx context.Context, inpu
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -8751,12 +8596,10 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2(ctx context.Context, inpu
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -8766,22 +8609,17 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2(ctx context.Context, inpu
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -8793,7 +8631,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2(ctx context.Context, inpu
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, deprecatedOptions.convertError(err)
 		}
 	}
@@ -8827,7 +8664,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2(
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -8864,12 +8700,10 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2(
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -8879,22 +8713,17 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2(
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -8906,7 +8735,6 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2(
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, deprecatedOptions.convertError(err)
 		}
 	}

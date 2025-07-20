@@ -11,6 +11,7 @@ import (
 	"context"
 	scheme "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
 	activity "go.temporal.io/sdk/activity"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
@@ -97,6 +98,9 @@ func BarAsync(ctx workflow.Context, req *BarInput, options ...*BarActivityOption
 		return &BarFuture{Future: errF}
 	}
 	activity := BarActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &BarFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
 	return future
 }
@@ -126,6 +130,9 @@ func BarLocalAsync(ctx workflow.Context, req *BarInput, options ...*BarLocalActi
 	} else {
 		activity = BarActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &BarFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
 	return future
 }
@@ -136,6 +143,7 @@ type BarActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -181,6 +189,12 @@ func (o *BarActivityOptions) Build(ctx workflow.Context) (workflow.Context, erro
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *BarActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *BarActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *BarActivityOptions) WithDataConverter(dc converter.DataConverter) *BarActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -232,6 +246,7 @@ type BarLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context, *BarInput) error
 }
 
@@ -266,6 +281,12 @@ func (o *BarLocalActivityOptions) Local(fn func(context.Context, *BarInput) erro
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *BarLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *BarLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *BarLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *BarLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -337,6 +358,9 @@ func BazAsync(ctx workflow.Context, options ...*BazActivityOptions) *BazFuture {
 		return &BazFuture{Future: errF}
 	}
 	activity := BazActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &BazFuture{Future: workflow.ExecuteActivity(ctx, activity)}
 	return future
 }
@@ -366,6 +390,9 @@ func BazLocalAsync(ctx workflow.Context, options ...*BazLocalActivityOptions) *B
 	} else {
 		activity = BazActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &BazFuture{Future: workflow.ExecuteLocalActivity(ctx, activity)}
 	return future
 }
@@ -376,6 +403,7 @@ type BazActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -421,6 +449,12 @@ func (o *BazActivityOptions) Build(ctx workflow.Context) (workflow.Context, erro
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *BazActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *BazActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *BazActivityOptions) WithDataConverter(dc converter.DataConverter) *BazActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -472,6 +506,7 @@ type BazLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context) (*BazOutput, error)
 }
 
@@ -506,6 +541,12 @@ func (o *BazLocalActivityOptions) Local(fn func(context.Context) (*BazOutput, er
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *BazLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *BazLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *BazLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *BazLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -577,6 +618,9 @@ func FooAsync(ctx workflow.Context, req *FooInput, options ...*FooActivityOption
 		return &FooFuture{Future: errF}
 	}
 	activity := FooActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &FooFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
 	return future
 }
@@ -606,6 +650,9 @@ func FooLocalAsync(ctx workflow.Context, req *FooInput, options ...*FooLocalActi
 	} else {
 		activity = FooActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &FooFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
 	return future
 }
@@ -616,6 +663,7 @@ type FooActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -661,6 +709,12 @@ func (o *FooActivityOptions) Build(ctx workflow.Context) (workflow.Context, erro
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *FooActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *FooActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *FooActivityOptions) WithDataConverter(dc converter.DataConverter) *FooActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -712,6 +766,7 @@ type FooLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context, *FooInput) (*FooOutput, error)
 }
 
@@ -746,6 +801,12 @@ func (o *FooLocalActivityOptions) Local(fn func(context.Context, *FooInput) (*Fo
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *FooLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *FooLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *FooLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *FooLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -813,6 +874,9 @@ func QuxAsync(ctx workflow.Context, options ...*QuxActivityOptions) *QuxFuture {
 		return &QuxFuture{Future: errF}
 	}
 	activity := QuxActivityName
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &QuxFuture{Future: workflow.ExecuteActivity(ctx, activity)}
 	return future
 }
@@ -842,6 +906,9 @@ func QuxLocalAsync(ctx workflow.Context, options ...*QuxLocalActivityOptions) *Q
 	} else {
 		activity = QuxActivityName
 	}
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	future := &QuxFuture{Future: workflow.ExecuteLocalActivity(ctx, activity)}
 	return future
 }
@@ -852,6 +919,7 @@ type QuxActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
@@ -897,6 +965,12 @@ func (o *QuxActivityOptions) Build(ctx workflow.Context) (workflow.Context, erro
 // WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
 func (o *QuxActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *QuxActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *QuxActivityOptions) WithDataConverter(dc converter.DataConverter) *QuxActivityOptions {
+	o.dc = dc
 	return o
 }
 
@@ -948,6 +1022,7 @@ type QuxLocalActivityOptions struct {
 	retryPolicy            *temporal.RetryPolicy
 	scheduleToCloseTimeout *time.Duration
 	startToCloseTimeout    *time.Duration
+	dc                     converter.DataConverter
 	fn                     func(context.Context) error
 }
 
@@ -982,6 +1057,12 @@ func (o *QuxLocalActivityOptions) Local(fn func(context.Context) error) *QuxLoca
 // WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
 func (o *QuxLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *QuxLocalActivityOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the (local) activity
+func (o *QuxLocalActivityOptions) WithDataConverter(dc converter.DataConverter) *QuxLocalActivityOptions {
+	o.dc = dc
 	return o
 }
 

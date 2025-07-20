@@ -2,7 +2,6 @@
 // versions:
 //
 //	protoc-gen-go_temporal dev (latest)
-//	go go1.23.6
 //	protoc (unknown)
 //
 // source: example/shoppingcart/v1/shoppingcart.proto
@@ -23,6 +22,7 @@ import (
 	enumsv1 "go.temporal.io/api/enums/v1"
 	serviceerror "go.temporal.io/api/serviceerror"
 	client "go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 	temporal "go.temporal.io/sdk/temporal"
 	testsuite "go.temporal.io/sdk/testsuite"
 	worker "go.temporal.io/sdk/worker"
@@ -842,6 +842,9 @@ func ShoppingCartChildAsync(ctx workflow.Context, req *ShoppingCartInput, option
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
 	return &ShoppingCartChildRun{Future: workflow.ExecuteChildWorkflow(ctx, ShoppingCartWorkflowName, req)}, nil
 }
 
@@ -857,6 +860,7 @@ type ShoppingCartChildOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
 	waitForCancellation      *bool
 }
@@ -929,6 +933,12 @@ func (o *ShoppingCartChildOptions) Build(ctx workflow.Context, req protoreflect.
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
 func (o *ShoppingCartChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ShoppingCartChildOptions {
 	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *ShoppingCartChildOptions) WithDataConverter(dc converter.DataConverter) *ShoppingCartChildOptions {
+	o.dc = dc
 	return o
 }
 

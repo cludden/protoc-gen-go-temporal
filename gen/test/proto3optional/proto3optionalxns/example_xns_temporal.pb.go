@@ -479,7 +479,6 @@ func (a *fooServiceActivities) GetFoo(ctx context.Context, input *xnsv1.GetWorkf
 		heartbeatInterval = time.Second * 30
 	}
 
-	activity.GetLogger(ctx).Debug("getting workflow", "workflow_id", input.GetWorkflowId(), "run_id", input.GetRunId())
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	run := a.client.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
@@ -493,12 +492,10 @@ func (a *fooServiceActivities) GetFoo(ctx context.Context, input *xnsv1.GetWorkf
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record hearbeat")
 			activity.RecordHeartbeat(ctx)
 
 		// return retryable error if the worker is stopping
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, fooServiceOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -508,22 +505,18 @@ func (a *fooServiceActivities) GetFoo(ctx context.Context, input *xnsv1.GetWorkf
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
 				activity.GetLogger(ctx).Info("worker is stopping")
 				return nil, fooServiceOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -535,7 +528,6 @@ func (a *fooServiceActivities) GetFoo(ctx context.Context, input *xnsv1.GetWorkf
 
 		// handle workflow completion
 		case <-done:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return out, fooServiceOptions.convertError(err)
 		}
 	}
@@ -554,7 +546,6 @@ func (a *fooServiceActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReq
 	}
 
 	// initialize workflow execution
-	activity.GetLogger(ctx).Debug("starting workflow")
 	actx := ctx
 	if !input.GetDetached() {
 		var cancel context.CancelFunc
@@ -591,12 +582,10 @@ func (a *fooServiceActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReq
 		select {
 		// send heartbeats periodically
 		case <-time.After(heartbeatInterval):
-			activity.GetLogger(ctx).Debug("record heartbeat")
 			activity.RecordHeartbeat(ctx, run.ID())
 
 		// return retryable error on worker close
 		case <-activity.GetWorkerStopChannel(ctx):
-			activity.GetLogger(ctx).Debug("worker is stopping")
 			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 
 		// catch parent activity context cancellation. in most cases, this should indicate a
@@ -606,22 +595,17 @@ func (a *fooServiceActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReq
 		// worker closing, we again check to see if the worker stop channel is closed before
 		// propagating the cancellation
 		case <-ctx.Done():
-			activity.GetLogger(ctx).Debug("activity context canceled")
 			select {
 			case <-activity.GetWorkerStopChannel(ctx):
-				activity.GetLogger(ctx).Debug("worker is stopping")
 				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
 			default:
 				parentClosePolicy := input.GetParentClosePolicy()
-				activity.GetLogger(ctx).Debug("parent close policy", "parent_close_policy", parentClosePolicy.String())
 				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
 					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 					defer cancel()
 					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
-						activity.GetLogger(ctx).Debug("cancel workflow")
 						err = run.Cancel(disconnectedCtx)
 					} else {
-						activity.GetLogger(ctx).Debug("terminate workflow")
 						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
 					}
 					if err != nil {
@@ -633,7 +617,6 @@ func (a *fooServiceActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReq
 
 		// handle workflow completion
 		case <-doneCh:
-			activity.GetLogger(ctx).Debug("workflow completed")
 			return resp, fooServiceOptions.convertError(err)
 		}
 	}
