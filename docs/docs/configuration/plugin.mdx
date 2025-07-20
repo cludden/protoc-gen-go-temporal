@@ -287,26 +287,3 @@ protoc --go_temporal_opt=patches=64_REMOVED;65_MARKER;66_ENABLED;67_DISABLED
 ```
 </TabItem>
 </Tabs>
-
-### workflow-update-enabled
-
-`bool`
-
-Enables [update support](/docs/guides/updates)
-
-<Tabs>
-<TabItem value="workflow-update-enabled-buf" label="Buf">
-```yaml title="buf.gen.yaml"
-plugins:
-  - plugin: go_temporal
-    out: gen
-    opt: workflow-update-enabled=true
-    strategy: all
-```
-</TabItem>
-<TabItem value="workflow-update-enabled-protoc" label="Protoc">
-```sh
-protoc --go_temporal_opt=workflow-update-enabled=true
-```
-</TabItem>
-</Tabs>

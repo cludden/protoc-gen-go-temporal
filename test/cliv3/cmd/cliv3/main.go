@@ -15,8 +15,8 @@ import (
 )
 
 func main() {
-	cmd, err := cliv3.NewExampleServiceCliV3(
-		cliv3.NewExampleServiceCliV3Options().
+	cmd, err := cliv3.NewExampleServiceCli(
+		cliv3.NewExampleServiceCliOptions().
 			WithClient(func(ctx context.Context, c *cli.Command) (client.Client, error) {
 				return client.DialContext(ctx, client.Options{
 					Logger: tlog.NewStructuredLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{

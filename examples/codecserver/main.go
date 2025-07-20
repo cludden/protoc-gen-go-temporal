@@ -14,7 +14,7 @@ import (
 	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/codec"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	tlog "go.temporal.io/sdk/log"
@@ -24,8 +24,8 @@ import (
 func main() {
 	app, err := examplev1.NewExampleCli(
 		examplev1.NewExampleCliOptions().
-			WithClient(func(cmd *cli.Context) (client.Client, error) {
-				return client.Dial(client.Options{
+			WithClient(func(ctx context.Context, cmd *cli.Command) (client.Client, error) {
+				return client.DialContext(ctx, client.Options{
 					DataConverter: converter.NewCompositeDataConverter(
 						converter.NewNilPayloadConverter(),
 						converter.NewByteSlicePayloadConverter(),
@@ -34,7 +34,7 @@ func main() {
 					Logger: tlog.NewStructuredLogger(slog.Default()),
 				})
 			}).
-			WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+			WithWorker(func(ctx context.Context, cmd *cli.Command, c client.Client) (worker.Worker, error) {
 				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
 				examplev1.RegisterExampleActivities(w, &example.Activities{})
 				examplev1.RegisterExampleWorkflows(w, &example.Workflows{})
@@ -48,7 +48,7 @@ func main() {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:  "codec",
 		Usage: "run remote codec server",
-		Action: func(cmd *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			handler := converter.NewPayloadCodecHTTPHandler(
 				codec.NewProtoJSONCodec(
 					scheme.New(
@@ -80,7 +80,7 @@ func main() {
 	})
 
 	// run cli
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }

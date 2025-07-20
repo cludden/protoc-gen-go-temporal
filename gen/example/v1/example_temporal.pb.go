@@ -19,7 +19,7 @@ import (
 	scheme "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
 	testutil "github.com/cludden/protoc-gen-go-temporal/pkg/testutil"
 	gohomedir "github.com/mitchellh/go-homedir"
-	v2 "github.com/urfave/cli/v2"
+	cliv3 "github.com/urfave/cli/v3"
 	enumsv1 "go.temporal.io/api/enums/v1"
 	serviceerror "go.temporal.io/api/serviceerror"
 	activity "go.temporal.io/sdk/activity"
@@ -1603,12 +1603,12 @@ func (r *testCreateFooRun) UpdateFooProgressAsync(ctx context.Context, req *SetF
 	return r.client.UpdateFooProgressAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// ExampleCliOptions describes runtime configuration for example.v1.Example cli
+// ExampleCliOptions describes runtime configuration for example.v1.Example cli v3
 type ExampleCliOptions struct {
-	after            func(*v2.Context) error
-	before           func(*v2.Context) error
-	clientForCommand func(*v2.Context) (client.Client, error)
-	worker           func(*v2.Context, client.Client) (worker.Worker, error)
+	after            func(context.Context, *cliv3.Command) error
+	before           func(context.Context, *cliv3.Command) (context.Context, error)
+	clientForCommand func(context.Context, *cliv3.Command) (client.Client, error)
+	worker           func(context.Context, *cliv3.Command, client.Client) (worker.Worker, error)
 }
 
 // NewExampleCliOptions initializes a new ExampleCliOptions value
@@ -1617,66 +1617,54 @@ func NewExampleCliOptions() *ExampleCliOptions {
 }
 
 // WithAfter injects a custom After hook to be run after any command invocation
-func (opts *ExampleCliOptions) WithAfter(fn func(*v2.Context) error) *ExampleCliOptions {
+func (opts *ExampleCliOptions) WithAfter(fn func(context.Context, *cliv3.Command) error) *ExampleCliOptions {
 	opts.after = fn
 	return opts
 }
 
 // WithBefore injects a custom Before hook to be run prior to any command invocation
-func (opts *ExampleCliOptions) WithBefore(fn func(*v2.Context) error) *ExampleCliOptions {
+func (opts *ExampleCliOptions) WithBefore(fn func(context.Context, *cliv3.Command) (context.Context, error)) *ExampleCliOptions {
 	opts.before = fn
 	return opts
 }
 
 // WithClient provides a Temporal client factory for use by commands
-func (opts *ExampleCliOptions) WithClient(fn func(*v2.Context) (client.Client, error)) *ExampleCliOptions {
+func (opts *ExampleCliOptions) WithClient(fn func(context.Context, *cliv3.Command) (client.Client, error)) *ExampleCliOptions {
 	opts.clientForCommand = fn
 	return opts
 }
 
 // WithWorker provides an method for initializing a worker
-func (opts *ExampleCliOptions) WithWorker(fn func(*v2.Context, client.Client) (worker.Worker, error)) *ExampleCliOptions {
+func (opts *ExampleCliOptions) WithWorker(fn func(context.Context, *cliv3.Command, client.Client) (worker.Worker, error)) *ExampleCliOptions {
 	opts.worker = fn
 	return opts
 }
 
-// NewExampleCli initializes a cli for a(n) example.v1.Example service
-func NewExampleCli(options ...*ExampleCliOptions) (*v2.App, error) {
+// NewExampleCli initializes a cli app for a(n) example.v1.Example service
+func NewExampleCli(options ...*ExampleCliOptions) (*cliv3.Command, error) {
 	commands, err := newExampleCommands(options...)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing subcommands: %w", err)
 	}
-	return &v2.App{
+	return &cliv3.Command{
 		Name:                      "example",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
 }
 
-// NewExampleCliCommand initializes a cli command for a example.v1.Example service with subcommands for each query, signal, update, and workflow
-func NewExampleCliCommand(options ...*ExampleCliOptions) (*v2.Command, error) {
-	subcommands, err := newExampleCommands(options...)
-	if err != nil {
-		return nil, fmt.Errorf("error initializing subcommands: %w", err)
-	}
-	return &v2.Command{
-		Name:        "example",
-		Subcommands: subcommands,
-	}, nil
-}
-
 // newExampleCommands initializes (sub)commands for a example.v1.Example cli or command
-func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
+func newExampleCommands(options ...*ExampleCliOptions) ([]*cliv3.Command, error) {
 	opts := &ExampleCliOptions{}
 	if len(options) > 0 {
 		opts = options[0]
 	}
 	if opts.clientForCommand == nil {
-		opts.clientForCommand = func(*v2.Context) (client.Client, error) {
-			return client.Dial(client.Options{})
+		opts.clientForCommand = func(ctx context.Context, cmd *cliv3.Command) (client.Client, error) {
+			return client.DialContext(ctx, client.Options{})
 		}
 	}
-	commands := []*v2.Command{
+	commands := []*cliv3.Command{
 		{
 			Name:                   "get-foo-progress",
 			Usage:                  "GetFooProgress returns the status of a CreateFoo operation",
@@ -1684,27 +1672,27 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
 			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.StringFlag{
+			Flags: []cliv3.Flag{
+				&cliv3.StringFlag{
 					Name:     "workflow-id",
 					Usage:    "workflow id",
 					Required: true,
 					Aliases:  []string{"w"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:    "run-id",
 					Usage:   "run id",
 					Aliases: []string{"r"},
 				},
 			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
+			Action: func(ctx context.Context, cmd *cliv3.Command) error {
+				c, err := opts.clientForCommand(ctx, cmd)
 				if err != nil {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer c.Close()
 				client := NewExampleClient(c)
-				if resp, err := client.GetFooProgress(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id")); err != nil {
+				if resp, err := client.GetFooProgress(ctx, cmd.String("workflow-id"), cmd.String("run-id")); err != nil {
 					return fmt.Errorf("error executing %q query: %w", GetFooProgressQueryName, err)
 				} else {
 					b, err := protojson.Marshal(resp)
@@ -1727,32 +1715,32 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
 			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.StringFlag{
+			Flags: []cliv3.Flag{
+				&cliv3.StringFlag{
 					Name:     "workflow-id",
 					Usage:    "workflow id",
 					Required: true,
 					Aliases:  []string{"w"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:    "run-id",
 					Usage:   "run id",
 					Aliases: []string{"r"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&v2.Float64Flag{
+				&cliv3.Float64Flag{
 					Name:     "progress",
 					Usage:    "value of current workflow progress",
 					Category: "INPUT",
 				},
 			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
+			Action: func(ctx context.Context, cmd *cliv3.Command) error {
+				c, err := opts.clientForCommand(ctx, cmd)
 				if err != nil {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
@@ -1762,7 +1750,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				if err := client.SetFooProgress(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
+				if err := client.SetFooProgress(ctx, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
 					return fmt.Errorf("error sending %q signal: %w", SetFooProgressSignalName, err)
 				}
 				fmt.Println("success")
@@ -1776,37 +1764,37 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
 			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.BoolFlag{
+			Flags: []cliv3.Flag{
+				&cliv3.BoolFlag{
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and udpate id",
 					Aliases: []string{"d"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "workflow-id",
 					Usage:    "workflow id",
 					Required: true,
 					Aliases:  []string{"w"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:    "run-id",
 					Usage:   "run id",
 					Aliases: []string{"r"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&v2.Float64Flag{
+				&cliv3.Float64Flag{
 					Name:     "progress",
 					Usage:    "value of current workflow progress",
 					Category: "INPUT",
 				},
 			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
+			Action: func(ctx context.Context, cmd *cliv3.Command) error {
+				c, err := opts.clientForCommand(ctx, cmd)
 				if err != nil {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
@@ -1816,7 +1804,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				handle, err := client.UpdateFooProgressAsync(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req)
+				handle, err := client.UpdateFooProgressAsync(ctx, cmd.String("workflow-id"), cmd.String("run-id"), req)
 				if err != nil {
 					return fmt.Errorf("error executing %s update: %w", UpdateFooProgressUpdateName, err)
 				}
@@ -1827,7 +1815,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					fmt.Printf("update id: %s\n", handle.UpdateID())
 					return nil
 				}
-				if resp, err := handle.Get(cmd.Context); err != nil {
+				if resp, err := handle.Get(ctx); err != nil {
 					return err
 				} else {
 					b, err := protojson.Marshal(resp)
@@ -1850,33 +1838,33 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
 			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.BoolFlag{
+			Flags: []cliv3.Flag{
+				&cliv3.BoolFlag{
 					Name:    "detach",
 					Usage:   "run workflow in the background and print workflow and execution id",
 					Aliases: []string{"d"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:    "task-queue",
 					Usage:   "task queue name",
 					Aliases: []string{"t"},
-					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Sources: cliv3.NewValueSourceChain(cliv3.EnvVar("TEMPORAL_TASK_QUEUE_NAME"), cliv3.EnvVar("TEMPORAL_TASK_QUEUE"), cliv3.EnvVar("TASK_QUEUE_NAME"), cliv3.EnvVar("TASK_QUEUE")),
 					Value:   "example-v1",
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "name",
 					Usage:    "unique foo name",
 					Category: "INPUT",
 				},
 			},
-			Action: func(cmd *v2.Context) error {
-				tc, err := opts.clientForCommand(cmd)
+			Action: func(ctx context.Context, cmd *cliv3.Command) error {
+				tc, err := opts.clientForCommand(ctx, cmd)
 				if err != nil {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
@@ -1890,7 +1878,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				if tq := cmd.String("task-queue"); tq != "" {
 					opts.TaskQueue = tq
 				}
-				run, err := c.CreateFooAsync(cmd.Context, req, NewCreateFooOptions().WithStartWorkflowOptions(opts))
+				run, err := c.CreateFooAsync(ctx, req, NewCreateFooOptions().WithStartWorkflowOptions(opts))
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow: %w", CreateFooWorkflowName, err)
 				}
@@ -1900,7 +1888,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					fmt.Printf("run id: %s\n", run.RunID())
 					return nil
 				}
-				if resp, err := run.Get(cmd.Context); err != nil {
+				if resp, err := run.Get(ctx); err != nil {
 					return err
 				} else {
 					b, err := protojson.Marshal(resp)
@@ -1924,37 +1912,37 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
 			After:                  opts.after,
-			Flags: []v2.Flag{
-				&v2.BoolFlag{
+			Flags: []cliv3.Flag{
+				&cliv3.BoolFlag{
 					Name:    "detach",
 					Usage:   "run workflow in the background and print workflow and execution id",
 					Aliases: []string{"d"},
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "name",
 					Usage:    "unique foo name",
 					Category: "INPUT",
 				},
-				&v2.StringFlag{
+				&cliv3.StringFlag{
 					Name:     "signal-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"s"},
 					Category: "SIGNAL",
 				},
-				&v2.Float64Flag{
+				&cliv3.Float64Flag{
 					Name:     "progress",
 					Usage:    "value of current workflow progress",
 					Category: "SIGNAL",
 				},
 			},
-			Action: func(cmd *v2.Context) error {
-				c, err := opts.clientForCommand(cmd)
+			Action: func(ctx context.Context, cmd *cliv3.Command) error {
+				c, err := opts.clientForCommand(ctx, cmd)
 				if err != nil {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
@@ -1968,7 +1956,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.CreateFooWithSetFooProgressAsync(cmd.Context, req, signal)
+				run, err := client.CreateFooWithSetFooProgressAsync(ctx, req, signal)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", CreateFooWorkflowName, SetFooProgressSignalName, err)
 				}
@@ -1978,7 +1966,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					fmt.Printf("run id: %s\n", run.RunID())
 					return nil
 				}
-				if resp, err := run.Get(cmd.Context); err != nil {
+				if resp, err := run.Get(ctx); err != nil {
 					return err
 				} else {
 					b, err := protojson.Marshal(resp)
@@ -1996,20 +1984,20 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 		},
 	}
 	if opts.worker != nil {
-		commands = append(commands, []*v2.Command{
+		commands = append(commands, []*cliv3.Command{
 			{
 				Name:                   "worker",
 				Usage:                  "runs a example.v1.Example worker process",
 				UseShortOptionHandling: true,
 				Before:                 opts.before,
 				After:                  opts.after,
-				Action: func(cmd *v2.Context) error {
-					c, err := opts.clientForCommand(cmd)
+				Action: func(ctx context.Context, cmd *cliv3.Command) error {
+					c, err := opts.clientForCommand(ctx, cmd)
 					if err != nil {
 						return fmt.Errorf("error initializing client for command: %w", err)
 					}
 					defer c.Close()
-					w, err := opts.worker(cmd, c)
+					w, err := opts.worker(ctx, cmd, c)
 					if opts.worker != nil {
 						if err != nil {
 							return fmt.Errorf("error initializing worker: %w", err)
@@ -2019,7 +2007,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 						return fmt.Errorf("error starting worker: %w", err)
 					}
 					defer w.Stop()
-					<-cmd.Context.Done()
+					<-ctx.Done()
 					return nil
 				},
 			},
@@ -2032,7 +2020,7 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 }
 
 // UnmarshalCliFlagsToSetFooProgressRequest unmarshals a SetFooProgressRequest from command line flags
-func UnmarshalCliFlagsToSetFooProgressRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SetFooProgressRequest, error) {
+func UnmarshalCliFlagsToSetFooProgressRequest(cmd *cliv3.Command, options ...helpers.UnmarshalCliFlagsOptions) (*SetFooProgressRequest, error) {
 	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result SetFooProgressRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
@@ -2059,7 +2047,7 @@ func UnmarshalCliFlagsToSetFooProgressRequest(cmd *v2.Context, options ...helper
 }
 
 // UnmarshalCliFlagsToCreateFooRequest unmarshals a CreateFooRequest from command line flags
-func UnmarshalCliFlagsToCreateFooRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*CreateFooRequest, error) {
+func UnmarshalCliFlagsToCreateFooRequest(cmd *cliv3.Command, options ...helpers.UnmarshalCliFlagsOptions) (*CreateFooRequest, error) {
 	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
 	var result CreateFooRequest
 	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {

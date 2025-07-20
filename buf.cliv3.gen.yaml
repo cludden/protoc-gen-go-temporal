@@ -25,6 +25,9 @@ plugins:
       - workflow-update-enabled=true
     strategy: all
 inputs:
+  - directory: examples
+    paths:
+      - examples/example/proto/example/v1
   - directory: test
     paths:
       - test/cliv3/proto/test/cliv3
