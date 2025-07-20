@@ -90,11 +90,13 @@ const (
 // mycompany.simple.Simple update names
 const (
 	SomeUpdate1UpdateName = "mycompany.simple.Simple.SomeUpdate1"
+	SomeUpdate2UpdateName = "mycompany.simple.Simple.SomeUpdate2"
 )
 
 // mycompany.simple.Simple update id expressions
 var (
 	SomeUpdate1Idexpression = expression.MustParseExpression("some-update/${! requestVal.not_empty().catch(\"default\").slug() }")
+	SomeUpdate2Idexpression = expression.MustParseExpression("some-update-2/${! requestVal.not_empty().catch(\"default\").slug() }")
 )
 
 // SimpleClient describes a client for a(n) mycompany.simple.Simple worker
@@ -108,6 +110,10 @@ type SimpleClient interface {
 	// GetSomeWorkflow1 retrieves a handle to an existing mycompany.simple.SomeWorkflow1 workflow execution
 	GetSomeWorkflow1(ctx context.Context, workflowID string, runID string) SomeWorkflow1Run
 
+	// SomeWorkflow1WithSomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update on a(n) mycompany.simple.SomeWorkflow1 workflow, starting it if necessary, and blocks until update completion
+	SomeWorkflow1WithSomeUpdate2(ctx context.Context, req *SomeWorkflow1Request, update *SomeUpdate2Request, opts ...*SomeWorkflow1WithSomeUpdate2Options) (*SomeUpdate2Response, SomeWorkflow1Run, error)
+	// SomeWorkflow1WithSomeUpdate2Async starts a(n) mycompany.simple.Simple.SomeUpdate2 update on a(n) mycompany.simple.SomeWorkflow1 workflow, starting it if necessary, and returns a handle to the update execution
+	SomeWorkflow1WithSomeUpdate2Async(ctx context.Context, req *SomeWorkflow1Request, update *SomeUpdate2Request, opts ...*SomeWorkflow1WithSomeUpdate2Options) (SomeUpdate2Handle, SomeWorkflow1Run, error)
 	// SomeWorkflow2 does some workflow thing.
 	SomeWorkflow2(ctx context.Context, opts ...*SomeWorkflow2Options) error
 
@@ -189,6 +195,15 @@ type SimpleClient interface {
 
 	// GetSomeUpdate1 retrieves a handle to an existing mycompany.simple.Simple.SomeUpdate1 update
 	GetSomeUpdate1(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (SomeUpdate1Handle, error)
+
+	// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update and blocks until update completion
+	SomeUpdate2(ctx context.Context, workflowID string, runID string, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (*SomeUpdate2Response, error)
+
+	// SomeUpdate2Async starts a(n) mycompany.simple.Simple.SomeUpdate2 update and returns a handle to the workflow update
+	SomeUpdate2Async(ctx context.Context, workflowID string, runID string, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (SomeUpdate2Handle, error)
+
+	// GetSomeUpdate2 retrieves a handle to an existing mycompany.simple.Simple.SomeUpdate2 update
+	GetSomeUpdate2(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (SomeUpdate2Handle, error)
 }
 
 // simpleClient implements a temporal client for a mycompany.simple.Simple service
@@ -296,6 +311,98 @@ func (c *simpleClient) GetSomeWorkflow1(ctx context.Context, workflowID string, 
 		client: c,
 		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}
+}
+
+// SomeWorkflow1WithSomeUpdate2Options is the options for a mycompany.simple.SomeWorkflow1 workflow with a mycompany.simple.Simple.SomeUpdate2 update
+type SomeWorkflow1WithSomeUpdate2Options struct {
+	options         client.UpdateWithStartWorkflowOptions
+	workflowOptions *SomeWorkflow1Options
+	updateOptions   *SomeUpdate2Options
+}
+
+// NewSomeWorkflow1WithSomeUpdate2Options initializes a new SomeWorkflow1WithSomeUpdate2Options value
+func NewSomeWorkflow1WithSomeUpdate2Options() *SomeWorkflow1WithSomeUpdate2Options {
+	return &SomeWorkflow1WithSomeUpdate2Options{}
+}
+
+// Build transforms SomeWorkflow1WithSomeUpdate2Options into valid client.UpdateWithStartWorkflowOptions
+func (o *SomeWorkflow1WithSomeUpdate2Options) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *SomeWorkflow1Request, update *SomeUpdate2Request) (options client.UpdateWithStartWorkflowOptions, err error) {
+	options = o.options
+	if o.workflowOptions == nil {
+		o.workflowOptions = NewSomeWorkflow1Options()
+	}
+	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	if err != nil {
+		return options, err
+	}
+	if swo.WorkflowIDConflictPolicy == enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		swo.WorkflowIDConflictPolicy = enumsv1.WORKFLOW_ID_CONFLICT_POLICY_FAIL
+	}
+	options.StartWorkflowOperation = op(swo)
+	if o.updateOptions == nil {
+		o.updateOptions = NewSomeUpdate2Options()
+	}
+	uo, err := o.updateOptions.Build(swo.ID, "", update)
+	if err != nil {
+		return options, err
+	}
+	options.UpdateOptions = *uo
+	return options, nil
+}
+
+// WithUpdateWithStartWorkflowOptions sets the UpdateWithStartWorkflowOptions
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithUpdateWithStartWorkflowOptions(options client.UpdateWithStartWorkflowOptions) *SomeWorkflow1WithSomeUpdate2Options {
+	o.options = options
+	return o
+}
+
+// WithSomeWorkflow1Options sets the WithSomeWorkflow1Options
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithSomeWorkflow1Options(options *SomeWorkflow1Options) *SomeWorkflow1WithSomeUpdate2Options {
+	o.workflowOptions = options
+	return o
+}
+
+// WithSomeUpdate2Options sets the SomeUpdate2Options
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithSomeUpdate2Options(options *SomeUpdate2Options) *SomeWorkflow1WithSomeUpdate2Options {
+	o.updateOptions = options
+	return o
+}
+
+// SomeWorkflow1WithSomeUpdate2 starts a(n) mycompany.simple.SomeWorkflow1 workflow and executes a(n) mycompany.simple.Simple.SomeUpdate2 update in a transaction
+func (c *simpleClient) SomeWorkflow1WithSomeUpdate2(ctx context.Context, req *SomeWorkflow1Request, update *SomeUpdate2Request, options ...*SomeWorkflow1WithSomeUpdate2Options) (*SomeUpdate2Response, SomeWorkflow1Run, error) {
+	updateHandle, run, err := c.SomeWorkflow1WithSomeUpdate2Async(ctx, req, update, options...)
+	if err != nil {
+		return nil, run, err
+	}
+	out, err := updateHandle.Get(ctx)
+	if err != nil {
+		return nil, run, err
+	}
+	return out, run, nil
+}
+
+// SomeWorkflow1WithSomeUpdate2Async starts a(n) mycompany.simple.SomeWorkflow1 workflow and executes a(n) mycompany.simple.Simple.SomeUpdate2 update in a transaction
+func (c *simpleClient) SomeWorkflow1WithSomeUpdate2Async(ctx context.Context, req *SomeWorkflow1Request, update *SomeUpdate2Request, options ...*SomeWorkflow1WithSomeUpdate2Options) (SomeUpdate2Handle, SomeWorkflow1Run, error) {
+	var o *SomeWorkflow1WithSomeUpdate2Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow1WithSomeUpdate2Options()
+	}
+	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
+		return c.client.NewWithStartWorkflowOperation(swo, SomeWorkflow1WorkflowName, req)
+	}, req, update)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+	handle, err := c.client.UpdateWithStartWorkflow(ctx, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &someUpdate2Handle{
+		client: c,
+		handle: handle,
+	}, c.GetSomeWorkflow1(ctx, handle.WorkflowID(), handle.RunID()), nil
 }
 
 // SomeWorkflow2 does some workflow thing.
@@ -687,6 +794,56 @@ func (c *simpleClient) GetSomeUpdate1(ctx context.Context, req client.GetWorkflo
 	}, nil
 }
 
+// mycompany.simple.Simple.SomeUpdate2 sends a(n) mycompany.simple.Simple.SomeUpdate2 update to an existing workflow
+func (c *simpleClient) SomeUpdate2(ctx context.Context, workflowID string, runID string, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (*SomeUpdate2Response, error) {
+	// initialize update options
+	o := NewSomeUpdate2Options()
+	if len(opts) > 0 && opts[0].Options != nil {
+		o = opts[0]
+	}
+
+	// call sync update with WorkflowUpdateStageCompleted wait policy
+	handle, err := c.SomeUpdate2Async(ctx, workflowID, runID, req, o.WithWaitPolicy(client.WorkflowUpdateStageCompleted))
+	if err != nil {
+		return nil, err
+	}
+
+	// block on update completion
+	return handle.Get(ctx)
+}
+
+// mycompany.simple.Simple.SomeUpdate2 sends a(n) mycompany.simple.Simple.SomeUpdate2 update to an existing workflow
+func (c *simpleClient) SomeUpdate2Async(ctx context.Context, workflowID string, runID string, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (SomeUpdate2Handle, error) {
+	// initialize update options
+	var o *SomeUpdate2Options
+	if len(opts) > 0 && opts[0] != nil {
+		o = opts[0]
+	} else {
+		o = NewSomeUpdate2Options()
+	}
+
+	// build UpdateWorkflowOptions
+	options, err := o.Build(workflowID, runID, req)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+
+	// update workflow
+	handle, err := c.client.UpdateWorkflow(ctx, *options)
+	if err != nil {
+		return nil, err
+	}
+	return &someUpdate2Handle{client: c, handle: handle}, nil
+}
+
+// GetSomeUpdate2 retrieves a handle to an existing mycompany.simple.Simple.SomeUpdate2 update
+func (c *simpleClient) GetSomeUpdate2(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (SomeUpdate2Handle, error) {
+	return &someUpdate2Handle{
+		client: c,
+		handle: c.client.GetWorkflowUpdateHandle(req),
+	}, nil
+}
+
 // SomeWorkflow1Options provides configuration for a mycompany.simple.SomeWorkflow1 workflow operation
 type SomeWorkflow1Options struct {
 	options                  client.StartWorkflowOptions
@@ -835,6 +992,18 @@ type SomeWorkflow1Run interface {
 
 	// SomeSignal2 is a signal.
 	SomeSignal2(ctx context.Context, req *SomeSignal2Request) error
+
+	// SomeUpdate1 updates a SomeWorkflow2
+	SomeUpdate1(ctx context.Context, req *SomeUpdate1Request, opts ...*SomeUpdate1Options) (*SomeUpdate1Response, error)
+
+	// SomeUpdate1 updates a SomeWorkflow2
+	SomeUpdate1Async(ctx context.Context, req *SomeUpdate1Request, opts ...*SomeUpdate1Options) (SomeUpdate1Handle, error)
+
+	// mycompany.simple.Simple.SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update
+	SomeUpdate2(ctx context.Context, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (*SomeUpdate2Response, error)
+
+	// mycompany.simple.Simple.SomeUpdate2Async sends a(n) mycompany.simple.Simple.SomeUpdate2 update to the workflow
+	SomeUpdate2Async(ctx context.Context, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (SomeUpdate2Handle, error)
 }
 
 // someWorkflow1Run provides an internal implementation of a(n) SomeWorkflow1RunRun
@@ -895,6 +1064,26 @@ func (r *someWorkflow1Run) SomeSignal1(ctx context.Context) error {
 // SomeSignal2 is a signal.
 func (r *someWorkflow1Run) SomeSignal2(ctx context.Context, req *SomeSignal2Request) error {
 	return r.client.SomeSignal2(ctx, r.ID(), "", req)
+}
+
+// SomeUpdate1 updates a SomeWorkflow2
+func (r *someWorkflow1Run) SomeUpdate1(ctx context.Context, req *SomeUpdate1Request, opts ...*SomeUpdate1Options) (*SomeUpdate1Response, error) {
+	return r.client.SomeUpdate1(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// SomeUpdate1 updates a SomeWorkflow2
+func (r *someWorkflow1Run) SomeUpdate1Async(ctx context.Context, req *SomeUpdate1Request, opts ...*SomeUpdate1Options) (SomeUpdate1Handle, error) {
+	return r.client.SomeUpdate1Async(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// mycompany.simple.Simple.SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 workflow update
+func (r *someWorkflow1Run) SomeUpdate2(ctx context.Context, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (*SomeUpdate2Response, error) {
+	return r.client.SomeUpdate2(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// SomeUpdate2Async start a(n) mycompany.simple.Simple.SomeUpdate2 workflow update and returns a handle to the update
+func (r *someWorkflow1Run) SomeUpdate2Async(ctx context.Context, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (SomeUpdate2Handle, error) {
+	return r.client.SomeUpdate2Async(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
 // SomeWorkflow2Options provides configuration for a mycompany.simple.SomeWorkflow2 workflow operation
@@ -1591,6 +1780,134 @@ func (o *SomeUpdate1Options) WithWaitPolicy(policy client.WorkflowUpdateStage) *
 	return o
 }
 
+// SomeUpdate2Handle describes a(n) mycompany.simple.Simple.SomeUpdate2 update handle
+type SomeUpdate2Handle interface {
+	// WorkflowID returns the workflow ID
+	WorkflowID() string
+	// RunID returns the workflow instance ID
+	RunID() string
+	// UpdateID returns the update ID
+	UpdateID() string
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*SomeUpdate2Response, error)
+}
+
+// someUpdate2Handle provides an internal implementation of a(n) SomeUpdate2Handle
+type someUpdate2Handle struct {
+	client *simpleClient
+	handle client.WorkflowUpdateHandle
+}
+
+// WorkflowID returns the workflow ID
+func (h *someUpdate2Handle) WorkflowID() string {
+	return h.handle.WorkflowID()
+}
+
+// RunID returns the execution ID
+func (h *someUpdate2Handle) RunID() string {
+	return h.handle.RunID()
+}
+
+// UpdateID returns the update ID
+func (h *someUpdate2Handle) UpdateID() string {
+	return h.handle.UpdateID()
+}
+
+// Get blocks until the update wait policy is met, returning the result if applicable
+func (h *someUpdate2Handle) Get(ctx context.Context) (*SomeUpdate2Response, error) {
+	var resp SomeUpdate2Response
+	var err error
+	doneCh := make(chan struct{})
+	gctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		for {
+			var deadlineExceeded *serviceerror.DeadlineExceeded
+			if err = h.handle.Get(gctx, &resp); err != nil && ctx.Err() == nil && (errors.As(err, &deadlineExceeded) || strings.Contains(err.Error(), context.DeadlineExceeded.Error())) {
+				continue
+			}
+			break
+		}
+		close(doneCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-doneCh:
+		if err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	}
+}
+
+// SomeUpdate2Options provides configuration for a mycompany.simple.Simple.SomeUpdate2 update operation
+type SomeUpdate2Options struct {
+	Options    *client.UpdateWorkflowOptions
+	id         *string
+	waitPolicy client.WorkflowUpdateStage
+}
+
+// NewSomeUpdate2Options initializes a new SomeUpdate2Options value
+func NewSomeUpdate2Options() *SomeUpdate2Options {
+	return &SomeUpdate2Options{Options: &client.UpdateWorkflowOptions{}}
+}
+
+// Build initializes a new client.UpdateWorkflowOptions with defaults and overrides applied
+func (o *SomeUpdate2Options) Build(workflowID string, runID string, req *SomeUpdate2Request) (opts *client.UpdateWorkflowOptions, err error) {
+	// use user-provided UpdateWorkflowOptions if exists
+	if o.Options != nil {
+		opts = o.Options
+	} else {
+		opts = &client.UpdateWorkflowOptions{}
+	}
+
+	// set constants
+	opts.Args = []any{req}
+	opts.RunID = runID
+	opts.UpdateName = SomeUpdate2UpdateName
+	opts.WorkflowID = workflowID
+
+	// set UpdateID
+	if v := o.id; v != nil {
+		opts.UpdateID = *v
+	} else if opts.UpdateID == "" {
+		id, err := expression.EvalExpression(SomeUpdate2Idexpression, req.ProtoReflect())
+		if err != nil {
+			return nil, fmt.Errorf("error evaluating id expression for %q update: %w", SomeUpdate2UpdateName, err)
+		}
+		opts.UpdateID = id
+	}
+
+	// set WaitPolicy
+	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
+		opts.WaitForStage = v
+	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
+		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+	}
+	return opts, nil
+}
+
+// WithUpdateID sets the UpdateID
+func (o *SomeUpdate2Options) WithUpdateID(id string) *SomeUpdate2Options {
+	o.id = &id
+	return o
+}
+
+// WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowOptions
+func (o *SomeUpdate2Options) WithUpdateWorkflowOptions(options client.UpdateWorkflowOptions) *SomeUpdate2Options {
+	o.Options = &options
+	return o
+}
+
+// WithWaitPolicy sets the WaitPolicy
+func (o *SomeUpdate2Options) WithWaitPolicy(policy client.WorkflowUpdateStage) *SomeUpdate2Options {
+	o.waitPolicy = policy
+	return o
+}
+
 // Reference to generated workflow functions
 var (
 	// SomeWorkflow1 does some workflow thing.
@@ -1717,6 +2034,18 @@ func buildSomeWorkflow1(ctor func(workflow.Context, *SomeWorkflow1WorkflowInput)
 		if err := workflow.SetQueryHandler(ctx, SomeQuery2QueryName, wf.SomeQuery2); err != nil {
 			return nil, err
 		}
+		{
+			opts := workflow.UpdateHandlerOptions{}
+			if err := workflow.SetUpdateHandlerWithOptions(ctx, SomeUpdate1UpdateName, wf.SomeUpdate1, opts); err != nil {
+				return nil, err
+			}
+		}
+		{
+			opts := workflow.UpdateHandlerOptions{Validator: wf.ValidateSomeUpdate2}
+			if err := workflow.SetUpdateHandlerWithOptions(ctx, SomeUpdate2UpdateName, wf.SomeUpdate2, opts); err != nil {
+				return nil, err
+			}
+		}
 		return wf.Execute(ctx)
 	}
 }
@@ -1740,6 +2069,15 @@ type SomeWorkflow1Workflow interface {
 
 	// SomeQuery2 queries some thing.
 	SomeQuery2(*SomeQuery2Request) (*SomeQuery2Response, error)
+
+	// SomeUpdate1 updates a SomeWorkflow2
+	SomeUpdate1(workflow.Context, *SomeUpdate1Request) (*SomeUpdate1Response, error)
+
+	// ValidateSomeUpdate2 validates a(n) mycompany.simple.Simple.SomeUpdate2 update
+	ValidateSomeUpdate2(workflow.Context, *SomeUpdate2Request) error
+
+	// mycompany.simple.Simple.SomeUpdate2 implements a(n) mycompany.simple.Simple.SomeUpdate2 update handler
+	SomeUpdate2(workflow.Context, *SomeUpdate2Request) (*SomeUpdate2Response, error)
 }
 
 // SomeWorkflow1 does some workflow thing.
@@ -5157,6 +5495,66 @@ func (c *TestSimpleClient) GetSomeWorkflow1(ctx context.Context, workflowID stri
 	return &testSomeWorkflow1Run{env: c.env, workflows: c.workflows}
 }
 
+// SomeWorkflow1WithSomeUpdate2 executes a(n) mycompany.simple.SomeWorkflow1 workflow and a(n) mycompany.simple.Simple.SomeUpdate2 update in the test environment
+func (c *TestSimpleClient) SomeWorkflow1WithSomeUpdate2(ctx context.Context, input *SomeWorkflow1Request, update *SomeUpdate2Request, options ...*SomeWorkflow1WithSomeUpdate2Options) (*SomeUpdate2Response, SomeWorkflow1Run, error) {
+	var o *SomeWorkflow1WithSomeUpdate2Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow1WithSomeUpdate2Options()
+	}
+	handle, run, err := c.SomeWorkflow1WithSomeUpdate2Async(ctx, input, update, o)
+	if err != nil {
+		return nil, run, err
+	}
+	run.Get(ctx)
+	out, err := handle.Get(ctx)
+	if err != nil {
+		return nil, run, err
+	}
+	return out, run, nil
+}
+
+// SomeWorkflow1WithSomeUpdate2Async executes a(n) mycompany.simple.SomeWorkflow1 workflow and a(n) mycompany.simple.Simple.SomeUpdate2 update in the test environment
+func (c *TestSimpleClient) SomeWorkflow1WithSomeUpdate2Async(ctx context.Context, input *SomeWorkflow1Request, update *SomeUpdate2Request, options ...*SomeWorkflow1WithSomeUpdate2Options) (SomeUpdate2Handle, SomeWorkflow1Run, error) {
+	var o *SomeWorkflow1WithSomeUpdate2Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow1WithSomeUpdate2Options()
+	}
+	if o.workflowOptions == nil {
+		o.workflowOptions = NewSomeWorkflow1Options()
+	}
+	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing workflowOptions: %w", err)
+	}
+	if o.updateOptions == nil {
+		o.updateOptions = NewSomeUpdate2Options()
+	}
+	uo, err := o.updateOptions.Build(swo.ID, "", update)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing updateOptions: %w", err)
+	}
+	run, err := c.SomeWorkflow1Async(ctx, input)
+	if err != nil {
+		return nil, nil, err
+	}
+	uc := testutil.NewUpdateCallbacks()
+	c.env.RegisterDelayedCallback(func() {
+		c.env.UpdateWorkflow(SomeUpdate2UpdateName, uo.UpdateID, uc, update)
+	}, 0)
+	return &testSomeUpdate2Handle{
+		callbacks:  uc,
+		env:        c.env,
+		opts:       uo,
+		req:        update,
+		runID:      "",
+		workflowID: swo.ID,
+	}, run, nil
+}
+
 // SomeWorkflow2 executes a(n) mycompany.simple.SomeWorkflow2 workflow in the test environment
 func (c *TestSimpleClient) SomeWorkflow2(ctx context.Context, opts ...*SomeWorkflow2Options) error {
 	run, err := c.SomeWorkflow2Async(ctx, opts...)
@@ -5484,6 +5882,93 @@ func (h *testSomeUpdate1Handle) WorkflowID() string {
 	return h.workflowID
 }
 
+// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update in the test environment
+func (c *TestSimpleClient) SomeUpdate2(ctx context.Context, workflowID string, runID string, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (*SomeUpdate2Response, error) {
+	options := NewSomeUpdate2Options()
+	if len(opts) > 0 && opts[0].Options != nil {
+		options = opts[0]
+	}
+	options.Options.WaitForStage = client.WorkflowUpdateStageCompleted
+	handle, err := c.SomeUpdate2Async(ctx, workflowID, runID, req, options)
+	if err != nil {
+		return nil, err
+	}
+	return handle.Get(ctx)
+}
+
+// SomeUpdate2Async executes a(n) mycompany.simple.Simple.SomeUpdate2 update in the test environment
+func (c *TestSimpleClient) SomeUpdate2Async(ctx context.Context, workflowID string, runID string, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (SomeUpdate2Handle, error) {
+	var o *SomeUpdate2Options
+	if len(opts) > 0 && opts[0] != nil {
+		o = opts[0]
+	} else {
+		o = NewSomeUpdate2Options()
+	}
+	options, err := o.Build(workflowID, runID, req)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+
+	if options.UpdateID == "" {
+		options.UpdateID = workflowID
+	}
+
+	uc := testutil.NewUpdateCallbacks()
+	c.env.UpdateWorkflow(SomeUpdate2UpdateName, options.UpdateID, uc, req)
+	return &testSomeUpdate2Handle{
+		callbacks:  uc,
+		env:        c.env,
+		opts:       options,
+		runID:      runID,
+		workflowID: workflowID,
+		req:        req,
+	}, nil
+}
+
+// GetSomeUpdate2 retrieves a handle to an existing mycompany.simple.Simple.SomeUpdate2 update
+func (c *TestSimpleClient) GetSomeUpdate2(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (SomeUpdate2Handle, error) {
+	return nil, errors.New("unimplemented")
+}
+
+var _ SomeUpdate2Handle = &testSomeUpdate2Handle{}
+
+// testSomeUpdate2Handle provides an internal implementation of a(n) SomeUpdate2Handle
+type testSomeUpdate2Handle struct {
+	callbacks  *testutil.UpdateCallbacks
+	env        *testsuite.TestWorkflowEnvironment
+	opts       *client.UpdateWorkflowOptions
+	req        *SomeUpdate2Request
+	runID      string
+	workflowID string
+}
+
+// Get retrieves a test mycompany.simple.Simple.SomeUpdate2 update result
+func (h *testSomeUpdate2Handle) Get(ctx context.Context) (*SomeUpdate2Response, error) {
+	if resp, err := h.callbacks.Get(ctx); err != nil {
+		return nil, err
+	} else {
+		return resp.(*SomeUpdate2Response), nil
+	}
+}
+
+// RunID implementation
+func (h *testSomeUpdate2Handle) RunID() string {
+	return h.runID
+}
+
+// UpdateID implementation
+func (h *testSomeUpdate2Handle) UpdateID() string {
+	if h.opts != nil {
+		return h.opts.UpdateID
+	}
+	return ""
+}
+
+// WorkflowID implementation
+func (h *testSomeUpdate2Handle) WorkflowID() string {
+	return h.workflowID
+}
+
 var _ SomeWorkflow1Run = &testSomeWorkflow1Run{}
 
 // testSomeWorkflow1Run provides convenience methods for interacting with a(n) mycompany.simple.SomeWorkflow1 workflow in the test environment
@@ -5560,6 +6045,26 @@ func (r *testSomeWorkflow1Run) SomeSignal1(ctx context.Context) error {
 // SomeSignal2 executes a mycompany.simple.Simple.SomeSignal2 signal against a test mycompany.simple.SomeWorkflow1 workflow
 func (r *testSomeWorkflow1Run) SomeSignal2(ctx context.Context, req *SomeSignal2Request) error {
 	return r.client.SomeSignal2(ctx, r.ID(), r.RunID(), req)
+}
+
+// SomeUpdate1 executes a(n) mycompany.simple.Simple.SomeUpdate1 update against a test mycompany.simple.SomeWorkflow1 workflow
+func (r *testSomeWorkflow1Run) SomeUpdate1(ctx context.Context, req *SomeUpdate1Request, opts ...*SomeUpdate1Options) (*SomeUpdate1Response, error) {
+	return r.client.SomeUpdate1(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// SomeUpdate1Async executes a(n) mycompany.simple.Simple.SomeUpdate1 update against a test mycompany.simple.SomeWorkflow1 workflow
+func (r *testSomeWorkflow1Run) SomeUpdate1Async(ctx context.Context, req *SomeUpdate1Request, opts ...*SomeUpdate1Options) (SomeUpdate1Handle, error) {
+	return r.client.SomeUpdate1Async(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update against a test mycompany.simple.SomeWorkflow1 workflow
+func (r *testSomeWorkflow1Run) SomeUpdate2(ctx context.Context, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (*SomeUpdate2Response, error) {
+	return r.client.SomeUpdate2(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// SomeUpdate2Async executes a(n) mycompany.simple.Simple.SomeUpdate2 update against a test mycompany.simple.SomeWorkflow1 workflow
+func (r *testSomeWorkflow1Run) SomeUpdate2Async(ctx context.Context, req *SomeUpdate2Request, opts ...*SomeUpdate2Options) (SomeUpdate2Handle, error) {
+	return r.client.SomeUpdate2Async(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
 var _ SomeWorkflow2Run = &testSomeWorkflow2Run{}
@@ -6129,6 +6634,80 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 			},
 		},
 		{
+			Name:                   "some-update-2",
+			Usage:                  "executes a(n) mycompany.simple.Simple.SomeUpdate2 update",
+			Category:               "UPDATES",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Name:    "detach",
+					Usage:   "run workflow update in the background and print workflow, execution, and udpate id",
+					Aliases: []string{"d"},
+				},
+				&v2.StringFlag{
+					Name:     "workflow-id",
+					Usage:    "workflow id",
+					Required: true,
+					Aliases:  []string{"w"},
+				},
+				&v2.StringFlag{
+					Name:    "run-id",
+					Usage:   "run id",
+					Aliases: []string{"r"},
+				},
+				&v2.StringFlag{
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "request-val",
+					Usage:    "set the value of the operation's \"RequestVal\" parameter",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				c, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer c.Close()
+				client := NewSimpleClient(c)
+				req, err := UnmarshalCliFlagsToSomeUpdate2Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				handle, err := client.SomeUpdate2Async(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req)
+				if err != nil {
+					return fmt.Errorf("error executing %s update: %w", SomeUpdate2UpdateName, err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", handle.WorkflowID())
+					fmt.Printf("run id: %s\n", handle.RunID())
+					fmt.Printf("update id: %s\n", handle.UpdateID())
+					return nil
+				}
+				if resp, err := handle.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(resp)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
+				}
+			},
+		},
+		{
 			Name:                   "some-workflow-1",
 			Usage:                  "SomeWorkflow1 does some workflow thing.",
 			Category:               "WORKFLOWS",
@@ -6205,6 +6784,95 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					return nil
 				}
 			},
+		},
+		// executes a(n) mycompany.simple.Simple.SomeUpdate2 update on a mycompany.simple.Simple.SomeWorkflow1 workflow, starting it if necessary,
+		{
+			Action: func(cmd *v2.Context) error {
+				c, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer c.Close()
+				client := NewSimpleClient(c)
+				input, err := UnmarshalCliFlagsToSomeWorkflow1Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling input: %w", err)
+				}
+				update, err := UnmarshalCliFlagsToSomeUpdate2Request(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "update-file"}, helpers.UnmarshalCliFlagsOptions{
+					Prefix: "some-update-2",
+					PrefixFlags: map[string]struct{}{
+						"request-val": {},
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling update: %w", err)
+				}
+				handle, _, err := client.SomeWorkflow1WithSomeUpdate2Async(cmd.Context, input, update)
+				if err != nil {
+					return fmt.Errorf("error starting workflow with update: %w", err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", handle.WorkflowID())
+					fmt.Printf("run id: %s\n", handle.RunID())
+					fmt.Printf("update id: %s\n", handle.UpdateID())
+					return nil
+				}
+				if out, err := handle.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(out)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
+				}
+			},
+			After:    opts.after,
+			Before:   opts.before,
+			Category: "WORKFLOWS",
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Aliases: []string{"d"},
+					Name:    "detach",
+					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+				},
+				&v2.StringFlag{
+					Name:     "request-val",
+					Usage:    "set the value of the operation's \"RequestVal\" parameter",
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "id",
+					Usage:    "set the value of the operation's \"Id\" parameter",
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Aliases:  []string{"u"},
+					Category: "UPDATE",
+					Name:     "update-file",
+					Usage:    "path to json-formatted update file",
+				},
+				&v2.StringFlag{
+					Name:     "some-update-2-request-val",
+					Usage:    "set the value of the operation's \"RequestVal\" parameter",
+					Category: "UPDATE",
+				},
+			},
+			Name:                   "some-workflow-1-with-some-update-2",
+			Usage:                  "executes a(n) mycompany.simple.Simple.SomeUpdate2 update on a mycompany.simple.Simple.SomeWorkflow1 workflow, starting it if necessary",
+			UseShortOptionHandling: true,
 		},
 		{
 			Name:                   "some-workflow-2",
@@ -6717,6 +7385,30 @@ func UnmarshalCliFlagsToSomeUpdate1Request(cmd *v2.Context, options ...helpers.U
 	return &result, nil
 }
 
+// UnmarshalCliFlagsToSomeUpdate2Request unmarshals a SomeUpdate2Request from command line flags
+func UnmarshalCliFlagsToSomeUpdate2Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeUpdate2Request, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
+	var result SomeUpdate2Request
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
+		if err != nil {
+			f = cmd.String(opts.FromFile)
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
+		}
+		if err := protojson.Unmarshal(b, &result); err != nil {
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
+		}
+	}
+	if flag := opts.FlagName("request-val"); cmd.IsSet(flag) {
+		value := cmd.String(flag)
+		result.RequestVal = value
+	}
+	return &result, nil
+}
+
 // UnmarshalCliFlagsToSomeWorkflow1Request unmarshals a SomeWorkflow1Request from command line flags
 func UnmarshalCliFlagsToSomeWorkflow1Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeWorkflow1Request, error) {
 	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
@@ -6821,6 +7513,8 @@ func WithSimpleSchemeTypes() scheme.Option {
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeQuery1Response"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeQuery2Request"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeQuery2Response"))
+		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeUpdate2Request"))
+		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeUpdate2Response"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow1Request"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow1Response"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow3Request"))

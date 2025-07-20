@@ -17,6 +17,7 @@
         - [mycompany.simple.Simple.SomeSignal3](#mycompany-simple-simple-somesignal3-signal)
       - [Updates](#mycompany-simple-simple-updates)
         - [mycompany.simple.Simple.SomeUpdate1](#mycompany-simple-simple-someupdate1-update)
+        - [mycompany.simple.Simple.SomeUpdate2](#mycompany-simple-simple-someupdate2-update)
       - [Activities](#mycompany-simple-simple-activities)
         - [mycompany.simple.SomeActivity1](#mycompany-simple-someactivity1-activity)
         - [mycompany.simple.Simple.SomeActivity2](#mycompany-simple-simple-someactivity2-activity)
@@ -85,6 +86,8 @@
     - [mycompany.simple.SomeSignal3Response](#mycompany-simple-somesignal3response)
     - [mycompany.simple.SomeUpdate1Request](#mycompany-simple-someupdate1request)
     - [mycompany.simple.SomeUpdate1Response](#mycompany-simple-someupdate1response)
+    - [mycompany.simple.SomeUpdate2Request](#mycompany-simple-someupdate2request)
+    - [mycompany.simple.SomeUpdate2Response](#mycompany-simple-someupdate2response)
     - [mycompany.simple.SomeWorkflow1Request](#mycompany-simple-someworkflow1request)
     - [mycompany.simple.SomeWorkflow1Response](#mycompany-simple-someworkflow1response)
     - [mycompany.simple.SomeWorkflow3Request](#mycompany-simple-someworkflow3request)
@@ -310,6 +313,14 @@ go_name: ResponseVal</pre></td>
 <tr><th>Signal</th><th>Start</th></tr>
 <tr><td><a href="#mycompany-simple-simple-somesignal1-signal">mycompany.simple.Simple.SomeSignal1</a></td><td>false</td></tr>
 <tr><td><a href="#mycompany-simple-simple-somesignal2-signal">mycompany.simple.Simple.SomeSignal2</a></td><td>false</td></tr>
+</table>
+
+**Updates:**
+
+<table>
+<tr><th>Update</th></tr>
+<tr><td><a href="#mycompany-simple-simple-someupdate1-update">mycompany.simple.Simple.SomeUpdate1</a></td></tr>
+<tr><td><a href="#mycompany-simple-simple-someupdate2-update">mycompany.simple.Simple.SomeUpdate2</a></td></tr>
 </table>
 
 ---
@@ -636,6 +647,46 @@ go_name: ResponseVal</pre></td>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>validate</td><td>true</td></tr>
 <tr><td>wait_policy</td><td><pre>WAIT_POLICY_COMPLETED</pre></td></tr>
+</table>
+
+---
+<a name="mycompany-simple-simple-someupdate2-update"></a>
+### mycompany.simple.Simple.SomeUpdate2
+
+
+
+**Input:** [mycompany.simple.SomeUpdate2Request](#mycompany-simple-someupdate2request)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>request_val</td>
+<td>string</td>
+<td><pre>
+json_name: requestVal
+go_name: RequestVal</pre></td>
+</tr>
+</table>
+
+**Output:** [mycompany.simple.SomeUpdate2Response](#mycompany-simple-someupdate2response)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>response_val</td>
+<td>string</td>
+<td><pre>
+json_name: responseVal
+go_name: ResponseVal</pre></td>
+</tr>
 </table>
 
 <a name="mycompany-simple-simple-activities"></a>
@@ -2211,6 +2262,46 @@ go_name: RequestVal</pre></td>
 
 <a name="mycompany-simple-someupdate1response"></a>
 ### mycompany.simple.SomeUpdate1Response
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>response_val</td>
+<td>string</td>
+<td><pre>
+json_name: responseVal
+go_name: ResponseVal</pre></td>
+</tr>
+</table>
+
+
+
+<a name="mycompany-simple-someupdate2request"></a>
+### mycompany.simple.SomeUpdate2Request
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>request_val</td>
+<td>string</td>
+<td><pre>
+json_name: requestVal
+go_name: RequestVal</pre></td>
+</tr>
+</table>
+
+
+
+<a name="mycompany-simple-someupdate2response"></a>
+### mycompany.simple.SomeUpdate2Response
 
 <table>
 <tr>

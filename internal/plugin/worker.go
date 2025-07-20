@@ -144,10 +144,15 @@ func (m *Manifest) genWorkerBuilderFunction(f *j.File, workflow protoreflect.Ful
 							update := getFullyQualifiedRef(workflow, u.GetRef())
 							updateOpts := m.updates[update]
 
+							validate := updateOpts.GetValidate()
+							if u.Validate != nil {
+								validate = u.GetValidate()
+							}
+
 							g.BlockFunc(func(g *j.Group) {
 								// build UpdateHandlerOptions
 								var updateHandlerOptions []j.Code
-								if updateOpts.GetValidate() {
+								if validate {
 									updateHandlerOptions = append(updateHandlerOptions, j.Id("Validator").Op(":").Id("wf").Dot(m.toCamel("Validate%s", update)))
 								}
 								g.Id("opts").Op(":=").Qual(workflowPkg, "UpdateHandlerOptions").Values(updateHandlerOptions...)
@@ -1037,8 +1042,13 @@ func (m *Manifest) genWorkerWorkflowInterface(f *j.File, workflow protoreflect.F
 			hasInput := !isEmpty(handler.Input)
 			hasOutput := !isEmpty(handler.Output)
 
+			validate := handlerOpts.GetValidate()
+			if updateOpts.Validate != nil {
+				validate = updateOpts.GetValidate()
+			}
+
 			// add Validate<Update> method if enabled
-			if handlerOpts.GetValidate() {
+			if validate {
 				validatorName := m.toCamel("Validate%s", update)
 				g.Commentf("%s validates a(n) %s update", validatorName, m.fqnForUpdate(update))
 				g.Id(validatorName).

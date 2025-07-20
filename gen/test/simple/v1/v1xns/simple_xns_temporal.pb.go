@@ -96,6 +96,9 @@ func RegisterSimpleActivities(r worker.ActivityRegistry, c v1.SimpleClient, opti
 	if name := simpleOptions.filterActivity("mycompany.simple.Simple.GetSomeWorkflow1"); name != "" {
 		r.RegisterActivityWithOptions(a.GetSomeWorkflow1, activity.RegisterOptions{Name: name})
 	}
+	if name := simpleOptions.filterActivity("mycompany.simple.Simple.SomeWorkflow1WithSomeUpdate2"); name != "" {
+		r.RegisterActivityWithOptions(a.SomeWorkflow1WithSomeUpdate2, activity.RegisterOptions{Name: name})
+	}
 	if name := simpleOptions.filterActivity(v1.SomeWorkflow2WorkflowName); name != "" {
 		r.RegisterActivityWithOptions(a.SomeWorkflow2, activity.RegisterOptions{Name: name})
 	}
@@ -140,6 +143,9 @@ func RegisterSimpleActivities(r worker.ActivityRegistry, c v1.SimpleClient, opti
 	}
 	if name := simpleOptions.filterActivity(v1.SomeUpdate1UpdateName); name != "" {
 		r.RegisterActivityWithOptions(a.SomeUpdate1, activity.RegisterOptions{Name: name})
+	}
+	if name := simpleOptions.filterActivity(v1.SomeUpdate2UpdateName); name != "" {
+		r.RegisterActivityWithOptions(a.SomeUpdate2, activity.RegisterOptions{Name: name})
 	}
 }
 
@@ -324,6 +330,18 @@ type SomeWorkflow1Run interface {
 
 	// SomeSignal2 is a signal.
 	SomeSignal2Async(workflow.Context, *v1.SomeSignal2Request, ...*SomeSignal2SignalOptions) (SomeSignal2SignalHandle, error)
+
+	// SomeUpdate1 updates a SomeWorkflow2
+	SomeUpdate1(workflow.Context, *v1.SomeUpdate1Request, ...*SomeUpdate1UpdateOptions) (*v1.SomeUpdate1Response, error)
+
+	// SomeUpdate1 updates a SomeWorkflow2
+	SomeUpdate1Async(workflow.Context, *v1.SomeUpdate1Request, ...*SomeUpdate1UpdateOptions) (SomeUpdate1Handle, error)
+
+	// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update and blocks until completion
+	SomeUpdate2(workflow.Context, *v1.SomeUpdate2Request, ...*SomeUpdate2UpdateOptions) (*v1.SomeUpdate2Response, error)
+
+	// SomeUpdate2Async executes a(n) mycompany.simple.Simple.SomeUpdate2 update and returns a handle to the underlying activity
+	SomeUpdate2Async(workflow.Context, *v1.SomeUpdate2Request, ...*SomeUpdate2UpdateOptions) (SomeUpdate2Handle, error)
 }
 
 // someWorkflow1Run provides a(n) SomeWorkflow1Run implementation
@@ -416,6 +434,26 @@ func (r *someWorkflow1Run) SomeSignal2(ctx workflow.Context, req *v1.SomeSignal2
 // SomeSignal2 is a signal.
 func (r *someWorkflow1Run) SomeSignal2Async(ctx workflow.Context, req *v1.SomeSignal2Request, opts ...*SomeSignal2SignalOptions) (SomeSignal2SignalHandle, error) {
 	return SomeSignal2Async(ctx, r.ID(), "", req, opts...)
+}
+
+// SomeUpdate1 updates a SomeWorkflow2
+func (r *someWorkflow1Run) SomeUpdate1(ctx workflow.Context, req *v1.SomeUpdate1Request, opts ...*SomeUpdate1UpdateOptions) (*v1.SomeUpdate1Response, error) {
+	return SomeUpdate1(ctx, r.ID(), "", req, opts...)
+}
+
+// SomeUpdate1 updates a SomeWorkflow2
+func (r *someWorkflow1Run) SomeUpdate1Async(ctx workflow.Context, req *v1.SomeUpdate1Request, opts ...*SomeUpdate1UpdateOptions) (SomeUpdate1Handle, error) {
+	return SomeUpdate1Async(ctx, r.ID(), "", req, opts...)
+}
+
+// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update and blocks until completion
+func (r *someWorkflow1Run) SomeUpdate2(ctx workflow.Context, req *v1.SomeUpdate2Request, opts ...*SomeUpdate2UpdateOptions) (*v1.SomeUpdate2Response, error) {
+	return SomeUpdate2(ctx, r.ID(), "", req, opts...)
+}
+
+// SomeUpdate2Async executes a(n) mycompany.simple.Simple.SomeUpdate2 update and returns a handle to the underlying activity
+func (r *someWorkflow1Run) SomeUpdate2Async(ctx workflow.Context, req *v1.SomeUpdate2Request, opts ...*SomeUpdate2UpdateOptions) (SomeUpdate2Handle, error) {
+	return SomeUpdate2Async(ctx, r.ID(), "", req, opts...)
 }
 
 // SomeWorkflow1 does some workflow thing.
@@ -559,6 +597,154 @@ func (o *GetSomeWorkflow1Options) WithHeartbeatInterval(d time.Duration) *GetSom
 func (o *GetSomeWorkflow1Options) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *GetSomeWorkflow1Options {
 	o.parentClosePolicy = policy
 	return o
+}
+
+// SomeWorkflow1WithSomeUpdate2Options are used to configure a(n) mycompany.simple.Simple.SomeUpdate2 update for a(n) mycompany.simple.SomeWorkflow1 workflow
+type SomeWorkflow1WithSomeUpdate2Options struct {
+	activityOptions   *workflow.ActivityOptions
+	heartbeatInterval time.Duration
+	updateOptions     *SomeUpdate2UpdateOptions
+	parentClosePolicy enumsv1.ParentClosePolicy
+	workflowOptions   *SomeWorkflow1WorkflowOptions
+}
+
+// NewSomeWorkflow1WithSomeUpdate2Options initializes a new SomeWorkflow1WithSomeUpdate2Options value
+func NewSomeWorkflow1WithSomeUpdate2Options() *SomeWorkflow1WithSomeUpdate2Options {
+	return &SomeWorkflow1WithSomeUpdate2Options{}
+}
+
+// Build builds the activity context and input for an update with start workflow activity
+func (o *SomeWorkflow1WithSomeUpdate2Options) Build(ctx workflow.Context, input *v1.SomeWorkflow1Request, update *v1.SomeUpdate2Request) (workflow.Context, *xnsv1.UpdateWithStartRequest, error) {
+	wo := o.workflowOptions
+	if wo == nil {
+		wo = NewSomeWorkflow1WorkflowOptions()
+	}
+
+	_, swreq, err := wo.Build(ctx, input)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error building start workflow options: %w", err)
+	}
+
+	uo := o.updateOptions
+	if uo == nil {
+		uo = NewSomeUpdate2UpdateOptions()
+	}
+
+	ctx, ureq, err := uo.Build(ctx, swreq.GetStartWorkflowOptions().GetId(), "", update)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error building update options: %w", err)
+	}
+
+	var ao workflow.ActivityOptions
+	if o.activityOptions != nil {
+		ao = *o.activityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if o.heartbeatInterval == 0 {
+		o.heartbeatInterval = 30000000000 // 30 seconds
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.UpdateWithStartRequest{
+		HeartbeatInterval:     durationpb.New(o.heartbeatInterval),
+		Input:                 swreq.GetRequest(),
+		ParentClosePolicy:     convert.ToParentClosePolicy(o.parentClosePolicy),
+		StartWorkflowOptions:  swreq.GetStartWorkflowOptions(),
+		Update:                ureq.GetRequest(),
+		UpdateWorkflowOptions: ureq.GetUpdateWorkflowOptions(),
+	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithActivityOptions(ao workflow.ActivityOptions) *SomeWorkflow1WithSomeUpdate2Options {
+	o.activityOptions = &ao
+	return o
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithHeartbeatInterval(d time.Duration) *SomeWorkflow1WithSomeUpdate2Options {
+	o.heartbeatInterval = d
+	return o
+}
+
+// WithParentClosePolicy can be used to customize the parent close policy for the workflow
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithParentClosePolicy(p enumsv1.ParentClosePolicy) *SomeWorkflow1WithSomeUpdate2Options {
+	o.parentClosePolicy = p
+	return o
+}
+
+// WithUpdateOptions can be used to customize the update options
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithUpdateOptions(uo *SomeUpdate2UpdateOptions) *SomeWorkflow1WithSomeUpdate2Options {
+	o.updateOptions = uo
+	return o
+}
+
+// WithWorkflowOptions can be used to customize the workflow options
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithWorkflowOptions(wo *SomeWorkflow1WorkflowOptions) *SomeWorkflow1WithSomeUpdate2Options {
+	o.workflowOptions = wo
+	return o
+}
+
+// SomeWorkflow1WithSomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update for a(n) mycompany.simple.SomeWorkflow1 workflow, starting it if necessary, and blocks until error or update is complete
+func SomeWorkflow1WithSomeUpdate2(ctx workflow.Context, input *v1.SomeWorkflow1Request, update *v1.SomeUpdate2Request, options ...*SomeWorkflow1WithSomeUpdate2Options) (*v1.SomeUpdate2Response, SomeWorkflow1Run, error) {
+	handle, run, err := SomeWorkflow1WithSomeUpdate2Async(ctx, input, update, options...)
+	if err != nil {
+		return nil, run, err
+	}
+	if out, err := handle.Get(ctx); err != nil {
+		return nil, run, err
+	} else {
+		return out, run, nil
+	}
+}
+
+// SomeWorkflow1WithSomeUpdate2Async executes a(n) mycompany.simple.Simple.SomeUpdate2 update for a(n) mycompany.simple.SomeWorkflow1 workflow, starting it if necessary, and returns a handle to the update and workflow execution
+func SomeWorkflow1WithSomeUpdate2Async(ctx workflow.Context, input *v1.SomeWorkflow1Request, update *v1.SomeUpdate2Request, options ...*SomeWorkflow1WithSomeUpdate2Options) (SomeUpdate2Handle, SomeWorkflow1Run, error) {
+	activityName := simpleOptions.filterActivity("mycompany.simple.Simple.SomeWorkflow1WithSomeUpdate2")
+	if activityName == "" {
+		return nil, nil, simpleOptions.convertError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+	}
+	var o *SomeWorkflow1WithSomeUpdate2Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewSomeWorkflow1WithSomeUpdate2Options()
+	}
+	ctx, req, err := o.Build(ctx, input, update)
+	if err != nil {
+		return nil, nil, simpleOptions.convertError(err)
+	}
+	var parentClosePolicy enumsv1.ParentClosePolicy
+	if p := req.GetParentClosePolicy(); p != temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_UNSPECIFIED {
+		parentClosePolicy = enumsv1.ParentClosePolicy(p)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	handle := &someUpdate2Handle{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetUpdateWorkflowOptions().GetUpdateId(),
+	}
+	run := &someWorkflow1Run{
+		cancel:            cancel,
+		ctx:               ctx,
+		heartbeatInterval: req.GetHeartbeatInterval().AsDuration(),
+		id:                req.GetStartWorkflowOptions().GetId(),
+		parentClosePolicy: parentClosePolicy,
+	}
+	return handle, run, nil
 }
 
 // SomeWorkflow2WorkflowOptions are used to configure a(n) mycompany.simple.SomeWorkflow2 workflow execution
@@ -3009,6 +3195,202 @@ func SomeUpdate1Async(ctx workflow.Context, workflowID string, runID string, inp
 	}, nil
 }
 
+// SomeUpdate2UpdateOptions are used to configure a(n) mycompany.simple.Simple.SomeUpdate2 update execution
+type SomeUpdate2UpdateOptions struct {
+	ActivityOptions       *workflow.ActivityOptions
+	HeartbeatInterval     time.Duration
+	UpdateWorkflowOptions *client.UpdateWorkflowOptions
+}
+
+// NewSomeUpdate2UpdateOptions initializes a new SomeUpdate2UpdateOptions value
+func NewSomeUpdate2UpdateOptions() *SomeUpdate2UpdateOptions {
+	return &SomeUpdate2UpdateOptions{}
+}
+
+// Build initializes the update options
+func (opt *SomeUpdate2UpdateOptions) Build(ctx workflow.Context, workflowID string, runID string, input *v1.SomeUpdate2Request) (workflow.Context, *xnsv1.UpdateRequest, error) {
+	// configure activity options
+	var ao workflow.ActivityOptions
+	if opt.ActivityOptions != nil {
+		ao = *opt.ActivityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
+	}
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
+	}
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opt.HeartbeatInterval == 0 {
+		opt.HeartbeatInterval = 30000000000 // 30 seconds
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	uo := client.UpdateWorkflowOptions{}
+	if opt.UpdateWorkflowOptions != nil {
+		uo = *opt.UpdateWorkflowOptions
+	}
+	uo.WorkflowID = workflowID
+	uo.RunID = runID
+	if uo.UpdateID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := expression.EvalExpression(v1.SomeUpdate2Idexpression, input.ProtoReflect())
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"mycompany.simple.Simple.SomeUpdate2\" update", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&uo.UpdateID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if uo.UpdateID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating update id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&uo.UpdateID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if uo.UpdateID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("update id is required", "InvalidArgument", nil)
+	}
+
+	uopb, err := xns.MarshalUpdateWorkflowOptions(uo)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshalling update workflow options: %w", err)
+	}
+
+	inpb, err := anypb.New(input)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshalling update request: %w", err)
+	}
+
+	return ctx, &xnsv1.UpdateRequest{
+		HeartbeatInterval:     durationpb.New(opt.HeartbeatInterval),
+		Request:               inpb,
+		UpdateWorkflowOptions: uopb,
+	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (opts *SomeUpdate2UpdateOptions) WithActivityOptions(ao workflow.ActivityOptions) *SomeUpdate2UpdateOptions {
+	opts.ActivityOptions = &ao
+	return opts
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (opts *SomeUpdate2UpdateOptions) WithHeartbeatInterval(d time.Duration) *SomeUpdate2UpdateOptions {
+	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithUpdateWorkflowOptions can be used to customize the update workflow options
+func (opts *SomeUpdate2UpdateOptions) WithUpdateWorkflowOptions(uwo client.UpdateWorkflowOptions) *SomeUpdate2UpdateOptions {
+	opts.UpdateWorkflowOptions = &uwo
+	return opts
+}
+
+// SomeUpdate2Handle provides a handle to a mycompany.simple.Simple.SomeUpdate2 workflow update
+type SomeUpdate2Handle interface {
+	// Cancel cancels the update activity
+	Cancel(workflow.Context) error
+
+	// Future returns the inner workflow.Future
+	Future() workflow.Future
+
+	// Get blocks on update completion and returns the result
+	Get(workflow.Context) (*v1.SomeUpdate2Response, error)
+
+	// ID returns the update id
+	ID() string
+}
+
+// someUpdate2Handle provides a(n) SomeUpdate2Handle implementation
+type someUpdate2Handle struct {
+	cancel func()
+	future workflow.Future
+	id     string
+}
+
+// Cancel the underlying workflow update
+func (r *someUpdate2Handle) Cancel(ctx workflow.Context) error {
+	r.cancel()
+	if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
+		return err
+	}
+	return nil
+}
+
+// Future returns the underlying activity future
+func (r *someUpdate2Handle) Future() workflow.Future {
+	return r.future
+}
+
+// Get blocks on activity completion and returns the underlying update result
+func (r *someUpdate2Handle) Get(ctx workflow.Context) (*v1.SomeUpdate2Response, error) {
+	var resp v1.SomeUpdate2Response
+	if err := r.future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ID returns the underlying workflow id
+func (r *someUpdate2Handle) ID() string {
+	return r.id
+}
+
+// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update and blocks until error or response received
+func SomeUpdate2(ctx workflow.Context, workflowID string, runID string, req *v1.SomeUpdate2Request, opts ...*SomeUpdate2UpdateOptions) (*v1.SomeUpdate2Response, error) {
+	run, err := SomeUpdate2Async(ctx, workflowID, runID, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// SomeUpdate2Async executes a(n) mycompany.simple.Simple.SomeUpdate2 update and blocks until error or response received
+func SomeUpdate2Async(ctx workflow.Context, workflowID string, runID string, input *v1.SomeUpdate2Request, opts ...*SomeUpdate2UpdateOptions) (SomeUpdate2Handle, error) {
+	activityName := simpleOptions.filterActivity(v1.SomeUpdate2UpdateName)
+	if activityName == "" {
+		return nil, temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("no activity registered for %s", v1.SomeUpdate2UpdateName),
+			"Unimplemented",
+			nil,
+		)
+	}
+
+	var opt *SomeUpdate2UpdateOptions
+	if len(opts) > 0 && opts[0] != nil {
+		opt = opts[0]
+	} else {
+		opt = NewSomeUpdate2UpdateOptions()
+	}
+
+	ctx, req, err := opt.Build(ctx, workflowID, runID, input)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &someUpdate2Handle{
+		cancel: cancel,
+		id:     req.GetUpdateWorkflowOptions().GetUpdateId(),
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+	}, nil
+}
+
 // CancelSimpleWorkflow cancels an existing workflow
 func CancelSimpleWorkflow(ctx workflow.Context, workflowID string, runID string) error {
 	return CancelSimpleWorkflowAsync(ctx, workflowID, runID).Get(ctx, nil)
@@ -3190,6 +3572,112 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 		// handle workflow completion
 		case <-doneCh:
 			return resp, simpleOptions.convertError(err)
+		}
+	}
+}
+
+// SomeWorkflow1WithSomeUpdate2 executes a(n) mycompany.simple.SomeWorkflow1 workflow with a(n) mycompany.simple.Simple.SomeUpdate2 update via an activity
+func (a *simpleActivities) SomeWorkflow1WithSomeUpdate2(ctx context.Context, input *xnsv1.UpdateWithStartRequest) (out *v1.SomeUpdate2Response, err error) {
+	// unmarshal workflow request
+	var req v1.SomeWorkflow1Request
+	if err := input.GetInput().UnmarshalTo(&req); err != nil {
+		return nil, simpleOptions.convertError(temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1.SomeWorkflow1Request", input.GetInput().GetTypeUrl()),
+			"InvalidArgument",
+			err,
+		))
+	}
+
+	// unmarshal update request
+	var update v1.SomeUpdate2Request
+	if err := input.GetUpdate().UnmarshalTo(&update); err != nil {
+		return nil, simpleOptions.convertError(temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("error unmarshalling update request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1.SomeUpdate2Request", input.GetUpdate().GetTypeUrl()),
+			"InvalidArgument",
+			err,
+		))
+	}
+
+	// unmarshal workflow and update options
+	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
+	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
+
+	// execute update with start asynchronously
+	handle, run, err := a.client.SomeWorkflow1WithSomeUpdate2Async(
+		ctx,
+		&req,
+		&update,
+		v1.NewSomeWorkflow1WithSomeUpdate2Options().WithSomeWorkflow1Options(
+			v1.NewSomeWorkflow1Options().WithStartWorkflowOptions(swo),
+		).WithSomeUpdate2Options(
+			v1.NewSomeUpdate2Options().WithUpdateWorkflowOptions(uwo),
+		),
+	)
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
+	// return early if detached
+	if input.GetDetached() {
+		return nil, nil
+	}
+
+	// initialize heartbeat interval duration
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatTimeout := activity.GetInfo(ctx).HeartbeatTimeout
+		if heartbeatTimeout > 0 {
+			heartbeatInterval = heartbeatTimeout / 2
+		} else {
+			heartbeatInterval = time.Second * 30
+		}
+	}
+
+	// wait for update to complete in child goroutine
+	doneCh := make(chan struct{})
+	go func() {
+		defer close(doneCh)
+		out, err = handle.Get(ctx)
+	}()
+
+	// heartbeat activity while waiting for update to complete
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx, handle.UpdateID())
+
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+
+		// catch parent activity context cancellation. in most cases, this should indicate a
+		// server-sent cancellation, but there's a non-zero possibility that this cancellation
+		// is received due to the worker stopping, prior to detecting the closing of the worker
+		// stop channel. to give us an opportunity to detect a cancellation stemming from the
+		// worker closing, we again check to see if the worker stop channel is closed before
+		// propagating the cancellation
+		case <-ctx.Done():
+			select {
+			case <-activity.GetWorkerStopChannel(ctx):
+				return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
+			default:
+				parentClosePolicy := input.GetParentClosePolicy()
+				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
+					disconnectedCtx, cancel := context.WithTimeout(ctx, time.Minute)
+					defer cancel()
+					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						err = run.Cancel(disconnectedCtx)
+					} else {
+						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
+					}
+					if err != nil {
+						return nil, simpleOptions.convertError(err)
+					}
+				}
+				return nil, simpleOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+			}
+
+		case <-doneCh:
+			return out, simpleOptions.convertError(err)
 		}
 	}
 }
@@ -4121,6 +4609,78 @@ func (a *simpleActivities) SomeUpdate1(ctx context.Context, input *xnsv1.UpdateR
 			input.GetUpdateWorkflowOptions().GetRunId(),
 			&req,
 			v1.NewSomeUpdate1Options().WithUpdateWorkflowOptions(uo),
+		)
+		if err != nil {
+			return nil, simpleOptions.convertError(err)
+		}
+		activity.RecordHeartbeat(ctx, handle.UpdateID())
+	}
+
+	// wait for update to complete in child goroutine
+	doneCh := make(chan struct{})
+	go func() {
+		resp, err = handle.Get(ctx)
+		close(doneCh)
+	}()
+
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Minute
+	}
+
+	// heartbeat activity while waiting for workflow update to complete
+	for {
+		select {
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx, handle.UpdateID())
+		case <-ctx.Done():
+			return nil, simpleOptions.convertError(ctx.Err())
+		case <-doneCh:
+			return resp, simpleOptions.convertError(err)
+		}
+	}
+}
+
+// SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update via an activity
+func (a *simpleActivities) SomeUpdate2(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.SomeUpdate2Response, err error) {
+	var handle v1.SomeUpdate2Handle
+	if activity.HasHeartbeatDetails(ctx) {
+		// extract update id from heartbeat details
+		var updateID string
+		if err := activity.GetHeartbeatDetails(ctx, &updateID); err != nil {
+			return nil, simpleOptions.convertError(err)
+		}
+
+		// retrieve handle for existing update
+		handle, err = a.client.GetSomeUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
+			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
+			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
+			UpdateID:   updateID,
+		})
+		if err != nil {
+			return nil, simpleOptions.convertError(err)
+		}
+	} else {
+		// unmarshal update request
+		var req v1.SomeUpdate2Request
+		if err := input.Request.UnmarshalTo(&req); err != nil {
+			return nil, simpleOptions.convertError(temporal.NewNonRetryableApplicationError(
+				fmt.Sprintf("error unmarshalling update request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1.SomeUpdate2Request", input.Request.GetTypeUrl()),
+				"InvalidArgument",
+				err,
+			))
+		}
+
+		uo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
+		uo.WaitForStage = client.WorkflowUpdateStageAccepted
+
+		// initialize update execution
+		handle, err = a.client.SomeUpdate2Async(
+			ctx,
+			input.GetUpdateWorkflowOptions().GetWorkflowId(),
+			input.GetUpdateWorkflowOptions().GetRunId(),
+			&req,
+			v1.NewSomeUpdate2Options().WithUpdateWorkflowOptions(uo),
 		)
 		if err != nil {
 			return nil, simpleOptions.convertError(err)

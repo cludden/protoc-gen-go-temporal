@@ -21,6 +21,15 @@ service Simple {
       query: {ref: 'SomeQuery2'}
       signal: {ref: 'SomeSignal1'}
       signal: {ref: 'SomeSignal2'}
+      update: {
+        ref: 'SomeUpdate1'
+        validate: false
+      }
+      update: {
+        ref: 'SomeUpdate2'
+        start: true
+        validate: true
+      }
     };
   }
 
@@ -161,6 +170,10 @@ service Simple {
       }
     };
   }
+
+  rpc SomeUpdate2(SomeUpdate2Request) returns (SomeUpdate2Response) {
+    option (temporal.v1.update) = {id: 'some-update-2/${! requestVal.not_empty().catch("default").slug() }'};
+  }
 }
 
 message SomeWorkflow1Request {
@@ -218,6 +231,14 @@ message SomeUpdate1Request {
 }
 
 message SomeUpdate1Response {
+  string response_val = 1;
+}
+
+message SomeUpdate2Request {
+  string request_val = 1;
+}
+
+message SomeUpdate2Response {
   string response_val = 1;
 }
 

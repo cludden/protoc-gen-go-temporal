@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) add support for experimental update with start
 - [#105](https://github.com/cludden/protoc-gen-go-temporal/pull/105) add WithDataConverter helper to activity, child workflow options
+- [#106](https://github.com/cludden/protoc-gen-go-temporal/pull/106) allow update validation to be configured by each workflow
 
 ### Changed
 
