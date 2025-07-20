@@ -21,33 +21,40 @@ import (
 type Workflows struct {
 	workflows simplepb.SimpleWorkflowFunctions
 	items     []*simplepb.Foo
+	taskQueue string
 }
 
 // ============================================================================
 
 type someWorkflow1 struct {
+	*Workflows
 	*simplepb.SomeWorkflow1WorkflowInput
 	sel    workflow.Selector
 	events []string
 }
 
 func Register(r worker.Registry) {
-	simplepb.RegisterSimpleWorkflows(r, &Workflows{simplepb.NewSimpleWorkflowFunctions(), nil})
+	simplepb.RegisterSimpleWorkflows(r, &Workflows{simplepb.NewSimpleWorkflowFunctions(), nil, ""})
 	simplepb.RegisterSimpleActivities(r, &Activities{})
 	simplepb.RegisterOnlyActivitiesActivities(r, &OnlyActivites{})
 }
 
 func (w *Workflows) SomeWorkflow1(ctx workflow.Context, in *simplepb.SomeWorkflow1WorkflowInput) (simplepb.SomeWorkflow1Workflow, error) {
-	return &someWorkflow1{SomeWorkflow1WorkflowInput: in, sel: workflow.NewSelector(ctx)}, nil
+	return &someWorkflow1{w, in, workflow.NewSelector(ctx), nil}, nil
 }
 
 func (s *someWorkflow1) Execute(ctx workflow.Context) (*simplepb.SomeWorkflow1Response, error) {
 	s.events = append(s.events, "started with param "+s.Req.RequestVal)
 
+	activity3Opts := simplepb.NewSomeActivity3ActivityOptions()
+	if s.taskQueue != "" {
+		activity3Opts = activity3Opts.WithTaskQueue(s.taskQueue)
+	}
+
 	// Call regular activity
 	resp, err := simplepb.SomeActivity3(ctx, &simplepb.SomeActivity3Request{
 		RequestVal: "some activity param",
-	})
+	}, activity3Opts)
 	if err != nil {
 		return nil, err
 	}

@@ -175,7 +175,7 @@ func TestSomeWorkflow2WithTestClient(t *testing.T) {
 	require, ctx := require.New(t), context.Background()
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
-	client := simplepb.NewTestSimpleClient(env, &Workflows{simplepb.NewSimpleWorkflowFunctions(), nil}, &Activities{})
+	client := simplepb.NewTestSimpleClient(env, &Workflows{simplepb.NewSimpleWorkflowFunctions(), nil, ""}, &Activities{})
 
 	run, err := client.SomeWorkflow2Async(ctx)
 	require.NoError(err)
@@ -203,7 +203,7 @@ func TestSomeWorkflow2WithMock(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	fns := simplemocks.NewMockSimpleWorkflowFunctions(t)
 	fns.EXPECT().SomeWorkflow3(mock.Anything, mock.Anything).Return(nil)
-	client := simplepb.NewTestSimpleClient(env, &Workflows{fns, nil}, &Activities{})
+	client := simplepb.NewTestSimpleClient(env, &Workflows{fns, nil, ""}, &Activities{})
 
 	run, err := client.SomeWorkflow2Async(ctx)
 	require.NoError(err)

@@ -37,7 +37,7 @@ import (
 )
 
 // HybridTaskQueue is the default task-queue for a test.opaque.Hybrid worker
-const HybridTaskQueue = "opaque-hybrid"
+var HybridTaskQueue = "opaque-hybrid"
 
 // test.opaque.Hybrid workflow names
 const (

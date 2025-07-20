@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -874,7 +875,7 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 				g.Id("Usage").Op(":").Lit("task queue name")
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("t"))
 				g.Id("EnvVars").Op(":").Index().String().Values(j.Lit("TEMPORAL_TASK_QUEUE_NAME"), j.Lit("TEMPORAL_TASK_QUEUE"), j.Lit("TASK_QUEUE_NAME"), j.Lit("TASK_QUEUE"))
-				tq := m.opts.GetTaskQueue()
+				tq := cmp.Or(opts.GetTaskQueue(), m.opts.GetTaskQueue())
 				if tq == "" {
 					g.Id("Required").Op(":").True()
 				} else {

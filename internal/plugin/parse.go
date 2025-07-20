@@ -323,7 +323,7 @@ func (m *Manifest) genConstants(f *g.File) {
 	if taskQueue := m.opts.GetTaskQueue(); taskQueue != "" {
 		name := m.toCamel("%sTaskQueue", m.Service.GoName)
 		f.Commentf("%s is the default task-queue for a %s worker", name, m.Service.Desc.FullName())
-		f.Const().Id(name).Op("=").Lit(taskQueue)
+		f.Var().Id(name).Op("=").Lit(taskQueue)
 	}
 
 	// add workflow names

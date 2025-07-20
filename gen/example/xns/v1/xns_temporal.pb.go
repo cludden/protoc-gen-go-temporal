@@ -40,7 +40,7 @@ import (
 )
 
 // XnsTaskQueue is the default task-queue for a example.xns.v1.Xns worker
-const XnsTaskQueue = "xns-v1"
+var XnsTaskQueue = "xns-v1"
 
 // example.xns.v1.Xns workflow names
 const (
@@ -1012,7 +1012,7 @@ func WithXnsSchemeTypes() scheme.Option {
 }
 
 // ExampleTaskQueue is the default task-queue for a example.xns.v1.Example worker
-const ExampleTaskQueue = "example-v1"
+var ExampleTaskQueue = "example-v1"
 
 // example.xns.v1.Example workflow names
 const (

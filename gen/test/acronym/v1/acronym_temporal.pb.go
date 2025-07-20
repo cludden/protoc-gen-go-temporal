@@ -36,7 +36,7 @@ import (
 )
 
 // AWSTaskQueue is the default task-queue for a test.acronym.v1.AWS worker
-const AWSTaskQueue = "aws-task-queue"
+var AWSTaskQueue = "aws-task-queue"
 
 // test.acronym.v1.AWS workflow names
 const (

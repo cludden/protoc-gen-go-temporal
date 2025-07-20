@@ -34,7 +34,7 @@ import (
 )
 
 // ExampleTaskQueue is the default task-queue for a example.schedule.v1.Example worker
-const ExampleTaskQueue = "schedule-v1"
+var ExampleTaskQueue = "schedule-v1"
 
 // example.schedule.v1.Example workflow names
 const (

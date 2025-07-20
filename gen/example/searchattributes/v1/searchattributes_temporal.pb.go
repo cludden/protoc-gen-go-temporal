@@ -34,7 +34,7 @@ import (
 )
 
 // ExampleTaskQueue is the default task-queue for a example.searchattributes.v1.Example worker
-const ExampleTaskQueue = "searchattributes"
+var ExampleTaskQueue = "searchattributes"
 
 // example.searchattributes.v1.Example workflow names
 const (

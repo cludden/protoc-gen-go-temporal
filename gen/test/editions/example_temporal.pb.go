@@ -37,7 +37,7 @@ import (
 )
 
 // FooServiceTaskQueue is the default task-queue for a test.editions.FooService worker
-const FooServiceTaskQueue = "foo-queue"
+var FooServiceTaskQueue = "foo-queue"
 
 // test.editions.FooService workflow names
 const (
