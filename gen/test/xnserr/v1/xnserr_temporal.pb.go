@@ -34,7 +34,7 @@ import (
 )
 
 // ServerTaskQueue is the default task-queue for a test.xnserr.v1.Server worker
-const ServerTaskQueue = "xnserr-server-v1"
+var ServerTaskQueue = "xnserr-server-v1"
 
 // test.xnserr.v1.Server workflow names
 const (
@@ -971,7 +971,7 @@ func WithServerSchemeTypes() scheme.Option {
 }
 
 // ClientTaskQueue is the default task-queue for a test.xnserr.v1.Client worker
-const ClientTaskQueue = "xnserr-client-v1"
+var ClientTaskQueue = "xnserr-client-v1"
 
 // test.xnserr.v1.Client workflow names
 const (

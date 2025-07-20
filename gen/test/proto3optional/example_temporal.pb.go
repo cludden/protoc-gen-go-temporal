@@ -37,7 +37,7 @@ import (
 )
 
 // FooServiceTaskQueue is the default task-queue for a test.proto3optional.FooService worker
-const FooServiceTaskQueue = "foo-queue"
+var FooServiceTaskQueue = "foo-queue"
 
 // test.proto3optional.FooService workflow names
 const (

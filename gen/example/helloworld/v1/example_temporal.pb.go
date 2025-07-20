@@ -35,7 +35,7 @@ import (
 )
 
 // ExampleTaskQueue is the default task-queue for a example.helloworld.v1.Example worker
-const ExampleTaskQueue = "hello-world"
+var ExampleTaskQueue = "hello-world"
 
 // example.helloworld.v1.Example workflow names
 const (

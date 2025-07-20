@@ -37,7 +37,7 @@ import (
 )
 
 // OptionalTaskQueue is the default task-queue for a test.opaque.Optional worker
-const OptionalTaskQueue = "opaque-optional"
+var OptionalTaskQueue = "opaque-optional"
 
 // test.opaque.Optional workflow names
 const (

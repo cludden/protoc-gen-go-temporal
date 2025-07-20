@@ -36,7 +36,7 @@ import (
 )
 
 // ExampleTaskQueue is the default task-queue for a example.updatabletimer.v1.Example worker
-const ExampleTaskQueue = "updatable-timer"
+var ExampleTaskQueue = "updatable-timer"
 
 // example.updatabletimer.v1.Example workflow names
 const (

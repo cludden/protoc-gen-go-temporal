@@ -38,7 +38,7 @@ import (
 )
 
 // ShoppingCartTaskQueue is the default task-queue for a example.shoppingcart.v1.ShoppingCart worker
-const ShoppingCartTaskQueue = "example-shoppingcart-v1"
+var ShoppingCartTaskQueue = "example-shoppingcart-v1"
 
 // example.shoppingcart.v1.ShoppingCart workflow names
 const (

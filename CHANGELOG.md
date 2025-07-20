@@ -15,11 +15,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#106](https://github.com/cludden/protoc-gen-go-temporal/pull/106) allow update validation to be configured by each workflow
 
 ### Changed
+- [#108](https://github.com/cludden/protoc-gen-go-temporal/pull/108) allow overriding default task queue at runtime
 
 ### Fixed
 - [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) support parsing files for signals, updates
 - [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) fix input collision handling for signals, updates
 - [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) fix race condition in xns activity cancellation
+- [#108](https://github.com/cludden/protoc-gen-go-temporal/pull/108) fix default cli task queue for workflows with custom task queue
 
 
 

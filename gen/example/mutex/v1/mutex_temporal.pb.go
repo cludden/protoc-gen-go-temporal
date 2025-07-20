@@ -40,7 +40,7 @@ import (
 )
 
 // ExampleTaskQueue is the default task-queue for a example.mutex.v1.Example worker
-const ExampleTaskQueue = "mutex"
+var ExampleTaskQueue = "mutex"
 
 // example.mutex.v1.Example workflow names
 const (

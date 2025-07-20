@@ -37,7 +37,7 @@ import (
 )
 
 // OpenTaskQueue is the default task-queue for a test.opaque.Open worker
-const OpenTaskQueue = "opaque-open"
+var OpenTaskQueue = "opaque-open"
 
 // test.opaque.Open workflow names
 const (

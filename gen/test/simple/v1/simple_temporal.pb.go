@@ -44,7 +44,7 @@ import (
 )
 
 // SimpleTaskQueue is the default task-queue for a mycompany.simple.Simple worker
-const SimpleTaskQueue = "my-task-queue"
+var SimpleTaskQueue = "my-task-queue"
 
 // mycompany.simple.Simple workflow names
 const (
@@ -7044,7 +7044,7 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Usage:   "task queue name",
 					Aliases: []string{"t"},
 					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
-					Value:   "my-task-queue",
+					Value:   "my-task-queue-2",
 				},
 				&v2.StringFlag{
 					Name:     "input-file",
@@ -7522,7 +7522,7 @@ func WithSimpleSchemeTypes() scheme.Option {
 }
 
 // OtherTaskQueue is the default task-queue for a mycompany.simple.Other worker
-const OtherTaskQueue = "other-task-queue"
+var OtherTaskQueue = "other-task-queue"
 
 // mycompany.simple.Other workflow names
 const (

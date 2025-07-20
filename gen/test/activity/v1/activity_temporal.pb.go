@@ -19,7 +19,7 @@ import (
 )
 
 // ExampleTaskQueue is the default task-queue for a test.activity.v1.Example worker
-const ExampleTaskQueue = "example-v1"
+var ExampleTaskQueue = "example-v1"
 
 // test.activity.v1.Example activity names
 const (

@@ -37,7 +37,7 @@ import (
 )
 
 // TestTaskQueue is the default task-queue for a test.option.v1.Test worker
-const TestTaskQueue = "option-v1"
+var TestTaskQueue = "option-v1"
 
 // test.option.v1.Test workflow names
 const (
@@ -1624,7 +1624,7 @@ func newTestCommands(options ...*TestCliOptions) ([]*v2.Command, error) {
 					Usage:   "task queue name",
 					Aliases: []string{"t"},
 					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
-					Value:   "option-v1",
+					Value:   "option-v2",
 				},
 				&v2.StringFlag{
 					Name:     "input-file",
