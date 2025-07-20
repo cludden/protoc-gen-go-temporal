@@ -1,0 +1,76 @@
+edition = "2023";
+
+package test.cliv3;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/go_features.proto";
+import "temporal/v1/temporal.proto";
+
+option features.(pb.go).api_level = API_OPAQUE;
+option features.field_presence = EXPLICIT;
+
+service ExampleService {
+  option (temporal.v1.service) = {task_queue: "example-cliv3"};
+
+  rpc CreateFoo(CreateFooInput) returns (CreateFooOutput) {
+    option (temporal.v1.workflow) = {
+      name: "test.cliv3.CreateFoo"
+      query: {ref: "GetFoo"}
+      signal: {
+        ref: "SignalFoo"
+        start: true
+      }
+      update: {
+        ref: "UpdateFoo"
+        start: true
+      }
+    };
+  }
+
+  rpc GetFoo(GetFooInput) returns (GetFooOutput) {
+    option (temporal.v1.query) = {name: "test.cliv3.GetFoo"};
+  }
+
+  rpc SignalFoo(SignalFooInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {name: "test.cliv3.SignalFoo"};
+  }
+
+  rpc UpdateFoo(UpdateFooInput) returns (UpdateFooOutput) {
+    option (temporal.v1.update) = {name: "test.cliv3.UpdateFoo"};
+  }
+}
+
+message CreateFooInput {
+  string name = 1;
+  string description = 2;
+}
+
+message CreateFooOutput {
+  string id = 1;
+}
+
+message GetFooInput {
+  string id = 1;
+}
+
+message GetFooOutput {
+  string name = 1;
+  string description = 2;
+}
+
+message SignalFooInput {
+  string id = 1;
+  string signal = 2;
+}
+
+message UpdateFooInput {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message UpdateFooOutput {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}

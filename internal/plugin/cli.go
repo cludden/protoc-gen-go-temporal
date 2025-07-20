@@ -13,14 +13,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// define cli-specific import constants
-const (
-	base64Pkg    = "encoding/base64"
-	cliPkg       = "github.com/urfave/cli/v2"
-	homedirPkg   = "github.com/mitchellh/go-homedir"
-	protojsonPkg = "google.golang.org/protobuf/encoding/protojson"
-)
-
 func (n *names) unmarshalCliFlagsTo(message *protogen.Message) string {
 	return n.toCamel("UnmarshalCliFlagsTo%s", n.getMessageName(message))
 }
@@ -438,6 +430,11 @@ func (m *Manifest) genCliQueryCommand(g *j.Group, query protoreflect.FullName) {
 		usage = fmt.Sprintf("executes a %s query and blocks until error or response received", m.fqnForQuery(query))
 	}
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	g.CustomFunc(multiLineValues, func(g *j.Group) {
 		g.Id("Name").Op(":").Lit(name)
 		g.Id("Usage").Op(":").Lit(usage)
@@ -454,23 +451,23 @@ func (m *Manifest) genCliQueryCommand(g *j.Group, query protoreflect.FullName) {
 		g.Id("UseShortOptionHandling").Op(":").True()
 		g.Id("Before").Op(":").Id("opts").Dot("before")
 		g.Id("After").Op(":").Id("opts").Dot("after")
-		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Flags").Op(":").Index().Qual(pkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add workflow-id required flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("workflow-id")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
 				g.Id("Required").Op(":").True()
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
 			})
 			// add run-id optional flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("run-id")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit("input-file")
 					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
 					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
@@ -482,9 +479,21 @@ func (m *Manifest) genCliQueryCommand(g *j.Group, query protoreflect.FullName) {
 				}
 			}
 		})
-		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g.Id("Action").Op(":").Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
@@ -512,7 +521,11 @@ func (m *Manifest) genCliQueryCommand(g *j.Group, query protoreflect.FullName) {
 						}
 						g.Err()
 					}).Op(":=").Id("client").Dot(m.methods[query].GoName).CallFunc(func(g *j.Group) {
-						g.Id("cmd").Dot("Context")
+						if m.cfg.CliV3Enabled {
+							g.Id("ctx")
+						} else {
+							g.Id("cmd").Dot("Context")
+						}
 						g.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
 						g.Id("cmd").Dot("String").Call(j.Lit("run-id"))
 						if hasInput {
@@ -560,6 +573,11 @@ func (m *Manifest) genCliSignalCommand(g *j.Group, signal protoreflect.FullName)
 		usage = fmt.Sprintf("executes a %s signal", m.fqnForSignal(signal))
 	}
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	g.CustomFunc(multiLineValues, func(g *j.Group) {
 		g.Id("Name").Op(":").Lit(name)
 		g.Id("Usage").Op(":").Lit(usage)
@@ -576,23 +594,23 @@ func (m *Manifest) genCliSignalCommand(g *j.Group, signal protoreflect.FullName)
 		g.Id("UseShortOptionHandling").Op(":").True()
 		g.Id("Before").Op(":").Id("opts").Dot("before")
 		g.Id("After").Op(":").Id("opts").Dot("after")
-		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Flags").Op(":").Index().Qual(pkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add workflow-id required flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("workflow-id")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
 				g.Id("Required").Op(":").True()
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
 			})
 			// add run-id optional flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("run-id")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit("input-file")
 					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
 					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
@@ -604,9 +622,21 @@ func (m *Manifest) genCliSignalCommand(g *j.Group, signal protoreflect.FullName)
 				}
 			}
 		})
-		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g.Id("Action").Op(":").Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
@@ -627,7 +657,11 @@ func (m *Manifest) genCliSignalCommand(g *j.Group, signal protoreflect.FullName)
 
 			g.If(
 				j.Err().Op(":=").Id("client").Dot(m.methods[signal].GoName).CallFunc(func(g *j.Group) {
-					g.Id("cmd").Dot("Context")
+					if m.cfg.CliV3Enabled {
+						g.Id("ctx")
+					} else {
+						g.Id("cmd").Dot("Context")
+					}
 					g.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
 					g.Id("cmd").Dot("String").Call(j.Lit("run-id"))
 					if hasInput {
@@ -669,6 +703,11 @@ func (m *Manifest) genCliUpdateCommand(g *j.Group, update protoreflect.FullName)
 		usage = fmt.Sprintf("executes a(n) %s update", m.fqnForUpdate(update))
 	}
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	g.CustomFunc(multiLineValues, func(g *j.Group) {
 		g.Id("Name").Op(":").Lit(name)
 		g.Id("Usage").Op(":").Lit(usage)
@@ -685,29 +724,29 @@ func (m *Manifest) genCliUpdateCommand(g *j.Group, update protoreflect.FullName)
 		g.Id("UseShortOptionHandling").Op(":").True()
 		g.Id("Before").Op(":").Id("opts").Dot("before")
 		g.Id("After").Op(":").Id("opts").Dot("after")
-		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Flags").Op(":").Index().Qual(pkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add async flag
-			g.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("detach")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow update in the background and print workflow, execution, and udpate id"))
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
 			})
 			// add workflow-id required flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("workflow-id")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("workflow id"))
 				g.Id("Required").Op(":").True()
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("w"))
 			})
 			// add run-id optional flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("run-id")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run id"))
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("r"))
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit("input-file")
 					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
 					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
@@ -719,9 +758,21 @@ func (m *Manifest) genCliUpdateCommand(g *j.Group, update protoreflect.FullName)
 				}
 			}
 		})
-		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g.Id("Action").Op(":").Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
@@ -742,7 +793,11 @@ func (m *Manifest) genCliUpdateCommand(g *j.Group, update protoreflect.FullName)
 
 			// execute update operation
 			g.List(j.Id("handle"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sAsync", update)).CallFunc(func(g *j.Group) {
-				g.Id("cmd").Dot("Context")
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				} else {
+					g.Id("cmd").Dot("Context")
+				}
 				g.Id("cmd").Dot("String").Call(j.Lit("workflow-id"))
 				g.Id("cmd").Dot("String").Call(j.Lit("run-id"))
 				if hasInput {
@@ -770,7 +825,13 @@ func (m *Manifest) genCliUpdateCommand(g *j.Group, update protoreflect.FullName)
 							g.Id("resp")
 						}
 						g.Err()
-					}).Op(":=").Id("handle").Dot("Get").Call(j.Id("cmd").Dot("Context")),
+					}).Op(":=").Id("handle").Dot("Get").CallFunc(func(g *j.Group) {
+						if m.cfg.CliV3Enabled {
+							g.Id("ctx")
+						} else {
+							g.Id("cmd").Dot("Context")
+						}
+					}),
 					j.Err().Op("!=").Nil(),
 				).
 				Block(
@@ -796,16 +857,34 @@ func (m *Manifest) genCliWorkerCommand(g *j.Group) {
 		g.Id("UseShortOptionHandling").Op(":").True()
 		g.Id("Before").Op(":").Id("opts").Dot("before")
 		g.Id("After").Op(":").Id("opts").Dot("after")
-		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g.Id("Action").Op(":").Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
 			g.Defer().Id("c").Dot("Close").Call()
 
 			// initialize worker
-			g.List(j.Id("w"), j.Err()).Op(":=").Id("opts").Dot("worker").Call(j.Id("cmd"), j.Id("c"))
+			g.List(j.Id("w"), j.Err()).Op(":=").Id("opts").Dot("worker").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+				g.Id("c")
+			})
 			g.If(j.Id("opts").Dot("worker").Op("!=").Nil()).Block(
 				j.If(j.Err().Op("!=").Nil()).Block(
 					j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing worker: %w"), j.Err())),
@@ -817,7 +896,11 @@ func (m *Manifest) genCliWorkerCommand(g *j.Group) {
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error starting worker: %w"), j.Err())),
 			)
 			g.Defer().Id("w").Dot("Stop").Call()
-			g.Op("<-").Id("cmd").Dot("Context").Dot("Done").Call()
+			if m.cfg.CliV3Enabled {
+				g.Op("<-").Id("ctx").Dot("Done").Call()
+			} else {
+				g.Op("<-").Id("cmd").Dot("Context").Dot("Done").Call()
+			}
 			g.Return(j.Nil())
 		})
 	})
@@ -846,6 +929,11 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 		usage = fmt.Sprintf("executes a(n) %s workflow", m.fqnForWorkflow(workflow))
 	}
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	g.CustomFunc(multiLineValues, func(g *j.Group) {
 		g.Id("Name").Op(":").Lit(name)
 		g.Id("Usage").Op(":").Lit(usage)
@@ -862,19 +950,31 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 		g.Id("UseShortOptionHandling").Op(":").True()
 		g.Id("Before").Op(":").Id("opts").Dot("before")
 		g.Id("After").Op(":").Id("opts").Dot("after")
-		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Flags").Op(":").Index().Qual(pkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			// add async flag
-			g.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("detach")
 				g.Id("Usage").Op(":").Lit("run workflow in the background and print workflow and execution id")
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
 			})
 			// add task-queue flag
-			g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("task-queue")
 				g.Id("Usage").Op(":").Lit("task queue name")
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("t"))
-				g.Id("EnvVars").Op(":").Index().String().Values(j.Lit("TEMPORAL_TASK_QUEUE_NAME"), j.Lit("TEMPORAL_TASK_QUEUE"), j.Lit("TASK_QUEUE_NAME"), j.Lit("TASK_QUEUE"))
+				if m.cfg.CliV3Enabled {
+					g.Id("Sources").Op(":").Qual(cliV3Pkg, "NewValueSourceChain").CallFunc(func(g *j.Group) {
+						for _, envVar := range []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"} {
+							g.Qual(cliV3Pkg, "EnvVar").Call(j.Lit(envVar))
+						}
+					})
+				} else {
+					g.Id("EnvVars").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+						for _, envVar := range []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"} {
+							g.Lit(envVar)
+						}
+					})
+				}
 				tq := cmp.Or(opts.GetTaskQueue(), m.opts.GetTaskQueue())
 				if tq == "" {
 					g.Id("Required").Op(":").True()
@@ -884,7 +984,7 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 			})
 			if hasInput {
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit("input-file")
 					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
 					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
@@ -896,9 +996,21 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 				}
 			}
 		})
-		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g.Id("Action").Op(":").Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("tc"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("tc"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
@@ -925,7 +1037,11 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 
 			// execute operation
 			g.List(j.Id("run"), j.Err()).Op(":=").Id("c").Dot(m.toCamel("%sAsync", workflow)).CallFunc(func(g *j.Group) {
-				g.Id("cmd").Dot("Context")
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				} else {
+					g.Id("cmd").Dot("Context")
+				}
 				if hasInput {
 					g.Id("req")
 				}
@@ -951,7 +1067,13 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 							g.Id("resp")
 						}
 						g.Err()
-					}).Op(":=").Id("run").Dot("Get").Call(j.Id("cmd").Dot("Context")),
+					}).Op(":=").Id("run").Dot("Get").CallFunc(func(g *j.Group) {
+						if m.cfg.CliV3Enabled {
+							g.Id("ctx")
+						} else {
+							g.Id("cmd").Dot("Context")
+						}
+					}),
 					j.Err().Op("!=").Nil(),
 				).
 				Block(
@@ -995,6 +1117,11 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 		usage = fmt.Sprintf("sends a %s signal to a %s workflow, starting it if necessary", signal, w)
 	}
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	g.Comment(usage)
 	g.CustomFunc(multiLineValues, func(g *j.Group) {
 		fields := map[string]struct{}{}
@@ -1015,8 +1142,8 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 		g.Id("UseShortOptionHandling").Op(":").True()
 		g.Id("Before").Op(":").Id("opts").Dot("before")
 		g.Id("After").Op(":").Id("opts").Dot("after")
-		g.Id("Flags").Op(":").Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
-			g.Op("&").Qual(cliPkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+		g.Id("Flags").Op(":").Index().Qual(pkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+			g.Op("&").Qual(pkg, "BoolFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 				g.Id("Name").Op(":").Lit("detach")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
@@ -1029,7 +1156,7 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 				}
 
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit("input-file")
 					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
 					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("f"))
@@ -1049,7 +1176,7 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 				}
 
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit("signal-file")
 					g.Id("Usage").Op(":").Lit("path to json-formatted input file")
 					g.Id("Aliases").Op(":").Index().String().Values(j.Lit("s"))
@@ -1067,9 +1194,21 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 				}
 			}
 		})
-		g.Id("Action").Op(":").Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g.Id("Action").Op(":").Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err())),
 			)
@@ -1115,7 +1254,11 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 
 			// execute operation
 			g.List(j.Id("run"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sWith%sAsync", w, signal)).CallFunc(func(g *j.Group) {
-				g.Id("cmd").Dot("Context")
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				} else {
+					g.Id("cmd").Dot("Context")
+				}
 				if hasInput {
 					g.Id("req")
 				}
@@ -1143,7 +1286,13 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 							g.Id("resp")
 						}
 						g.Err()
-					}).Op(":=").Id("run").Dot("Get").Call(j.Id("cmd").Dot("Context")),
+					}).Op(":=").Id("run").Dot("Get").CallFunc(func(g *j.Group) {
+						if m.cfg.CliV3Enabled {
+							g.Id("ctx")
+						} else {
+							g.Id("cmd").Dot("Context")
+						}
+					}),
 					j.Err().Op("!=").Nil(),
 				).
 				Block(
@@ -1188,6 +1337,11 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 		usage = fmt.Sprintf("executes a(n) %s update on a %s workflow, starting it if necessary", update, w)
 	}
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	g.Comment(usage)
 	g.Values(j.DictFunc(func(g j.Dict) {
 		g[j.Id("Name")] = j.Lit(name)
@@ -1207,11 +1361,11 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 		g[j.Id("After")] = j.Id("opts").Dot("after")
 
 		collisions := map[string]struct{}{}
-		g[j.Id("Flags")] = j.Index().Qual(cliPkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
+		g[j.Id("Flags")] = j.Index().Qual(pkg, "Flag").CustomFunc(multiLineValues, func(g *j.Group) {
 			fields := map[string]struct{}{}
 
 			// add async flag
-			g.Op("&").Qual(cliPkg, "BoolFlag").Values(j.DictFunc(func(g j.Dict) {
+			g.Op("&").Qual(pkg, "BoolFlag").Values(j.DictFunc(func(g j.Dict) {
 				g[j.Id("Name")] = j.Lit("detach")
 				g[j.Id("Usage")] = j.Lit(strings.TrimSpace("run workflow update in the background and print workflow, execution, and update id"))
 				g[j.Id("Aliases")] = j.Index().String().Values(j.Lit("d"))
@@ -1225,7 +1379,7 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 				}
 
 				// add -f flag to read input from json file
-				g.Op("&").Qual(cliPkg, "StringFlag").Values(j.DictFunc(func(g j.Dict) {
+				g.Op("&").Qual(pkg, "StringFlag").Values(j.DictFunc(func(g j.Dict) {
 					g[j.Id("Name")] = j.Lit("input-file")
 					g[j.Id("Usage")] = j.Lit("path to json-formatted input file")
 					g[j.Id("Aliases")] = j.Index().String().Values(j.Lit("f"))
@@ -1245,7 +1399,7 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 					category = "UPDATE"
 				}
 
-				g.Op("&").Qual(cliPkg, "StringFlag").Values(j.DictFunc(func(g j.Dict) {
+				g.Op("&").Qual(pkg, "StringFlag").Values(j.DictFunc(func(g j.Dict) {
 					g[j.Id("Name")] = j.Lit("update-file")
 					g[j.Id("Usage")] = j.Lit("path to json-formatted update file")
 					g[j.Id("Aliases")] = j.Index().String().Values(j.Lit("u"))
@@ -1263,9 +1417,21 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 			}
 		})
 
-		g[j.Id("Action")] = j.Func().Params(j.Id("cmd").Op("*").Qual(cliPkg, "Context")).Error().BlockFunc(func(g *j.Group) {
+		g[j.Id("Action")] = j.Func().ParamsFunc(func(g *j.Group) {
+			if m.cfg.CliV3Enabled {
+				g.Id("ctx").Qual("context", "Context")
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
+		}).Error().BlockFunc(func(g *j.Group) {
 			// initialize client
-			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").Call(j.Id("cmd"))
+			g.List(j.Id("c"), j.Err()).Op(":=").Id("opts").Dot("clientForCommand").CallFunc(func(g *j.Group) {
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				}
+				g.Id("cmd")
+			})
 			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
 				g.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err()))
 			})
@@ -1311,7 +1477,11 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 
 			// execute operation
 			g.List(j.Id("handle"), j.Id("_"), j.Err()).Op(":=").Id("client").Dot(updateWithStart).CallFunc(func(g *j.Group) {
-				g.Id("cmd").Dot("Context")
+				if m.cfg.CliV3Enabled {
+					g.Id("ctx")
+				} else {
+					g.Id("cmd").Dot("Context")
+				}
 				if hasWorkflowInput {
 					g.Id("input")
 				}
@@ -1339,7 +1509,13 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 						g.Id("out")
 					}
 					g.Err()
-				}).Op(":=").Id("handle").Dot("Get").Call(j.Id("cmd").Dot("Context"))
+				}).Op(":=").Id("handle").Dot("Get").CallFunc(func(g *j.Group) {
+					if m.cfg.CliV3Enabled {
+						g.Id("ctx")
+					} else {
+						g.Id("cmd").Dot("Context")
+					}
+				})
 				g.Err().Op("!=").Nil()
 			}).BlockFunc(func(g *j.Group) {
 				g.Return(j.Err())

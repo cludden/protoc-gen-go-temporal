@@ -31,4 +31,5 @@ inputs:
   - directory: proto
   - directory: test
     exclude_paths:
+      - test/cliv3/proto/test/cliv3
       - test/patch/proto/test/patch

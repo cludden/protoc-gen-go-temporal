@@ -14,12 +14,6 @@ import (
 	"google.golang.org/protobuf/types/gofeaturespb"
 )
 
-const (
-	CliPkg       = "github.com/urfave/cli/v2"
-	ConvertPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
-	ProtojsonPkg = "google.golang.org/protobuf/encoding/protojson"
-)
-
 var (
 	castFuncs = map[protoreflect.Kind]struct {
 		from *j.Statement
@@ -147,8 +141,13 @@ func (m *Manifest) genCliFlagForField(g *j.Group, field *protogen.Field, categor
 	usage += additionalusage
 	flagType += "Flag"
 
+	pkg := cliPkg
+	if m.cfg.CliV3Enabled {
+		pkg = cliV3Pkg
+	}
+
 	// generate flag
-	g.Op("&").Qual(cliPkg, flagType).CustomFunc(multiLineValues, func(flag *j.Group) {
+	g.Op("&").Qual(pkg, flagType).CustomFunc(multiLineValues, func(flag *j.Group) {
 		flag.Id("Name").Op(":").Lit(flagName)
 		flag.Id("Usage").Op(":").Lit(strings.TrimSpace(usage))
 		if aliases := opts.GetCli().GetAliases(); len(aliases) > 0 {
@@ -175,7 +174,11 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 	f.Func().
 		Id(fnName).
 		ParamsFunc(func(g *j.Group) {
-			g.Id("cmd").Op("*").Qual(CliPkg, "Context")
+			if m.cfg.CliV3Enabled {
+				g.Id("cmd").Op("*").Qual(cliV3Pkg, "Command")
+			} else {
+				g.Id("cmd").Op("*").Qual(cliPkg, "Context")
+			}
 			g.Id("options").Op("...").Qual(helpersPkg, "UnmarshalCliFlagsOptions")
 		}).
 		ParamsFunc(func(g *j.Group) {
@@ -262,14 +265,14 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 				// Wrap the value expression in a cast expression if necessary
 				if cast, ok := castFuncs[field.Desc.Kind()]; ok {
 					unmarshal := func(g *j.Group, valueExpr, errReturn *j.Statement) {
-						g.List(j.Id(valueName), j.Err()).Op(":=").Qual(ConvertPkg, "SafeCast").Types(cast.from, cast.to).Call(valueExpr)
+						g.List(j.Id(valueName), j.Err()).Op(":=").Qual(convertPkg, "SafeCast").Types(cast.from, cast.to).Call(valueExpr)
 						g.If(j.Err().Op("!=").Nil()).Block(
 							j.Return(errReturn, j.Err()),
 						)
 					}
 					transforms = append(transforms, func(g *j.Group) {
 						if field.Desc.IsList() {
-							g.List(j.Id(valueName), j.Err()).Op(":=").Qual(ConvertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
+							g.List(j.Id(valueName), j.Err()).Op(":=").Qual(convertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
 								g.Add(getValueExpr)
 								g.Func().
 									Params(j.Id("v").Add(cast.from)).
@@ -295,7 +298,7 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 				case field.Desc.Kind() == protoreflect.BoolKind && field.Desc.IsList():
 					isPtr = true
 					transforms = append(transforms, func(g *j.Group) {
-						g.List(j.Id(valueName), j.Err()).Op(":=").Qual(ConvertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
+						g.List(j.Id(valueName), j.Err()).Op(":=").Qual(convertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
 							g.Add(getValueExpr)
 							g.Func().
 								Params(j.Id("v").String()).
@@ -317,7 +320,7 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 					isPtr = true
 					if field.Desc.IsList() {
 						transforms = append(transforms, func(g *j.Group) {
-							g.List(j.Id(valueName), j.Err()).Op(":=").Qual(ConvertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
+							g.List(j.Id(valueName), j.Err()).Op(":=").Qual(convertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
 								g.Add(getValueExpr)
 								g.Func().
 									Params(j.Id("v").String()).
@@ -347,7 +350,7 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 					if field.Desc.IsList() {
 						isPtr = true
 						transforms = append(transforms, func(g *j.Group) {
-							g.List(j.Id(valueName), j.Err()).Op(":=").Qual(ConvertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
+							g.List(j.Id(valueName), j.Err()).Op(":=").Qual(convertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
 								g.Add(getValueExpr)
 								g.Func().
 									Params(j.Id("v").String()).
@@ -386,7 +389,7 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 					isPtr = true
 					transforms = append(transforms, func(g *j.Group) {
 						g.Var().Id("tmp").Qual(string(msg.GoIdent.GoImportPath), goName)
-						g.If(j.Err().Op(":=").Qual(ProtojsonPkg, "Unmarshal").Call(
+						g.If(j.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(
 							j.Index().Byte().Call(j.Qual("fmt", "Sprintf").Call(j.Lit(fmt.Sprintf(`{"%s":%%s}`, field.Desc.JSONName())), getValueExpr)),
 							j.Op("&").Id("tmp"),
 						), j.Err().Op("!=").Nil()).Block(
@@ -422,7 +425,7 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 						unmarshal := func(g *j.Group, valueExpr *j.Statement) {
 							g.Var().Id("tmp").Qual(string(field.Message.GoIdent.GoImportPath), field.Message.GoIdent.GoName)
 							g.If(
-								j.Err().Op(":=").Qual(ProtojsonPkg, "Unmarshal").Call(j.Index().Byte().Call(valueExpr), j.Op("&").Id("tmp")),
+								j.Err().Op(":=").Qual(protojsonPkg, "Unmarshal").Call(j.Index().Byte().Call(valueExpr), j.Op("&").Id("tmp")),
 								j.Err().Op("!=").Nil(),
 							).Block(
 								j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit(fmt.Sprintf("error unmarshalling %q flag: %%w", flag)), j.Err())),
@@ -431,7 +434,7 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 
 						transforms = append(transforms, func(g *j.Group) {
 							if field.Desc.IsList() {
-								g.List(j.Id(valueName), j.Err()).Op(":=").Qual(ConvertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
+								g.List(j.Id(valueName), j.Err()).Op(":=").Qual(convertPkg, "MapSliceFunc").CallFunc(func(g *j.Group) {
 									g.Add(getValueExpr)
 									g.Func().
 										Params(j.Id("v").String()).

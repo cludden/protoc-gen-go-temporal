@@ -3685,7 +3685,7 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 						d[j.Id("Update")] = j.Id("ureq").Dot("GetRequest").Call()
 					}
 					d[j.Id("UpdateWorkflowOptions")] = j.Id("ureq").Dot("GetUpdateWorkflowOptions").Call()
-					d[j.Id("ParentClosePolicy")] = j.Qual(ConvertPkg, "ToParentClosePolicy").Call(j.Id("o").Dot("parentClosePolicy"))
+					d[j.Id("ParentClosePolicy")] = j.Qual(convertPkg, "ToParentClosePolicy").Call(j.Id("o").Dot("parentClosePolicy"))
 				}))
 				g.Nil()
 			})

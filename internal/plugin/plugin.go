@@ -35,6 +35,7 @@ var (
 type Config struct {
 	CliCategories              bool
 	CliEnabled                 bool
+	CliV3Enabled               bool
 	DisableWorkflowInputRename bool
 	DocsOut                    string
 	DocsTemplate               string
@@ -68,6 +69,7 @@ func New(commit, version string) *Plugin {
 
 	flags := pflag.NewFlagSet("plugin", pflag.ExitOnError)
 	flags.BoolVar(&cfg.CliEnabled, "cli-enabled", false, "enable cli generation")
+	flags.BoolVar(&cfg.CliV3Enabled, "cli-v3", false, "enable cli generation using urfave/cli/v3")
 	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
 	flags.BoolVar(&cfg.DisableWorkflowInputRename, "disable-workflow-input-rename", false, "disable renaming of \"<Workflow>WorkflowInput\"")
 	flags.StringVar(&cfg.DocsOut, "docs-out", "", "docs output path")

@@ -18,6 +18,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.2
+	github.com/urfave/cli/v3 v3.3.8
 	go.temporal.io/api v1.44.1
 	go.temporal.io/sdk v1.33.0
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e
