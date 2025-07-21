@@ -8,6 +8,8 @@ up:
       vektra/mockery: 2.52.4
   - go-install:
       - github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.3
+      - github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus@v0.0.6
+      - github.com/bergundy/protoc-gen-go-nexus-temporal/cmd/protoc-gen-go-nexus-temporal@v0.0.3
       - github.com/mfridman/tparse@v0.17.0
   - protoc: 29.3
   - custom:
@@ -36,6 +38,7 @@ commands:
       buf generate
       buf generate --template buf.patch.gen.yaml
       buf generate --template buf.cliv3.gen.yaml
+      buf generate --template buf.nexus.gen.yaml
       mockery --log-level=error
       go mod tidy
 
@@ -49,6 +52,7 @@ commands:
       buf generate --template buf.local.gen.yaml
       buf generate --template buf.patch.gen.yaml
       buf generate --template buf.cliv3.gen.yaml
+      buf generate --template buf.nexus.gen.yaml
       mockery --log-level=error
       go mod tidy
 

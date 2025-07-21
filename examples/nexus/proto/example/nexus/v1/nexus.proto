@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package example.nexus.v1;
+
+import "nexus/v1/options.proto";
+import "temporal/v1/temporal.proto";
+
+service GreetingService {
+  option (temporal.v1.cli) = {name: "greeting"};
+  option (temporal.v1.service) = {task_queue: "greeting-v1"};
+
+  // generates a friendly greeting based on the input name and language
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {id: 'example.nexus.v1.Hello/${! language.or(throw("language required")) }/${! name.slug() }'};
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 5}
+    };
+  }
+}
+
+service EchoService {
+  option (.nexus.v1.service).tags = "disabled";
+  option (temporal.v1.cli) = {name: "echo"};
+  option (temporal.v1.service) = {task_queue: "echo-v1"};
+
+  // echoes back the input string
+  rpc Echo(EchoInput) returns (EchoOutput) {
+    option (temporal.v1.workflow) = {id: 'example.nexus.v1.Echo/${! language.or(throw("language required")) }/${! name.slug() }'};
+  }
+}
+
+// EchoInput describes the input to an Echo operation
+message EchoInput {
+  string name = 1;
+  Language language = 2;
+}
+
+// EchoOutput describes the output from an Echo operation
+message EchoOutput {
+  string message = 1;
+}
+
+// HelloInput describes the input to a Hello operation
+message HelloInput {
+  string name = 1;
+  Language language = 2;
+}
+
+// HelloOutput describes the output from a Hello operation
+message HelloOutput {
+  string message = 1;
+}
+
+// Language is an enum representing supported languages for greetings
+enum Language {
+  LANGUAGE_UNSPECIFIED = 0;
+  LANGUAGE_ENGLISH = 1;
+  LANGUAGE_SPANISH = 2;
+  LANGUAGE_FRENCH = 3;
+  LANGUAGE_GERMAN = 4;
+  LANGUAGE_TURKISH = 5;
+}

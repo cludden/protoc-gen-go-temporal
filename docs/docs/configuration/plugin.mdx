@@ -265,6 +265,130 @@ protoc --go_temporal_opt=ignore-acronyms=AWS;SQL
 </TabItem>
 </Tabs>
 
+### nexus
+
+`bool`
+
+Enables experimental [Nexus generation](/docs/guides/nexus).
+
+<Tabs>
+<TabItem value="nexus-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: 
+      - nexus=true
+    strategy: all
+```
+</TabItem>
+<TabItem value="nexus-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=nexus=trues
+```
+</TabItem>
+</Tabs>
+
+### nexus-exclude-service-tags
+
+`string`
+
+Semicolon-delimited list of Nexus service tags to exclude from generation.
+
+<Tabs>
+<TabItem value="nexus-exclude-service-tags-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt:
+      - nexus=true
+      - nexus-exclude-service-tags=disabled;internal
+    strategy: all
+```
+</TabItem>
+<TabItem value="nexus-exclude-service-tags-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=nexus=true,nexus-exclude-service-tags=disabled;internal
+```
+</TabItem>
+</Tabs>
+
+### nexus-exclude-operation-tags
+
+`string`
+
+Semicolon-delimited list of Nexus operation tags to exclude from generation.
+
+<Tabs>
+<TabItem value="nexus-exclude-operation-tags-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt:
+      - nexus=true
+      - nexus-exclude-operation-tags=disabled;internal
+    strategy: all
+```
+</TabItem>
+<TabItem value="nexus-exclude-operation-tags-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=nexus=true,nexus-exclude-operation-tags=disabled;internal
+```
+</TabItem>
+</Tabs>
+
+### nexus-include-service-tags
+
+`string`
+
+Semicolon-delimited list of Nexus service tags to include in generation.
+
+<Tabs>
+<TabItem value="nexus-include-service-tags-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt:
+      - nexus=true
+      - nexus-include-service-tags=enabled;internal
+    strategy: all
+```
+</TabItem>
+<TabItem value="nexus-include-service-tags-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=nexus=true,nexus-include-service-tags=enabled;internal
+```
+</TabItem>
+</Tabs>
+
+### nexus-include-operation-tags
+
+`string`
+
+Semicolon-delimited list of Nexus operation tags to include in generation.
+
+<Tabs>
+<TabItem value="nexus-include-operation-tags-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt:
+      - nexus=true
+      - nexus-include-operation-tags=enabled;internal
+    strategy: all
+```
+</TabItem>
+<TabItem value="nexus-include-operation-tags-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=nexus=true,nexus-include-operation-tags=enabled;internal
+```
+</TabItem>
+</Tabs>
+
 ### patches
 
 `string`

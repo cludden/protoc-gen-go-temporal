@@ -143,6 +143,11 @@ const sidebars: SidebarsConfig = {
           id: 'guides/patches',
           label: 'Patches'
         },
+        {
+          type: 'doc',
+          id: 'guides/nexus',
+          label: 'Nexus'
+        }
       ]
     },
   ],

@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -13,7 +14,7 @@ import (
 	"github.com/alta/protopatch/lint"
 	"github.com/alta/protopatch/patch/gopb"
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
-	g "github.com/dave/jennifer/jen"
+	j "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -21,29 +22,31 @@ import (
 
 // imported packages
 const (
-	activityPkg     = "go.temporal.io/sdk/activity"
-	atomicPkg       = "sync/atomic"
-	base64Pkg       = "encoding/base64"
-	clientPkg       = "go.temporal.io/sdk/client"
-	cliPkg          = "github.com/urfave/cli/v2"
-	cliV3Pkg        = "github.com/urfave/cli/v3"
-	converterPkg    = "go.temporal.io/sdk/converter"
-	convertPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
-	durationpbPkg   = "google.golang.org/protobuf/types/known/durationpb"
-	enumsPkg        = "go.temporal.io/api/enums/v1"
-	expressionPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
-	helpersPkg      = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
-	homedirPkg      = "github.com/mitchellh/go-homedir"
-	protojsonPkg    = "google.golang.org/protobuf/encoding/protojson"
-	protoreflectPkg = "google.golang.org/protobuf/reflect/protoreflect"
-	serviceerrorPkg = "go.temporal.io/api/serviceerror"
-	temporalPkg     = "go.temporal.io/sdk/temporal"
-	temporalv1Pkg   = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
-	timestamppbPkg  = "google.golang.org/protobuf/types/known/timestamppb"
-	updatePkg       = "go.temporal.io/api/update/v1"
-	uuidPkg         = "github.com/google/uuid"
-	workerPkg       = "go.temporal.io/sdk/worker"
-	workflowPkg     = "go.temporal.io/sdk/workflow"
+	activityPkg      = "go.temporal.io/sdk/activity"
+	atomicPkg        = "sync/atomic"
+	base64Pkg        = "encoding/base64"
+	clientPkg        = "go.temporal.io/sdk/client"
+	cliPkg           = "github.com/urfave/cli/v2"
+	cliV3Pkg         = "github.com/urfave/cli/v3"
+	converterPkg     = "go.temporal.io/sdk/converter"
+	convertPkg       = "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
+	durationpbPkg    = "google.golang.org/protobuf/types/known/durationpb"
+	enumsPkg         = "go.temporal.io/api/enums/v1"
+	expressionPkg    = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
+	helpersPkg       = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	homedirPkg       = "github.com/mitchellh/go-homedir"
+	nexusPkg         = "github.com/nexus-rpc/sdk-go/nexus"
+	protojsonPkg     = "google.golang.org/protobuf/encoding/protojson"
+	protoreflectPkg  = "google.golang.org/protobuf/reflect/protoreflect"
+	serviceerrorPkg  = "go.temporal.io/api/serviceerror"
+	temporalnexusPkg = "go.temporal.io/sdk/temporalnexus"
+	temporalPkg      = "go.temporal.io/sdk/temporal"
+	temporalv1Pkg    = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
+	timestamppbPkg   = "google.golang.org/protobuf/types/known/timestamppb"
+	updatePkg        = "go.temporal.io/api/update/v1"
+	uuidPkg          = "github.com/google/uuid"
+	workerPkg        = "go.temporal.io/sdk/worker"
+	workflowPkg      = "go.temporal.io/sdk/workflow"
 )
 
 const (
@@ -322,7 +325,7 @@ func (m *Manifest) fqnForWorkflow(workflow protoreflect.FullName) string {
 }
 
 // genConstants generates constants
-func (m *Manifest) genConstants(f *g.File) {
+func (m *Manifest) genConstants(f *j.File) {
 	// add task queue
 	if taskQueue := m.opts.GetTaskQueue(); taskQueue != "" {
 		name := m.toCamel("%sTaskQueue", m.Service.GoName)
@@ -340,7 +343,7 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(workflows) > 0 {
 		f.Commentf("%s workflow names", m.Service.Desc.FullName())
-		f.Const().DefsFunc(func(defs *g.Group) {
+		f.Const().DefsFunc(func(defs *j.Group) {
 			for _, workflow := range workflows {
 				method := m.methods[workflow]
 				opts := m.workflows[workflow]
@@ -366,9 +369,9 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(workflowIdExpressions) > 0 {
 		f.Commentf("%s workflow id expressions", m.Service.Desc.FullName())
-		f.Var().DefsFunc(func(defs *g.Group) {
+		f.Var().DefsFunc(func(defs *j.Group) {
 			for _, pair := range workflowIdExpressions {
-				defs.Id(m.toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
+				defs.Id(m.toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(j.Lit(pair[1]))
 			}
 		})
 	}
@@ -386,9 +389,9 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(workflowSearchAttributes) > 0 {
 		f.Commentf("%s workflow search attribute mappings", m.Service.Desc.FullName())
-		f.Var().DefsFunc(func(defs *g.Group) {
+		f.Var().DefsFunc(func(defs *j.Group) {
 			for _, pair := range workflowSearchAttributes {
-				defs.Id(m.toCamel("%sSearchAttributesMapping", pair[0])).Op("=").Qual(expressionPkg, "MustParseMapping").Call(g.Lit(pair[1]))
+				defs.Id(m.toCamel("%sSearchAttributesMapping", pair[0])).Op("=").Qual(expressionPkg, "MustParseMapping").Call(j.Lit(pair[1]))
 			}
 		})
 	}
@@ -403,7 +406,7 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(activities) > 0 {
 		f.Commentf("%s activity names", m.Service.Desc.FullName())
-		f.Const().DefsFunc(func(defs *g.Group) {
+		f.Const().DefsFunc(func(defs *j.Group) {
 			for _, activity := range activities {
 				method := m.methods[activity]
 				opts := m.activities[activity]
@@ -426,7 +429,7 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(queries) > 0 {
 		f.Commentf("%s query names", m.Service.Desc.FullName())
-		f.Const().DefsFunc(func(defs *g.Group) {
+		f.Const().DefsFunc(func(defs *j.Group) {
 			for _, query := range queries {
 				method := m.methods[query]
 				opts := m.queries[query]
@@ -449,7 +452,7 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(signals) > 0 {
 		f.Commentf("%s signal names", m.Service.Desc.FullName())
-		f.Const().DefsFunc(func(defs *g.Group) {
+		f.Const().DefsFunc(func(defs *j.Group) {
 			for _, signal := range signals {
 				method := m.methods[signal]
 				opts := m.signals[signal]
@@ -472,7 +475,7 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(updates) > 0 {
 		f.Commentf("%s update names", m.Service.Desc.FullName())
-		f.Const().DefsFunc(func(defs *g.Group) {
+		f.Const().DefsFunc(func(defs *j.Group) {
 			for _, update := range updates {
 				method := m.methods[update]
 				opts := m.updates[update]
@@ -498,9 +501,9 @@ func (m *Manifest) genConstants(f *g.File) {
 	}
 	if len(updateIdExpressions) > 0 {
 		f.Commentf("%s update id expressions", m.Service.Desc.FullName())
-		f.Var().DefsFunc(func(defs *g.Group) {
+		f.Var().DefsFunc(func(defs *j.Group) {
 			for _, pair := range updateIdExpressions {
-				defs.Id(m.toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(g.Lit(pair[1]))
+				defs.Id(m.toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(j.Lit(pair[1]))
 			}
 		})
 	}
@@ -581,19 +584,19 @@ func (m *Manifest) render() error {
 			continue
 		}
 
-		f := g.NewFilePathName(string(file.GoImportPath), string(file.GoPackageName))
+		f := j.NewFilePathName(string(file.GoImportPath), string(file.GoPackageName))
 		genCodeGenerationHeader(m.Plugin, f, file)
 		for pkg, alias := range aliases {
 			f.ImportAlias(pkg, alias)
 		}
 
-		var xns *g.File
+		var xns *j.File
 		var xnsGoPackageName, xnsFilePath string
 		var hasXNS bool
 		if m.cfg.EnableXNS {
 			xnsGoPackageName = fmt.Sprintf("%sxns", file.GoPackageName)
 			xnsGoImportPath := path.Join(string(file.GoImportPath), xnsGoPackageName)
-			xns = g.NewFilePathName(xnsGoImportPath, xnsGoPackageName)
+			xns = j.NewFilePathName(xnsGoImportPath, xnsGoPackageName)
 			genCodeGenerationHeader(m.Plugin, xns, file)
 			for pkg, alias := range aliases {
 				xns.ImportAlias(pkg, alias)
@@ -603,6 +606,26 @@ func (m *Manifest) render() error {
 			xnsFilePath = path.Join(
 				path.Dir(prefixToSlash),
 				xnsGoPackageName,
+				path.Base(prefixToSlash),
+			)
+		}
+
+		var temporalF *j.File
+		var temporalGoPackageName, temporalFilePath string
+		var hasTemporal bool
+		if m.cfg.NexusEnabled {
+			temporalGoPackageName = fmt.Sprintf("%stemporal", file.GoPackageName)
+			temporalGoImportPath := path.Join(string(file.GoImportPath), temporalGoPackageName)
+			temporalF = j.NewFilePathName(temporalGoImportPath, temporalGoPackageName)
+			genCodeGenerationHeader(m.Plugin, temporalF, file)
+			for pkg, alias := range aliases {
+				temporalF.ImportAlias(pkg, alias)
+			}
+
+			prefixToSlash := filepath.ToSlash(file.GeneratedFilenamePrefix)
+			temporalFilePath = path.Join(
+				path.Dir(prefixToSlash),
+				temporalGoPackageName,
 				path.Base(prefixToSlash),
 			)
 		}
@@ -629,6 +652,10 @@ func (m *Manifest) render() error {
 					m.renderXNS(xns)
 					hasXNS = true
 				}
+
+				if m.cfg.NexusEnabled {
+					hasTemporal = cmp.Or(m.renderNexus(temporalF, file, service), hasTemporal)
+				}
 			}
 
 			if m.cfg.EnableCodec {
@@ -650,6 +677,17 @@ func (m *Manifest) render() error {
 				protogen.GoImportPath(path.Join(
 					string(file.GoImportPath),
 					xnsGoPackageName,
+				)),
+			)); err != nil {
+				return fmt.Errorf("error rendering file: %w", err)
+			}
+		}
+		if hasTemporal {
+			if err := temporalF.Render(m.Plugin.NewGeneratedFile(
+				fmt.Sprintf("%s_temporal.pb.go", temporalFilePath),
+				protogen.GoImportPath(path.Join(
+					string(file.GoImportPath),
+					temporalGoPackageName,
 				)),
 			)); err != nil {
 				return fmt.Errorf("error rendering file: %w", err)
@@ -682,7 +720,7 @@ func (d *renderServiceDetails) ActivitiesOnly() bool {
 }
 
 // renderService writes the temporal service to the given File
-func (m *Manifest) renderService(f *g.File, file *protogen.File, service *protogen.Service) {
+func (m *Manifest) renderService(f *j.File, file *protogen.File, service *protogen.Service) {
 	m.File, m.Service = file, service
 	m.opts = m.serviceOptions[service.Desc.FullName()]
 	details := m.serviceDetails[service.Desc.FullName()]
@@ -878,8 +916,8 @@ func (m *Manifest) methodsFromSameService(a, b protoreflect.FullName) bool {
 	return m.methods[a].Desc.Parent().FullName() == m.methods[b].Desc.Parent().FullName()
 }
 
-func (m *Manifest) Qual(method protoreflect.FullName, name string) *g.Statement {
-	return g.Qual(m.methodGoImportPath(method), name)
+func (m *Manifest) Qual(method protoreflect.FullName, name string) *j.Statement {
+	return j.Qual(m.methodGoImportPath(method), name)
 }
 
 func sortFullNames(s []protoreflect.FullName) {

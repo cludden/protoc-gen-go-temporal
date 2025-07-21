@@ -2,6 +2,7 @@ version: v2
 managed:
   enabled: true
   disable:
+    - module: buf.build/bergundy/nexus
     - module: buf.build/temporalio/api
   override:
     - file_option: go_package_prefix
@@ -11,28 +12,27 @@ plugins:
     out: gen
     opt:
       - paths=source_relative
+  - local: protoc-gen-go-nexus
+    out: gen
+    opt:
+      - exclude-service-tags=disabled
+      - paths=source_relative
+  - local: protoc-gen-go-nexus-temporal
+    out: gen
+    opt:
+      - exclude-service-tags=disabled
+      - paths=source_relative
   - local: .omni/bin/protoc-gen-go_temporal
     out: gen
     opt:
       - cli-categories=true
       - cli-enabled=true
-      - docs-out=./proto/README.md
-      - enable-codec=true
-      # - enable-debug-logging=true
-      - enable-patch-support=true
-      - enable-xns=true
-      - ignore-acronyms=AWS;URN
-      - patches=64_ENABLED
+      - cli-v3=true
+      - nexus=true
+      - nexus-exclude-service-tags=disabled
       - paths=source_relative
-      - workflow-update-enabled=true
     strategy: all
 inputs:
   - directory: examples
-    exclude_paths:
-      - examples/example/proto/example/v1
+    paths:
       - examples/nexus/proto/example/nexus/v1
-  - directory: proto
-  - directory: test
-    exclude_paths:
-      - test/cliv3/proto/test/cliv3
-      - test/patch/proto/test/patch
