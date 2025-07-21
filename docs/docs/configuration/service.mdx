@@ -18,6 +18,21 @@ service Example {
 
 ## Options
 
+### cli
+
+[[]temporal.v1.CLIOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.CLIOptions)
+
+Configures the cli command generated for the service.
+
+```protobuf
+service Example {
+  option (temporal.v1.cli) = {
+    name: "example"
+    usage: "example operations"
+  };
+}
+```
+
 ### patches
 
 [[]temporal.v1.Patch](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.Patch)

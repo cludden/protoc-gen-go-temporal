@@ -4,6 +4,9 @@ deps:
   - name: buf.build/alta/protopatch
     commit: cf22509f2c224a358bb5e749aa029444
     digest: b5:4d31fce06011dd4996c55de9ef8a9352770bdff014b102cd8aeee1df67536112f4f2df142172bc0927b3b1c9ca5dcb3d1c8974b900958dc21b2aa6d4ab931f47
+  - name: buf.build/bergundy/nexus
+    commit: 76b304caf5984a3a978e9565ea71a2ac
+    digest: b5:72c441888d19ff57f824b75f59aba0346a16bfa3ef5da83a5da21c614f0763764e1d37511312dc82f54e1dae5937a5829e8c2c1b7f806c983046bbf624b04ac2
   - name: buf.build/cludden/protoc-gen-go-temporal
     commit: 81eb66e24ea5484ab4eb3564700e0b56
     digest: b5:0e11fa3310835d17d6ebdee90647163a1549ba669f54506a79a8f4c13a923bf051040032452b427b5e77266aa8481ea9df5bca268bc0b04f6c4861af4e5833d0

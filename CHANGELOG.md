@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#105](https://github.com/cludden/protoc-gen-go-temporal/pull/105) add WithDataConverter helper to activity, child workflow options
 - [#106](https://github.com/cludden/protoc-gen-go-temporal/pull/106) allow update validation to be configured by each workflow
 - [#109](https://github.com/cludden/protoc-gen-go-temporal/pull/109) add support for urfave/cli/v3
+- [#111](https://github.com/cludden/protoc-gen-go-temporal/pull/111) add experimental nexus support
 
 ### Changed
 - [#108](https://github.com/cludden/protoc-gen-go-temporal/pull/108) allow overriding default task queue at runtime

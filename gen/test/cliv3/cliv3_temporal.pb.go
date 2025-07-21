@@ -1478,6 +1478,7 @@ func NewExampleServiceCli(options ...*ExampleServiceCliOptions) (*cliv3.Command,
 	}
 	return &cliv3.Command{
 		Name:                      "example-service",
+		Usage:                     "test.cliv3.ExampleService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil

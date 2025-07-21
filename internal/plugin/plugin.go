@@ -43,6 +43,11 @@ type Config struct {
 	EnableDebugLogging         bool
 	EnablePatchSupport         bool
 	EnableXNS                  bool
+	NexusEnabled               bool
+	NexusExcludeOperationTags  string
+	NexusIncludeOperationTags  string
+	NexusExcludeServiceTags    string
+	NexusIncludeServiceTags    string
 	Patches                    string
 	IgnoreAcronyms             string
 	WorkflowUpdateEnabled      bool
@@ -52,11 +57,15 @@ type Config struct {
 type Plugin struct {
 	*protogen.Plugin
 
-	Commit  string
-	Version string
-	cfg     *Config
-	flags   *pflag.FlagSet
-	caser   *strcase.Caser
+	Commit               string
+	Version              string
+	cfg                  *Config
+	flags                *pflag.FlagSet
+	caser                *strcase.Caser
+	excludeOperationTags map[string]struct{}
+	excludeServiceTags   map[string]struct{}
+	includeOperationTags map[string]struct{}
+	includeServiceTags   map[string]struct{}
 }
 
 func Run(commit, version string) {
@@ -79,6 +88,12 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
 	flags.StringVar(&cfg.IgnoreAcronyms, "ignore-acronyms", "", "semicolon-delimited string of acronyms to ignore when converting generated output to camel case")
+	flags.BoolVar(&cfg.NexusEnabled, "nexus", false, "enable nexus handler generation")
+	flags.StringVar(&cfg.NexusExcludeOperationTags, "nexus-exclude-operation-tags", "", "semicolon-delimited list of operation tags to exclude from nexus generation")
+	flags.StringVar(&cfg.NexusIncludeOperationTags, "nexus-include-operation-tags", "", "semicolon-delimited list of operation tags to include in nexus generation")
+	flags.StringVar(&cfg.NexusExcludeServiceTags, "nexus-exclude-service-tags", "", "semicolon-delimited list of service tags to exclude from nexus generation")
+	flags.StringVar(&cfg.NexusIncludeServiceTags, "nexus-include-service-tags", "", "semicolon-delimited list of service tags to include in nexus generation")
+	// patches is a semicolon-delimited string of
 	flags.StringVar(&cfg.Patches, "patches", "", "semicolon-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER;65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", true, "enable experimental workflow update (DEPRECATED)")
 
@@ -114,6 +129,10 @@ func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 		}
 	}
 	p.caser = strcase.NewCaser(strcase.WithAcronyms(ignoreAcronyms...))
+	p.excludeOperationTags = p.nexusGetTags(p.cfg.NexusExcludeOperationTags)
+	p.excludeServiceTags = p.nexusGetTags(p.cfg.NexusExcludeServiceTags)
+	p.includeOperationTags = p.nexusGetTags(p.cfg.NexusIncludeOperationTags)
+	p.includeServiceTags = p.nexusGetTags(p.cfg.NexusIncludeServiceTags)
 
 	return services.render()
 }

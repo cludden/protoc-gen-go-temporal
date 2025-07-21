@@ -1648,6 +1648,7 @@ func NewExampleCli(options ...*ExampleCliOptions) (*cliv3.Command, error) {
 	}
 	return &cliv3.Command{
 		Name:                      "example",
+		Usage:                     "example.v1.Example operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil

@@ -1,12 +1,13 @@
 module github.com/cludden/protoc-gen-go-temporal
 
-go 1.23.0
+go 1.23.4
 
 toolchain go1.23.6
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/alta/protopatch v0.5.3
+	github.com/bergundy/nexus-proto-annotations v0.0.0-20250509224924-a7d9bf058dd5
 	github.com/cludden/benthos/v4 v4.24.0-no-otel.2
 	github.com/dave/jennifer v1.7.0
 	github.com/google/go-cmp v0.6.0
@@ -15,6 +16,8 @@ require (
 	github.com/hairyhenderson/go-which v0.2.2
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/nexus-rpc/sdk-go v0.4.0
+	github.com/nexus-rpc/sdk-go/contrib/nexusproto v0.1.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.2
@@ -23,7 +26,7 @@ require (
 	go.temporal.io/sdk v1.33.0
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e
 	golang.org/x/text v0.22.0
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
@@ -57,7 +60,6 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.26 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
-	github.com/nexus-rpc/sdk-go v0.3.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
