@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"cmp"
+
 	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	j "github.com/dave/jennifer/jen"
 	"google.golang.org/protobuf/proto"
@@ -98,6 +100,8 @@ func (m *Manifest) genCliV3New(f *j.File) {
 	functionName := m.Names().cliV3Ctor()
 	optionsName := m.Names().cliV3Options()
 	commandsCtor := m.Names().cliV3CommandsCtor()
+	cmdOpts := proto.GetExtension(m.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
+	name := cmp.Or(cmdOpts.GetName(), m.caser.ToKebab(m.Service.GoName))
 
 	f.Commentf("%s initializes a cli app for a(n) %s service", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).
@@ -115,7 +119,12 @@ func (m *Manifest) genCliV3New(f *j.File) {
 			),
 			j.Return(
 				j.Op("&").Qual(cliV3Pkg, "Command").CustomFunc(multiLineValues, func(g *j.Group) {
-					g.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
+					g.Id("Name").Op(":").Lit(name)
+					if usage := cmdOpts.GetUsage(); usage != "" {
+						g.Id("Usage").Op(":").Lit(usage)
+					} else {
+						g.Id("Usage").Op(":").Lit(string(m.Service.Desc.FullName()) + " operations")
+					}
 					g.Id("Commands").Op(":").Id("commands")
 					g.Id("DisableSliceFlagSeparator").Op(":").True()
 				}),
