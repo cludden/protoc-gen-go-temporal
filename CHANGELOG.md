@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
 
+# [1.17.1](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.17.1) - 2025-07-23
+
+### Fixed
+- [#112](https://github.com/cludden/protoc-gen-go-temporal/pull/112) fix nexus generation for multiple services
+
+
+
 # [1.17.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.17.0) - 2025-07-23
 
 ### ⚠ BREAKING CHANGES

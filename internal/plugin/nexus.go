@@ -30,6 +30,9 @@ func (p *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *prot
 	f.Type().Id(handlerImpl).Struct()
 
 	for _, workflow := range p.workflowsOrdered {
+		if p.methods[workflow].Desc.Parent() != p.Service.Desc {
+			continue
+		}
 		method := p.methods[workflow]
 		if !p.nexusGetShouldIncludeOperation(method) {
 			continue
