@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠ BREAKING CHANGES
 
 ### Added
+
+### Changed
+
+### Fixed
+
+
+
+# [1.17.0](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.17.0) - 2025-07-23
+
+### ⚠ BREAKING CHANGES
+- Signal with start cross-namespace (XNS) methods now utilize dedicated option types instead of using the workflow options. This allows for more flexibility in configuring the signal with start behavior, but may require changes to existing code that uses these methods.
+
+### Added
 - [#103](https://github.com/cludden/protoc-gen-go-temporal/pull/103) add support for experimental update with start
 - [#105](https://github.com/cludden/protoc-gen-go-temporal/pull/105) add WithDataConverter helper to activity, child workflow options
 - [#106](https://github.com/cludden/protoc-gen-go-temporal/pull/106) allow update validation to be configured by each workflow

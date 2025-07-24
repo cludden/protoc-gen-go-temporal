@@ -34,23 +34,25 @@ Generated **Client** with:
   - methods for cancelling or terminating workflows
   - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
   - dynamic workflow ids, update ids, and search attributes via [Bloblang expressions](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/bloblang)
-  - default timeouts, id reuse policies, retry policies, wait policies
+  - default timeouts, id reuse policies, retry policies, wait policies, and more
 
 
 Generated **Worker** resources with:
   - functions for calling activities and local activities from workflows
   - functions for executing child workflows and signalling external workflows
   - default `workflow.ActivityOptions`, `workflow.ChildWorkflowOptions`
-  - default timeouts, parent cose policies, retry policies
+  - default timeouts, parent close policies, retry policies, and more
 
 
 Optional **CLI** with:
   - commands for executing workflows, synchronously or asynchronously
-  - commands for starting workflows with signals, synchronously or asynchronously
+  - commands for starting workflows with signals or updates, synchronously or asynchronously
   - commands for querying existing workflows
-  - commands for sending signals to existing workflows
-  - typed flags for conventiently specifying workflow, query, and signal inputs
+  - commands for signaling or updating existing workflows
+  - typed flags for conveniently specifying workflow, query, and signal inputs
 
+Generated **Nexus** helpers: **[Experimental]**
+  - with support for invoking a service's workflows via Nexus operations
 
 Generated **Cross-Namespace (XNS)** helpers:
   - with support for invoking a service's workflows, queries, signals, and updates from workflows in a different temporal namespace (or cluster)
