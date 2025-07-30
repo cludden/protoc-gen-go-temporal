@@ -2382,6 +2382,13 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 				})
 			}
 
+			// set WorkflowIDConflictPolicy
+			if !child {
+				g.If(j.Id("v").Op(":=").Id("o").Dot("workflowIdConflictPolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).Block(
+					j.Id("opts").Dot("WorkflowIDConflictPolicy").Op("=").Id("v"),
+				)
+			}
+
 			// set TaskQueue
 			g.If(j.Id("v").Op(":=").Id("o").Dot("taskQueue"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
