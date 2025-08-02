@@ -2,8 +2,6 @@ module github.com/cludden/protoc-gen-go-temporal
 
 go 1.23.4
 
-toolchain go1.23.6
-
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/alta/protopatch v0.5.3

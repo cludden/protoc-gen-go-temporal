@@ -221,6 +221,9 @@ func (o *HelloOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -1451,6 +1454,9 @@ func (o *EchoOptions) Build(req protoreflect.Message) (client.StartWorkflowOptio
 	}
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
 	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v

@@ -878,6 +878,9 @@ func (o *SomeWorkflow1Options) Build(req protoreflect.Message) (client.StartWork
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -1120,6 +1123,9 @@ func (o *SomeWorkflow2Options) Build(req protoreflect.Message) (client.StartWork
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -1320,6 +1326,9 @@ func (o *SomeWorkflow3Options) Build(req protoreflect.Message) (client.StartWork
 	} else if opts.WorkflowIDReusePolicy == enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = enumsv1.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -1507,6 +1516,9 @@ func (o *SomeWorkflow4Options) Build(req protoreflect.Message) (client.StartWork
 	}
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
 	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
@@ -7809,6 +7821,9 @@ func (o *OtherWorkflowOptions) Build(req protoreflect.Message) (client.StartWork
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -9756,6 +9771,9 @@ func (o *WhatOptions) Build(req protoreflect.Message) (client.StartWorkflowOptio
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -11196,6 +11214,9 @@ func (o *SomeDeprecatedWorkflow1Options) Build(req protoreflect.Message) (client
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
 	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
@@ -11415,6 +11436,9 @@ func (o *SomeDeprecatedWorkflow2Options) Build(req protoreflect.Message) (client
 	}
 	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
 		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
 	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v

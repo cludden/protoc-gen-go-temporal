@@ -19,20 +19,6 @@ import (
 // Nexus handler for example.nexus.v1.GreetingService
 type GreetingServiceNexusHandler struct{}
 
-// echoes back the input string
-func (h *GreetingServiceNexusHandler) Echo(name string) nexus.Operation[*v1.EchoInput, *v1.EchoOutput] {
-	return temporalnexus.MustNewWorkflowRunOperationWithOptions(temporalnexus.WorkflowRunOperationOptions[*v1.EchoInput, *v1.EchoOutput]{
-		Handler: func(ctx context.Context, input *v1.EchoInput, opts nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[*v1.EchoOutput], error) {
-			o, err := v1.NewEchoOptions().Build(input.ProtoReflect())
-			if err != nil {
-				return nil, err
-			}
-			return temporalnexus.ExecuteUntypedWorkflow[*v1.EchoOutput](ctx, opts, o, v1.EchoWorkflowName, input)
-		},
-		Name: name,
-	})
-}
-
 // generates a friendly greeting based on the input name and language
 func (h *GreetingServiceNexusHandler) Hello(name string) nexus.Operation[*v1.HelloInput, *v1.HelloOutput] {
 	return temporalnexus.MustNewWorkflowRunOperationWithOptions(temporalnexus.WorkflowRunOperationOptions[*v1.HelloInput, *v1.HelloOutput]{
