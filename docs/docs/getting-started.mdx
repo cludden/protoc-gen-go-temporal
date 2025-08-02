@@ -15,8 +15,7 @@ cd example
 go mod init example
 go get -u "github.com/cludden/protoc-gen-go-temporal@$(curl --silent https://api.github.com/repos/cludden/protoc-gen-go-temporal/releases/latest|jq -r .tag_name)"
 go mod tidy
-cd proto
-buf mod init
+buf config init
 ```
 
 ### 2. Create `buf.yaml`
@@ -42,6 +41,8 @@ Configure buf code generation
 version: v2
 managed:
   enabled: true
+  disable:
+    - module: buf.build/cludden/protoc-gen-go-temporal
   override:
     - file_option: go_package_prefix
       value: example/gen
@@ -58,6 +59,7 @@ plugins:
       - cli-enabled=true
       - cli-v3=true
       - docs-out=./proto/README.md
+      - paths=source_relative
 ```
 
 ## Generate
@@ -163,8 +165,7 @@ message SetFooProgressRequest {
 Generate temporal worker, client, and cli types, methods, interfaces, and functions
 
 ```shell
-buf mod update
-cd ..
+buf dep update
 buf generate
 ```
 
@@ -181,6 +182,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	examplev1 "example/gen/example/v1"
@@ -216,7 +218,10 @@ type (
 
 // CreateFoo implements a CreateFoo workflow constructor on the shared Workflows struct
 // that initializes a new CreateFooWorkflow for each execution
-func (w *Workflows) CreateFoo(ctx workflow.Context, input *examplev1.CreateFooWorkflowInput) (examplev1.CreateFooWorkflow, error) {
+func (w *Workflows) CreateFoo(
+	ctx workflow.Context,
+	input *examplev1.CreateFooWorkflowInput,
+) (examplev1.CreateFooWorkflow, error) {
 	return &CreateFooWorkflow{
 		CreateFooWorkflowInput: input,
 		log:                    workflow.GetLogger(ctx),
@@ -262,7 +267,10 @@ func (wf *CreateFooWorkflow) GetFooProgress() (*examplev1.GetFooProgressResponse
 }
 
 // UpdateFooProgress defines the handler for an UpdateFooProgress update
-func (wf *CreateFooWorkflow) UpdateFooProgress(ctx workflow.Context, req *examplev1.SetFooProgressRequest) (*examplev1.GetFooProgressResponse, error) {
+func (wf *CreateFooWorkflow) UpdateFooProgress(
+	ctx workflow.Context,
+	req *examplev1.SetFooProgressRequest,
+) (*examplev1.GetFooProgressResponse, error) {
 	wf.progress = req.GetProgress()
 	switch {
 	case wf.progress < 0:
@@ -285,7 +293,12 @@ func main() {
 	// initialize the generated cli application
 	app, err := examplev1.NewExampleCli(
 		examplev1.NewExampleCliOptions().
-			WithWorker(func(ctx context.Context, cmd *cli.Command, c client.Client) (worker.Worker, error) {
+			WithClient(func(ctx context.Context, c *cli.Command) (client.Client, error) {
+				return client.DialContext(ctx, client.Options{
+					Logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})),
+				})
+			}).
+			WithWorker(func(_ context.Context, _ *cli.Command, c client.Client) (worker.Worker, error) {
 				// register activities and workflows using generated helpers
 				w := worker.New(c, examplev1.ExampleTaskQueue, worker.Options{})
 				examplev1.RegisterExampleActivities(w, &Activities{})
@@ -311,9 +324,7 @@ func main() {
 Start temporal and visit the UI at http://localhost:8233.
 
 ```sh
-temporal server start-dev \
-  --dynamic-config-value "frontend.enableUpdateWorkflowExecution=true" \
-  --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true"
+temporal server start-dev
 ```
 
 ### 8. Start worker
