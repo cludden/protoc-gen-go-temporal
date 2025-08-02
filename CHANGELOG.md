@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 ### Fixed
+- [#113](https://github.com/cludden/protoc-gen-go-temporal/pull/113) fix Ensures workflowIdConflictPolicy parameter is properly set when not UNSPECIFIED
 
 
 
