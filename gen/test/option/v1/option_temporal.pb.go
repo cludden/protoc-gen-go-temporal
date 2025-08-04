@@ -301,6 +301,8 @@ func (o *WorkflowWithInputOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
 		opts.WorkflowIDConflictPolicy = v
+	} else if opts.WorkflowIDConflictPolicy == enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = enumsv1.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
 	}
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v

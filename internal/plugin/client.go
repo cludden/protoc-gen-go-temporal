@@ -2384,9 +2384,23 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 
 			// set WorkflowIDConflictPolicy
 			if !child {
-				g.If(j.Id("v").Op(":=").Id("o").Dot("workflowIdConflictPolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).Block(
+				idConflictPolicy := g.If(j.Id("v").Op(":=").Id("o").Dot("workflowIdConflictPolicy"), j.Id("v").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).Block(
 					j.Id("opts").Dot("WorkflowIDConflictPolicy").Op("=").Id("v"),
 				)
+				if p := opts.GetWorkflowIdConflictPolicy(); p != enums.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+					idConflictPolicy.Else().If(j.Id("opts").Dot("WorkflowIDConflictPolicy").Op("==").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).BlockFunc(func(g *j.Group) {
+						var policy string
+						switch p {
+						case enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL:
+							policy = "WORKFLOW_ID_CONFLICT_POLICY_FAIL"
+						case enums.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING:
+							policy = "WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING"
+						case enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING:
+							policy = "WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING"
+						}
+						g.Id("opts").Dot("WorkflowIDConflictPolicy").Op("=").Qual(enumsPkg, policy)
+					})
+				}
 			}
 
 			// set TaskQueue
@@ -2572,21 +2586,6 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 						j.Id("opts").Dot("WaitForCancellation").Op("=").Lit(true),
 					)
 				}
-			}
-
-			if p := opts.GetWorkflowIdConflictPolicy(); p != enums.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
-				g.If(j.Id("opts").Dot("workflowIdConflictPolicy").Op("!=").Qual(enumsPkg, "WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED")).BlockFunc(func(g *j.Group) {
-					var policy string
-					switch p {
-					case enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL:
-						policy = "WORKFLOW_ID_CONFLICT_POLICY_FAIL"
-					case enums.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING:
-						policy = "WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING"
-					case enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING:
-						policy = "WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING"
-					}
-					g.Id("opts").Dot("WorkflowIdConflictPolicy").Op("=").Qual(enumsPkg, policy)
-				})
 			}
 
 			g.Return(j.Id("opts"), j.Nil())

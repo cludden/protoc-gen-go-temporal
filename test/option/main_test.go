@@ -215,10 +215,11 @@ func (s *OptionSuite) TestChildWorkflowOptions() {
 				SearchAttributes: map[string]any{
 					"name": "foo",
 				},
-				TaskQueue:                "option-v2",
-				WaitForCancellation:      true,
-				WorkflowID:               "workflow-with-input:foo",
-				WorkflowIDReusePolicy:    enums.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY,
+				TaskQueue:             "option-v2",
+				WaitForCancellation:   true,
+				WorkflowID:            "workflow-with-input:foo",
+				WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY,
+
 				WorkflowExecutionTimeout: time.Second * 600,
 				WorkflowRunTimeout:       time.Second * 300,
 				WorkflowTaskTimeout:      time.Second * 10,
@@ -538,6 +539,7 @@ func (s *OptionSuite) TestWorkflowOptions() {
 					"name": "foo",
 				},
 				TaskQueue:                "option-v2",
+				WorkflowIDConflictPolicy: enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING,
 				WorkflowIDReusePolicy:    enums.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY,
 				WorkflowExecutionTimeout: time.Second * 600,
 				WorkflowRunTimeout:       time.Second * 300,
@@ -561,6 +563,7 @@ func (s *OptionSuite) TestWorkflowOptions() {
 				},
 				TaskQueue:                "option-v2",
 				WorkflowIDReusePolicy:    enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+				WorkflowIDConflictPolicy: enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL,
 				WorkflowExecutionTimeout: time.Second * 599,
 				WorkflowRunTimeout:       time.Second * 299,
 				WorkflowTaskTimeout:      time.Second * 9,
@@ -577,6 +580,7 @@ func (s *OptionSuite) TestWorkflowOptions() {
 						},
 						TaskQueue:                "option-v2",
 						WorkflowIDReusePolicy:    enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+						WorkflowIDConflictPolicy: enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL,
 						WorkflowExecutionTimeout: time.Second * 599,
 						WorkflowRunTimeout:       time.Second * 299,
 						WorkflowTaskTimeout:      time.Second * 9,
@@ -584,6 +588,7 @@ func (s *OptionSuite) TestWorkflowOptions() {
 				optionv1.NewWorkflowWithInputOptions().
 					WithExecutionTimeout(time.Second * 599).
 					WithID("foo").
+					WithWorkflowIdConflictPolicy(enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL).
 					WithIDReusePolicy(enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE).
 					WithRetryPolicy(&temporal.RetryPolicy{
 						MaximumAttempts: 4,

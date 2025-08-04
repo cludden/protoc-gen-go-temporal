@@ -42,6 +42,7 @@ service Test {
       task_queue: "option-v2"
       task_timeout: {seconds: 10}
       wait_for_cancellation: true
+      workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
 
       update: {ref: 'UpdateWithInput'}
     };
