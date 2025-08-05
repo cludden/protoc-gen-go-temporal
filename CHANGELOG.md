@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 ### Fixed
-
+- [#117](https://github.com/cludden/protoc-gen-go-temporal/pull/117) fix for code generation when `workflow_id_conflict_policy` proto option is set
 
 
 # [1.17.2](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/v1.17.2) - 2025-08-02
