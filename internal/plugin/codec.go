@@ -71,10 +71,6 @@ func (m *Manifest) renderCodec(f *j.File) {
 }
 
 func registerType(p *protogen.Plugin, g *j.Group, cache map[string]struct{}, svc *protogen.Service, messages j.Code, msg *protogen.Message) {
-	if string(svc.Desc.ParentFile().Package()) != string(msg.Desc.ParentFile().Package()) {
-		return
-	}
-
 	if _, ok := cache[string(msg.Desc.FullName())]; ok || isEmpty(msg) {
 		return
 	}
@@ -83,8 +79,13 @@ func registerType(p *protogen.Plugin, g *j.Group, cache map[string]struct{}, svc
 		p.Error(fmt.Errorf("unable to locate parent file for msg: %s", msg.Desc.ParentFile().Path()))
 		return
 	}
+
 	if messages == nil {
-		messages = j.Id(f.GoDescriptorIdent.GoName)
+		if string(msg.Desc.ParentFile().Package()) != string(svc.Desc.ParentFile().Package()) {
+			messages = j.Qual(string(f.GoImportPath), f.GoDescriptorIdent.GoName)
+		} else {
+			messages = j.Id(f.GoDescriptorIdent.GoName)
+		}
 	}
 	g.Id("s").
 		Dot("RegisterType").
