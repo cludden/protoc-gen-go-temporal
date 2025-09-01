@@ -1384,19 +1384,41 @@ func (a *shoppingCartActivities) ShoppingCartWithUpdateCart(ctx context.Context,
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
 
-	// execute update with start asynchronously
-	handle, run, err := a.client.ShoppingCartWithUpdateCartAsync(
-		ctx,
-		&req,
-		&update,
-		v1.NewShoppingCartWithUpdateCartOptions().WithShoppingCartOptions(
-			v1.NewShoppingCartOptions().WithStartWorkflowOptions(swo),
-		).WithUpdateCartOptions(
-			v1.NewUpdateCartOptions().WithUpdateWorkflowOptions(uwo),
-		),
-	)
-	if err != nil {
-		return nil, shoppingCartOptions.convertError(err)
+	var run v1.ShoppingCartRun
+	var handle v1.UpdateCartHandle
+	if activity.HasHeartbeatDetails(ctx) {
+		// attach to existing update and execution
+		var workflowID, runID, updateID string
+		if err := activity.GetHeartbeatDetails(ctx, &workflowID, &runID, &updateID); err != nil {
+			return nil, shoppingCartOptions.convertError(fmt.Errorf("error getting heartbeat details: %w", err))
+		} else if workflowID == "" || runID == "" || updateID == "" {
+			return nil, shoppingCartOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
+		}
+		run = a.client.GetShoppingCart(ctx, workflowID, runID)
+		handle, err = a.client.GetUpdateCart(ctx, client.GetWorkflowUpdateHandleOptions{
+			RunID:      runID,
+			UpdateID:   updateID,
+			WorkflowID: workflowID,
+		})
+		if err != nil {
+			return nil, shoppingCartOptions.convertError(fmt.Errorf("error getting update with id %s: %w", updateID, err))
+		}
+	} else {
+		// execute update with start asynchronously
+		handle, run, err = a.client.ShoppingCartWithUpdateCartAsync(
+			ctx,
+			&req,
+			&update,
+			v1.NewShoppingCartWithUpdateCartOptions().WithShoppingCartOptions(
+				v1.NewShoppingCartOptions().WithStartWorkflowOptions(swo),
+			).WithUpdateCartOptions(
+				v1.NewUpdateCartOptions().WithUpdateWorkflowOptions(uwo).WithWaitPolicy(client.WorkflowUpdateStageAccepted),
+			),
+		)
+		if err != nil {
+			return nil, shoppingCartOptions.convertError(fmt.Errorf("error executing update with start: %w", err))
+		}
+		activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 	}
 
 	// return early if detached
@@ -1426,7 +1448,7 @@ func (a *shoppingCartActivities) ShoppingCartWithUpdateCart(ctx context.Context,
 	for {
 		select {
 		case <-time.After(heartbeatInterval):
-			activity.RecordHeartbeat(ctx, handle.UpdateID())
+			activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 
 		case <-activity.GetWorkerStopChannel(ctx):
 			return nil, shoppingCartOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))

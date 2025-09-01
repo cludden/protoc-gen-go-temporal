@@ -20,12 +20,24 @@ func (n *names) clientImpl() string {
 	return n.toLowerCamel("%sClient", n.Service.GoName)
 }
 
+func (n *names) clientSignalWithStart(workflow, signal protoreflect.FullName) string {
+	return n.toCamel("%sWith%s", workflow, signal)
+}
+
+func (n *names) clientSignalWithStartAsync(workflow, signal protoreflect.FullName) string {
+	return n.toCamel("%sWith%sAsync", workflow, signal)
+}
+
 func (n *names) clientUpdate(update protoreflect.FullName) string {
 	return n.toCamel("%s", update)
 }
 
 func (n *names) clientUpdateAsync(update protoreflect.FullName) string {
 	return n.toCamel("%sAsync", update)
+}
+
+func (n *names) clientUpdateGet(update protoreflect.FullName) string {
+	return n.toCamel("Get%s", update)
 }
 
 func (n *names) clientUpdateHandleIface(update protoreflect.FullName) string {
@@ -1136,7 +1148,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 			runInterfaceType := m.toCamel("%sRun", workflow)
 
 			// generate <Workflow> method
-			methodName := m.toCamel("%s", workflow)
+			methodName := m.Names().clientWorkflow(workflow)
 			commentWithDefaultf(g, methodSet(method), "%s executes a(n) %s workflow and blocks until error or response received", methodName, m.fqnForWorkflow(workflow))
 			g.Id(methodName).
 				ParamsFunc(func(g *j.Group) {
@@ -1155,7 +1167,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 				Line()
 
 			// generate <Workflow>Async method
-			methodName = m.toCamel("%sAsync", workflow)
+			methodName = m.Names().clientWorkflowAsync(workflow)
 			commentf(g, methodSet(method), "%s starts a(n) %s workflow and returns a handle to the workflow run", methodName, m.fqnForWorkflow(workflow))
 			g.Id(methodName).
 				ParamsFunc(func(g *j.Group) {
@@ -1172,7 +1184,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 				Line()
 
 			// generate Get<Workflow> method
-			methodName = m.toCamel("Get%s", workflow)
+			methodName = m.Names().clientWorkflowGet(workflow)
 			commentf(g, methodSet(method), "%s retrieves a handle to an existing %s workflow execution", methodName, m.fqnForWorkflow(workflow))
 			g.Id(m.toCamel("Get%s", workflow)).
 				Params(
@@ -1198,7 +1210,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 				hasSignalInput := !isEmpty(handler.Input)
 
 				// add synchronous flavor
-				methodName := m.toCamel("%sWith%s", workflow, signal)
+				methodName := m.Names().clientSignalWithStart(workflow, signal)
 				commentf(g, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and blocks until workflow completion", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
 				g.Id(methodName).
 					ParamsFunc(func(g *j.Group) {
@@ -1220,7 +1232,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 					Line()
 
 				// add async flavor
-				methodName += "Async"
+				methodName = m.Names().clientSignalWithStartAsync(workflow, signal)
 				commentf(g, methodSet(method, handler), "%s sends a(n) %s signal to a(n) %s workflow, starting it if necessary, and returns a handle to the workflow execution", methodName, m.fqnForSignal(signal), m.fqnForWorkflow(workflow))
 				g.Id(methodName).
 					ParamsFunc(func(g *j.Group) {
@@ -1374,7 +1386,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 			hasOutput := !isEmpty(handler.Output)
 
 			// add synchronous flavor
-			methodName := m.toCamel("%s", update)
+			methodName := m.Names().clientUpdate(update)
 			commentWithDefaultf(g, methodSet(handler), "%s executes a(n) %s update and blocks until update completion", methodName, m.fqnForUpdate(update))
 			g.Id(methodName).
 				ParamsFunc(func(g *j.Group) {
@@ -1395,7 +1407,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 				Line()
 
 			// add async flavor
-			methodName = m.toCamel("%sAsync", update)
+			methodName = m.Names().clientUpdateAsync(update)
 			commentf(g, methodSet(handler), "%s starts a(n) %s update and returns a handle to the workflow update", methodName, m.fqnForUpdate(update))
 			g.Id(methodName).
 				ParamsFunc(func(g *j.Group) {
@@ -1414,7 +1426,7 @@ func (m *Manifest) genClientInterface(f *j.File) {
 				Line()
 
 			// add getter
-			methodName = m.toCamel("Get%s", update)
+			methodName = m.Names().clientUpdateGet(update)
 			commentf(g, methodSet(handler), "%s retrieves a handle to an existing %s update", methodName, m.fqnForUpdate(update))
 			g.Id(methodName).
 				ParamsFunc(func(g *j.Group) {
@@ -1731,8 +1743,10 @@ func (m *Manifest) genClientUpdateOptions(f *j.File, update protoreflect.FullNam
 				stage = "WorkflowUpdateStageAccepted"
 			case temporalv1.WaitPolicy_WAIT_POLICY_ADMITTED:
 				stage = "WorkflowUpdateStageAdmitted"
-			case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED, temporalv1.WaitPolicy_WAIT_POLICY_UNSPECIFIED:
+			case temporalv1.WaitPolicy_WAIT_POLICY_COMPLETED:
 				stage = "WorkflowUpdateStageCompleted"
+			default:
+				stage = "WorkflowUpdateStageAccepted"
 			}
 			waitPolicy.Else().If(j.Id("opts").Dot("WaitForStage").Op("==").Qual(clientPkg, "WorkflowUpdateStageUnspecified")).Block(
 				j.Id("opts").Dot("WaitForStage").Op("=").Qual(clientPkg, stage),

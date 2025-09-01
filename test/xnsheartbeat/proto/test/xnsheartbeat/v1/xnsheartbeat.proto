@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package test.xnsheartbeat.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service XnsHeartbeatService {
+  option (temporal.v1.service) = {task_queue: "xnsheartbeat-v1"};
+
+  rpc TestSignal(TestSignalInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc TestUpdate(TestUpdateInput) returns (TestUpdateOutput) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc TestWorkflow(TestWorkflowInput) returns (TestWorkflowOutput) {
+    option (temporal.v1.workflow) = {
+      signal: {ref: "TestSignal"}
+      update: {
+        ref: "TestUpdate"
+        start: true
+        xns: {
+          heartbeat_interval: {seconds: 10}
+          heartbeat_timeout: {seconds: 30}
+        }
+      }
+      xns: {
+        heartbeat_interval: {seconds: 10}
+        heartbeat_timeout: {seconds: 30}
+      }
+    };
+  }
+}
+
+service XnsHeartbeatCallerService {
+  option (temporal.v1.service).task_queue = "xnsheartbeat-caller-v1";
+
+  rpc CallTestWorkflow(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+
+message TestSignalInput {}
+
+message TestUpdateInput {}
+
+message TestUpdateOutput {}
+
+message TestWorkflowInput {}
+
+message TestWorkflowOutput {}

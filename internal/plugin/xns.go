@@ -714,35 +714,109 @@ func (m *Manifest) genXNSActivitiesUpdateWithStartMethod(f *j.File, workflow, up
 			updateOptionsCtor := m.Names().clientUpdateOptionsCtor(update)
 
 			// execute update with start asyncronously
-			g.Comment("execute update with start asynchronously")
-			g.List(j.Id("handle"), j.Id("run"), j.Err()).Op(":=").Id("a").Dot("client").Dot(asyncName).CustomFunc(multiLineArgs, func(g *j.Group) {
-				g.Id("ctx")
-				if hasWorkflowInput {
-					g.Op("&").Id("req")
-				}
-				if hasUpdateInput {
-					g.Op("&").Id("update")
-				}
-				g.Qual(string(m.File.GoImportPath), methodOptionsCtor).Call().
-					Dot(withWorkflowOptions).
-					CustomFunc(multiLineArgs, func(g *j.Group) {
-						g.Qual(string(m.File.GoImportPath), workflowOptionsCtor).Call().
-							Dot("WithStartWorkflowOptions").Call(j.Id("swo"))
-					}).
-					Dot(withUpdateOptions).
-					CustomFunc(multiLineArgs, func(g *j.Group) {
-						g.Qual(string(m.File.GoImportPath), updateOptionsCtor).Call().
-							Dot("WithUpdateWorkflowOptions").Call(j.Id("uwo"))
-					})
-			})
+			g.Var().Id("run").Qual(string(m.GoImportPath), m.Names().clientWorkflowRun(workflow))
+			g.Var().Id("handle").Qual(string(m.GoImportPath), m.Names().clientUpdateHandleIface(update))
 			g.IfFunc(func(g *j.Group) {
-				g.Err().Op("!=").Nil()
+				g.Qual(activityPkg, "HasHeartbeatDetails").Call(j.Id("ctx"))
 			}).BlockFunc(func(g *j.Group) {
-				g.ReturnFunc(func(g *j.Group) {
-					if hasUpdateOutput {
-						g.Nil()
+				g.Comment("attach to existing update and execution")
+				g.Var().Id("workflowID").Op(",").Id("runID").Op(",").Id("updateID").String()
+				g.IfFunc(func(g *j.Group) {
+					g.Err().Op(":=").Qual(activityPkg, "GetHeartbeatDetails").CallFunc(func(g *j.Group) {
+						g.Id("ctx")
+						g.Op("&").Id("workflowID")
+						g.Op("&").Id("runID")
+						g.Op("&").Id("updateID")
+					})
+					g.Err().Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.ReturnFunc(func(g *j.Group) {
+						if hasUpdateOutput {
+							g.Nil()
+						}
+						g.Id(xnsOptions).Dot("convertError").CallFunc(func(g *j.Group) {
+							g.Qual("fmt", "Errorf").Call(j.Lit("error getting heartbeat details: %w"), j.Err())
+						})
+					})
+				}).Else().IfFunc(func(g *j.Group) {
+					g.Id("workflowID").Op("==").Lit("").Op("||").Id("runID").Op("==").Lit("").Op("||").Id("updateID").Op("==").Lit("")
+				}).BlockFunc(func(g *j.Group) {
+					g.ReturnFunc(func(g *j.Group) {
+						if hasUpdateOutput {
+							g.Nil()
+						}
+						g.Id(xnsOptions).Dot("convertError").CallFunc(func(g *j.Group) {
+							g.Qual("fmt", "Errorf").CallFunc(func(g *j.Group) {
+								g.Lit("invalid heartbeat details: workflowID=%q runID=%q updateID=%s")
+								g.Id("workflowID")
+								g.Id("runID")
+								g.Id("updateID")
+							})
+						})
+					})
+				})
+				g.Id("run").Op("=").Id("a").Dot("client").Dot(m.Names().clientWorkflowGet(workflow)).Call(j.Id("ctx"), j.Id("workflowID"), j.Id("runID"))
+				g.List(j.Id("handle"), j.Err()).Op("=").Id("a").Dot("client").Dot(m.Names().clientUpdateGet(update)).CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Qual(clientPkg, "GetWorkflowUpdateHandleOptions").Values(j.DictFunc(func(d j.Dict) {
+						d[j.Id("WorkflowID")] = j.Id("workflowID")
+						d[j.Id("RunID")] = j.Id("runID")
+						d[j.Id("UpdateID")] = j.Id("updateID")
+					}))
+				})
+				g.IfFunc(func(g *j.Group) {
+					g.Err().Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.ReturnFunc(func(g *j.Group) {
+						if hasUpdateOutput {
+							g.Nil()
+						}
+						g.Id(xnsOptions).Dot("convertError").CallFunc(func(g *j.Group) {
+							g.Qual("fmt", "Errorf").Call(j.Lit("error getting update with id %s: %w"), j.Id("updateID"), j.Err())
+						})
+					})
+				})
+			}).Else().BlockFunc(func(g *j.Group) {
+				g.Comment("execute update with start asynchronously")
+				g.List(j.Id("handle"), j.Id("run"), j.Err()).Op("=").Id("a").Dot("client").Dot(asyncName).CustomFunc(multiLineArgs, func(g *j.Group) {
+					g.Id("ctx")
+					if hasWorkflowInput {
+						g.Op("&").Id("req")
 					}
-					g.Id(xnsOptions).Dot("convertError").Call(j.Err())
+					if hasUpdateInput {
+						g.Op("&").Id("update")
+					}
+					g.Qual(string(m.File.GoImportPath), methodOptionsCtor).Call().
+						Dot(withWorkflowOptions).
+						CustomFunc(multiLineArgs, func(g *j.Group) {
+							g.Qual(string(m.File.GoImportPath), workflowOptionsCtor).Call().
+								Dot("WithStartWorkflowOptions").Call(j.Id("swo"))
+						}).
+						Dot(withUpdateOptions).
+						CustomFunc(multiLineArgs, func(g *j.Group) {
+							g.Qual(string(m.File.GoImportPath), updateOptionsCtor).Call().
+								Dot("WithUpdateWorkflowOptions").Call(j.Id("uwo")).
+								Dot("WithWaitPolicy").Call(j.Qual(clientPkg, "WorkflowUpdateStageAccepted"))
+						})
+				})
+				g.IfFunc(func(g *j.Group) {
+					g.Err().Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.ReturnFunc(func(g *j.Group) {
+						if hasUpdateOutput {
+							g.Nil()
+						}
+						g.Id(xnsOptions).Dot("convertError").CallFunc(func(g *j.Group) {
+							g.Qual("fmt", "Errorf").Call(j.Lit("error executing update with start: %w"), j.Err())
+						})
+					})
+				})
+				// send initial heartbeat
+				g.Qual(activityPkg, "RecordHeartbeat").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id("run").Dot("ID").Call()
+					g.Id("run").Dot("RunID").Call()
+					g.Id("handle").Dot("UpdateID").Call()
 				})
 			})
 			g.Line()
@@ -802,7 +876,12 @@ func (m *Manifest) genXNSActivitiesUpdateWithStartMethod(f *j.File, workflow, up
 				g.Select().BlockFunc(func(g *j.Group) {
 					// record heartbeat every heartbeatInterval
 					g.Case(j.Op("<-").Qual("time", "After").Call(j.Id("heartbeatInterval"))).BlockFunc(func(g *j.Group) {
-						g.Qual(activityPkg, "RecordHeartbeat").Call(j.Id("ctx"), j.Id("handle").Dot("UpdateID").Call())
+						g.Qual(activityPkg, "RecordHeartbeat").CallFunc(func(g *j.Group) {
+							g.Id("ctx")
+							g.Id("run").Dot("ID").Call()
+							g.Id("run").Dot("RunID").Call()
+							g.Id("handle").Dot("UpdateID").Call()
+						})
 					})
 					g.Line()
 

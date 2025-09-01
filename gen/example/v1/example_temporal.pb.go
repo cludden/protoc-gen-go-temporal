@@ -652,7 +652,7 @@ func (o *UpdateFooProgressOptions) Build(workflowID string, runID string, req *S
 	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
 		opts.WaitForStage = v
 	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
-		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+		opts.WaitForStage = client.WorkflowUpdateStageAccepted
 	}
 	return opts, nil
 }

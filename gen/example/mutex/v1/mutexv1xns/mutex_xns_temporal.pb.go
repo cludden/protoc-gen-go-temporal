@@ -1538,19 +1538,41 @@ func (a *exampleActivities) MutexWithAcquireLock(ctx context.Context, input *xns
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
 
-	// execute update with start asynchronously
-	handle, run, err := a.client.MutexWithAcquireLockAsync(
-		ctx,
-		&req,
-		&update,
-		v1.NewMutexWithAcquireLockOptions().WithMutexOptions(
-			v1.NewMutexOptions().WithStartWorkflowOptions(swo),
-		).WithAcquireLockOptions(
-			v1.NewAcquireLockOptions().WithUpdateWorkflowOptions(uwo),
-		),
-	)
-	if err != nil {
-		return nil, exampleOptions.convertError(err)
+	var run v1.MutexRun
+	var handle v1.AcquireLockHandle
+	if activity.HasHeartbeatDetails(ctx) {
+		// attach to existing update and execution
+		var workflowID, runID, updateID string
+		if err := activity.GetHeartbeatDetails(ctx, &workflowID, &runID, &updateID); err != nil {
+			return nil, exampleOptions.convertError(fmt.Errorf("error getting heartbeat details: %w", err))
+		} else if workflowID == "" || runID == "" || updateID == "" {
+			return nil, exampleOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
+		}
+		run = a.client.GetMutex(ctx, workflowID, runID)
+		handle, err = a.client.GetAcquireLock(ctx, client.GetWorkflowUpdateHandleOptions{
+			RunID:      runID,
+			UpdateID:   updateID,
+			WorkflowID: workflowID,
+		})
+		if err != nil {
+			return nil, exampleOptions.convertError(fmt.Errorf("error getting update with id %s: %w", updateID, err))
+		}
+	} else {
+		// execute update with start asynchronously
+		handle, run, err = a.client.MutexWithAcquireLockAsync(
+			ctx,
+			&req,
+			&update,
+			v1.NewMutexWithAcquireLockOptions().WithMutexOptions(
+				v1.NewMutexOptions().WithStartWorkflowOptions(swo),
+			).WithAcquireLockOptions(
+				v1.NewAcquireLockOptions().WithUpdateWorkflowOptions(uwo).WithWaitPolicy(client.WorkflowUpdateStageAccepted),
+			),
+		)
+		if err != nil {
+			return nil, exampleOptions.convertError(fmt.Errorf("error executing update with start: %w", err))
+		}
+		activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 	}
 
 	// return early if detached
@@ -1580,7 +1602,7 @@ func (a *exampleActivities) MutexWithAcquireLock(ctx context.Context, input *xns
 	for {
 		select {
 		case <-time.After(heartbeatInterval):
-			activity.RecordHeartbeat(ctx, handle.UpdateID())
+			activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 
 		case <-activity.GetWorkerStopChannel(ctx):
 			return nil, exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
