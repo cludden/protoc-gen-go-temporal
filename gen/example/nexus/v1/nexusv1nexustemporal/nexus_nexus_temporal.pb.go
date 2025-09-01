@@ -2,7 +2,7 @@
 // versions:
 //
 //	protoc-gen-go-nexus-temporal dev (latest)
-//	go go1.23.6
+//	go go1.24.4
 //	protoc (unknown)
 //
 // source: example/nexus/v1/nexus.proto

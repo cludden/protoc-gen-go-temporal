@@ -19,8 +19,11 @@ func (m *Manifest) renderCLIV3(f *j.File) {
 	m.genCliV3New(f)
 	m.genCliV3NewCommands(f)
 
-	// cache unmarshal functions to void duplicate declarations
-	unmarshallers := map[string]struct{}{}
+	// initialize cli flag unmarshaller index for go package
+	if _, ok := m.cliFlagUnmarshallers[string(m.GoImportPath)]; !ok {
+		m.cliFlagUnmarshallers[string(m.GoImportPath)] = make(map[string]struct{})
+	}
+	unmarshallers := m.cliFlagUnmarshallers[string(m.GoImportPath)]
 
 	// generate query request unmarshallers
 	for _, query := range m.queriesOrdered {
@@ -93,6 +96,8 @@ func (m *Manifest) renderCLIV3(f *j.File) {
 		unmarshallers[m.methods[workflow].Input.GoIdent.GoName] = struct{}{}
 		m.genCliUnmarshalMessage(f, m.methods[workflow].Input)
 	}
+
+	m.cliFlagUnmarshallers[string(m.GoImportPath)] = unmarshallers
 }
 
 // genCliNew generates a New<Service>Cli constructor function for CLI v3

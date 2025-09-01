@@ -30,6 +30,7 @@
     - [mycompany.simple.Other](#mycompany-simple-other)
       - [Workflows](#mycompany-simple-other-workflows)
         - [mycompany.simple.Other.OtherWorkflow](#mycompany-simple-other-otherworkflow-workflow)
+        - [mycompany.simple.Other.OtherWorkflow2](#mycompany-simple-other-otherworkflow2-workflow)
       - [Queries](#mycompany-simple-other-queries)
         - [mycompany.simple.Other.OtherQuery](#mycompany-simple-other-otherquery-query)
       - [Signals](#mycompany-simple-other-signals)
@@ -1133,6 +1134,64 @@ go_name: SomeVal</pre></td>
 <table>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>id</td><td><pre><code>other-workflow/${!uuid_v4()}</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+---
+<a name="mycompany-simple-other-otherworkflow2-workflow"></a>
+### mycompany.simple.Other.OtherWorkflow2
+
+**Input:** [mycompany.simple.common.v1.PaginatedRequest](#mycompany-simple-common-v1-paginatedrequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>cursor</td>
+<td>bytes</td>
+<td><pre>
+json_name: cursor
+go_name: Cursor</pre></td>
+</tr><tr>
+<td>limit</td>
+<td>uint32</td>
+<td><pre>
+json_name: limit
+go_name: Limit</pre></td>
+</tr>
+</table>
+
+**Output:** [mycompany.simple.common.v1.PaginatedResponse](#mycompany-simple-common-v1-paginatedresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>items</td>
+<td><a href="#google-protobuf-any">google.protobuf.Any</a></td>
+<td><pre>
+json_name: items
+go_name: Items</pre></td>
+</tr><tr>
+<td>next_cursor</td>
+<td>bytes</td>
+<td><pre>
+json_name: nextCursor
+go_name: NextCursor</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>other-workflow-2/${!uuid_v4()}</code></pre></td></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
 </table>  
 

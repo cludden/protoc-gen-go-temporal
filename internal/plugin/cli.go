@@ -31,8 +31,11 @@ func (m *Manifest) renderCLI(f *j.File) {
 	m.genCliNewCommand(f)
 	m.genCliNewCommands(f)
 
-	// cache unmarshal functions to void duplicate declarations
-	unmarshallers := map[string]struct{}{}
+	// initialize cli flag unmarshaller index for go package
+	if _, ok := m.cliFlagUnmarshallers[string(m.GoImportPath)]; !ok {
+		m.cliFlagUnmarshallers[string(m.GoImportPath)] = make(map[string]struct{})
+	}
+	unmarshallers := m.cliFlagUnmarshallers[string(m.GoImportPath)]
 
 	// generate query request unmarshallers
 	for _, query := range m.queriesOrdered {
@@ -105,6 +108,8 @@ func (m *Manifest) renderCLI(f *j.File) {
 		unmarshallers[m.methods[workflow].Input.GoIdent.GoName] = struct{}{}
 		m.genCliUnmarshalMessage(f, m.methods[workflow].Input)
 	}
+
+	m.cliFlagUnmarshallers[string(m.GoImportPath)] = unmarshallers
 }
 
 // genCliNew generates a New<Service>Cli constructor function
