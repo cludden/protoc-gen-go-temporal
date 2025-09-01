@@ -7530,6 +7530,8 @@ func WithSimpleSchemeTypes() scheme.Option {
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow1Request"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow1Response"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow3Request"))
+		s.RegisterType(v1.File_test_simple_common_v1_common_proto.Messages().ByName("PaginatedRequest"))
+		s.RegisterType(v1.File_test_simple_common_v1_common_proto.Messages().ByName("PaginatedResponse"))
 	}
 }
 
@@ -7538,12 +7540,14 @@ var OtherTaskQueue = "other-task-queue"
 
 // mycompany.simple.Other workflow names
 const (
-	OtherWorkflowWorkflowName = "mycompany.simple.Other.OtherWorkflow"
+	OtherWorkflowWorkflowName  = "mycompany.simple.Other.OtherWorkflow"
+	OtherWorkflow2WorkflowName = "mycompany.simple.Other.OtherWorkflow2"
 )
 
 // mycompany.simple.Other workflow id expressions
 var (
-	OtherWorkflowIdexpression = expression.MustParseExpression("other-workflow/${!uuid_v4()}")
+	OtherWorkflowIdexpression  = expression.MustParseExpression("other-workflow/${!uuid_v4()}")
+	OtherWorkflow2Idexpression = expression.MustParseExpression("other-workflow-2/${!uuid_v4()}")
 )
 
 // mycompany.simple.Other activity names
@@ -7581,6 +7585,15 @@ type OtherClient interface {
 
 	// GetOtherWorkflow retrieves a handle to an existing mycompany.simple.Other.OtherWorkflow workflow execution
 	GetOtherWorkflow(ctx context.Context, workflowID string, runID string) OtherWorkflowRun
+
+	// OtherWorkflow2 executes a(n) mycompany.simple.Other.OtherWorkflow2 workflow and blocks until error or response received
+	OtherWorkflow2(ctx context.Context, req *v1.PaginatedRequest, opts ...*OtherWorkflow2Options) (*v1.PaginatedResponse, error)
+
+	// OtherWorkflow2Async starts a(n) mycompany.simple.Other.OtherWorkflow2 workflow and returns a handle to the workflow run
+	OtherWorkflow2Async(ctx context.Context, req *v1.PaginatedRequest, opts ...*OtherWorkflow2Options) (OtherWorkflow2Run, error)
+
+	// GetOtherWorkflow2 retrieves a handle to an existing mycompany.simple.Other.OtherWorkflow2 workflow execution
+	GetOtherWorkflow2(ctx context.Context, workflowID string, runID string) OtherWorkflow2Run
 
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
@@ -7706,6 +7719,48 @@ func (c *otherClient) OtherWorkflowAsync(ctx context.Context, req *OtherWorkflow
 // GetOtherWorkflow fetches an existing mycompany.simple.Other.OtherWorkflow execution
 func (c *otherClient) GetOtherWorkflow(ctx context.Context, workflowID string, runID string) OtherWorkflowRun {
 	return &otherWorkflowRun{
+		client: c,
+		run:    c.client.GetWorkflow(ctx, workflowID, runID),
+	}
+}
+
+// mycompany.simple.Other.OtherWorkflow2 executes a mycompany.simple.Other.OtherWorkflow2 workflow and blocks until error or response received
+func (c *otherClient) OtherWorkflow2(ctx context.Context, req *v1.PaginatedRequest, options ...*OtherWorkflow2Options) (*v1.PaginatedResponse, error) {
+	run, err := c.OtherWorkflow2Async(ctx, req, options...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// OtherWorkflow2Async starts a(n) mycompany.simple.Other.OtherWorkflow2 workflow and returns a handle to the workflow run
+func (c *otherClient) OtherWorkflow2Async(ctx context.Context, req *v1.PaginatedRequest, options ...*OtherWorkflow2Options) (OtherWorkflow2Run, error) {
+	var o *OtherWorkflow2Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewOtherWorkflow2Options()
+	}
+	opts, err := o.Build(req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+	}
+	run, err := c.client.ExecuteWorkflow(ctx, opts, OtherWorkflow2WorkflowName, req)
+	if err != nil {
+		return nil, err
+	}
+	if run == nil {
+		return nil, errors.New("execute workflow returned nil run")
+	}
+	return &otherWorkflow2Run{
+		client: c,
+		run:    run,
+	}, nil
+}
+
+// GetOtherWorkflow2 fetches an existing mycompany.simple.Other.OtherWorkflow2 execution
+func (c *otherClient) GetOtherWorkflow2(ctx context.Context, workflowID string, runID string) OtherWorkflow2Run {
+	return &otherWorkflow2Run{
 		client: c,
 		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}
@@ -7968,6 +8023,187 @@ func (r *otherWorkflowRun) Terminate(ctx context.Context, reason string, details
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
+// OtherWorkflow2Options provides configuration for a mycompany.simple.Other.OtherWorkflow2 workflow operation
+type OtherWorkflow2Options struct {
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+}
+
+// NewOtherWorkflow2Options initializes a new OtherWorkflow2Options value
+func NewOtherWorkflow2Options() *OtherWorkflow2Options {
+	return &OtherWorkflow2Options{}
+}
+
+// Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
+func (o *OtherWorkflow2Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+	opts := o.options
+	if v := o.id; v != nil {
+		opts.ID = *v
+	} else if opts.ID == "" {
+		id, err := expression.EvalExpression(OtherWorkflow2Idexpression, req)
+		if err != nil {
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", OtherWorkflow2WorkflowName, err)
+		}
+		opts.ID = id
+	}
+	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = OtherTaskQueue
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	}
+	if v := o.searchAttributes; v != nil {
+		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.executionTimeout; v != nil {
+		opts.WorkflowExecutionTimeout = *v
+	}
+	if v := o.runTimeout; v != nil {
+		opts.WorkflowRunTimeout = *v
+	}
+	if v := o.taskTimeout; v != nil {
+		opts.WorkflowTaskTimeout = *v
+	}
+	return opts, nil
+}
+
+// WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
+func (o *OtherWorkflow2Options) WithStartWorkflowOptions(options client.StartWorkflowOptions) *OtherWorkflow2Options {
+	o.options = options
+	return o
+}
+
+// WithExecutionTimeout sets the WorkflowExecutionTimeout value
+func (o *OtherWorkflow2Options) WithExecutionTimeout(d time.Duration) *OtherWorkflow2Options {
+	o.executionTimeout = &d
+	return o
+}
+
+// WithID sets the ID value
+func (o *OtherWorkflow2Options) WithID(id string) *OtherWorkflow2Options {
+	o.id = &id
+	return o
+}
+
+// WithIDReusePolicy sets the WorkflowIDReusePolicy value
+func (o *OtherWorkflow2Options) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *OtherWorkflow2Options {
+	o.idReusePolicy = policy
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *OtherWorkflow2Options) WithRetryPolicy(policy *temporal.RetryPolicy) *OtherWorkflow2Options {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithRunTimeout sets the WorkflowRunTimeout value
+func (o *OtherWorkflow2Options) WithRunTimeout(d time.Duration) *OtherWorkflow2Options {
+	o.runTimeout = &d
+	return o
+}
+
+// WithSearchAttributes sets the SearchAttributes value
+func (o *OtherWorkflow2Options) WithSearchAttributes(sa map[string]any) *OtherWorkflow2Options {
+	o.searchAttributes = sa
+	return o
+}
+
+// WithTaskTimeout sets the WorkflowTaskTimeout value
+func (o *OtherWorkflow2Options) WithTaskTimeout(d time.Duration) *OtherWorkflow2Options {
+	o.taskTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *OtherWorkflow2Options) WithTaskQueue(tq string) *OtherWorkflow2Options {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *OtherWorkflow2Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflow2Options {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
+// OtherWorkflow2Run describes a(n) mycompany.simple.Other.OtherWorkflow2 workflow run
+type OtherWorkflow2Run interface {
+	// ID returns the workflow ID
+	ID() string
+
+	// RunID returns the workflow instance ID
+	RunID() string
+
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
+
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*v1.PaginatedResponse, error)
+
+	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+	Cancel(ctx context.Context) error
+
+	// Terminate terminates a workflow in execution, returning an error if applicable
+	Terminate(ctx context.Context, reason string, details ...interface{}) error
+}
+
+// otherWorkflow2Run provides an internal implementation of a(n) OtherWorkflow2RunRun
+type otherWorkflow2Run struct {
+	client *otherClient
+	run    client.WorkflowRun
+}
+
+// ID returns the workflow ID
+func (r *otherWorkflow2Run) ID() string {
+	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *otherWorkflow2Run) Run() client.WorkflowRun {
+	return r.run
+}
+
+// RunID returns the execution ID
+func (r *otherWorkflow2Run) RunID() string {
+	return r.run.GetRunID()
+}
+
+// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+func (r *otherWorkflow2Run) Cancel(ctx context.Context) error {
+	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
+}
+
+// Get blocks until the workflow is complete, returning the result if applicable
+func (r *otherWorkflow2Run) Get(ctx context.Context) (*v1.PaginatedResponse, error) {
+	var resp v1.PaginatedResponse
+	if err := r.run.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Terminate terminates a workflow in execution, returning an error if applicable
+func (r *otherWorkflow2Run) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
+}
+
 // OtherUpdateHandle describes a(n) mycompany.simple.Other.OtherUpdate update handle
 type OtherUpdateHandle interface {
 	// WorkflowID returns the workflow ID
@@ -8100,6 +8336,8 @@ func (o *OtherUpdateOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *
 var (
 	// OtherWorkflowFunction implements a "mycompany.simple.Other.OtherWorkflow" workflow
 	OtherWorkflowFunction func(workflow.Context, *OtherWorkflowRequest) (*OtherWorkflowResponse, error)
+	// OtherWorkflow2Function implements a "mycompany.simple.Other.OtherWorkflow2" workflow
+	OtherWorkflow2Function func(workflow.Context, *v1.PaginatedRequest) (*v1.PaginatedResponse, error)
 )
 
 // OtherWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
@@ -8108,6 +8346,8 @@ type (
 	OtherWorkflowFunctions interface {
 		// OtherWorkflow executes a "mycompany.simple.Other.OtherWorkflow" workflow inline
 		OtherWorkflow(workflow.Context, *OtherWorkflowRequest) (*OtherWorkflowResponse, error)
+		// OtherWorkflow2 executes a "mycompany.simple.Other.OtherWorkflow2" workflow inline
+		OtherWorkflow2(workflow.Context, *v1.PaginatedRequest) (*v1.PaginatedResponse, error)
 	}
 	// otherWorkflowFunctions provides an internal OtherWorkflowFunctions implementation
 	otherWorkflowFunctions struct{}
@@ -8125,15 +8365,27 @@ func (f *otherWorkflowFunctions) OtherWorkflow(ctx workflow.Context, req *OtherW
 	return OtherWorkflowFunction(ctx, req)
 }
 
+// OtherWorkflow2 executes a "mycompany.simple.Other.OtherWorkflow2" workflow inline
+func (f *otherWorkflowFunctions) OtherWorkflow2(ctx workflow.Context, req *v1.PaginatedRequest) (*v1.PaginatedResponse, error) {
+	if OtherWorkflow2Function == nil {
+		return nil, errors.New("OtherWorkflow2 requires workflow registration via RegisterOtherWorkflows or RegisterOtherWorkflow2Workflow")
+	}
+	return OtherWorkflow2Function(ctx, req)
+}
+
 // OtherWorkflows provides methods for initializing new mycompany.simple.Other workflow values
 type OtherWorkflows interface {
 	// OtherWorkflow initializes a new a(n) OtherWorkflowWorkflow implementation
 	OtherWorkflow(ctx workflow.Context, input *OtherWorkflowWorkflowInput) (OtherWorkflowWorkflow, error)
+
+	// OtherWorkflow2 initializes a new a(n) OtherWorkflow2Workflow implementation
+	OtherWorkflow2(ctx workflow.Context, input *OtherWorkflow2WorkflowInput) (OtherWorkflow2Workflow, error)
 }
 
 // RegisterOtherWorkflows registers mycompany.simple.Other workflows with the given worker
 func RegisterOtherWorkflows(r worker.WorkflowRegistry, workflows OtherWorkflows) {
 	RegisterOtherWorkflowWorkflow(r, workflows.OtherWorkflow)
+	RegisterOtherWorkflow2Workflow(r, workflows.OtherWorkflow2)
 }
 
 // RegisterOtherWorkflowWorkflow registers a mycompany.simple.Other.OtherWorkflow workflow with the given worker
@@ -8387,6 +8639,264 @@ func (r *OtherWorkflowChildRun) SelectStart(sel workflow.Selector, fn func(*Othe
 
 // WaitStart waits for the child workflow to start
 func (r *OtherWorkflowChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+	var exec workflow.Execution
+	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
+		return nil, err
+	}
+	return &exec, nil
+}
+
+// RegisterOtherWorkflow2Workflow registers a mycompany.simple.Other.OtherWorkflow2 workflow with the given worker
+func RegisterOtherWorkflow2Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *OtherWorkflow2WorkflowInput) (OtherWorkflow2Workflow, error)) {
+	OtherWorkflow2Function = buildOtherWorkflow2(wf)
+	r.RegisterWorkflowWithOptions(OtherWorkflow2Function, workflow.RegisterOptions{Name: OtherWorkflow2WorkflowName})
+}
+
+// buildOtherWorkflow2 converts a OtherWorkflow2 workflow struct into a valid workflow function
+func buildOtherWorkflow2(ctor func(workflow.Context, *OtherWorkflow2WorkflowInput) (OtherWorkflow2Workflow, error)) func(workflow.Context, *v1.PaginatedRequest) (*v1.PaginatedResponse, error) {
+	return func(ctx workflow.Context, req *v1.PaginatedRequest) (*v1.PaginatedResponse, error) {
+		input := &OtherWorkflow2WorkflowInput{
+			Req: req,
+		}
+		wf, err := ctor(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		if initializable, ok := wf.(helpers.Initializable); ok {
+			if err := initializable.Initialize(ctx); err != nil {
+				return nil, err
+			}
+		}
+		return wf.Execute(ctx)
+	}
+}
+
+// OtherWorkflow2WorkflowInput describes the input to a(n) mycompany.simple.Other.OtherWorkflow2 workflow constructor
+type OtherWorkflow2WorkflowInput struct {
+	Req *v1.PaginatedRequest
+}
+
+// OtherWorkflow2Workflow describes a(n) mycompany.simple.Other.OtherWorkflow2 workflow implementation
+//
+// workflow details: (id: "other-workflow-2/${!uuid_v4()}")
+type OtherWorkflow2Workflow interface {
+	// Execute defines the entrypoint to a(n) mycompany.simple.Other.OtherWorkflow2 workflow
+	Execute(ctx workflow.Context) (*v1.PaginatedResponse, error)
+}
+
+// OtherWorkflow2Child executes a child mycompany.simple.Other.OtherWorkflow2 workflow and blocks until error or response received
+func OtherWorkflow2Child(ctx workflow.Context, req *v1.PaginatedRequest, options ...*OtherWorkflow2ChildOptions) (*v1.PaginatedResponse, error) {
+	childRun, err := OtherWorkflow2ChildAsync(ctx, req, options...)
+	if err != nil {
+		return nil, err
+	}
+	return childRun.Get(ctx)
+}
+
+// OtherWorkflow2ChildAsync starts a child mycompany.simple.Other.OtherWorkflow2 workflow and returns a handle to the child workflow run
+func OtherWorkflow2ChildAsync(ctx workflow.Context, req *v1.PaginatedRequest, options ...*OtherWorkflow2ChildOptions) (*OtherWorkflow2ChildRun, error) {
+	var o *OtherWorkflow2ChildOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewOtherWorkflow2ChildOptions()
+	}
+	opts, err := o.Build(ctx, req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
+	}
+	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
+	return &OtherWorkflow2ChildRun{Future: workflow.ExecuteChildWorkflow(ctx, OtherWorkflow2WorkflowName, req)}, nil
+}
+
+// OtherWorkflow2ChildOptions provides configuration for a child mycompany.simple.Other.OtherWorkflow2 workflow operation
+type OtherWorkflow2ChildOptions struct {
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
+}
+
+// NewOtherWorkflow2ChildOptions initializes a new OtherWorkflow2ChildOptions value
+func NewOtherWorkflow2ChildOptions() *OtherWorkflow2ChildOptions {
+	return &OtherWorkflow2ChildOptions{}
+}
+
+// Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
+func (o *OtherWorkflow2ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+	opts := o.options
+	if v := o.id; v != nil {
+		opts.WorkflowID = *v
+	} else if opts.WorkflowID == "" {
+		workflow.GetVersion(ctx, "cludden_protoc-gen-go-temporal_64_expression-evaluation-local-activity", 1, 1)
+		lao := workflow.GetLocalActivityOptions(ctx)
+		lao.ScheduleToCloseTimeout = time.Second * 10
+		if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
+			id, err := expression.EvalExpression(OtherWorkflow2Idexpression, req)
+			if err != nil {
+				return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", OtherWorkflow2WorkflowName, err)
+			}
+			return id, nil
+		}).Get(ctx, &opts.WorkflowID); err != nil {
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", OtherWorkflow2WorkflowName, err)
+		}
+	}
+	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = OtherTaskQueue
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	}
+	if v := o.searchAttributes; v != nil {
+		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.executionTimeout; v != nil {
+		opts.WorkflowExecutionTimeout = *v
+	}
+	if v := o.runTimeout; v != nil {
+		opts.WorkflowRunTimeout = *v
+	}
+	if v := o.taskTimeout; v != nil {
+		opts.WorkflowTaskTimeout = *v
+	}
+	if v := o.parentClosePolicy; v != enumsv1.PARENT_CLOSE_POLICY_UNSPECIFIED {
+		opts.ParentClosePolicy = v
+	}
+	if v := o.waitForCancellation; v != nil {
+		opts.WaitForCancellation = *v
+	}
+	return opts, nil
+}
+
+// WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
+func (o *OtherWorkflow2ChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *OtherWorkflow2ChildOptions {
+	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *OtherWorkflow2ChildOptions) WithDataConverter(dc converter.DataConverter) *OtherWorkflow2ChildOptions {
+	o.dc = dc
+	return o
+}
+
+// WithExecutionTimeout sets the WorkflowExecutionTimeout value
+func (o *OtherWorkflow2ChildOptions) WithExecutionTimeout(d time.Duration) *OtherWorkflow2ChildOptions {
+	o.executionTimeout = &d
+	return o
+}
+
+// WithID sets the WorkflowID value
+func (o *OtherWorkflow2ChildOptions) WithID(id string) *OtherWorkflow2ChildOptions {
+	o.id = &id
+	return o
+}
+
+// WithIDReusePolicy sets the WorkflowIDReusePolicy value
+func (o *OtherWorkflow2ChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *OtherWorkflow2ChildOptions {
+	o.idReusePolicy = policy
+	return o
+}
+
+// WithParentClosePolicy sets the WorkflowIDReusePolicy value
+func (o *OtherWorkflow2ChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *OtherWorkflow2ChildOptions {
+	o.parentClosePolicy = policy
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *OtherWorkflow2ChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *OtherWorkflow2ChildOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithRunTimeout sets the WorkflowRunTimeout value
+func (o *OtherWorkflow2ChildOptions) WithRunTimeout(d time.Duration) *OtherWorkflow2ChildOptions {
+	o.runTimeout = &d
+	return o
+}
+
+// WithSearchAttributes sets the SearchAttributes value
+func (o *OtherWorkflow2ChildOptions) WithSearchAttributes(sa map[string]any) *OtherWorkflow2ChildOptions {
+	o.searchAttributes = sa
+	return o
+}
+
+// WithTaskTimeout sets the WorkflowTaskTimeout value
+func (o *OtherWorkflow2ChildOptions) WithTaskTimeout(d time.Duration) *OtherWorkflow2ChildOptions {
+	o.taskTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *OtherWorkflow2ChildOptions) WithTaskQueue(tq string) *OtherWorkflow2ChildOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithWaitForCancellation sets the WaitForCancellation value
+func (o *OtherWorkflow2ChildOptions) WithWaitForCancellation(wait bool) *OtherWorkflow2ChildOptions {
+	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *OtherWorkflow2ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflow2ChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
+// OtherWorkflow2ChildRun describes a child OtherWorkflow2 workflow run
+type OtherWorkflow2ChildRun struct {
+	Future workflow.ChildWorkflowFuture
+}
+
+// Get blocks until the workflow is completed, returning the response value
+func (r *OtherWorkflow2ChildRun) Get(ctx workflow.Context) (*v1.PaginatedResponse, error) {
+	var resp v1.PaginatedResponse
+	if err := r.Future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Select adds this completion to the selector. Callback can be nil.
+func (r *OtherWorkflow2ChildRun) Select(sel workflow.Selector, fn func(*OtherWorkflow2ChildRun)) workflow.Selector {
+	return sel.AddFuture(r.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(r)
+		}
+	})
+}
+
+// SelectStart adds waiting for start to the selector. Callback can be nil.
+func (r *OtherWorkflow2ChildRun) SelectStart(sel workflow.Selector, fn func(*OtherWorkflow2ChildRun)) workflow.Selector {
+	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
+		if fn != nil {
+			fn(r)
+		}
+	})
+}
+
+// WaitStart waits for the child workflow to start
+func (r *OtherWorkflow2ChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
 	var exec workflow.Execution
 	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
 		return nil, err
@@ -8771,6 +9281,35 @@ func (c *TestOtherClient) GetOtherWorkflow(ctx context.Context, workflowID strin
 	return &testOtherWorkflowRun{env: c.env, workflows: c.workflows}
 }
 
+// OtherWorkflow2 executes a(n) mycompany.simple.Other.OtherWorkflow2 workflow in the test environment
+func (c *TestOtherClient) OtherWorkflow2(ctx context.Context, req *v1.PaginatedRequest, opts ...*OtherWorkflow2Options) (*v1.PaginatedResponse, error) {
+	run, err := c.OtherWorkflow2Async(ctx, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// OtherWorkflow2Async executes a(n) mycompany.simple.Other.OtherWorkflow2 workflow in the test environment
+func (c *TestOtherClient) OtherWorkflow2Async(ctx context.Context, req *v1.PaginatedRequest, options ...*OtherWorkflow2Options) (OtherWorkflow2Run, error) {
+	var o *OtherWorkflow2Options
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewOtherWorkflow2Options()
+	}
+	opts, err := o.Build(req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+	}
+	return &testOtherWorkflow2Run{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+}
+
+// GetOtherWorkflow2 is a noop
+func (c *TestOtherClient) GetOtherWorkflow2(ctx context.Context, workflowID string, runID string) OtherWorkflow2Run {
+	return &testOtherWorkflow2Run{env: c.env, workflows: c.workflows}
+}
+
 // CancelWorkflow requests cancellation of an existing workflow execution
 func (c *TestOtherClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	c.env.CancelWorkflow()
@@ -8946,6 +9485,64 @@ func (r *testOtherWorkflowRun) RunID() string {
 
 // Terminate terminates a workflow in execution, returning an error if applicable
 func (r *testOtherWorkflowRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
+}
+
+var _ OtherWorkflow2Run = &testOtherWorkflow2Run{}
+
+// testOtherWorkflow2Run provides convenience methods for interacting with a(n) mycompany.simple.Other.OtherWorkflow2 workflow in the test environment
+type testOtherWorkflow2Run struct {
+	client    *TestOtherClient
+	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
+	opts      *client.StartWorkflowOptions
+	req       *v1.PaginatedRequest
+	workflows OtherWorkflows
+}
+
+// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+func (r *testOtherWorkflow2Run) Cancel(ctx context.Context) error {
+	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
+}
+
+// Get retrieves a test mycompany.simple.Other.OtherWorkflow2 workflow result
+func (r *testOtherWorkflow2Run) Get(context.Context) (*v1.PaginatedResponse, error) {
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(OtherWorkflow2WorkflowName, r.req)
+	}
+	if !r.env.IsWorkflowCompleted() {
+		return nil, errors.New("workflow in progress")
+	}
+	if err := r.env.GetWorkflowError(); err != nil {
+		return nil, err
+	}
+	var result v1.PaginatedResponse
+	if err := r.env.GetWorkflowResult(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// ID returns a test mycompany.simple.Other.OtherWorkflow2 workflow run's workflow ID
+func (r *testOtherWorkflow2Run) ID() string {
+	if r.opts != nil {
+		return r.opts.ID
+	}
+	return ""
+}
+
+// Run noop implementation
+func (r *testOtherWorkflow2Run) Run() client.WorkflowRun {
+	return nil
+}
+
+// RunID noop implementation
+func (r *testOtherWorkflow2Run) RunID() string {
+	return ""
+}
+
+// Terminate terminates a workflow in execution, returning an error if applicable
+func (r *testOtherWorkflow2Run) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
@@ -9334,6 +9931,84 @@ func newOtherCommands(options ...*OtherCliOptions) ([]*v2.Command, error) {
 				}
 			},
 		},
+		{
+			Name:                   "other-workflow-2",
+			Usage:                  "executes a(n) mycompany.simple.Other.OtherWorkflow2 workflow",
+			Category:               "WORKFLOWS",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Name:    "detach",
+					Usage:   "run workflow in the background and print workflow and execution id",
+					Aliases: []string{"d"},
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "other-task-queue",
+				},
+				&v2.StringFlag{
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.Uint64Flag{
+					Name:     "limit",
+					Usage:    "set the value of the operation's \"Limit\" parameter",
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "cursor",
+					Usage:    "set the value of the operation's \"Cursor\" parameter (base64-encoded)",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				tc, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer tc.Close()
+				c := NewOtherClient(tc)
+				req, err := UnmarshalCliFlagsToPaginatedRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				opts := client.StartWorkflowOptions{}
+				if tq := cmd.String("task-queue"); tq != "" {
+					opts.TaskQueue = tq
+				}
+				run, err := c.OtherWorkflow2Async(cmd.Context, req, NewOtherWorkflow2Options().WithStartWorkflowOptions(opts))
+				if err != nil {
+					return fmt.Errorf("error starting %s workflow: %w", OtherWorkflow2WorkflowName, err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", run.ID())
+					fmt.Printf("run id: %s\n", run.RunID())
+					return nil
+				}
+				if resp, err := run.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(resp)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
+				}
+			},
+		},
 	}
 	if opts.worker != nil {
 		commands = append(commands, []*v2.Command{
@@ -9589,6 +10264,8 @@ func WithOtherSchemeTypes() scheme.Option {
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("OtherSignalRequest"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("OtherUpdateRequest"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("OtherUpdateResponse"))
+		s.RegisterType(v1.File_test_simple_common_v1_common_proto.Messages().ByName("PaginatedRequest"))
+		s.RegisterType(v1.File_test_simple_common_v1_common_proto.Messages().ByName("PaginatedResponse"))
 	}
 }
 

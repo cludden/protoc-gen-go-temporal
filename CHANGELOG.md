@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 ### Fixed
+- [#121](https://github.com/cludden/protoc-gen-go-temporal/pull/121) include external input and outputs in codec registrations
 
 
 

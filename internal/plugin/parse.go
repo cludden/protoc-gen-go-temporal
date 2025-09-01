@@ -71,44 +71,46 @@ type Manifest struct {
 	*protogen.Service
 	*protogen.File
 
-	opts              *temporalv1.ServiceOptions
-	activitiesOrdered []protoreflect.FullName
-	activities        map[protoreflect.FullName]*temporalv1.ActivityOptions
-	commands          map[protoreflect.FullName]*temporalv1.CommandOptions
-	files             map[protoreflect.FullName]*protogen.File
-	methods           map[protoreflect.FullName]*protogen.Method
-	patches           map[temporalv1.Patch_Version]temporalv1.Patch_Mode
-	patchesByRef      map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode
-	queriesOrdered    []protoreflect.FullName
-	queries           map[protoreflect.FullName]*temporalv1.QueryOptions
-	serviceFiles      map[protoreflect.FullName]*protogen.File
-	serviceDetails    map[protoreflect.FullName]renderServiceDetails
-	serviceOptions    map[protoreflect.FullName]*temporalv1.ServiceOptions
-	signalsOrdered    []protoreflect.FullName
-	signals           map[protoreflect.FullName]*temporalv1.SignalOptions
-	updatesOrdered    []protoreflect.FullName
-	updates           map[protoreflect.FullName]*temporalv1.UpdateOptions
-	workflowsOrdered  []protoreflect.FullName
-	workflows         map[protoreflect.FullName]*temporalv1.WorkflowOptions
+	opts                 *temporalv1.ServiceOptions
+	activitiesOrdered    []protoreflect.FullName
+	activities           map[protoreflect.FullName]*temporalv1.ActivityOptions
+	cliFlagUnmarshallers map[string]map[string]struct{}
+	commands             map[protoreflect.FullName]*temporalv1.CommandOptions
+	files                map[protoreflect.FullName]*protogen.File
+	methods              map[protoreflect.FullName]*protogen.Method
+	patches              map[temporalv1.Patch_Version]temporalv1.Patch_Mode
+	patchesByRef         map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode
+	queriesOrdered       []protoreflect.FullName
+	queries              map[protoreflect.FullName]*temporalv1.QueryOptions
+	serviceFiles         map[protoreflect.FullName]*protogen.File
+	serviceDetails       map[protoreflect.FullName]renderServiceDetails
+	serviceOptions       map[protoreflect.FullName]*temporalv1.ServiceOptions
+	signalsOrdered       []protoreflect.FullName
+	signals              map[protoreflect.FullName]*temporalv1.SignalOptions
+	updatesOrdered       []protoreflect.FullName
+	updates              map[protoreflect.FullName]*temporalv1.UpdateOptions
+	workflowsOrdered     []protoreflect.FullName
+	workflows            map[protoreflect.FullName]*temporalv1.WorkflowOptions
 }
 
 // parse extracts a Service from a protogen.Service value
 func parse(p *Plugin) (*Manifest, error) {
 	m := Manifest{
-		Plugin:         p,
-		activities:     make(map[protoreflect.FullName]*temporalv1.ActivityOptions),
-		commands:       make(map[protoreflect.FullName]*temporalv1.CommandOptions),
-		files:          make(map[protoreflect.FullName]*protogen.File),
-		methods:        make(map[protoreflect.FullName]*protogen.Method),
-		patches:        make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
-		patchesByRef:   make(map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
-		queries:        make(map[protoreflect.FullName]*temporalv1.QueryOptions),
-		serviceDetails: make(map[protoreflect.FullName]renderServiceDetails),
-		serviceFiles:   make(map[protoreflect.FullName]*protogen.File),
-		serviceOptions: make(map[protoreflect.FullName]*temporalv1.ServiceOptions),
-		signals:        make(map[protoreflect.FullName]*temporalv1.SignalOptions),
-		updates:        make(map[protoreflect.FullName]*temporalv1.UpdateOptions),
-		workflows:      make(map[protoreflect.FullName]*temporalv1.WorkflowOptions),
+		Plugin:               p,
+		activities:           make(map[protoreflect.FullName]*temporalv1.ActivityOptions),
+		cliFlagUnmarshallers: make(map[string]map[string]struct{}),
+		commands:             make(map[protoreflect.FullName]*temporalv1.CommandOptions),
+		files:                make(map[protoreflect.FullName]*protogen.File),
+		methods:              make(map[protoreflect.FullName]*protogen.Method),
+		patches:              make(map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
+		patchesByRef:         make(map[protoreflect.FullName]map[temporalv1.Patch_Version]temporalv1.Patch_Mode),
+		queries:              make(map[protoreflect.FullName]*temporalv1.QueryOptions),
+		serviceDetails:       make(map[protoreflect.FullName]renderServiceDetails),
+		serviceFiles:         make(map[protoreflect.FullName]*protogen.File),
+		serviceOptions:       make(map[protoreflect.FullName]*temporalv1.ServiceOptions),
+		signals:              make(map[protoreflect.FullName]*temporalv1.SignalOptions),
+		updates:              make(map[protoreflect.FullName]*temporalv1.UpdateOptions),
+		workflows:            make(map[protoreflect.FullName]*temporalv1.WorkflowOptions),
 	}
 
 	// index global patch settings

@@ -260,6 +260,10 @@ service Other {
     };
   }
 
+  rpc OtherWorkflow2(common.v1.PaginatedRequest) returns (common.v1.PaginatedResponse) {
+    option (temporal.v1.workflow) = {id: 'other-workflow-2/${!uuid_v4()}'};
+  }
+
   rpc OtherQuery(google.protobuf.Empty) returns (OtherQueryResponse) {
     option (temporal.v1.query) = {};
   }
