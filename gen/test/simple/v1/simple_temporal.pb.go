@@ -1897,7 +1897,7 @@ func (o *SomeUpdate2Options) Build(workflowID string, runID string, req *SomeUpd
 	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
 		opts.WaitForStage = v
 	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
-		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+		opts.WaitForStage = client.WorkflowUpdateStageAccepted
 	}
 	return opts, nil
 }
@@ -8309,7 +8309,7 @@ func (o *OtherUpdateOptions) Build(workflowID string, runID string, req *OtherUp
 	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
 		opts.WaitForStage = v
 	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
-		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+		opts.WaitForStage = client.WorkflowUpdateStageAccepted
 	}
 	return opts, nil
 }
@@ -12408,7 +12408,7 @@ func (o *SomeDeprecatedUpdate1Options) Build(workflowID string, runID string, re
 	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
 		opts.WaitForStage = v
 	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
-		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+		opts.WaitForStage = client.WorkflowUpdateStageAccepted
 	}
 	return opts, nil
 }
@@ -12530,7 +12530,7 @@ func (o *SomeDeprecatedUpdate2Options) Build(workflowID string, runID string, re
 	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
 		opts.WaitForStage = v
 	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
-		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+		opts.WaitForStage = client.WorkflowUpdateStageAccepted
 	}
 	return opts, nil
 }

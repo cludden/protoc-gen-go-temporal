@@ -3602,19 +3602,41 @@ func (a *simpleActivities) SomeWorkflow1WithSomeUpdate2(ctx context.Context, inp
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
 
-	// execute update with start asynchronously
-	handle, run, err := a.client.SomeWorkflow1WithSomeUpdate2Async(
-		ctx,
-		&req,
-		&update,
-		v1.NewSomeWorkflow1WithSomeUpdate2Options().WithSomeWorkflow1Options(
-			v1.NewSomeWorkflow1Options().WithStartWorkflowOptions(swo),
-		).WithSomeUpdate2Options(
-			v1.NewSomeUpdate2Options().WithUpdateWorkflowOptions(uwo),
-		),
-	)
-	if err != nil {
-		return nil, simpleOptions.convertError(err)
+	var run v1.SomeWorkflow1Run
+	var handle v1.SomeUpdate2Handle
+	if activity.HasHeartbeatDetails(ctx) {
+		// attach to existing update and execution
+		var workflowID, runID, updateID string
+		if err := activity.GetHeartbeatDetails(ctx, &workflowID, &runID, &updateID); err != nil {
+			return nil, simpleOptions.convertError(fmt.Errorf("error getting heartbeat details: %w", err))
+		} else if workflowID == "" || runID == "" || updateID == "" {
+			return nil, simpleOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
+		}
+		run = a.client.GetSomeWorkflow1(ctx, workflowID, runID)
+		handle, err = a.client.GetSomeUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
+			RunID:      runID,
+			UpdateID:   updateID,
+			WorkflowID: workflowID,
+		})
+		if err != nil {
+			return nil, simpleOptions.convertError(fmt.Errorf("error getting update with id %s: %w", updateID, err))
+		}
+	} else {
+		// execute update with start asynchronously
+		handle, run, err = a.client.SomeWorkflow1WithSomeUpdate2Async(
+			ctx,
+			&req,
+			&update,
+			v1.NewSomeWorkflow1WithSomeUpdate2Options().WithSomeWorkflow1Options(
+				v1.NewSomeWorkflow1Options().WithStartWorkflowOptions(swo),
+			).WithSomeUpdate2Options(
+				v1.NewSomeUpdate2Options().WithUpdateWorkflowOptions(uwo).WithWaitPolicy(client.WorkflowUpdateStageAccepted),
+			),
+		)
+		if err != nil {
+			return nil, simpleOptions.convertError(fmt.Errorf("error executing update with start: %w", err))
+		}
+		activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 	}
 
 	// return early if detached
@@ -3644,7 +3666,7 @@ func (a *simpleActivities) SomeWorkflow1WithSomeUpdate2(ctx context.Context, inp
 	for {
 		select {
 		case <-time.After(heartbeatInterval):
-			activity.RecordHeartbeat(ctx, handle.UpdateID())
+			activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 
 		case <-activity.GetWorkerStopChannel(ctx):
 			return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))
@@ -3917,18 +3939,40 @@ func (a *simpleActivities) SomeWorkflow2WithSomeUpdate1(ctx context.Context, inp
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
 
-	// execute update with start asynchronously
-	handle, run, err := a.client.SomeWorkflow2WithSomeUpdate1Async(
-		ctx,
-		&update,
-		v1.NewSomeWorkflow2WithSomeUpdate1Options().WithSomeWorkflow2Options(
-			v1.NewSomeWorkflow2Options().WithStartWorkflowOptions(swo),
-		).WithSomeUpdate1Options(
-			v1.NewSomeUpdate1Options().WithUpdateWorkflowOptions(uwo),
-		),
-	)
-	if err != nil {
-		return nil, simpleOptions.convertError(err)
+	var run v1.SomeWorkflow2Run
+	var handle v1.SomeUpdate1Handle
+	if activity.HasHeartbeatDetails(ctx) {
+		// attach to existing update and execution
+		var workflowID, runID, updateID string
+		if err := activity.GetHeartbeatDetails(ctx, &workflowID, &runID, &updateID); err != nil {
+			return nil, simpleOptions.convertError(fmt.Errorf("error getting heartbeat details: %w", err))
+		} else if workflowID == "" || runID == "" || updateID == "" {
+			return nil, simpleOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
+		}
+		run = a.client.GetSomeWorkflow2(ctx, workflowID, runID)
+		handle, err = a.client.GetSomeUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
+			RunID:      runID,
+			UpdateID:   updateID,
+			WorkflowID: workflowID,
+		})
+		if err != nil {
+			return nil, simpleOptions.convertError(fmt.Errorf("error getting update with id %s: %w", updateID, err))
+		}
+	} else {
+		// execute update with start asynchronously
+		handle, run, err = a.client.SomeWorkflow2WithSomeUpdate1Async(
+			ctx,
+			&update,
+			v1.NewSomeWorkflow2WithSomeUpdate1Options().WithSomeWorkflow2Options(
+				v1.NewSomeWorkflow2Options().WithStartWorkflowOptions(swo),
+			).WithSomeUpdate1Options(
+				v1.NewSomeUpdate1Options().WithUpdateWorkflowOptions(uwo).WithWaitPolicy(client.WorkflowUpdateStageAccepted),
+			),
+		)
+		if err != nil {
+			return nil, simpleOptions.convertError(fmt.Errorf("error executing update with start: %w", err))
+		}
+		activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 	}
 
 	// return early if detached
@@ -3958,7 +4002,7 @@ func (a *simpleActivities) SomeWorkflow2WithSomeUpdate1(ctx context.Context, inp
 	for {
 		select {
 		case <-time.After(heartbeatInterval):
-			activity.RecordHeartbeat(ctx, handle.UpdateID())
+			activity.RecordHeartbeat(ctx, run.ID(), run.RunID(), handle.UpdateID())
 
 		case <-activity.GetWorkerStopChannel(ctx):
 			return nil, simpleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopping"))

@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 ### Fixed
+- [#122](https://github.com/cludden/protoc-gen-go-temporal/pull/122) fix xns update-with-start handling of heartbeat details
+- [#122](https://github.com/cludden/protoc-gen-go-temporal/pull/122) fix async update methods using Accepted as default wait for stage
 - [#121](https://github.com/cludden/protoc-gen-go-temporal/pull/121) include external input and outputs in codec registrations
 
 
