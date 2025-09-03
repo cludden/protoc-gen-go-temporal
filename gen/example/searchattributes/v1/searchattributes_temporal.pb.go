@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -379,6 +380,8 @@ func (r *searchAttributesRun) Terminate(ctx context.Context, reason string, deta
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.searchattributes.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// SearchAttributesFunction implements a "example.searchattributes.v1.Example.SearchAttributes" workflow
 	SearchAttributesFunction func(workflow.Context, *SearchAttributesInput) error
 )
@@ -419,6 +422,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterSearchAttributesWorkflow registers a example.searchattributes.v1.Example.SearchAttributes workflow with the given worker
 func RegisterSearchAttributesWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SearchAttributesWorkflowInput) (SearchAttributesWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	SearchAttributesFunction = buildSearchAttributes(wf)
 	r.RegisterWorkflowWithOptions(SearchAttributesFunction, workflow.RegisterOptions{Name: SearchAttributesWorkflowName})
 }

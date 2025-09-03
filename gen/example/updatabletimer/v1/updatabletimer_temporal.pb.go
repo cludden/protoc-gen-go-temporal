@@ -31,6 +31,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -410,6 +411,8 @@ func (r *updatableTimerRun) UpdateWakeUpTime(ctx context.Context, req *UpdateWak
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.updatabletimer.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// UpdatableTimer describes an updatable timer workflow
 	UpdatableTimerFunction func(workflow.Context, *UpdatableTimerInput) error
 )
@@ -450,6 +453,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterUpdatableTimerWorkflow registers a example.updatabletimer.v1.Example.UpdatableTimer workflow with the given worker
 func RegisterUpdatableTimerWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *UpdatableTimerWorkflowInput) (UpdatableTimerWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	UpdatableTimerFunction = buildUpdatableTimer(wf)
 	r.RegisterWorkflowWithOptions(UpdatableTimerFunction, workflow.RegisterOptions{Name: UpdatableTimerWorkflowName})
 }

@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -414,6 +415,8 @@ func (r *putHybridExampleRun) SignalHybrid(ctx context.Context, req *HybridExamp
 
 // Reference to generated workflow functions
 var (
+	// hybridRegistrationMutex is a mutex for registering test.opaque.Hybrid workflows
+	hybridRegistrationMutex sync.Mutex
 	// PutHybridExampleFunction implements a "test.opaque.Hybrid.PutHybridExample" workflow
 	PutHybridExampleFunction func(workflow.Context, *HybridExample) (*HybridExample, error)
 )
@@ -454,6 +457,8 @@ func RegisterHybridWorkflows(r worker.WorkflowRegistry, workflows HybridWorkflow
 
 // RegisterPutHybridExampleWorkflow registers a test.opaque.Hybrid.PutHybridExample workflow with the given worker
 func RegisterPutHybridExampleWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *PutHybridExampleWorkflowInput) (PutHybridExampleWorkflow, error)) {
+	hybridRegistrationMutex.Lock()
+	defer hybridRegistrationMutex.Unlock()
 	PutHybridExampleFunction = buildPutHybridExample(wf)
 	r.RegisterWorkflowWithOptions(PutHybridExampleFunction, workflow.RegisterOptions{Name: PutHybridExampleWorkflowName})
 }

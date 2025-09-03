@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -353,6 +354,8 @@ func (r *scheduleRun) Terminate(ctx context.Context, reason string, details ...i
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.schedule.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// ScheduleFunction implements a "example.schedule.v1.Schedule" workflow
 	ScheduleFunction func(workflow.Context, *ScheduleInput) (*ScheduleOutput, error)
 )
@@ -393,6 +396,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterScheduleWorkflow registers a example.schedule.v1.Example.Schedule workflow with the given worker
 func RegisterScheduleWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ScheduleWorkflowInput) (ScheduleWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	ScheduleFunction = buildSchedule(wf)
 	r.RegisterWorkflowWithOptions(ScheduleFunction, workflow.RegisterOptions{Name: ScheduleWorkflowName})
 }

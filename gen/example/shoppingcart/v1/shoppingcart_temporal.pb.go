@@ -33,6 +33,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -725,6 +726,8 @@ func (o *UpdateCartOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *U
 
 // Reference to generated workflow functions
 var (
+	// shoppingCartRegistrationMutex is a mutex for registering example.shoppingcart.v1.ShoppingCart workflows
+	shoppingCartRegistrationMutex sync.Mutex
 	// ShoppingCartFunction implements a "example.shoppingcart.v1.ShoppingCart" workflow
 	ShoppingCartFunction func(workflow.Context, *ShoppingCartInput) (*ShoppingCartOutput, error)
 )
@@ -765,6 +768,8 @@ func RegisterShoppingCartWorkflows(r worker.WorkflowRegistry, workflows Shopping
 
 // RegisterShoppingCartWorkflow registers a example.shoppingcart.v1.ShoppingCart.ShoppingCart workflow with the given worker
 func RegisterShoppingCartWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ShoppingCartWorkflowInput) (ShoppingCartWorkflow, error)) {
+	shoppingCartRegistrationMutex.Lock()
+	defer shoppingCartRegistrationMutex.Unlock()
 	ShoppingCartFunction = buildShoppingCart(wf)
 	r.RegisterWorkflowWithOptions(ShoppingCartFunction, workflow.RegisterOptions{Name: ShoppingCartWorkflowName})
 }

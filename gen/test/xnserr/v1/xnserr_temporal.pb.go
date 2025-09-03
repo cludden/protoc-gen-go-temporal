@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -351,6 +352,8 @@ func (r *sleepRun) Terminate(ctx context.Context, reason string, details ...inte
 
 // Reference to generated workflow functions
 var (
+	// serverRegistrationMutex is a mutex for registering test.xnserr.v1.Server workflows
+	serverRegistrationMutex sync.Mutex
 	// SleepFunction implements a "test.xnserr.v1.Server.Sleep" workflow
 	SleepFunction func(workflow.Context, *SleepRequest) error
 )
@@ -391,6 +394,8 @@ func RegisterServerWorkflows(r worker.WorkflowRegistry, workflows ServerWorkflow
 
 // RegisterSleepWorkflow registers a test.xnserr.v1.Server.Sleep workflow with the given worker
 func RegisterSleepWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SleepWorkflowInput) (SleepWorkflow, error)) {
+	serverRegistrationMutex.Lock()
+	defer serverRegistrationMutex.Unlock()
 	SleepFunction = buildSleep(wf)
 	r.RegisterWorkflowWithOptions(SleepFunction, workflow.RegisterOptions{Name: SleepWorkflowName})
 }
@@ -1289,6 +1294,8 @@ func (r *callSleepRun) Terminate(ctx context.Context, reason string, details ...
 
 // Reference to generated workflow functions
 var (
+	// clientRegistrationMutex is a mutex for registering test.xnserr.v1.Client workflows
+	clientRegistrationMutex sync.Mutex
 	// CallSleepFunction implements a "test.xnserr.v1.Client.CallSleep" workflow
 	CallSleepFunction func(workflow.Context, *CallSleepRequest) error
 )
@@ -1329,6 +1336,8 @@ func RegisterClientWorkflows(r worker.WorkflowRegistry, workflows ClientWorkflow
 
 // RegisterCallSleepWorkflow registers a test.xnserr.v1.Client.CallSleep workflow with the given worker
 func RegisterCallSleepWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CallSleepWorkflowInput) (CallSleepWorkflow, error)) {
+	clientRegistrationMutex.Lock()
+	defer clientRegistrationMutex.Unlock()
 	CallSleepFunction = buildCallSleep(wf)
 	r.RegisterWorkflowWithOptions(CallSleepFunction, workflow.RegisterOptions{Name: CallSleepWorkflowName})
 }

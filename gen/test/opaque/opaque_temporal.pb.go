@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -414,6 +415,8 @@ func (r *putOpaqueExampleRun) SignalOpaque(ctx context.Context, req *OpaqueExamp
 
 // Reference to generated workflow functions
 var (
+	// opaqueRegistrationMutex is a mutex for registering test.opaque.Opaque workflows
+	opaqueRegistrationMutex sync.Mutex
 	// PutOpaqueExampleFunction implements a "test.opaque.Opaque.PutOpaqueExample" workflow
 	PutOpaqueExampleFunction func(workflow.Context, *OpaqueExample) (*OpaqueExample, error)
 )
@@ -454,6 +457,8 @@ func RegisterOpaqueWorkflows(r worker.WorkflowRegistry, workflows OpaqueWorkflow
 
 // RegisterPutOpaqueExampleWorkflow registers a test.opaque.Opaque.PutOpaqueExample workflow with the given worker
 func RegisterPutOpaqueExampleWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *PutOpaqueExampleWorkflowInput) (PutOpaqueExampleWorkflow, error)) {
+	opaqueRegistrationMutex.Lock()
+	defer opaqueRegistrationMutex.Unlock()
 	PutOpaqueExampleFunction = buildPutOpaqueExample(wf)
 	r.RegisterWorkflowWithOptions(PutOpaqueExampleFunction, workflow.RegisterOptions{Name: PutOpaqueExampleWorkflowName})
 }

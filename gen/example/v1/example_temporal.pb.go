@@ -35,6 +35,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -677,6 +678,8 @@ func (o *UpdateFooProgressOptions) WithWaitPolicy(policy client.WorkflowUpdateSt
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// CreateFoo creates a new foo operation
 	CreateFooFunction func(workflow.Context, *CreateFooRequest) (*CreateFooResponse, error)
 )
@@ -717,6 +720,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterCreateFooWorkflow registers a example.v1.Example.CreateFoo workflow with the given worker
 func RegisterCreateFooWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CreateFooWorkflowInput) (CreateFooWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	CreateFooFunction = buildCreateFoo(wf)
 	r.RegisterWorkflowWithOptions(CreateFooFunction, workflow.RegisterOptions{Name: CreateFooWorkflowName})
 }

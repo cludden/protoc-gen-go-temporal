@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -414,6 +415,8 @@ func (r *putOpenExampleRun) SignalOpen(ctx context.Context, req *OpenExample) er
 
 // Reference to generated workflow functions
 var (
+	// openRegistrationMutex is a mutex for registering test.opaque.Open workflows
+	openRegistrationMutex sync.Mutex
 	// PutOpenExampleFunction implements a "test.opaque.Open.PutOpenExample" workflow
 	PutOpenExampleFunction func(workflow.Context, *OpenExample) (*OpenExample, error)
 )
@@ -454,6 +457,8 @@ func RegisterOpenWorkflows(r worker.WorkflowRegistry, workflows OpenWorkflows) {
 
 // RegisterPutOpenExampleWorkflow registers a test.opaque.Open.PutOpenExample workflow with the given worker
 func RegisterPutOpenExampleWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *PutOpenExampleWorkflowInput) (PutOpenExampleWorkflow, error)) {
+	openRegistrationMutex.Lock()
+	defer openRegistrationMutex.Unlock()
 	PutOpenExampleFunction = buildPutOpenExample(wf)
 	r.RegisterWorkflowWithOptions(PutOpenExampleFunction, workflow.RegisterOptions{Name: PutOpenExampleWorkflowName})
 }

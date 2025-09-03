@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -675,6 +676,8 @@ func (o *TestUpdateOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *T
 
 // Reference to generated workflow functions
 var (
+	// xnsHeartbeatServiceRegistrationMutex is a mutex for registering test.xnsheartbeat.v1.XnsHeartbeatService workflows
+	xnsHeartbeatServiceRegistrationMutex sync.Mutex
 	// TestWorkflowFunction implements a "test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow" workflow
 	TestWorkflowFunction func(workflow.Context, *TestWorkflowInput) (*TestWorkflowOutput, error)
 )
@@ -715,6 +718,8 @@ func RegisterXnsHeartbeatServiceWorkflows(r worker.WorkflowRegistry, workflows X
 
 // RegisterTestWorkflowWorkflow registers a test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow with the given worker
 func RegisterTestWorkflowWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *TestWorkflowWorkflowInput) (TestWorkflowWorkflow, error)) {
+	xnsHeartbeatServiceRegistrationMutex.Lock()
+	defer xnsHeartbeatServiceRegistrationMutex.Unlock()
 	TestWorkflowFunction = buildTestWorkflow(wf)
 	r.RegisterWorkflowWithOptions(TestWorkflowFunction, workflow.RegisterOptions{Name: TestWorkflowWorkflowName})
 }
@@ -2077,6 +2082,8 @@ func (r *callTestWorkflowRun) Terminate(ctx context.Context, reason string, deta
 
 // Reference to generated workflow functions
 var (
+	// xnsHeartbeatCallerServiceRegistrationMutex is a mutex for registering test.xnsheartbeat.v1.XnsHeartbeatCallerService workflows
+	xnsHeartbeatCallerServiceRegistrationMutex sync.Mutex
 	// CallTestWorkflowFunction implements a "test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow" workflow
 	CallTestWorkflowFunction func(workflow.Context) error
 )
@@ -2117,6 +2124,8 @@ func RegisterXnsHeartbeatCallerServiceWorkflows(r worker.WorkflowRegistry, workf
 
 // RegisterCallTestWorkflowWorkflow registers a test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow with the given worker
 func RegisterCallTestWorkflowWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CallTestWorkflowWorkflowInput) (CallTestWorkflowWorkflow, error)) {
+	xnsHeartbeatCallerServiceRegistrationMutex.Lock()
+	defer xnsHeartbeatCallerServiceRegistrationMutex.Unlock()
 	CallTestWorkflowFunction = buildCallTestWorkflow(wf)
 	r.RegisterWorkflowWithOptions(CallTestWorkflowFunction, workflow.RegisterOptions{Name: CallTestWorkflowWorkflowName})
 }

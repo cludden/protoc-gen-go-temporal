@@ -32,6 +32,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -361,6 +362,8 @@ func (r *fooRun) Terminate(ctx context.Context, reason string, details ...interf
 
 // Reference to generated workflow functions
 var (
+	// fooServiceRegistrationMutex is a mutex for registering test.editions.FooService workflows
+	fooServiceRegistrationMutex sync.Mutex
 	// FooFunction implements a "test.editions.FooService.Foo" workflow
 	FooFunction func(workflow.Context, *FooInput) (*FooOutput, error)
 )
@@ -401,6 +404,8 @@ func RegisterFooServiceWorkflows(r worker.WorkflowRegistry, workflows FooService
 
 // RegisterFooWorkflow registers a test.editions.FooService.Foo workflow with the given worker
 func RegisterFooWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *FooWorkflowInput) (FooWorkflow, error)) {
+	fooServiceRegistrationMutex.Lock()
+	defer fooServiceRegistrationMutex.Unlock()
 	FooFunction = buildFoo(wf)
 	r.RegisterWorkflowWithOptions(FooFunction, workflow.RegisterOptions{Name: FooWorkflowName})
 }

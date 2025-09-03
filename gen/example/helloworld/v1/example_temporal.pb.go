@@ -30,6 +30,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -386,6 +387,8 @@ func (r *helloRun) Goodbye(ctx context.Context, req *GoodbyeRequest) error {
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.helloworld.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// Hello prints a friendly greeting and waits for goodbye
 	HelloFunction func(workflow.Context, *HelloRequest) (*HelloResponse, error)
 )
@@ -426,6 +429,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterHelloWorkflow registers a example.helloworld.v1.Example.Hello workflow with the given worker
 func RegisterHelloWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *HelloWorkflowInput) (HelloWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	HelloFunction = buildHello(wf)
 	r.RegisterWorkflowWithOptions(HelloFunction, workflow.RegisterOptions{Name: HelloWorkflowName})
 }

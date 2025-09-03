@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -610,6 +611,8 @@ func (o *UpdateWithInputOptions) WithWaitPolicy(policy client.WorkflowUpdateStag
 
 // Reference to generated workflow functions
 var (
+	// testRegistrationMutex is a mutex for registering test.option.v1.Test workflows
+	testRegistrationMutex sync.Mutex
 	// WorkflowWithInputFunction implements a "test.option.v1.Test.WorkflowWithInput" workflow
 	WorkflowWithInputFunction func(workflow.Context, *WorkflowWithInputRequest) error
 )
@@ -650,6 +653,8 @@ func RegisterTestWorkflows(r worker.WorkflowRegistry, workflows TestWorkflows) {
 
 // RegisterWorkflowWithInputWorkflow registers a test.option.v1.Test.WorkflowWithInput workflow with the given worker
 func RegisterWorkflowWithInputWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *WorkflowWithInputWorkflowInput) (WorkflowWithInputWorkflow, error)) {
+	testRegistrationMutex.Lock()
+	defer testRegistrationMutex.Unlock()
 	WorkflowWithInputFunction = buildWorkflowWithInput(wf)
 	r.RegisterWorkflowWithOptions(WorkflowWithInputFunction, workflow.RegisterOptions{Name: WorkflowWithInputWorkflowName})
 }
