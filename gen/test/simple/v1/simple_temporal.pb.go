@@ -39,6 +39,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -1922,6 +1923,8 @@ func (o *SomeUpdate2Options) WithWaitPolicy(policy client.WorkflowUpdateStage) *
 
 // Reference to generated workflow functions
 var (
+	// simpleRegistrationMutex is a mutex for registering mycompany.simple.Simple workflows
+	simpleRegistrationMutex sync.Mutex
 	// SomeWorkflow1 does some workflow thing.
 	SomeWorkflow1Function func(workflow.Context, *SomeWorkflow1Request) (*SomeWorkflow1Response, error)
 	// SomeWorkflow2 does some workflow thing.
@@ -2014,6 +2017,8 @@ func RegisterSimpleWorkflows(r worker.WorkflowRegistry, workflows SimpleWorkflow
 
 // RegisterSomeWorkflow1Workflow registers a mycompany.simple.Simple.SomeWorkflow1 workflow with the given worker
 func RegisterSomeWorkflow1Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomeWorkflow1WorkflowInput) (SomeWorkflow1Workflow, error)) {
+	simpleRegistrationMutex.Lock()
+	defer simpleRegistrationMutex.Unlock()
 	SomeWorkflow1Function = buildSomeWorkflow1(wf)
 	r.RegisterWorkflowWithOptions(SomeWorkflow1Function, workflow.RegisterOptions{Name: SomeWorkflow1WorkflowName})
 	r.RegisterWorkflowWithOptions(SomeWorkflow1Function, workflow.RegisterOptions{Name: "mycompany.SomeWorkflow1"})
@@ -2343,6 +2348,8 @@ func (r *SomeWorkflow1ChildRun) SomeSignal2Async(ctx workflow.Context, input *So
 
 // RegisterSomeWorkflow2Workflow registers a mycompany.simple.Simple.SomeWorkflow2 workflow with the given worker
 func RegisterSomeWorkflow2Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomeWorkflow2WorkflowInput) (SomeWorkflow2Workflow, error)) {
+	simpleRegistrationMutex.Lock()
+	defer simpleRegistrationMutex.Unlock()
 	SomeWorkflow2Function = buildSomeWorkflow2(wf)
 	r.RegisterWorkflowWithOptions(SomeWorkflow2Function, workflow.RegisterOptions{Name: SomeWorkflow2WorkflowName})
 }
@@ -2623,6 +2630,8 @@ func (r *SomeWorkflow2ChildRun) SomeSignal1Async(ctx workflow.Context) workflow.
 
 // RegisterSomeWorkflow3Workflow registers a mycompany.simple.Simple.SomeWorkflow3 workflow with the given worker
 func RegisterSomeWorkflow3Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomeWorkflow3WorkflowInput) (SomeWorkflow3Workflow, error)) {
+	simpleRegistrationMutex.Lock()
+	defer simpleRegistrationMutex.Unlock()
 	SomeWorkflow3Function = buildSomeWorkflow3(wf)
 	r.RegisterWorkflowWithOptions(SomeWorkflow3Function, workflow.RegisterOptions{Name: SomeWorkflow3WorkflowName})
 }
@@ -2900,6 +2909,8 @@ func (r *SomeWorkflow3ChildRun) SomeSignal2Async(ctx workflow.Context, input *So
 
 // RegisterSomeWorkflow4Workflow registers a mycompany.simple.Simple.SomeWorkflow4 workflow with the given worker
 func RegisterSomeWorkflow4Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomeWorkflow4WorkflowInput) (SomeWorkflow4Workflow, error)) {
+	simpleRegistrationMutex.Lock()
+	defer simpleRegistrationMutex.Unlock()
 	SomeWorkflow4Function = buildSomeWorkflow4(wf)
 	r.RegisterWorkflowWithOptions(SomeWorkflow4Function, workflow.RegisterOptions{Name: SomeWorkflow4WorkflowName})
 }
@@ -8334,6 +8345,8 @@ func (o *OtherUpdateOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *
 
 // Reference to generated workflow functions
 var (
+	// otherRegistrationMutex is a mutex for registering mycompany.simple.Other workflows
+	otherRegistrationMutex sync.Mutex
 	// OtherWorkflowFunction implements a "mycompany.simple.Other.OtherWorkflow" workflow
 	OtherWorkflowFunction func(workflow.Context, *OtherWorkflowRequest) (*OtherWorkflowResponse, error)
 	// OtherWorkflow2Function implements a "mycompany.simple.Other.OtherWorkflow2" workflow
@@ -8390,6 +8403,8 @@ func RegisterOtherWorkflows(r worker.WorkflowRegistry, workflows OtherWorkflows)
 
 // RegisterOtherWorkflowWorkflow registers a mycompany.simple.Other.OtherWorkflow workflow with the given worker
 func RegisterOtherWorkflowWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *OtherWorkflowWorkflowInput) (OtherWorkflowWorkflow, error)) {
+	otherRegistrationMutex.Lock()
+	defer otherRegistrationMutex.Unlock()
 	OtherWorkflowFunction = buildOtherWorkflow(wf)
 	r.RegisterWorkflowWithOptions(OtherWorkflowFunction, workflow.RegisterOptions{Name: OtherWorkflowWorkflowName})
 }
@@ -8648,6 +8663,8 @@ func (r *OtherWorkflowChildRun) WaitStart(ctx workflow.Context) (*workflow.Execu
 
 // RegisterOtherWorkflow2Workflow registers a mycompany.simple.Other.OtherWorkflow2 workflow with the given worker
 func RegisterOtherWorkflow2Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *OtherWorkflow2WorkflowInput) (OtherWorkflow2Workflow, error)) {
+	otherRegistrationMutex.Lock()
+	defer otherRegistrationMutex.Unlock()
 	OtherWorkflow2Function = buildOtherWorkflow2(wf)
 	r.RegisterWorkflowWithOptions(OtherWorkflow2Function, workflow.RegisterOptions{Name: OtherWorkflow2WorkflowName})
 }
@@ -10593,6 +10610,8 @@ func (r *whatRun) Terminate(ctx context.Context, reason string, details ...inter
 
 // Reference to generated workflow functions
 var (
+	// ignoredRegistrationMutex is a mutex for registering mycompany.simple.Ignored workflows
+	ignoredRegistrationMutex sync.Mutex
 	// WhatFunction implements a "mycompany.simple.Ignored.What" workflow
 	WhatFunction func(workflow.Context, *WhatRequest) error
 )
@@ -10633,6 +10652,8 @@ func RegisterIgnoredWorkflows(r worker.WorkflowRegistry, workflows IgnoredWorkfl
 
 // RegisterWhatWorkflow registers a mycompany.simple.Ignored.What workflow with the given worker
 func RegisterWhatWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *WhatWorkflowInput) (WhatWorkflow, error)) {
+	ignoredRegistrationMutex.Lock()
+	defer ignoredRegistrationMutex.Unlock()
 	WhatFunction = buildWhat(wf)
 	r.RegisterWorkflowWithOptions(WhatFunction, workflow.RegisterOptions{Name: WhatWorkflowName})
 }
@@ -12555,6 +12576,8 @@ func (o *SomeDeprecatedUpdate2Options) WithWaitPolicy(policy client.WorkflowUpda
 
 // Reference to generated workflow functions
 var (
+	// deprecatedRegistrationMutex is a mutex for registering mycompany.simple.Deprecated workflows
+	deprecatedRegistrationMutex sync.Mutex
 	// SomeDeprecatedWorkflow1 does something
 	//
 	// Deprecated: Do not use.
@@ -12627,6 +12650,8 @@ func RegisterDeprecatedWorkflows(r worker.WorkflowRegistry, workflows Deprecated
 
 // RegisterSomeDeprecatedWorkflow1Workflow registers a mycompany.simple.Deprecated.SomeDeprecatedWorkflow1 workflow with the given worker
 func RegisterSomeDeprecatedWorkflow1Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomeDeprecatedWorkflow1WorkflowInput) (SomeDeprecatedWorkflow1Workflow, error)) {
+	deprecatedRegistrationMutex.Lock()
+	defer deprecatedRegistrationMutex.Unlock()
 	SomeDeprecatedWorkflow1Function = buildSomeDeprecatedWorkflow1(wf)
 	r.RegisterWorkflowWithOptions(SomeDeprecatedWorkflow1Function, workflow.RegisterOptions{Name: SomeDeprecatedWorkflow1WorkflowName})
 }
@@ -12913,6 +12938,8 @@ func (r *SomeDeprecatedWorkflow1ChildRun) SomeDeprecatedSignal1Async(ctx workflo
 
 // RegisterSomeDeprecatedWorkflow2Workflow registers a mycompany.simple.Deprecated.SomeDeprecatedWorkflow2 workflow with the given worker
 func RegisterSomeDeprecatedWorkflow2Workflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomeDeprecatedWorkflow2WorkflowInput) (SomeDeprecatedWorkflow2Workflow, error)) {
+	deprecatedRegistrationMutex.Lock()
+	defer deprecatedRegistrationMutex.Unlock()
 	SomeDeprecatedWorkflow2Function = buildSomeDeprecatedWorkflow2(wf)
 	r.RegisterWorkflowWithOptions(SomeDeprecatedWorkflow2Function, workflow.RegisterOptions{Name: SomeDeprecatedWorkflow2WorkflowName})
 }

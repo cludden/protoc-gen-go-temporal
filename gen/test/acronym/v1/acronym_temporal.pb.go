@@ -31,6 +31,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -1074,6 +1075,8 @@ func (r *somethingV2FooBarRun) Terminate(ctx context.Context, reason string, det
 
 // Reference to generated workflow functions
 var (
+	// awsRegistrationMutex is a mutex for registering test.acronym.v1.AWS workflows
+	awsRegistrationMutex sync.Mutex
 	// ManageAWS does some workflow thing.
 	ManageAWSFunction func(workflow.Context, *ManageAWSRequest) (*ManageAWSResponse, error)
 	// ManageAWSResource does some workflow thing.
@@ -1162,6 +1165,8 @@ func RegisterAWSWorkflows(r worker.WorkflowRegistry, workflows AWSWorkflows) {
 
 // RegisterManageAWSWorkflow registers a test.acronym.v1.AWS.ManageAWS workflow with the given worker
 func RegisterManageAWSWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ManageAWSWorkflowInput) (ManageAWSWorkflow, error)) {
+	awsRegistrationMutex.Lock()
+	defer awsRegistrationMutex.Unlock()
 	ManageAWSFunction = buildManageAWS(wf)
 	r.RegisterWorkflowWithOptions(ManageAWSFunction, workflow.RegisterOptions{Name: ManageAWSWorkflowName})
 }
@@ -1429,6 +1434,8 @@ func (r *ManageAWSChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution
 
 // RegisterManageAWSResourceWorkflow registers a test.acronym.v1.AWS.ManageAWSResource workflow with the given worker
 func RegisterManageAWSResourceWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ManageAWSResourceWorkflowInput) (ManageAWSResourceWorkflow, error)) {
+	awsRegistrationMutex.Lock()
+	defer awsRegistrationMutex.Unlock()
 	ManageAWSResourceFunction = buildManageAWSResource(wf)
 	r.RegisterWorkflowWithOptions(ManageAWSResourceFunction, workflow.RegisterOptions{Name: ManageAWSResourceWorkflowName})
 }
@@ -1696,6 +1703,8 @@ func (r *ManageAWSResourceChildRun) WaitStart(ctx workflow.Context) (*workflow.E
 
 // RegisterSomethingV1FooBarWorkflow registers a test.acronym.v1.AWS.SomethingV1FooBar workflow with the given worker
 func RegisterSomethingV1FooBarWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomethingV1FooBarWorkflowInput) (SomethingV1FooBarWorkflow, error)) {
+	awsRegistrationMutex.Lock()
+	defer awsRegistrationMutex.Unlock()
 	SomethingV1FooBarFunction = buildSomethingV1FooBar(wf)
 	r.RegisterWorkflowWithOptions(SomethingV1FooBarFunction, workflow.RegisterOptions{Name: SomethingV1FooBarWorkflowName})
 }
@@ -1963,6 +1972,8 @@ func (r *SomethingV1FooBarChildRun) WaitStart(ctx workflow.Context) (*workflow.E
 
 // RegisterSomethingV2FooBarWorkflow registers a test.acronym.v1.AWS.SomethingV2FooBar workflow with the given worker
 func RegisterSomethingV2FooBarWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SomethingV2FooBarWorkflowInput) (SomethingV2FooBarWorkflow, error)) {
+	awsRegistrationMutex.Lock()
+	defer awsRegistrationMutex.Unlock()
 	SomethingV2FooBarFunction = buildSomethingV2FooBar(wf)
 	r.RegisterWorkflowWithOptions(SomethingV2FooBarFunction, workflow.RegisterOptions{Name: SomethingV2FooBarWorkflowName})
 }

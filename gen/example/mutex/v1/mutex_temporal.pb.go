@@ -35,6 +35,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -947,6 +948,8 @@ func (o *AcquireLockOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.mutex.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// Mutex is a workflow that manages concurrent access to a resource
 	// identified by `resource_id`.
 	MutexFunction func(workflow.Context, *MutexInput) error
@@ -1011,6 +1014,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterMutexWorkflow registers a example.mutex.v1.Example.Mutex workflow with the given worker
 func RegisterMutexWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *MutexWorkflowInput) (MutexWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	MutexFunction = buildMutex(wf)
 	r.RegisterWorkflowWithOptions(MutexFunction, workflow.RegisterOptions{Name: MutexWorkflowName})
 }
@@ -1312,6 +1317,8 @@ func (r *MutexChildRun) ReleaseLockAsync(ctx workflow.Context, input *ReleaseLoc
 
 // RegisterSampleWorkflowWithMutexWorkflow registers a example.mutex.v1.Example.SampleWorkflowWithMutex workflow with the given worker
 func RegisterSampleWorkflowWithMutexWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *SampleWorkflowWithMutexWorkflowInput) (SampleWorkflowWithMutexWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	SampleWorkflowWithMutexFunction = buildSampleWorkflowWithMutex(wf)
 	r.RegisterWorkflowWithOptions(SampleWorkflowWithMutexFunction, workflow.RegisterOptions{Name: SampleWorkflowWithMutexWorkflowName})
 }

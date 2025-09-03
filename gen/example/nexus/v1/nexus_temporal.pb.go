@@ -30,6 +30,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -370,6 +371,8 @@ func (r *helloRun) Terminate(ctx context.Context, reason string, details ...inte
 
 // Reference to generated workflow functions
 var (
+	// greetingServiceRegistrationMutex is a mutex for registering example.nexus.v1.GreetingService workflows
+	greetingServiceRegistrationMutex sync.Mutex
 	// generates a friendly greeting based on the input name and language
 	HelloFunction func(workflow.Context, *HelloInput) (*HelloOutput, error)
 )
@@ -410,6 +413,8 @@ func RegisterGreetingServiceWorkflows(r worker.WorkflowRegistry, workflows Greet
 
 // RegisterHelloWorkflow registers a example.nexus.v1.GreetingService.Hello workflow with the given worker
 func RegisterHelloWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *HelloWorkflowInput) (HelloWorkflow, error)) {
+	greetingServiceRegistrationMutex.Lock()
+	defer greetingServiceRegistrationMutex.Unlock()
 	HelloFunction = buildHello(wf)
 	r.RegisterWorkflowWithOptions(HelloFunction, workflow.RegisterOptions{Name: HelloWorkflowName})
 }
@@ -1604,6 +1609,8 @@ func (r *echoRun) Terminate(ctx context.Context, reason string, details ...inter
 
 // Reference to generated workflow functions
 var (
+	// echoServiceRegistrationMutex is a mutex for registering example.nexus.v1.EchoService workflows
+	echoServiceRegistrationMutex sync.Mutex
 	// echoes back the input string
 	EchoFunction func(workflow.Context, *EchoInput) (*EchoOutput, error)
 )
@@ -1644,6 +1651,8 @@ func RegisterEchoServiceWorkflows(r worker.WorkflowRegistry, workflows EchoServi
 
 // RegisterEchoWorkflow registers a example.nexus.v1.EchoService.Echo workflow with the given worker
 func RegisterEchoWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *EchoWorkflowInput) (EchoWorkflow, error)) {
+	echoServiceRegistrationMutex.Lock()
+	defer echoServiceRegistrationMutex.Unlock()
 	EchoFunction = buildEcho(wf)
 	r.RegisterWorkflowWithOptions(EchoFunction, workflow.RegisterOptions{Name: EchoWorkflowName})
 }

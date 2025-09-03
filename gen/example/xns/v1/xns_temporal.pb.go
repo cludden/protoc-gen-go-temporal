@@ -35,6 +35,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -370,6 +371,8 @@ func (r *provisionFooRun) Terminate(ctx context.Context, reason string, details 
 
 // Reference to generated workflow functions
 var (
+	// xnsRegistrationMutex is a mutex for registering example.xns.v1.Xns workflows
+	xnsRegistrationMutex sync.Mutex
 	// ProvisionFooFunction implements a "example.xns.v1.Xns.ProvisionFoo" workflow
 	ProvisionFooFunction func(workflow.Context, *ProvisionFooRequest) (*ProvisionFooResponse, error)
 )
@@ -410,6 +413,8 @@ func RegisterXnsWorkflows(r worker.WorkflowRegistry, workflows XnsWorkflows) {
 
 // RegisterProvisionFooWorkflow registers a example.xns.v1.Xns.ProvisionFoo workflow with the given worker
 func RegisterProvisionFooWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ProvisionFooWorkflowInput) (ProvisionFooWorkflow, error)) {
+	xnsRegistrationMutex.Lock()
+	defer xnsRegistrationMutex.Unlock()
 	ProvisionFooFunction = buildProvisionFoo(wf)
 	r.RegisterWorkflowWithOptions(ProvisionFooFunction, workflow.RegisterOptions{Name: ProvisionFooWorkflowName})
 }
@@ -1652,6 +1657,8 @@ func (o *UpdateFooProgressOptions) WithWaitPolicy(policy client.WorkflowUpdateSt
 
 // Reference to generated workflow functions
 var (
+	// exampleRegistrationMutex is a mutex for registering example.xns.v1.Example workflows
+	exampleRegistrationMutex sync.Mutex
 	// CreateFoo creates a new foo operation
 	CreateFooFunction func(workflow.Context, *CreateFooRequest) (*CreateFooResponse, error)
 )
@@ -1692,6 +1699,8 @@ func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkfl
 
 // RegisterCreateFooWorkflow registers a example.xns.v1.Example.CreateFoo workflow with the given worker
 func RegisterCreateFooWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CreateFooWorkflowInput) (CreateFooWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
 	CreateFooFunction = buildCreateFoo(wf)
 	r.RegisterWorkflowWithOptions(CreateFooFunction, workflow.RegisterOptions{Name: CreateFooWorkflowName})
 }

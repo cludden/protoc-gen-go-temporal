@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 ### Fixed
+- [#124](https://github.com/cludden/protoc-gen-go-temporal/pull/124) guard workflow registration with mutex
 
 
 

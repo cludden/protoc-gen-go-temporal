@@ -6,12 +6,9 @@ import (
 	"strings"
 
 	j "github.com/dave/jennifer/jen"
+	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
-
-func (n *names) workflowIDExpression(workflow protoreflect.FullName) string {
-	return n.toCamel("%sIDExpression", workflow)
-}
 
 // genWorkerBuilderFunction generates a build<Workflow> function that converts
 // a constructor function or method into a valid workflow function
@@ -211,6 +208,10 @@ func (m *Manifest) genWorkerRegisterWorkflow(f *j.File, workflow protoreflect.Fu
 				),
 		).
 		BlockFunc(func(g *j.Group) {
+			registrationMutexName := m.Names().serviceRegistrationMutex(m.Service)
+			g.Id(registrationMutexName).Dot("Lock").Call()
+			g.Defer().Id(registrationMutexName).Dot("Unlock").Call()
+
 			g.Id(varName).Op("=").Id(builderName).Call(j.Id("wf"))
 			names := []j.Code{j.Id(m.toCamel("%sWorkflowName", workflow))}
 			aliases := opts.GetAliases()
@@ -842,8 +843,13 @@ func (m *Manifest) genWorkerWorkflowFunctionVars(f *j.File) {
 	if len(m.workflowsOrdered) == 0 {
 		return
 	}
+
 	f.Commentf("Reference to generated workflow functions")
 	f.Var().DefsFunc(func(g *j.Group) {
+		registrationMutexName := m.Names().serviceRegistrationMutex(m.Service)
+		g.Commentf("%s is a mutex for registering %s workflows", registrationMutexName, m.Service.Desc.FullName())
+		g.Id(registrationMutexName).Qual("sync", "Mutex")
+
 		for _, workflow := range m.workflowsOrdered {
 			if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 				continue
@@ -1112,4 +1118,12 @@ func (m *Manifest) genWorkerWorkflowsInterface(f *j.File) {
 				Line()
 		}
 	})
+}
+
+func (n *names) serviceRegistrationMutex(service *protogen.Service) string {
+	return n.toLowerCamel("%sRegistrationMutex", service.GoName)
+}
+
+func (n *names) workflowIDExpression(workflow protoreflect.FullName) string {
+	return n.toCamel("%sIDExpression", workflow)
 }

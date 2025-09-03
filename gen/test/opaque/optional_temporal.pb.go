@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -414,6 +415,8 @@ func (r *putOptionalExampleRun) SignalOptional(ctx context.Context, req *Optiona
 
 // Reference to generated workflow functions
 var (
+	// optionalRegistrationMutex is a mutex for registering test.opaque.Optional workflows
+	optionalRegistrationMutex sync.Mutex
 	// PutOptionalExampleFunction implements a "test.opaque.Optional.PutOptionalExample" workflow
 	PutOptionalExampleFunction func(workflow.Context, *OptionalExample) (*OptionalExample, error)
 )
@@ -454,6 +457,8 @@ func RegisterOptionalWorkflows(r worker.WorkflowRegistry, workflows OptionalWork
 
 // RegisterPutOptionalExampleWorkflow registers a test.opaque.Optional.PutOptionalExample workflow with the given worker
 func RegisterPutOptionalExampleWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *PutOptionalExampleWorkflowInput) (PutOptionalExampleWorkflow, error)) {
+	optionalRegistrationMutex.Lock()
+	defer optionalRegistrationMutex.Unlock()
 	PutOptionalExampleFunction = buildPutOptionalExample(wf)
 	r.RegisterWorkflowWithOptions(PutOptionalExampleFunction, workflow.RegisterOptions{Name: PutOptionalExampleWorkflowName})
 }

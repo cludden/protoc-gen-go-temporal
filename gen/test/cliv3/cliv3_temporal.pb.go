@@ -32,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -739,6 +740,8 @@ func (o *UpdateFooOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *Up
 
 // Reference to generated workflow functions
 var (
+	// exampleServiceRegistrationMutex is a mutex for registering test.cliv3.ExampleService workflows
+	exampleServiceRegistrationMutex sync.Mutex
 	// CreateFooFunction implements a "test.cliv3.CreateFoo" workflow
 	CreateFooFunction func(workflow.Context, *CreateFooInput) (*CreateFooOutput, error)
 )
@@ -779,6 +782,8 @@ func RegisterExampleServiceWorkflows(r worker.WorkflowRegistry, workflows Exampl
 
 // RegisterCreateFooWorkflow registers a test.cliv3.ExampleService.CreateFoo workflow with the given worker
 func RegisterCreateFooWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CreateFooWorkflowInput) (CreateFooWorkflow, error)) {
+	exampleServiceRegistrationMutex.Lock()
+	defer exampleServiceRegistrationMutex.Unlock()
 	CreateFooFunction = buildCreateFoo(wf)
 	r.RegisterWorkflowWithOptions(CreateFooFunction, workflow.RegisterOptions{Name: CreateFooWorkflowName})
 }
