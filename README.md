@@ -32,14 +32,14 @@ A protoc plugin for generating typed Temporal clients and workers in Go from pro
 Generated **Client** with:
   - methods for executing workflows, queries, signals, and updates
   - methods for cancelling or terminating workflows
-  - default `client.StartWorkflowOptions` and `client.UpdateWorkflowWithOptionsRequest`
+  - default `client.StartWorkflowOptions`, `client.UpdateWorkflowWithOptionsRequest`, and more
   - dynamic workflow ids, update ids, and search attributes via [Bloblang expressions](https://cludden.github.io/protoc-gen-go-temporal/docs/guides/bloblang)
   - default timeouts, id reuse policies, retry policies, wait policies, and more
 
 
 Generated **Worker** resources with:
   - functions for calling activities and local activities from workflows
-  - functions for executing child workflows and signalling external workflows
+  - functions for executing child workflows and signaling external workflows
   - default `workflow.ActivityOptions`, `workflow.ChildWorkflowOptions`
   - default timeouts, parent close policies, retry policies, and more
 
@@ -71,18 +71,14 @@ See the [documentation](https://cludden.github.io/protoc-gen-go-temporal/) for g
 
 ## Development
 
-1. Install [omni](https://omnicli.dev/)
-2. Install development dependencies
+1. Install [mise](https://mise.jdx.dev/installing-mise.html)
+2. Update generated code
   ```shell
-  omni up
+  mise r build && mise r genlocal
   ```
-3. Update generated code
+1. Run tests
   ```shell
-  omni genlocal
-  ```
-4. Run tests
-  ```shell
-  omni test
+  mise r test
   ```
 
 

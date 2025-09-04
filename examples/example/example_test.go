@@ -8,8 +8,7 @@ import (
 	"time"
 
 	examplev1 "github.com/cludden/protoc-gen-go-temporal/gen/example/v1"
-	clientMock "github.com/cludden/protoc-gen-go-temporal/mocks/go.temporal.io/sdk/client"
-	"github.com/cludden/protoc-gen-go-temporal/mocks/go.temporal.io/sdk/clientutils"
+	clientmocks "github.com/cludden/protoc-gen-go-temporal/mocks/go.temporal.io/sdk/client"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/enums/v1"
@@ -22,7 +21,7 @@ import (
 func TestCreateFooStartWorkflowOptions(t *testing.T) {
 	ctx, require := context.Background(), require.New(t)
 
-	c := clientMock.NewMockClient(t)
+	c := clientmocks.NewMockClient(t)
 	c.On("ExecuteWorkflow", mock.Anything, mock.Anything, examplev1.CreateFooWorkflowName, mock.Anything).Return(
 		func(ctx context.Context, opts client.StartWorkflowOptions, workflow any, params ...any) (run client.WorkflowRun, err error) {
 			if opts.ID != "create-foo/bar" {
@@ -34,7 +33,7 @@ func TestCreateFooStartWorkflowOptions(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			return clientutils.NewMockWorkflowRun(t), nil
+			return clientmocks.NewMockWorkflowRun(t), nil
 		},
 	)
 	example := examplev1.NewExampleClient(c)

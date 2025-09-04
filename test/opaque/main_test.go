@@ -11,7 +11,6 @@ import (
 
 	"github.com/cludden/protoc-gen-go-temporal/gen/test/opaque"
 	clientmocks "github.com/cludden/protoc-gen-go-temporal/mocks/go.temporal.io/sdk/client"
-	"github.com/cludden/protoc-gen-go-temporal/mocks/go.temporal.io/sdk/clientutils"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/convert"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/mock"
@@ -513,7 +512,7 @@ func testCliFlags[
 						workflowInput, ok = args[0].(testExampleMessage)
 						require.True(t, ok)
 						require.NotNil(t, workflowInput)
-						run := clientutils.NewMockWorkflowRun(t)
+						run := clientmocks.NewMockWorkflowRun(t)
 						run.EXPECT().Get(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, i interface{}) error {
 							return nil
 						})

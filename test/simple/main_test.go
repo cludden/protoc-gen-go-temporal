@@ -13,7 +13,7 @@ import (
 
 	commonv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
-	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
+	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/test/simple/v1"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/patch"
 	"github.com/stretchr/testify/mock"

@@ -22,7 +22,7 @@ plugins:
     opt:
       - exclude-service-tags=disabled
       - paths=source_relative
-  - local: .omni/bin/protoc-gen-go_temporal
+  - local: dist/protoc-gen-go_temporal
     out: gen
     opt:
       - cli-categories=true

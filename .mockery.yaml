@@ -1,41 +1,57 @@
-disable-version-string: true
-issue-845-fix: true
-resolve-type-alias: false
-with-expecter: true
+all: false
+dir: '{{.InterfaceDir}}'
+filename: mocks.go
+force-file-write: true
+formatter: goimports
+log-level: info
+structname: '{{.Mock}}{{.InterfaceName}}'
+pkgname: '{{.SrcPackageName}}'
+recursive: false
+replace-type:
+  go.temporal.io/sdk/internal:
+    Context:
+      pkg-path: go.temporal.io/sdk/workflow
+      type-name: Context
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+template-data:
+  unroll-variadic: true
 packages:
   github.com/cludden/protoc-gen-go-temporal/gen/example/v1:
     config:
-      replace-type:
-        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+      dir: mocks/example/v1
+      pkgname: examplev1mocks
     interfaces:
       CreateFooRun: {}
       ExampleClient: {}
       UpdateFooProgressHandle: {}
   github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1:
     config:
-      replace-type:
-        - go.temporal.io/sdk/internal=go.temporal.io/sdk/workflow
+      dir: mocks/test/simple/v1
+      pkgname: simplev1mocks
     interfaces:
       SimpleWorkflowFunctions: {}
   github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1:
     config:
-      outpkg: xnserrv1mocks
-      replace-type:
-        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+      dir: mocks/test/xnserr/v1
+      pkgname: xnserrv1mocks
     interfaces:
       ServerClient: {}
       SleepRun: {}
-  go.temporal.io/sdk/internal:
-    config:
-      dir: mocks/go.temporal.io/sdk/clientutils
-      outpkg: clientutils
-      replace-type:
-        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
-    interfaces:
-      WorkflowRun: {}
   go.temporal.io/sdk/client:
     config:
-      replace-type:
-        - go.temporal.io/sdk/internal=go.temporal.io/sdk/client
+      dir: mocks/go.temporal.io/sdk/client
+      pkgname: clientmocks
     interfaces:
       Client: {}
+      WorkflowRun:
+        configs:
+          - replace-type:
+              go.temporal.io/sdk/internal:
+                Context:
+                  pkg-path: go.temporal.io/sdk/workflow
+                  type-name: Context
+                WorkflowRunGetOptions:
+                  pkg-path: go.temporal.io/sdk/client
+                  type-name: WorkflowRunGetOptions

@@ -12,7 +12,7 @@ import (
 	xnsv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
 	xnserrv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1"
 	"github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1/xnserrv1xns"
-	xnserrv1mocks "github.com/cludden/protoc-gen-go-temporal/mocks/github.com/cludden/protoc-gen-go-temporal/gen/test/xnserr/v1"
+	xnserrv1mocks "github.com/cludden/protoc-gen-go-temporal/mocks/test/xnserr/v1"
 	"github.com/cludden/protoc-gen-go-temporal/pkg/xns"
 	"github.com/hairyhenderson/go-which"
 	"github.com/stretchr/testify/mock"

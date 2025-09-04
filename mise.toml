@@ -1,0 +1,66 @@
+[tools]
+"github:bufbuild/buf" = "1.56.0"
+"github:cludden/protoc-gen-go-temporal" = "latest"
+"github:golangci/golangci-lint" = "2.3.0"
+"github:protocolbuffers/protobuf-go" = "1.36.8"
+"github:temporalio/cli" = "1.3.0"
+"github:vektra/mockery" = "3.5.1"
+go = "1.23.6"
+"go:github.com/bergundy/protoc-gen-go-nexus-temporal/cmd/protoc-gen-go-nexus-temporal" = "v0.0.3"
+"go:github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus" = "v0.0.7"
+"go:github.com/mfridman/tparse" = "v0.17.0"
+goreleaser = "latest"
+protoc = "latest"
+
+[tasks.build]
+description = "Build the project"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+go build -o protoc-gen-go_temporal ./cmd/protoc-gen-go_temporal
+"""
+
+[tasks.docs]
+description = "Generate documentation"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+cd docs && npm run start
+"""
+
+[tasks.gen]
+description = "Generate code"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+rm -rf ./gen/**
+buf dep update
+buf format -w
+buf lint
+buf generate
+buf generate --template buf.patch.gen.yaml
+buf generate --template buf.cliv3.gen.yaml
+buf generate --template buf.nexus.gen.yaml
+mockery --log-level=error
+go mod tidy
+"""
+
+[tasks.genlocal]
+description = "Generate code locally"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+rm -rf ./gen/**
+buf dep update
+buf format -w
+buf lint
+buf generate --template buf.local.gen.yaml
+buf generate --template buf.patch.gen.yaml
+buf generate --template buf.cliv3.gen.yaml
+buf generate --template buf.nexus.gen.yaml
+mockery --log-level=error
+go mod tidy
+"""
+
+[tasks.test]
+description = "Run tests"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+set -o pipefail && go test -json ./... | tparse -all
+"""
