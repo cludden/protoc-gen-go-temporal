@@ -274,7 +274,7 @@ func (m *Manifest) genTestClientImplUpdateMethodAsync(f *j.File, update protoref
 			).Line()
 
 			g.If(j.Id("options").Dot("UpdateID").Op("==").Lit("")).Block(
-				j.Id("options").Dot("UpdateID").Op("=").Id("workflowID"),
+				j.Id("options").Dot("UpdateID").Op("=").Qual(uuidPkg, "New").Call().Dot("String").Call(),
 			).Line()
 
 			// update workflow

@@ -1,4 +1,5 @@
 [tools]
+changie = "latest"
 "github:bufbuild/buf" = "1.56.0"
 "github:cludden/protoc-gen-go-temporal" = "latest"
 "github:golangci/golangci-lint" = "2.3.0"
@@ -6,8 +7,8 @@
 "github:temporalio/cli" = "1.3.0"
 "github:vektra/mockery" = "3.5.1"
 go = "1.23.6"
-"go:github.com/bergundy/protoc-gen-go-nexus-temporal/cmd/protoc-gen-go-nexus-temporal" = "v0.0.3"
-"go:github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus" = "v0.0.7"
+"go:github.com/bergundy/protoc-gen-go-nexus-temporal/cmd/protoc-gen-go-nexus-temporal" = "v0.0.4"
+"go:github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus" = "v0.0.8"
 "go:github.com/mfridman/tparse" = "v0.17.0"
 goreleaser = "latest"
 protoc = "latest"
@@ -16,7 +17,7 @@ protoc = "latest"
 description = "Build the project"
 run = """#!/usr/bin/env bash
 set -euo pipefail
-go build -o protoc-gen-go_temporal ./cmd/protoc-gen-go_temporal
+go build -o ./dist/protoc-gen-go_temporal ./cmd/protoc-gen-go_temporal
 """
 
 [tasks.docs]
