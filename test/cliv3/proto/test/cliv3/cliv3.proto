@@ -4,6 +4,7 @@ package test.cliv3;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/go_features.proto";
+import "google/protobuf/timestamp.proto";
 import "temporal/v1/temporal.proto";
 
 option features.(pb.go).api_level = API_OPAQUE;
@@ -23,6 +24,7 @@ service ExampleService {
       update: {
         ref: "UpdateFoo"
         start: true
+        validate: true
       }
     };
   }
@@ -43,34 +45,29 @@ service ExampleService {
 message CreateFooInput {
   string name = 1;
   string description = 2;
+  google.protobuf.Timestamp expires_at = 3;
 }
 
 message CreateFooOutput {
   string id = 1;
 }
 
-message GetFooInput {
-  string id = 1;
-}
+message GetFooInput {}
 
 message GetFooOutput {
   string name = 1;
   string description = 2;
+  double progress = 3;
 }
 
 message SignalFooInput {
-  string id = 1;
-  string signal = 2;
+  double progress = 1;
 }
 
 message UpdateFooInput {
-  string id = 1;
-  string name = 2;
-  string description = 3;
+  double progress = 1;
 }
 
 message UpdateFooOutput {
   string id = 1;
-  string name = 2;
-  string description = 3;
 }

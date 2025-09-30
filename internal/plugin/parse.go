@@ -41,6 +41,7 @@ const (
 	temporalnexusPkg = "go.temporal.io/sdk/temporalnexus"
 	temporalPkg      = "go.temporal.io/sdk/temporal"
 	temporalv1Pkg    = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
+	timestamppbPkg   = "google.golang.org/protobuf/types/known/timestamppb"
 	updatePkg        = "go.temporal.io/api/update/v1"
 	uuidPkg          = "github.com/google/uuid"
 	workerPkg        = "go.temporal.io/sdk/worker"

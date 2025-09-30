@@ -12,6 +12,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	_ "google.golang.org/protobuf/types/gofeaturespb"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	unsafe "unsafe"
 )
@@ -27,6 +28,7 @@ type CreateFooInput struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Name        *string                `protobuf:"bytes,1,opt,name=name"`
 	xxx_hidden_Description *string                `protobuf:"bytes,2,opt,name=description"`
+	xxx_hidden_ExpiresAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -78,14 +80,25 @@ func (x *CreateFooInput) GetDescription() string {
 	return ""
 }
 
+func (x *CreateFooInput) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_ExpiresAt
+	}
+	return nil
+}
+
 func (x *CreateFooInput) SetName(v string) {
 	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *CreateFooInput) SetDescription(v string) {
 	x.xxx_hidden_Description = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *CreateFooInput) SetExpiresAt(v *timestamppb.Timestamp) {
+	x.xxx_hidden_ExpiresAt = v
 }
 
 func (x *CreateFooInput) HasName() bool {
@@ -102,6 +115,13 @@ func (x *CreateFooInput) HasDescription() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *CreateFooInput) HasExpiresAt() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_ExpiresAt != nil
+}
+
 func (x *CreateFooInput) ClearName() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Name = nil
@@ -112,11 +132,16 @@ func (x *CreateFooInput) ClearDescription() {
 	x.xxx_hidden_Description = nil
 }
 
+func (x *CreateFooInput) ClearExpiresAt() {
+	x.xxx_hidden_ExpiresAt = nil
+}
+
 type CreateFooInput_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Name        *string
 	Description *string
+	ExpiresAt   *timestamppb.Timestamp
 }
 
 func (b0 CreateFooInput_builder) Build() *CreateFooInput {
@@ -124,13 +149,14 @@ func (b0 CreateFooInput_builder) Build() *CreateFooInput {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_Name = b.Name
 	}
 	if b.Description != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Description = b.Description
 	}
+	x.xxx_hidden_ExpiresAt = b.ExpiresAt
 	return m0
 }
 
@@ -213,12 +239,9 @@ func (b0 CreateFooOutput_builder) Build() *CreateFooOutput {
 }
 
 type GetFooInput struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetFooInput) Reset() {
@@ -246,47 +269,15 @@ func (x *GetFooInput) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *GetFooInput) GetId() string {
-	if x != nil {
-		if x.xxx_hidden_Id != nil {
-			return *x.xxx_hidden_Id
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *GetFooInput) SetId(v string) {
-	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
-}
-
-func (x *GetFooInput) HasId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *GetFooInput) ClearId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
 type GetFooInput_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id *string
 }
 
 func (b0 GetFooInput_builder) Build() *GetFooInput {
 	m0 := &GetFooInput{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
-		x.xxx_hidden_Id = b.Id
-	}
 	return m0
 }
 
@@ -294,6 +285,7 @@ type GetFooOutput struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Name        *string                `protobuf:"bytes,1,opt,name=name"`
 	xxx_hidden_Description *string                `protobuf:"bytes,2,opt,name=description"`
+	xxx_hidden_Progress    float64                `protobuf:"fixed64,3,opt,name=progress"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -345,14 +337,26 @@ func (x *GetFooOutput) GetDescription() string {
 	return ""
 }
 
+func (x *GetFooOutput) GetProgress() float64 {
+	if x != nil {
+		return x.xxx_hidden_Progress
+	}
+	return 0
+}
+
 func (x *GetFooOutput) SetName(v string) {
 	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *GetFooOutput) SetDescription(v string) {
 	x.xxx_hidden_Description = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *GetFooOutput) SetProgress(v float64) {
+	x.xxx_hidden_Progress = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *GetFooOutput) HasName() bool {
@@ -369,6 +373,13 @@ func (x *GetFooOutput) HasDescription() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *GetFooOutput) HasProgress() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *GetFooOutput) ClearName() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Name = nil
@@ -379,11 +390,17 @@ func (x *GetFooOutput) ClearDescription() {
 	x.xxx_hidden_Description = nil
 }
 
+func (x *GetFooOutput) ClearProgress() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Progress = 0
+}
+
 type GetFooOutput_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Name        *string
 	Description *string
+	Progress    *float64
 }
 
 func (b0 GetFooOutput_builder) Build() *GetFooOutput {
@@ -391,20 +408,23 @@ func (b0 GetFooOutput_builder) Build() *GetFooOutput {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_Name = b.Name
 	}
 	if b.Description != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Description = b.Description
+	}
+	if b.Progress != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Progress = *b.Progress
 	}
 	return m0
 }
 
 type SignalFooInput struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Signal      *string                `protobuf:"bytes,2,opt,name=signal"`
+	xxx_hidden_Progress    float64                `protobuf:"fixed64,1,opt,name=progress"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -436,87 +456,50 @@ func (x *SignalFooInput) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *SignalFooInput) GetId() string {
+func (x *SignalFooInput) GetProgress() float64 {
 	if x != nil {
-		if x.xxx_hidden_Id != nil {
-			return *x.xxx_hidden_Id
-		}
-		return ""
+		return x.xxx_hidden_Progress
 	}
-	return ""
+	return 0
 }
 
-func (x *SignalFooInput) GetSignal() string {
-	if x != nil {
-		if x.xxx_hidden_Signal != nil {
-			return *x.xxx_hidden_Signal
-		}
-		return ""
-	}
-	return ""
+func (x *SignalFooInput) SetProgress(v float64) {
+	x.xxx_hidden_Progress = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
 }
 
-func (x *SignalFooInput) SetId(v string) {
-	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
-}
-
-func (x *SignalFooInput) SetSignal(v string) {
-	x.xxx_hidden_Signal = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
-}
-
-func (x *SignalFooInput) HasId() bool {
+func (x *SignalFooInput) HasProgress() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
-func (x *SignalFooInput) HasSignal() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *SignalFooInput) ClearId() {
+func (x *SignalFooInput) ClearProgress() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
-func (x *SignalFooInput) ClearSignal() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Signal = nil
+	x.xxx_hidden_Progress = 0
 }
 
 type SignalFooInput_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id     *string
-	Signal *string
+	Progress *float64
 }
 
 func (b0 SignalFooInput_builder) Build() *SignalFooInput {
 	m0 := &SignalFooInput{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
-		x.xxx_hidden_Id = b.Id
-	}
-	if b.Signal != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
-		x.xxx_hidden_Signal = b.Signal
+	if b.Progress != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_Progress = *b.Progress
 	}
 	return m0
 }
 
 type UpdateFooInput struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Name        *string                `protobuf:"bytes,2,opt,name=name"`
-	xxx_hidden_Description *string                `protobuf:"bytes,3,opt,name=description"`
+	xxx_hidden_Progress    float64                `protobuf:"fixed64,1,opt,name=progress"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -548,110 +531,43 @@ func (x *UpdateFooInput) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *UpdateFooInput) GetId() string {
+func (x *UpdateFooInput) GetProgress() float64 {
 	if x != nil {
-		if x.xxx_hidden_Id != nil {
-			return *x.xxx_hidden_Id
-		}
-		return ""
+		return x.xxx_hidden_Progress
 	}
-	return ""
+	return 0
 }
 
-func (x *UpdateFooInput) GetName() string {
-	if x != nil {
-		if x.xxx_hidden_Name != nil {
-			return *x.xxx_hidden_Name
-		}
-		return ""
-	}
-	return ""
+func (x *UpdateFooInput) SetProgress(v float64) {
+	x.xxx_hidden_Progress = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
 }
 
-func (x *UpdateFooInput) GetDescription() string {
-	if x != nil {
-		if x.xxx_hidden_Description != nil {
-			return *x.xxx_hidden_Description
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *UpdateFooInput) SetId(v string) {
-	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
-}
-
-func (x *UpdateFooInput) SetName(v string) {
-	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
-}
-
-func (x *UpdateFooInput) SetDescription(v string) {
-	x.xxx_hidden_Description = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
-}
-
-func (x *UpdateFooInput) HasId() bool {
+func (x *UpdateFooInput) HasProgress() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
-func (x *UpdateFooInput) HasName() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *UpdateFooInput) HasDescription() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
-func (x *UpdateFooInput) ClearId() {
+func (x *UpdateFooInput) ClearProgress() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
-func (x *UpdateFooInput) ClearName() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Name = nil
-}
-
-func (x *UpdateFooInput) ClearDescription() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_Description = nil
+	x.xxx_hidden_Progress = 0
 }
 
 type UpdateFooInput_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id          *string
-	Name        *string
-	Description *string
+	Progress *float64
 }
 
 func (b0 UpdateFooInput_builder) Build() *UpdateFooInput {
 	m0 := &UpdateFooInput{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
-		x.xxx_hidden_Id = b.Id
-	}
-	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
-		x.xxx_hidden_Name = b.Name
-	}
-	if b.Description != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
-		x.xxx_hidden_Description = b.Description
+	if b.Progress != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_Progress = *b.Progress
 	}
 	return m0
 }
@@ -659,8 +575,6 @@ func (b0 UpdateFooInput_builder) Build() *UpdateFooInput {
 type UpdateFooOutput struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Name        *string                `protobuf:"bytes,2,opt,name=name"`
-	xxx_hidden_Description *string                `protobuf:"bytes,3,opt,name=description"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -702,39 +616,9 @@ func (x *UpdateFooOutput) GetId() string {
 	return ""
 }
 
-func (x *UpdateFooOutput) GetName() string {
-	if x != nil {
-		if x.xxx_hidden_Name != nil {
-			return *x.xxx_hidden_Name
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *UpdateFooOutput) GetDescription() string {
-	if x != nil {
-		if x.xxx_hidden_Description != nil {
-			return *x.xxx_hidden_Description
-		}
-		return ""
-	}
-	return ""
-}
-
 func (x *UpdateFooOutput) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
-}
-
-func (x *UpdateFooOutput) SetName(v string) {
-	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
-}
-
-func (x *UpdateFooOutput) SetDescription(v string) {
-	x.xxx_hidden_Description = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
 }
 
 func (x *UpdateFooOutput) HasId() bool {
@@ -744,41 +628,15 @@ func (x *UpdateFooOutput) HasId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
-func (x *UpdateFooOutput) HasName() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *UpdateFooOutput) HasDescription() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
 func (x *UpdateFooOutput) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
 }
 
-func (x *UpdateFooOutput) ClearName() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Name = nil
-}
-
-func (x *UpdateFooOutput) ClearDescription() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_Description = nil
-}
-
 type UpdateFooOutput_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id          *string
-	Name        *string
-	Description *string
+	Id *string
 }
 
 func (b0 UpdateFooOutput_builder) Build() *UpdateFooOutput {
@@ -786,16 +644,8 @@ func (b0 UpdateFooOutput_builder) Build() *UpdateFooOutput {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
 		x.xxx_hidden_Id = b.Id
-	}
-	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
-		x.xxx_hidden_Name = b.Name
-	}
-	if b.Description != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
-		x.xxx_hidden_Description = b.Description
 	}
 	return m0
 }
@@ -805,34 +655,31 @@ var File_test_cliv3_cliv3_proto protoreflect.FileDescriptor
 const file_test_cliv3_cliv3_proto_rawDesc = "" +
 	"\n" +
 	"\x16test/cliv3/cliv3.proto\x12\n" +
-	"test.cliv3\x1a\x1bgoogle/protobuf/empty.proto\x1a!google/protobuf/go_features.proto\x1a\x1atemporal/v1/temporal.proto\"F\n" +
+	"test.cliv3\x1a\x1bgoogle/protobuf/empty.proto\x1a!google/protobuf/go_features.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1atemporal/v1/temporal.proto\"\x81\x01\n" +
 	"\x0eCreateFooInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\"!\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x129\n" +
+	"\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"!\n" +
 	"\x0fCreateFooOutput\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x1d\n" +
-	"\vGetFooInput\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"D\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\r\n" +
+	"\vGetFooInput\"`\n" +
 	"\fGetFooOutput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\"8\n" +
-	"\x0eSignalFooInput\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
-	"\x06signal\x18\x02 \x01(\tR\x06signal\"V\n" +
-	"\x0eUpdateFooInput\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"W\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bprogress\x18\x03 \x01(\x01R\bprogress\",\n" +
+	"\x0eSignalFooInput\x12\x1a\n" +
+	"\bprogress\x18\x01 \x01(\x01R\bprogress\",\n" +
+	"\x0eUpdateFooInput\x12\x1a\n" +
+	"\bprogress\x18\x01 \x01(\x01R\bprogress\"!\n" +
 	"\x0fUpdateFooOutput\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription2\xc5\x03\n" +
-	"\x0eExampleService\x12\x88\x01\n" +
-	"\tCreateFoo\x12\x1a.test.cliv3.CreateFooInput\x1a\x1b.test.cliv3.CreateFooOutput\"B\x8a\xc4\x03>\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id2\xc7\x03\n" +
+	"\x0eExampleService\x12\x8a\x01\n" +
+	"\tCreateFoo\x12\x1a.test.cliv3.CreateFooInput\x1a\x1b.test.cliv3.CreateFooOutput\"D\x8a\xc4\x03@\n" +
 	"\b\n" +
 	"\x06GetFoo\x12\r\n" +
-	"\tSignalFoo\x10\x01\x1a\r\n" +
-	"\tUpdateFoo\x18\x01r\x14test.cliv3.CreateFoo\x12T\n" +
+	"\tSignalFoo\x10\x01\x1a\x0f\n" +
+	"\tUpdateFoo\x18\x010\x01r\x14test.cliv3.CreateFoo\x12T\n" +
 	"\x06GetFoo\x12\x17.test.cliv3.GetFooInput\x1a\x18.test.cliv3.GetFooOutput\"\x17\x9a\xc4\x03\x13\n" +
 	"\x11test.cliv3.GetFoo\x12[\n" +
 	"\tSignalFoo\x12\x1a.test.cliv3.SignalFooInput\x1a\x16.google.protobuf.Empty\"\x1a\xa2\xc4\x03\x16\n" +
@@ -846,29 +693,31 @@ const file_test_cliv3_cliv3_proto_rawDesc = "" +
 
 var file_test_cliv3_cliv3_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_test_cliv3_cliv3_proto_goTypes = []any{
-	(*CreateFooInput)(nil),  // 0: test.cliv3.CreateFooInput
-	(*CreateFooOutput)(nil), // 1: test.cliv3.CreateFooOutput
-	(*GetFooInput)(nil),     // 2: test.cliv3.GetFooInput
-	(*GetFooOutput)(nil),    // 3: test.cliv3.GetFooOutput
-	(*SignalFooInput)(nil),  // 4: test.cliv3.SignalFooInput
-	(*UpdateFooInput)(nil),  // 5: test.cliv3.UpdateFooInput
-	(*UpdateFooOutput)(nil), // 6: test.cliv3.UpdateFooOutput
-	(*emptypb.Empty)(nil),   // 7: google.protobuf.Empty
+	(*CreateFooInput)(nil),        // 0: test.cliv3.CreateFooInput
+	(*CreateFooOutput)(nil),       // 1: test.cliv3.CreateFooOutput
+	(*GetFooInput)(nil),           // 2: test.cliv3.GetFooInput
+	(*GetFooOutput)(nil),          // 3: test.cliv3.GetFooOutput
+	(*SignalFooInput)(nil),        // 4: test.cliv3.SignalFooInput
+	(*UpdateFooInput)(nil),        // 5: test.cliv3.UpdateFooInput
+	(*UpdateFooOutput)(nil),       // 6: test.cliv3.UpdateFooOutput
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),         // 8: google.protobuf.Empty
 }
 var file_test_cliv3_cliv3_proto_depIdxs = []int32{
-	0, // 0: test.cliv3.ExampleService.CreateFoo:input_type -> test.cliv3.CreateFooInput
-	2, // 1: test.cliv3.ExampleService.GetFoo:input_type -> test.cliv3.GetFooInput
-	4, // 2: test.cliv3.ExampleService.SignalFoo:input_type -> test.cliv3.SignalFooInput
-	5, // 3: test.cliv3.ExampleService.UpdateFoo:input_type -> test.cliv3.UpdateFooInput
-	1, // 4: test.cliv3.ExampleService.CreateFoo:output_type -> test.cliv3.CreateFooOutput
-	3, // 5: test.cliv3.ExampleService.GetFoo:output_type -> test.cliv3.GetFooOutput
-	7, // 6: test.cliv3.ExampleService.SignalFoo:output_type -> google.protobuf.Empty
-	6, // 7: test.cliv3.ExampleService.UpdateFoo:output_type -> test.cliv3.UpdateFooOutput
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	7, // 0: test.cliv3.CreateFooInput.expires_at:type_name -> google.protobuf.Timestamp
+	0, // 1: test.cliv3.ExampleService.CreateFoo:input_type -> test.cliv3.CreateFooInput
+	2, // 2: test.cliv3.ExampleService.GetFoo:input_type -> test.cliv3.GetFooInput
+	4, // 3: test.cliv3.ExampleService.SignalFoo:input_type -> test.cliv3.SignalFooInput
+	5, // 4: test.cliv3.ExampleService.UpdateFoo:input_type -> test.cliv3.UpdateFooInput
+	1, // 5: test.cliv3.ExampleService.CreateFoo:output_type -> test.cliv3.CreateFooOutput
+	3, // 6: test.cliv3.ExampleService.GetFoo:output_type -> test.cliv3.GetFooOutput
+	8, // 7: test.cliv3.ExampleService.SignalFoo:output_type -> google.protobuf.Empty
+	6, // 8: test.cliv3.ExampleService.UpdateFoo:output_type -> test.cliv3.UpdateFooOutput
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_test_cliv3_cliv3_proto_init() }
