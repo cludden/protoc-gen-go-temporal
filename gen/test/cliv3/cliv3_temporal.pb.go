@@ -29,6 +29,7 @@ import (
 	workflow "go.temporal.io/sdk/workflow"
 	protojson "google.golang.org/protobuf/encoding/protojson"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"log/slog"
 	"os"
 	"sort"
@@ -811,7 +812,7 @@ func buildCreateFoo(ctor func(workflow.Context, *CreateFooWorkflowInput) (Create
 			return nil, err
 		}
 		{
-			opts := workflow.UpdateHandlerOptions{}
+			opts := workflow.UpdateHandlerOptions{Validator: wf.ValidateUpdateFoo}
 			if err := workflow.SetUpdateHandlerWithOptions(ctx, UpdateFooUpdateName, wf.UpdateFoo, opts); err != nil {
 				return nil, err
 			}
@@ -833,6 +834,9 @@ type CreateFooWorkflow interface {
 
 	// test.cliv3.ExampleService.GetFoo implements a(n) test.cliv3.GetFoo query handler
 	GetFoo(*GetFooInput) (*GetFooOutput, error)
+
+	// ValidateUpdateFoo validates a(n) test.cliv3.UpdateFoo update
+	ValidateUpdateFoo(workflow.Context, *UpdateFooInput) error
 
 	// test.cliv3.ExampleService.UpdateFoo implements a(n) test.cliv3.ExampleService.UpdateFoo update handler
 	UpdateFoo(workflow.Context, *UpdateFooInput) (*UpdateFooOutput, error)
@@ -1530,11 +1534,6 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&cliv3.StringFlag{
-					Name:     "id",
-					Usage:    "set the value of the operation's \"Id\" parameter",
-					Category: "INPUT",
-				},
 			},
 			Action: func(ctx context.Context, cmd *cliv3.Command) error {
 				c, err := opts.clientForCommand(ctx, cmd)
@@ -1588,14 +1587,9 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&cliv3.StringFlag{
-					Name:     "id",
-					Usage:    "set the value of the operation's \"Id\" parameter",
-					Category: "INPUT",
-				},
-				&cliv3.StringFlag{
-					Name:     "signal",
-					Usage:    "set the value of the operation's \"Signal\" parameter",
+				&cliv3.Float64Flag{
+					Name:     "progress",
+					Usage:    "set the value of the operation's \"Progress\" parameter",
 					Category: "INPUT",
 				},
 			},
@@ -1647,19 +1641,9 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Aliases:  []string{"f"},
 					Category: "INPUT",
 				},
-				&cliv3.StringFlag{
-					Name:     "id",
-					Usage:    "set the value of the operation's \"Id\" parameter",
-					Category: "INPUT",
-				},
-				&cliv3.StringFlag{
-					Name:     "name",
-					Usage:    "set the value of the operation's \"Name\" parameter",
-					Category: "INPUT",
-				},
-				&cliv3.StringFlag{
-					Name:     "description",
-					Usage:    "set the value of the operation's \"Description\" parameter",
+				&cliv3.Float64Flag{
+					Name:     "progress",
+					Usage:    "set the value of the operation's \"Progress\" parameter",
 					Category: "INPUT",
 				},
 			},
@@ -1737,6 +1721,12 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Usage:    "set the value of the operation's \"Description\" parameter",
 					Category: "INPUT",
 				},
+				&cliv3.TimestampFlag{
+					Name:     "expires-at",
+					Usage:    "set the value of the operation's \"ExpiresAt\" parameter (e.g. \"2017-01-15T01:30:15.01Z\")",
+					Category: "INPUT",
+					Config:   cliv3.TimestampConfig{Layouts: []string{time.RFC3339Nano}},
+				},
 			},
 			Action: func(ctx context.Context, cmd *cliv3.Command) error {
 				tc, err := opts.clientForCommand(ctx, cmd)
@@ -1809,20 +1799,21 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Usage:    "set the value of the operation's \"Description\" parameter",
 					Category: "INPUT",
 				},
+				&cliv3.TimestampFlag{
+					Name:     "expires-at",
+					Usage:    "set the value of the operation's \"ExpiresAt\" parameter (e.g. \"2017-01-15T01:30:15.01Z\")",
+					Category: "INPUT",
+					Config:   cliv3.TimestampConfig{Layouts: []string{time.RFC3339Nano}},
+				},
 				&cliv3.StringFlag{
 					Name:     "signal-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"s"},
 					Category: "SIGNAL",
 				},
-				&cliv3.StringFlag{
-					Name:     "id",
-					Usage:    "set the value of the operation's \"Id\" parameter",
-					Category: "SIGNAL",
-				},
-				&cliv3.StringFlag{
-					Name:     "signal",
-					Usage:    "set the value of the operation's \"Signal\" parameter",
+				&cliv3.Float64Flag{
+					Name:     "progress",
+					Usage:    "set the value of the operation's \"Progress\" parameter",
 					Category: "SIGNAL",
 				},
 			},
@@ -1880,13 +1871,7 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 				if err != nil {
 					return fmt.Errorf("error unmarshalling input: %w", err)
 				}
-				update, err := UnmarshalCliFlagsToUpdateFooInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "update-file"}, helpers.UnmarshalCliFlagsOptions{
-					Prefix: "update-foo",
-					PrefixFlags: map[string]struct{}{
-						"description": {},
-						"name":        {},
-					},
-				})
+				update, err := UnmarshalCliFlagsToUpdateFooInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "update-file"})
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
@@ -1941,25 +1926,21 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Usage:    "set the value of the operation's \"Description\" parameter",
 					Category: "INPUT",
 				},
+				&cliv3.TimestampFlag{
+					Name:     "expires-at",
+					Usage:    "set the value of the operation's \"ExpiresAt\" parameter (e.g. \"2017-01-15T01:30:15.01Z\")",
+					Category: "INPUT",
+					Config:   cliv3.TimestampConfig{Layouts: []string{time.RFC3339Nano}},
+				},
 				&cliv3.StringFlag{
 					Aliases:  []string{"u"},
 					Category: "UPDATE",
 					Name:     "update-file",
 					Usage:    "path to json-formatted update file",
 				},
-				&cliv3.StringFlag{
-					Name:     "id",
-					Usage:    "set the value of the operation's \"Id\" parameter",
-					Category: "UPDATE",
-				},
-				&cliv3.StringFlag{
-					Name:     "update-foo-name",
-					Usage:    "set the value of the operation's \"Name\" parameter",
-					Category: "UPDATE",
-				},
-				&cliv3.StringFlag{
-					Name:     "update-foo-description",
-					Usage:    "set the value of the operation's \"Description\" parameter",
+				&cliv3.Float64Flag{
+					Name:     "progress",
+					Usage:    "set the value of the operation's \"Progress\" parameter",
 					Category: "UPDATE",
 				},
 			},
@@ -2021,10 +2002,6 @@ func UnmarshalCliFlagsToGetFooInput(cmd *cliv3.Command, options ...helpers.Unmar
 			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
 	}
-	if flag := opts.FlagName("id"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.SetId(value)
-	}
 	return &result, nil
 }
 
@@ -2045,13 +2022,9 @@ func UnmarshalCliFlagsToSignalFooInput(cmd *cliv3.Command, options ...helpers.Un
 			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
 	}
-	if flag := opts.FlagName("id"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.SetId(value)
-	}
-	if flag := opts.FlagName("signal"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.SetSignal(value)
+	if flag := opts.FlagName("progress"); cmd.IsSet(flag) {
+		value := cmd.Float64(flag)
+		result.SetProgress(value)
 	}
 	return &result, nil
 }
@@ -2073,17 +2046,9 @@ func UnmarshalCliFlagsToUpdateFooInput(cmd *cliv3.Command, options ...helpers.Un
 			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
 		}
 	}
-	if flag := opts.FlagName("id"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.SetId(value)
-	}
-	if flag := opts.FlagName("name"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.SetName(value)
-	}
-	if flag := opts.FlagName("description"); cmd.IsSet(flag) {
-		value := cmd.String(flag)
-		result.SetDescription(value)
+	if flag := opts.FlagName("progress"); cmd.IsSet(flag) {
+		value := cmd.Float64(flag)
+		result.SetProgress(value)
 	}
 	return &result, nil
 }
@@ -2112,6 +2077,11 @@ func UnmarshalCliFlagsToCreateFooInput(cmd *cliv3.Command, options ...helpers.Un
 	if flag := opts.FlagName("description"); cmd.IsSet(flag) {
 		value := cmd.String(flag)
 		result.SetDescription(value)
+	}
+	if flag := opts.FlagName("expires-at"); cmd.IsSet(flag) {
+		v := cmd.Timestamp(flag)
+		value := timestamppb.New(v)
+		result.SetExpiresAt(value)
 	}
 	return &result, nil
 }

@@ -161,7 +161,13 @@ func (m *Manifest) genCliFlagForField(g *j.Group, field *protogen.Field, categor
 			flag.Id("Category").Op(":").Lit(category)
 		}
 		if flagType == "TimestampFlag" {
-			flag.Id("Layout").Op(":").Qual("time", "RFC3339Nano")
+			if m.cfg.CliV3Enabled {
+				flag.Id("Config").Op(":").Qual(cliV3Pkg, "TimestampConfig").Values(j.DictFunc(func(g j.Dict) {
+					g[j.Id("Layouts")] = j.Index().String().Values(j.Qual("time", "RFC3339Nano"))
+				}))
+			} else {
+				flag.Id("Layout").Op(":").Qual("time", "RFC3339Nano")
+			}
 		}
 	})
 }
@@ -408,14 +414,20 @@ func (m *Manifest) genCliUnmarshalMessage(f *j.File, msg *protogen.Message) {
 					// Convert time.Duration to *durationpb.Duration
 					case "google.protobuf.Duration":
 						transforms = append(transforms, func(g *j.Group) {
-							g.Id(valueName).Op(":=").Qual("google.golang.org/protobuf/types/known/durationpb", "New").Call(getValueExpr)
+							g.Id(valueName).Op(":=").Qual(durationpbPkg, "New").Call(getValueExpr)
 						})
 
 					// Convert time.Time to *timestamppb.Timestamp
 					case "google.protobuf.Timestamp":
 						transforms = append(transforms, func(g *j.Group) {
 							g.Id("v").Op(":=").Add(getValueExpr)
-							g.Id(valueName).Op(":=").Qual("google.golang.org/protobuf/types/known/timestamppb", "New").Call(j.Op("*").Id("v"))
+							g.Id(valueName).Op(":=").Qual(timestamppbPkg, "New").CallFunc(func(g *j.Group) {
+								if m.cfg.CliV3Enabled {
+									g.Id("v")
+								} else {
+									g.Op("*").Id("v")
+								}
+							})
 						})
 
 					// Unmarshal protojson serialized messages
