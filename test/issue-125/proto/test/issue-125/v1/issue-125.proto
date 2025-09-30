@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package issue_125.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Issue125Service {
+  option (temporal.v1.service).task_queue = "issue-125-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'foo/${! id }'
+      update: {ref: "Bar"}
+      update: {ref: "Baz"}
+    };
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc Baz(BazInput) returns (BazOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+
+message FooInput {
+  string id = 1;
+}
+
+message FooOutput {
+  string result = 1;
+}
+
+message BarInput {
+  string id = 1;
+}
+
+message BarOutput {
+  string result = 1;
+}
+
+message BazInput {
+  string id = 1;
+}
+
+message BazOutput {
+  string result = 1;
+}

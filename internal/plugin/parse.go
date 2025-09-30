@@ -24,7 +24,6 @@ import (
 const (
 	activityPkg      = "go.temporal.io/sdk/activity"
 	atomicPkg        = "sync/atomic"
-	base64Pkg        = "encoding/base64"
 	clientPkg        = "go.temporal.io/sdk/client"
 	cliPkg           = "github.com/urfave/cli/v2"
 	cliV3Pkg         = "github.com/urfave/cli/v3"
@@ -42,7 +41,6 @@ const (
 	temporalnexusPkg = "go.temporal.io/sdk/temporalnexus"
 	temporalPkg      = "go.temporal.io/sdk/temporal"
 	temporalv1Pkg    = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
-	timestamppbPkg   = "google.golang.org/protobuf/types/known/timestamppb"
 	updatePkg        = "go.temporal.io/api/update/v1"
 	uuidPkg          = "github.com/google/uuid"
 	workerPkg        = "go.temporal.io/sdk/worker"

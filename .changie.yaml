@@ -1,0 +1,39 @@
+changesDir: .changes
+unreleasedDir: unreleased
+headerPath: header.tpl.md
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '# [{{.VersionNoPrefix}}](https://github.com/cludden/protoc-gen-go-temporal/releases/tag/{{.Version}}) - {{.Time.Format "2006-01-02"}}'
+kindFormat: '### {{.Kind}}'
+changeFormat: '* [#{{.Custom.PullRequest}}](https://github.com/cludden/protoc-gen-go-temporal/pull/{{.Custom.PullRequest}}) {{.Body}} (@{{.Custom.Author}})'
+kinds:
+  - label: Added
+    auto: minor
+  - label: Changed
+    auto: major
+  - label: Deprecated
+    auto: minor
+  - label: Removed
+    auto: major
+  - label: Fixed
+    auto: patch
+  - label: Security
+    auto: patch
+  - label: ⚠ BREAKING CHANGES
+    auto: major
+newlines:
+  afterChangelogHeader: 3
+  beforeChangelogVersion: 1
+  afterVersion: 1
+  afterKind: 1
+  endOfVersion: 3
+envPrefix: CHANGIE_
+# github issue and author name
+custom:
+- key: PullRequest
+  type: int
+  minInt: 1
+- key: Author
+  label: GitHub Name
+  type: string
+  minLength: 3

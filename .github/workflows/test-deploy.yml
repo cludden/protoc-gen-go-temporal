@@ -14,14 +14,14 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: Install omni
-        uses: omnicli/setup-action@v0
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          up: true
+          experimental: true
       
       - name: Run tests
         shell: bash
-        run: omni test
+        run: mise r test
 
   test-deploy:
     name: Test deployment
