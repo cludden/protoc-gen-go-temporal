@@ -407,7 +407,7 @@ Specifies the versioning behavior for the workflow. Defaults to `VERSIONING_BEHA
 service Example {
   rpc Hello(HelloInput) returns (HelloOutput) {
     option (temporal.v1.workflow) = {
-      versioning_behavior: VERSIONING_BEHAVIOR_ENABLED
+      versioning_behavior: VERSIONING_BEHAVIOR_AUTO_UPGRADE
     };
   }
 }
