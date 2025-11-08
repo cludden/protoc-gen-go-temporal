@@ -397,6 +397,22 @@ service Example {
 }
 ```
 
+### versioning_behavior
+
+[temporal.api.enums.v1.VersioningBehavior](https://buf.build/temporalio/api/docs/master:temporal.api.enums.v1#temporal.api.enums.v1.VersioningBehavior)
+
+Specifies the versioning behavior for the workflow. Defaults to `VERSIONING_BEHAVIOR_UNSPECIFIED`. See the [versioning behavior docs](https://docs.temporal.io/production-deployment/worker-deployments/worker-versioning) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      versioning_behavior: VERSIONING_BEHAVIOR_ENABLED
+    };
+  }
+}
+```
+
 ### wait_for_cancellation
 
 `bool`
