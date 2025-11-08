@@ -292,6 +292,9 @@ message WorkflowOptions {
   // The resolution is seconds.
   google.protobuf.Duration task_timeout = 12;
 
+  // Provides a Versioning Behavior to workflows of this type.
+  temporal.api.enums.v1.VersioningBehavior versioning_behavior = 21;
+
   // WaitForCancellation specifies whether to wait for canceled child workflow to be ended
   // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
   bool wait_for_cancellation = 13;
