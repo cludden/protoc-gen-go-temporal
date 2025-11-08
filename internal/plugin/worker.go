@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	j "github.com/dave/jennifer/jen"
+	"go.temporal.io/api/enums/v1"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -223,7 +224,19 @@ func (m *Manifest) genWorkerRegisterWorkflow(f *j.File, workflow protoreflect.Fu
 				g.Id("r").Dot("RegisterWorkflowWithOptions").Call(
 					j.Id(varName),
 					j.Qual(workflowPkg, "RegisterOptions").Values(
-						j.Id("Name").Op(":").Add(name),
+						j.DictFunc(func(d j.Dict) {
+							d[j.Id("Name")] = name
+							versioningBehavior := "VersioningBehaviorUnspecified"
+							switch opts.GetVersioningBehavior() {
+							case enums.VERSIONING_BEHAVIOR_AUTO_UPGRADE:
+								versioningBehavior = "VersioningBehaviorAutoUpgrade"
+							case enums.VERSIONING_BEHAVIOR_PINNED:
+								versioningBehavior = "VersioningBehaviorPinned"
+							}
+							if versioningBehavior != "VersioningBehaviorUnspecified" {
+								d[j.Id("VersioningBehavior")] = j.Qual(workflowPkg, versioningBehavior)
+							}
+						}),
 					),
 				)
 			}

@@ -55,3 +55,9 @@ packages:
                 WorkflowRunGetOptions:
                   pkg-path: go.temporal.io/sdk/client
                   type-name: WorkflowRunGetOptions
+  go.temporal.io/sdk/worker:
+    config:
+      dir: mocks/go.temporal.io/sdk/worker
+      pkgname: workermocks
+    interfaces:
+      Registry: {}

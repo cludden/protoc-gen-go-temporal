@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package test.workerversioning.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {id: 'workflowversioning.v1.Foo/${! uuid_v4()}'};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'workflowversioning.v1.Bar/${! uuid_v4()}'
+      versioning_behavior: VERSIONING_BEHAVIOR_UNSPECIFIED
+    };
+  }
+
+  rpc Baz(BazInput) returns (BazOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'workflowversioning.v1.Baz/${! uuid_v4()}'
+      versioning_behavior: VERSIONING_BEHAVIOR_PINNED
+    };
+  }
+
+  rpc Qux(QuxInput) returns (QuxOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'workflowversioning.v1.Qux/${! uuid_v4()}'
+      versioning_behavior: VERSIONING_BEHAVIOR_AUTO_UPGRADE
+    };
+  }
+}
+
+message FooInput {}
+
+message FooOutput {}
+
+message BarInput {}
+
+message BarOutput {}
+
+message BazInput {}
+
+message BazOutput {}
+
+message QuxInput {}
+
+message QuxOutput {}
