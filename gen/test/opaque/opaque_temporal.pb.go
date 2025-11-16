@@ -241,6 +241,7 @@ type PutOpaqueExampleOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -271,6 +272,9 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -335,6 +339,12 @@ func (o *PutOpaqueExampleOptions) WithTaskTimeout(d time.Duration) *PutOpaqueExa
 // WithTaskQueue sets the TaskQueue value
 func (o *PutOpaqueExampleOptions) WithTaskQueue(tq string) *PutOpaqueExampleOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *PutOpaqueExampleOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *PutOpaqueExampleOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -536,6 +546,7 @@ type PutOpaqueExampleChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -566,6 +577,9 @@ func (o *PutOpaqueExampleChildOptions) Build(ctx workflow.Context, req protorefl
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -648,6 +662,12 @@ func (o *PutOpaqueExampleChildOptions) WithTaskTimeout(d time.Duration) *PutOpaq
 // WithTaskQueue sets the TaskQueue value
 func (o *PutOpaqueExampleChildOptions) WithTaskQueue(tq string) *PutOpaqueExampleChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *PutOpaqueExampleChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *PutOpaqueExampleChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

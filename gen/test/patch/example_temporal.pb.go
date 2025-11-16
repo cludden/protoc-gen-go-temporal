@@ -194,6 +194,7 @@ type FooOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -224,6 +225,9 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -288,6 +292,12 @@ func (o *FooOptions) WithTaskTimeout(d time.Duration) *FooOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *FooOptions) WithTaskQueue(tq string) *FooOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *FooOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *FooOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -477,6 +487,7 @@ type FooChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -507,6 +518,9 @@ func (o *FooChildOptions) Build(ctx workflow.Context, req protoreflect.Message) 
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -589,6 +603,12 @@ func (o *FooChildOptions) WithTaskTimeout(d time.Duration) *FooChildOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *FooChildOptions) WithTaskQueue(tq string) *FooChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *FooChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *FooChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

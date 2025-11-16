@@ -227,6 +227,7 @@ type UpdatableTimerOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -263,6 +264,9 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -327,6 +331,12 @@ func (o *UpdatableTimerOptions) WithTaskTimeout(d time.Duration) *UpdatableTimer
 // WithTaskQueue sets the TaskQueue value
 func (o *UpdatableTimerOptions) WithTaskQueue(tq string) *UpdatableTimerOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *UpdatableTimerOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *UpdatableTimerOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -540,6 +550,7 @@ type UpdatableTimerChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -592,6 +603,9 @@ func (o *UpdatableTimerChildOptions) Build(ctx workflow.Context, req protoreflec
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -674,6 +688,12 @@ func (o *UpdatableTimerChildOptions) WithTaskTimeout(d time.Duration) *Updatable
 // WithTaskQueue sets the TaskQueue value
 func (o *UpdatableTimerChildOptions) WithTaskQueue(tq string) *UpdatableTimerChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *UpdatableTimerChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *UpdatableTimerChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

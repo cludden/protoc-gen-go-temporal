@@ -366,6 +366,29 @@ service Example {
 }
 ```
 
+### typed_search_attributes
+
+`string`
+
+Specifies the default [Workflow typed search attributes](https://docs.temporal.io/visibility#search-attribute) as a [Bloblang mapping](https://www.benthos.dev/docs/guides/bloblang/about/) that returns a map of search attribute types to a map of search attribute keys to values. See the [Search Attributes example](/docs/examples/searchattributes/) for more details.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      typed_search_attributes:
+        'keyword.CustomKeywordField = customKeywordField \n'
+        'string.CustomTextField = customTextField \n'
+        'int64.CustomIntField = customIntField.int64() \n'
+        'float64.CustomDoubleField = customDoubleField \n'
+        'bool.CustomBoolField = customBoolField \n'
+        'time.CustomDatetimeField = customDatetimeField.ts_parse("2006-01-02T15:04:05Z") \n'
+        'keyword_list.CustomKeywordListField = customKeywordListField \n'
+    };
+  }
+}
+```
+
 ### update
 
 [temporal.v1.WorkflowOptions.Update](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WorkflowOptions.Update)

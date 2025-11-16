@@ -21,6 +21,20 @@ service Example {
         'CustomDatetimeField = customDatetimeField.ts_parse("2006-01-02T15:04:05Z") \n'
     };
   }
+
+  rpc TypedSearchAttributes(TypedSearchAttributesInput) returns (TypedSearchAttributesOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'searchattributes.v1.TypedSearchAttributes/${! uuid_v4() }'
+      typed_search_attributes:
+        'keyword.CustomKeywordField = customKeywordField \n'
+        'string.CustomTextField = customTextField \n'
+        'int64.CustomIntField = customIntField.int64() \n'
+        'float64.CustomDoubleField = customDoubleField \n'
+        'bool.CustomBoolField = customBoolField \n'
+        'time.CustomDatetimeField = customDatetimeField.ts_parse("2006-01-02T15:04:05Z") \n'
+        'keyword_list.CustomKeywordListField = customKeywordListField \n'
+    };
+  }
 }
 
 message SearchAttributesInput {
@@ -30,4 +44,24 @@ message SearchAttributesInput {
   double custom_double_field = 4;
   bool custom_bool_field = 5;
   google.protobuf.Timestamp custom_datetime_field = 6;
+}
+
+message TypedSearchAttributesInput {
+  string custom_keyword_field = 1;
+  string custom_text_field = 2;
+  int64 custom_int_field = 3;
+  double custom_double_field = 4;
+  bool custom_bool_field = 5;
+  google.protobuf.Timestamp custom_datetime_field = 6;
+  repeated string custom_keyword_list_field = 7;
+}
+
+message TypedSearchAttributesOutput {
+  string custom_keyword_field = 1;
+  string custom_text_field = 2;
+  int64 custom_int_field = 3;
+  double custom_double_field = 4;
+  bool custom_bool_field = 5;
+  google.protobuf.Timestamp custom_datetime_field = 6;
+  repeated string custom_keyword_list_field = 7;
 }

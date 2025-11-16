@@ -443,6 +443,7 @@ type MutexOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -486,6 +487,9 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -550,6 +554,12 @@ func (o *MutexOptions) WithTaskTimeout(d time.Duration) *MutexOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *MutexOptions) WithTaskQueue(tq string) *MutexOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *MutexOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *MutexOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -659,6 +669,7 @@ type SampleWorkflowWithMutexOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -695,6 +706,9 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -759,6 +773,12 @@ func (o *SampleWorkflowWithMutexOptions) WithTaskTimeout(d time.Duration) *Sampl
 // WithTaskQueue sets the TaskQueue value
 func (o *SampleWorkflowWithMutexOptions) WithTaskQueue(tq string) *SampleWorkflowWithMutexOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SampleWorkflowWithMutexOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SampleWorkflowWithMutexOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -1110,6 +1130,7 @@ type MutexChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -1169,6 +1190,9 @@ func (o *MutexChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1251,6 +1275,12 @@ func (o *MutexChildOptions) WithTaskTimeout(d time.Duration) *MutexChildOptions 
 // WithTaskQueue sets the TaskQueue value
 func (o *MutexChildOptions) WithTaskQueue(tq string) *MutexChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *MutexChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *MutexChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -1398,6 +1428,7 @@ type SampleWorkflowWithMutexChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -1450,6 +1481,9 @@ func (o *SampleWorkflowWithMutexChildOptions) Build(ctx workflow.Context, req pr
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1532,6 +1566,12 @@ func (o *SampleWorkflowWithMutexChildOptions) WithTaskTimeout(d time.Duration) *
 // WithTaskQueue sets the TaskQueue value
 func (o *SampleWorkflowWithMutexChildOptions) WithTaskQueue(tq string) *SampleWorkflowWithMutexChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SampleWorkflowWithMutexChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SampleWorkflowWithMutexChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

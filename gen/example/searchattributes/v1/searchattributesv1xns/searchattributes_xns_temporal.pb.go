@@ -94,6 +94,12 @@ func RegisterExampleActivities(r worker.ActivityRegistry, c v1.ExampleClient, op
 	if name := exampleOptions.filterActivity("example.searchattributes.v1.Example.GetSearchAttributes"); name != "" {
 		r.RegisterActivityWithOptions(a.GetSearchAttributes, activity.RegisterOptions{Name: name})
 	}
+	if name := exampleOptions.filterActivity(v1.TypedSearchAttributesWorkflowName); name != "" {
+		r.RegisterActivityWithOptions(a.TypedSearchAttributes, activity.RegisterOptions{Name: name})
+	}
+	if name := exampleOptions.filterActivity("example.searchattributes.v1.Example.GetTypedSearchAttributes"); name != "" {
+		r.RegisterActivityWithOptions(a.GetTypedSearchAttributes, activity.RegisterOptions{Name: name})
+	}
 }
 
 // SearchAttributesWorkflowOptions are used to configure a(n) example.searchattributes.v1.Example.SearchAttributes workflow execution
@@ -449,6 +455,360 @@ func (o *GetSearchAttributesOptions) WithParentClosePolicy(policy enumsv1.Parent
 	return o
 }
 
+// TypedSearchAttributesWorkflowOptions are used to configure a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow execution
+type TypedSearchAttributesWorkflowOptions struct {
+	ActivityOptions      *workflow.ActivityOptions
+	Detached             bool
+	HeartbeatInterval    time.Duration
+	HeartbeatTimeout     time.Duration
+	ParentClosePolicy    enumsv1.ParentClosePolicy
+	StartWorkflowOptions *client.StartWorkflowOptions
+}
+
+// NewTypedSearchAttributesWorkflowOptions initializes a new TypedSearchAttributesWorkflowOptions value
+func NewTypedSearchAttributesWorkflowOptions() *TypedSearchAttributesWorkflowOptions {
+	return &TypedSearchAttributesWorkflowOptions{}
+}
+
+// Build initializes the activity context and input
+func (opts *TypedSearchAttributesWorkflowOptions) Build(ctx workflow.Context, input *v1.TypedSearchAttributesInput) (workflow.Context, *xnsv1.WorkflowRequest, error) {
+	// initialize start workflow options
+	swo := client.StartWorkflowOptions{}
+	if opts.StartWorkflowOptions != nil {
+		swo = *opts.StartWorkflowOptions
+	}
+
+	// initialize workflow id if not set
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := expression.EvalExpression(v1.TypedSearchAttributesIdexpression, input.ProtoReflect())
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error evaluating id expression for \"example.searchattributes.v1.Example.TypedSearchAttributes\" workflow", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		if err := workflow.SideEffect(ctx, func(ctx workflow.Context) any {
+			id, err := uuid.NewRandom()
+			if err != nil {
+				workflow.GetLogger(ctx).Error("error generating workflow id", "error", err)
+				return nil
+			}
+			return id
+		}).Get(&swo.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+	if swo.ID == "" {
+		return nil, nil, temporal.NewNonRetryableApplicationError("workflow id is required", "InvalidArgument", nil)
+	}
+
+	// marshal workflow request protobuf message
+	inputpb, err := anypb.New(input)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling workflow request: %w", err)
+	}
+
+	// marshal start workflow options protobuf message
+	swopb, err := xns.MarshalStartWorkflowOptions(swo)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("error marshalling start workflow options: %w", err)
+	}
+
+	// marshal parent close policy protobuf message
+	var parentClosePolicy temporalv1.ParentClosePolicy
+	switch opts.ParentClosePolicy {
+	case enumsv1.PARENT_CLOSE_POLICY_ABANDON:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_ABANDON
+	case enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	case enumsv1.PARENT_CLOSE_POLICY_TERMINATE:
+		parentClosePolicy = temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE
+	}
+
+	// initialize xns activity options
+	ao := workflow.ActivityOptions{}
+	if opts.ActivityOptions != nil {
+		ao = *opts.ActivityOptions
+	}
+
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = time.Second * 60
+	}
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = time.Hour * 24
+	}
+
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	// configure heartbeat interval
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = ao.HeartbeatTimeout / 2
+	}
+
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.WorkflowRequest{
+		Detached:             opts.Detached,
+		HeartbeatInterval:    durationpb.New(opts.HeartbeatInterval),
+		ParentClosePolicy:    parentClosePolicy,
+		Request:              inputpb,
+		StartWorkflowOptions: swopb,
+	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (opts *TypedSearchAttributesWorkflowOptions) WithActivityOptions(ao workflow.ActivityOptions) *TypedSearchAttributesWorkflowOptions {
+	opts.ActivityOptions = &ao
+	return opts
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (opts *TypedSearchAttributesWorkflowOptions) WithDetached(d bool) *TypedSearchAttributesWorkflowOptions {
+	opts.Detached = d
+	return opts
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (opts *TypedSearchAttributesWorkflowOptions) WithHeartbeatInterval(d time.Duration) *TypedSearchAttributesWorkflowOptions {
+	opts.HeartbeatInterval = d
+	return opts
+}
+
+// WithHeartbeatTimeout can be used to customize the activity heartbeat timeout
+func (opts *TypedSearchAttributesWorkflowOptions) WithHeartbeatTimeout(d time.Duration) *TypedSearchAttributesWorkflowOptions {
+	opts.HeartbeatTimeout = d
+	return opts
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (opts *TypedSearchAttributesWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *TypedSearchAttributesWorkflowOptions {
+	opts.ParentClosePolicy = policy
+	return opts
+}
+
+// WithStartWorkflowOptions can be used to customize the start workflow options
+func (opts *TypedSearchAttributesWorkflowOptions) WithStartWorkflow(swo client.StartWorkflowOptions) *TypedSearchAttributesWorkflowOptions {
+	opts.StartWorkflowOptions = &swo
+	return opts
+}
+
+// TypedSearchAttributesRun provides a handle to a example.searchattributes.v1.Example.TypedSearchAttributes workflow execution
+type TypedSearchAttributesRun interface {
+	// Cancel cancels the workflow
+	Cancel(workflow.Context) error
+
+	// Future returns the inner workflow.Future
+	Future() workflow.Future
+
+	// Get returns the inner workflow.Future
+	Get(workflow.Context) (*v1.TypedSearchAttributesOutput, error)
+
+	// ID returns the workflow id
+	ID() string
+}
+
+// typedSearchAttributesRun provides a(n) TypedSearchAttributesRun implementation
+type typedSearchAttributesRun struct {
+	cancel            func()
+	ctx               workflow.Context
+	future            workflow.Future
+	id                string
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
+}
+
+// Cancel the underlying workflow execution
+func (r *typedSearchAttributesRun) Cancel(ctx workflow.Context) error {
+	if r.cancel != nil {
+		r.cancel()
+		if _, err := r.Get(ctx); err != nil && !errors.Is(err, workflow.ErrCanceled) {
+			return err
+		}
+		return nil
+	}
+	return CancelExampleWorkflow(ctx, r.id, "")
+}
+
+// Future returns the underlying activity future
+func (r *typedSearchAttributesRun) Future() workflow.Future {
+	if r.future == nil {
+		rr := GetTypedSearchAttributesAsync(r.ctx, r.id, "").(*typedSearchAttributesRun)
+		r.future = rr.future
+		r.cancel = rr.cancel
+	}
+	return r.future
+}
+
+// Get blocks on activity completion and returns the underlying workflow result
+func (r *typedSearchAttributesRun) Get(ctx workflow.Context) (*v1.TypedSearchAttributesOutput, error) {
+	ctx, cancel := workflow.WithCancel(ctx)
+	if r.future == nil {
+		rr := GetTypedSearchAttributesAsync(ctx, r.id, "", NewGetTypedSearchAttributesOptions().WithParentClosePolicy(r.parentClosePolicy).WithHeartbeatInterval(r.heartbeatInterval)).(*typedSearchAttributesRun)
+		r.future = rr.future
+		r.cancel = cancel
+	}
+	var resp v1.TypedSearchAttributesOutput
+	if err := r.future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ID returns the underlying workflow id
+func (r *typedSearchAttributesRun) ID() string {
+	return r.id
+}
+
+// TypedSearchAttributes executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow and blocks until error or response is received
+func TypedSearchAttributes(ctx workflow.Context, req *v1.TypedSearchAttributesInput, opts ...*TypedSearchAttributesWorkflowOptions) (*v1.TypedSearchAttributesOutput, error) {
+	run, err := TypedSearchAttributesAsync(ctx, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// TypedSearchAttributesAsync executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow and returns a handle to the underlying activity
+func TypedSearchAttributesAsync(ctx workflow.Context, input *v1.TypedSearchAttributesInput, opts ...*TypedSearchAttributesWorkflowOptions) (TypedSearchAttributesRun, error) {
+	activityName := exampleOptions.filterActivity(v1.TypedSearchAttributesWorkflowName)
+	if activityName == "" {
+		return nil, temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("no activity registered for %s", v1.TypedSearchAttributesWorkflowName),
+			"Unimplemented",
+			nil,
+		)
+	}
+
+	var opt *TypedSearchAttributesWorkflowOptions
+	if len(opts) > 0 && opts[0] != nil {
+		opt = opts[0]
+	} else {
+		opt = NewTypedSearchAttributesWorkflowOptions()
+	}
+	ctx, req, err := opt.Build(ctx, input)
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &typedSearchAttributesRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     req.GetStartWorkflowOptions().GetId(),
+	}, nil
+}
+
+// GetTypedSearchAttributes returns a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow execution
+func GetTypedSearchAttributes(ctx workflow.Context, workflowID string, runID string, options ...*GetTypedSearchAttributesOptions) (out *v1.TypedSearchAttributesOutput, err error) {
+	out, err = GetTypedSearchAttributesAsync(ctx, workflowID, runID, options...).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetTypedSearchAttributesAsync returns a handle to a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow execution
+func GetTypedSearchAttributesAsync(ctx workflow.Context, workflowID string, runID string, options ...*GetTypedSearchAttributesOptions) TypedSearchAttributesRun {
+	activityName := exampleOptions.filterActivity("example.searchattributes.v1.Example.GetTypedSearchAttributes")
+	if activityName == "" {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil))
+		return &typedSearchAttributesRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	var opt *GetTypedSearchAttributesOptions
+	if len(options) > 0 && options[0] != nil {
+		opt = options[0]
+	} else {
+		opt = NewGetTypedSearchAttributesOptions()
+	}
+	ctx, req, err := opt.Build(ctx, workflowID, runID)
+	if err != nil {
+		f, set := workflow.NewFuture(ctx)
+		set.SetError(exampleOptions.convertError(temporal.NewNonRetryableApplicationError(fmt.Sprintf("no activity registered for %s", activityName), "Unimplemented", nil)))
+		return &typedSearchAttributesRun{
+			future: f,
+			id:     workflowID,
+		}
+	}
+	ctx, cancel := workflow.WithCancel(ctx)
+	return &typedSearchAttributesRun{
+		cancel: cancel,
+		future: workflow.ExecuteActivity(ctx, activityName, req),
+		id:     workflowID,
+	}
+}
+
+// GetTypedSearchAttributesOptions are used to configure a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow execution getter activity
+type GetTypedSearchAttributesOptions struct {
+	activityOptions   *workflow.ActivityOptions
+	heartbeatInterval time.Duration
+	parentClosePolicy enumsv1.ParentClosePolicy
+}
+
+// NewGetTypedSearchAttributesOptions initializes a new GetTypedSearchAttributesOptions value
+func NewGetTypedSearchAttributesOptions() *GetTypedSearchAttributesOptions {
+	return &GetTypedSearchAttributesOptions{}
+}
+
+// Build initializes the activity context and input
+func (opt *GetTypedSearchAttributesOptions) Build(ctx workflow.Context, workflowID string, runID string) (workflow.Context, *xnsv1.GetWorkflowRequest, error) {
+	if opt.heartbeatInterval == 0 {
+		opt.heartbeatInterval = 30000000000 // 30 seconds
+	}
+
+	// configure activity options
+	var ao workflow.ActivityOptions
+	if opt.activityOptions != nil {
+		ao = *opt.activityOptions
+	} else {
+		ao = workflow.ActivityOptions{}
+	}
+	if ao.HeartbeatTimeout == 0 {
+		ao.HeartbeatTimeout = 60000000000 // 1 minute
+	}
+	// WaitForCancellation must be set otherwise the underlying workflow is not guaranteed to be canceled
+	ao.WaitForCancellation = true
+
+	if ao.StartToCloseTimeout == 0 && ao.ScheduleToCloseTimeout == 0 {
+		ao.ScheduleToCloseTimeout = 86400000000000 // 1 day
+	}
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	return ctx, &xnsv1.GetWorkflowRequest{
+		HeartbeatInterval: durationpb.New(opt.heartbeatInterval),
+		ParentClosePolicy: opt.parentClosePolicy,
+		RunId:             runID,
+		WorkflowId:        workflowID,
+	}, nil
+}
+
+// WithActivityOptions can be used to customize the activity options
+func (o *GetTypedSearchAttributesOptions) WithActivityOptions(ao workflow.ActivityOptions) *GetTypedSearchAttributesOptions {
+	o.activityOptions = &ao
+	return o
+}
+
+// WithHeartbeatInterval can be used to customize the activity heartbeat interval
+func (o *GetTypedSearchAttributesOptions) WithHeartbeatInterval(d time.Duration) *GetTypedSearchAttributesOptions {
+	o.heartbeatInterval = d
+	return o
+}
+
+// WithParentClosePolicy can be used to customize the cancellation propagation behavior
+func (o *GetTypedSearchAttributesOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *GetTypedSearchAttributesOptions {
+	o.parentClosePolicy = policy
+	return o
+}
+
 // CancelExampleWorkflow cancels an existing workflow
 func CancelExampleWorkflow(ctx workflow.Context, workflowID string, runID string) error {
 	return CancelExampleWorkflowAsync(ctx, workflowID, runID).Get(ctx, nil)
@@ -630,6 +990,156 @@ func (a *exampleActivities) SearchAttributes(ctx context.Context, input *xnsv1.W
 		// handle workflow completion
 		case <-doneCh:
 			return exampleOptions.convertError(err)
+		}
+	}
+}
+
+// GetTypedSearchAttributes retrieves a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow via an activity
+func (a *exampleActivities) GetTypedSearchAttributes(ctx context.Context, input *xnsv1.GetWorkflowRequest) (out *v1.TypedSearchAttributesOutput, err error) {
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+
+	actx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	run := a.client.GetTypedSearchAttributes(actx, input.GetWorkflowId(), input.GetRunId())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, err = run.Get(actx)
+	}()
+
+	for {
+		select {
+		// send heartbeats periodically
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx)
+
+		// return retryable error if the worker is stopping
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
+
+		// catch parent activity context cancellation. in most cases, this should indicate a
+		// server-sent cancellation, but there's a non-zero possibility that this cancellation
+		// is received due to the worker stopping, prior to detecting the closing of the worker
+		// stop channel. to give us an opportunity to detect a cancellation stemming from the
+		// worker closing, we again check to see if the worker stop channel is closed before
+		// propagating the cancellation
+		case <-ctx.Done():
+			select {
+			case <-activity.GetWorkerStopChannel(ctx):
+				activity.GetLogger(ctx).Info("worker is stopping")
+				return nil, exampleOptions.convertError(temporal.NewApplicationError("worker is stopping", "WorkerStopped"))
+			default:
+				parentClosePolicy := input.GetParentClosePolicy()
+				if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_TERMINATE {
+					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+					defer cancel()
+					if parentClosePolicy == enumsv1.PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						err = run.Cancel(disconnectedCtx)
+					} else {
+						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
+					}
+					if err != nil {
+						return nil, exampleOptions.convertError(err)
+					}
+				}
+				return nil, exampleOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+			}
+
+		// handle workflow completion
+		case <-done:
+			return out, exampleOptions.convertError(err)
+		}
+	}
+}
+
+// TypedSearchAttributes executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow via an activity
+func (a *exampleActivities) TypedSearchAttributes(ctx context.Context, input *xnsv1.WorkflowRequest) (resp *v1.TypedSearchAttributesOutput, err error) {
+	// unmarshal workflow request
+	var req v1.TypedSearchAttributesInput
+	if err := input.Request.UnmarshalTo(&req); err != nil {
+		return nil, exampleOptions.convertError(temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("error unmarshalling workflow request of type %s as github.com/cludden/protoc-gen-go-temporal/gen/example/searchattributes/v1.TypedSearchAttributesInput", input.Request.GetTypeUrl()),
+			"InvalidArgument",
+			err,
+		))
+	}
+
+	// initialize workflow execution
+	actx := ctx
+	if !input.GetDetached() {
+		var cancel context.CancelFunc
+		actx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
+	var run v1.TypedSearchAttributesRun
+	run, err = a.client.TypedSearchAttributesAsync(actx, &req, v1.NewTypedSearchAttributesOptions().WithStartWorkflowOptions(
+		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
+	))
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
+	// exit early if detached enabled
+	if input.GetDetached() {
+		return nil, nil
+	}
+
+	// otherwise, wait for execution to complete in child goroutine
+	doneCh := make(chan struct{})
+	go func() {
+		resp, err = run.Get(actx)
+		close(doneCh)
+	}()
+
+	heartbeatInterval := input.GetHeartbeatInterval().AsDuration()
+	if heartbeatInterval == 0 {
+		heartbeatInterval = time.Second * 30
+	}
+
+	// heartbeat activity while waiting for workflow execution to complete
+	for {
+		select {
+		// send heartbeats periodically
+		case <-time.After(heartbeatInterval):
+			activity.RecordHeartbeat(ctx, run.ID())
+
+		// return retryable error on worker close
+		case <-activity.GetWorkerStopChannel(ctx):
+			return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
+
+		// catch parent activity context cancellation. in most cases, this should indicate a
+		// server-sent cancellation, but there's a non-zero possibility that this cancellation
+		// is received due to the worker stopping, prior to detecting the closing of the worker
+		// stop channel. to give us an opportunity to detect a cancellation stemming from the
+		// worker closing, we again check to see if the worker stop channel is closed before
+		// propagating the cancellation
+		case <-ctx.Done():
+			select {
+			case <-activity.GetWorkerStopChannel(ctx):
+				return nil, temporal.NewApplicationError("worker is stopping", "WorkerStopped")
+			default:
+				parentClosePolicy := input.GetParentClosePolicy()
+				if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL || parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_TERMINATE {
+					disconnectedCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+					defer cancel()
+					if parentClosePolicy == temporalv1.ParentClosePolicy_PARENT_CLOSE_POLICY_REQUEST_CANCEL {
+						err = run.Cancel(disconnectedCtx)
+					} else {
+						err = run.Terminate(disconnectedCtx, "xns activity cancellation received", "error", ctx.Err())
+					}
+					if err != nil {
+						return nil, exampleOptions.convertError(err)
+					}
+				}
+				return nil, exampleOptions.convertError(temporal.NewCanceledError(ctx.Err().Error()))
+			}
+
+		// handle workflow completion
+		case <-doneCh:
+			return resp, exampleOptions.convertError(err)
 		}
 	}
 }

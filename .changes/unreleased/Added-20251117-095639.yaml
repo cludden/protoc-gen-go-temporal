@@ -1,0 +1,6 @@
+kind: Added
+body: Add typed_search_attributes workflow option
+time: 2025-11-17T09:56:39.580517-07:00
+custom:
+    Author: cludden
+    PullRequest: "131"
