@@ -188,6 +188,7 @@ type ScheduleOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -218,6 +219,9 @@ func (o *ScheduleOptions) Build(req protoreflect.Message) (client.StartWorkflowO
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -282,6 +286,12 @@ func (o *ScheduleOptions) WithTaskTimeout(d time.Duration) *ScheduleOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *ScheduleOptions) WithTaskQueue(tq string) *ScheduleOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ScheduleOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ScheduleOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -471,6 +481,7 @@ type ScheduleChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -501,6 +512,9 @@ func (o *ScheduleChildOptions) Build(ctx workflow.Context, req protoreflect.Mess
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -583,6 +597,12 @@ func (o *ScheduleChildOptions) WithTaskTimeout(d time.Duration) *ScheduleChildOp
 // WithTaskQueue sets the TaskQueue value
 func (o *ScheduleChildOptions) WithTaskQueue(tq string) *ScheduleChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ScheduleChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ScheduleChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

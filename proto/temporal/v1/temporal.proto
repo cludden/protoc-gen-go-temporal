@@ -292,6 +292,19 @@ message WorkflowOptions {
   // The resolution is seconds.
   google.protobuf.Duration task_timeout = 12;
 
+  // Bloblang mapping defining default workflow typed search attributes. The mapping should be a map of
+  // search attribute types to a map of search attribute keys to values.
+  // Example:
+  // string.foo = "bar"
+  // string.baz = "qux"
+  // float64.min = 123.0
+  // int64.max = 456
+  // time.created_at = now()
+  // bool.is_active = true
+  // keyword.name = "John Doe"
+  // keyword_list.tags = ["foo", "bar"]
+  string typed_search_attributes = 22;
+
   // Provides a Versioning Behavior to workflows of this type.
   temporal.api.enums.v1.VersioningBehavior versioning_behavior = 21;
 

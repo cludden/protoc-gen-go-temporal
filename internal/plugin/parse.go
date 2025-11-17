@@ -358,43 +358,63 @@ func (m *Manifest) genConstants(f *j.File) {
 	}
 
 	// add workflow id expressions
-	workflowIdExpressions := [][]string{}
+	var workflowIdExpressions []j.Code
 	for _, workflow := range m.workflowsOrdered {
 		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 			continue
 		}
 		opts := m.workflows[workflow]
 		if expr := opts.GetId(); expr != "" {
-			workflowIdExpressions = append(workflowIdExpressions, []string{m.methods[workflow].GoName, expr})
+			workflowIdExpressions = append(
+				workflowIdExpressions,
+				j.Id(m.Names().workflowIDExpression(workflow)).Op("=").
+					Qual(expressionPkg, "MustParseExpression").Call(j.Lit(expr)),
+			)
 		}
 	}
 	if len(workflowIdExpressions) > 0 {
 		f.Commentf("%s workflow id expressions", m.Service.Desc.FullName())
-		f.Var().DefsFunc(func(defs *j.Group) {
-			for _, pair := range workflowIdExpressions {
-				defs.Id(m.toCamel("%sIDExpression", pair[0])).Op("=").Qual(expressionPkg, "MustParseExpression").Call(j.Lit(pair[1]))
-			}
-		})
+		f.Var().Defs(workflowIdExpressions...)
 	}
 
 	// add workflow search attribute mappings
-	workflowSearchAttributes := [][]string{}
+	var workflowSearchAttributes []j.Code
 	for _, workflow := range m.workflowsOrdered {
 		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 			continue
 		}
 		opts := m.workflows[workflow]
 		if mapping := opts.GetSearchAttributes(); mapping != "" {
-			workflowSearchAttributes = append(workflowSearchAttributes, []string{m.methods[workflow].GoName, mapping})
+			workflowSearchAttributes = append(
+				workflowSearchAttributes,
+				j.Id(m.Names().workflowSearchAttributesMapping(workflow)).Op("=").
+					Qual(expressionPkg, "MustParseMapping").Call(j.Lit(mapping)),
+			)
 		}
 	}
 	if len(workflowSearchAttributes) > 0 {
 		f.Commentf("%s workflow search attribute mappings", m.Service.Desc.FullName())
-		f.Var().DefsFunc(func(defs *j.Group) {
-			for _, pair := range workflowSearchAttributes {
-				defs.Id(m.toCamel("%sSearchAttributesMapping", pair[0])).Op("=").Qual(expressionPkg, "MustParseMapping").Call(j.Lit(pair[1]))
-			}
-		})
+		f.Var().Defs(workflowSearchAttributes...)
+	}
+
+	// add workflow typed search attribute mappings
+	var workflowTypedSearchAttributes []j.Code
+	for _, workflow := range m.workflowsOrdered {
+		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
+			continue
+		}
+		opts := m.workflows[workflow]
+		if mapping := opts.GetTypedSearchAttributes(); mapping != "" {
+			workflowTypedSearchAttributes = append(
+				workflowTypedSearchAttributes,
+				j.Id(m.Names().workflowTypedSearchAttributesMapping(workflow)).Op("=").
+					Qual(expressionPkg, "MustParseMapping").Call(j.Lit(mapping)),
+			)
+		}
+	}
+	if len(workflowTypedSearchAttributes) > 0 {
+		f.Commentf("%s workflow typed search attribute mappings", m.Service.Desc.FullName())
+		f.Var().Defs(workflowTypedSearchAttributes...)
 	}
 
 	// add activity names

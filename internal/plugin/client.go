@@ -2267,6 +2267,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 	}
 	constructorName := "New" + typeName
 	opts := m.workflows[workflow]
+	hasInput := !isEmpty(m.methods[workflow].Input)
 
 	f.Commentf("%s provides configuration for a %s%s workflow operation", typeName, childQualifier, m.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).StructFunc(func(g *j.Group) {
@@ -2279,6 +2280,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 		g.Id("searchAttributes").Map(j.String()).Any()
 		g.Id("taskQueue").Op("*").String()
 		g.Id("taskTimeout").Op("*").Qual("time", "Duration")
+		g.Id("typedSearchAttributes").Op("*").Qual(temporalPkg, "SearchAttributes")
 		g.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		if child {
 			g.Id("dc").Qual(converterPkg, "DataConverter")
@@ -2539,6 +2541,132 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 					})
 			}
 
+			// set TypedSearchAttributes
+			typedSearchAttributes := g.IfFunc(func(g *j.Group) {
+				g.Id("v").Op(":=").Id("o").Dot("typedSearchAttributes")
+				g.Id("v").Op("!=").Nil()
+			}).BlockFunc(func(g *j.Group) {
+				g.Id("opts").Dot("TypedSearchAttributes").Op("=").Op("*").Id("v")
+			})
+			if mapping := opts.GetTypedSearchAttributes(); mapping != "" {
+				typedSearchAttributes.Else().IfFunc(func(g *j.Group) {
+					g.Id("opts").Dot("TypedSearchAttributes").Dot("Size").Call().Op("==").Lit(0)
+				}).BlockFunc(func(g *j.Group) {
+					saFn := func(g *j.Group, errorResult j.Code) {
+						// initialize structured mapping input
+						if hasInput {
+							g.List(j.Id("structured"), j.Err()).Op(":=").
+								Qual(expressionPkg, "ToStructured").Call(j.Id("req"))
+							g.IfFunc(func(g *j.Group) {
+								g.Err().Op("!=").Nil()
+							}).BlockFunc(func(g *j.Group) {
+								g.ReturnFunc(func(g *j.Group) {
+									g.Add(errorResult)
+									g.Qual("fmt", "Errorf").CallFunc(func(g *j.Group) {
+										g.Lit(fmt.Sprintf(
+											"error serializing input for %q typed search attribute "+
+												"mapping: %%v",
+											m.methods[workflow].GoName,
+										))
+										g.Err()
+									})
+								})
+							})
+						} else {
+							g.Id("structured").Op(":=").Make(j.Map(j.String()).Any())
+						}
+
+						// execute mapping
+						g.List(j.Id("result"), j.Err()).Op(":=").
+							Id(m.Names().workflowTypedSearchAttributesMapping(workflow)).
+							Dot("Query").Call(j.Id("structured"))
+						g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+							g.ReturnFunc(func(g *j.Group) {
+								g.Add(errorResult)
+								g.Qual("fmt", "Errorf").CallFunc(func(g *j.Group) {
+									g.Lit(fmt.Sprintf(
+										"error executing %q typed search attribute mapping: %%v",
+										m.methods[workflow].GoName,
+									))
+									g.Err()
+								})
+							})
+						})
+
+						// coerce mapping result to map[string]any
+						g.List(j.Id("sa"), j.Id("ok")).Op(":=").
+							Id("result").Op(".").Parens(j.Map(j.String()).Any())
+						g.If(j.Op("!").Id("ok")).BlockFunc(func(g *j.Group) {
+							g.ReturnFunc(func(g *j.Group) {
+								g.Add(errorResult)
+								g.Qual("fmt", "Errorf").CallFunc(func(g *j.Group) {
+									g.Lit(fmt.Sprintf(
+										"expected %q typed search attribute mapping to return "+
+											"map[string]any, got: %%T",
+										m.methods[workflow].GoName,
+									))
+									g.Id("result")
+								})
+							})
+						})
+					}
+					tsaFn := func(g *j.Group, errorResult j.Code) {
+						// marshal mapping result to SearchAttributes
+						g.List(j.Id("tsa"), j.Err()).Op(":=").
+							Qual(convertPkg, "MarshalTypedSearchAttributes").Call(j.Id("sa"))
+						g.IfFunc(func(g *j.Group) {
+							g.Err().Op("!=").Nil()
+						}).BlockFunc(func(g *j.Group) {
+							g.ReturnFunc(func(g *j.Group) {
+								g.Add(errorResult)
+								g.Qual("fmt", "Errorf").CallFunc(func(g *j.Group) {
+									g.Lit(fmt.Sprintf(
+										"error marshaling %q typed search attribute mapping: %%v",
+										m.methods[workflow].GoName,
+									))
+									g.Err()
+								})
+							})
+						})
+					}
+					if child {
+						g.Id("sa").Op(":=").Make(j.Map(j.String()).Any())
+						g.IfFunc(func(g *j.Group) {
+							g.Err().Op(":=").Qual(workflowPkg, "ExecuteLocalActivity").
+								CallFunc(func(g *j.Group) {
+									g.Qual(workflowPkg, "WithLocalActivityOptions").CallFunc(func(g *j.Group) {
+										g.Id("ctx")
+										g.Qual(workflowPkg, "LocalActivityOptions").ValuesFunc(func(g *j.Group) {
+											g.Id("StartToCloseTimeout").Op(":").Qual("time", "Second").Op("*").Lit(10)
+										})
+									})
+									g.Func().Params(j.Id("ctx").Qual("context", "Context")).Params(j.Map(j.String()).Any(), j.Error()).BlockFunc(func(g *j.Group) {
+										saFn(g, j.Nil())
+										g.Return(j.Id("sa"), j.Nil())
+									})
+								}).
+								Dot("Get").Call(j.Id("ctx"), j.Op("&").Id("sa"))
+							g.Err().Op("!=").Nil()
+						}).BlockFunc(func(g *j.Group) {
+							g.ReturnFunc(func(g *j.Group) {
+								g.Add(j.Id("opts"))
+								g.Qual("fmt", "Errorf").CallFunc(func(g *j.Group) {
+									g.Lit(fmt.Sprintf(
+										"error evaluating typed search attributes for %q workflow: %%w",
+										m.toCamel("%sWorkflowName", workflow),
+									))
+									g.Err()
+								})
+							})
+						})
+					} else {
+						saFn(g, j.Id("opts"))
+					}
+					tsaFn(g, j.Id("opts"))
+					g.Id("opts").Dot("TypedSearchAttributes").Op("=").Id("tsa")
+				})
+			}
+
 			// set WorkflowExecutionTimeout
 			executionTimeout := g.If(j.Id("v").Op(":=").Id("o").Dot("executionTimeout"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Op("*").Id("v"),
@@ -2732,6 +2860,17 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 		Op("*").Id(typeName).
 		Block(
 			j.Id("o").Dot("taskQueue").Op("=").Op("&").Id("tq"),
+			j.Return(j.Id("o")),
+		)
+
+	f.Comment("WithTypedSearchAttributes sets the TypedSearchAttributes value")
+	f.Func().
+		Params(j.Id("o").Op("*").Id(typeName)).
+		Id("WithTypedSearchAttributes").
+		Params(j.Id("tsa").Qual(temporalPkg, "SearchAttributes")).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("o").Dot("typedSearchAttributes").Op("=").Op("&").Id("tsa"),
 			j.Return(j.Id("o")),
 		)
 

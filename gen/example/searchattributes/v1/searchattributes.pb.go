@@ -108,6 +108,190 @@ func (x *SearchAttributesInput) GetCustomDatetimeField() *timestamppb.Timestamp 
 	return nil
 }
 
+type TypedSearchAttributesInput struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	CustomKeywordField     string                 `protobuf:"bytes,1,opt,name=custom_keyword_field,json=customKeywordField,proto3" json:"custom_keyword_field,omitempty"`
+	CustomTextField        string                 `protobuf:"bytes,2,opt,name=custom_text_field,json=customTextField,proto3" json:"custom_text_field,omitempty"`
+	CustomIntField         int64                  `protobuf:"varint,3,opt,name=custom_int_field,json=customIntField,proto3" json:"custom_int_field,omitempty"`
+	CustomDoubleField      float64                `protobuf:"fixed64,4,opt,name=custom_double_field,json=customDoubleField,proto3" json:"custom_double_field,omitempty"`
+	CustomBoolField        bool                   `protobuf:"varint,5,opt,name=custom_bool_field,json=customBoolField,proto3" json:"custom_bool_field,omitempty"`
+	CustomDatetimeField    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=custom_datetime_field,json=customDatetimeField,proto3" json:"custom_datetime_field,omitempty"`
+	CustomKeywordListField []string               `protobuf:"bytes,7,rep,name=custom_keyword_list_field,json=customKeywordListField,proto3" json:"custom_keyword_list_field,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *TypedSearchAttributesInput) Reset() {
+	*x = TypedSearchAttributesInput{}
+	mi := &file_example_searchattributes_v1_searchattributes_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TypedSearchAttributesInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TypedSearchAttributesInput) ProtoMessage() {}
+
+func (x *TypedSearchAttributesInput) ProtoReflect() protoreflect.Message {
+	mi := &file_example_searchattributes_v1_searchattributes_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TypedSearchAttributesInput.ProtoReflect.Descriptor instead.
+func (*TypedSearchAttributesInput) Descriptor() ([]byte, []int) {
+	return file_example_searchattributes_v1_searchattributes_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *TypedSearchAttributesInput) GetCustomKeywordField() string {
+	if x != nil {
+		return x.CustomKeywordField
+	}
+	return ""
+}
+
+func (x *TypedSearchAttributesInput) GetCustomTextField() string {
+	if x != nil {
+		return x.CustomTextField
+	}
+	return ""
+}
+
+func (x *TypedSearchAttributesInput) GetCustomIntField() int64 {
+	if x != nil {
+		return x.CustomIntField
+	}
+	return 0
+}
+
+func (x *TypedSearchAttributesInput) GetCustomDoubleField() float64 {
+	if x != nil {
+		return x.CustomDoubleField
+	}
+	return 0
+}
+
+func (x *TypedSearchAttributesInput) GetCustomBoolField() bool {
+	if x != nil {
+		return x.CustomBoolField
+	}
+	return false
+}
+
+func (x *TypedSearchAttributesInput) GetCustomDatetimeField() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CustomDatetimeField
+	}
+	return nil
+}
+
+func (x *TypedSearchAttributesInput) GetCustomKeywordListField() []string {
+	if x != nil {
+		return x.CustomKeywordListField
+	}
+	return nil
+}
+
+type TypedSearchAttributesOutput struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	CustomKeywordField     string                 `protobuf:"bytes,1,opt,name=custom_keyword_field,json=customKeywordField,proto3" json:"custom_keyword_field,omitempty"`
+	CustomTextField        string                 `protobuf:"bytes,2,opt,name=custom_text_field,json=customTextField,proto3" json:"custom_text_field,omitempty"`
+	CustomIntField         int64                  `protobuf:"varint,3,opt,name=custom_int_field,json=customIntField,proto3" json:"custom_int_field,omitempty"`
+	CustomDoubleField      float64                `protobuf:"fixed64,4,opt,name=custom_double_field,json=customDoubleField,proto3" json:"custom_double_field,omitempty"`
+	CustomBoolField        bool                   `protobuf:"varint,5,opt,name=custom_bool_field,json=customBoolField,proto3" json:"custom_bool_field,omitempty"`
+	CustomDatetimeField    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=custom_datetime_field,json=customDatetimeField,proto3" json:"custom_datetime_field,omitempty"`
+	CustomKeywordListField []string               `protobuf:"bytes,7,rep,name=custom_keyword_list_field,json=customKeywordListField,proto3" json:"custom_keyword_list_field,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *TypedSearchAttributesOutput) Reset() {
+	*x = TypedSearchAttributesOutput{}
+	mi := &file_example_searchattributes_v1_searchattributes_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TypedSearchAttributesOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TypedSearchAttributesOutput) ProtoMessage() {}
+
+func (x *TypedSearchAttributesOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_example_searchattributes_v1_searchattributes_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TypedSearchAttributesOutput.ProtoReflect.Descriptor instead.
+func (*TypedSearchAttributesOutput) Descriptor() ([]byte, []int) {
+	return file_example_searchattributes_v1_searchattributes_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomKeywordField() string {
+	if x != nil {
+		return x.CustomKeywordField
+	}
+	return ""
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomTextField() string {
+	if x != nil {
+		return x.CustomTextField
+	}
+	return ""
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomIntField() int64 {
+	if x != nil {
+		return x.CustomIntField
+	}
+	return 0
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomDoubleField() float64 {
+	if x != nil {
+		return x.CustomDoubleField
+	}
+	return 0
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomBoolField() bool {
+	if x != nil {
+		return x.CustomBoolField
+	}
+	return false
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomDatetimeField() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CustomDatetimeField
+	}
+	return nil
+}
+
+func (x *TypedSearchAttributesOutput) GetCustomKeywordListField() []string {
+	if x != nil {
+		return x.CustomKeywordListField
+	}
+	return nil
+}
+
 var File_example_searchattributes_v1_searchattributes_proto protoreflect.FileDescriptor
 
 const file_example_searchattributes_v1_searchattributes_proto_rawDesc = "" +
@@ -119,7 +303,23 @@ const file_example_searchattributes_v1_searchattributes_proto_rawDesc = "" +
 	"\x10custom_int_field\x18\x03 \x01(\x03R\x0ecustomIntField\x12.\n" +
 	"\x13custom_double_field\x18\x04 \x01(\x01R\x11customDoubleField\x12*\n" +
 	"\x11custom_bool_field\x18\x05 \x01(\bR\x0fcustomBoolField\x12N\n" +
-	"\x15custom_datetime_field\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x13customDatetimeField2\xbb\x03\n" +
+	"\x15custom_datetime_field\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x13customDatetimeField\"\x8b\x03\n" +
+	"\x1aTypedSearchAttributesInput\x120\n" +
+	"\x14custom_keyword_field\x18\x01 \x01(\tR\x12customKeywordField\x12*\n" +
+	"\x11custom_text_field\x18\x02 \x01(\tR\x0fcustomTextField\x12(\n" +
+	"\x10custom_int_field\x18\x03 \x01(\x03R\x0ecustomIntField\x12.\n" +
+	"\x13custom_double_field\x18\x04 \x01(\x01R\x11customDoubleField\x12*\n" +
+	"\x11custom_bool_field\x18\x05 \x01(\bR\x0fcustomBoolField\x12N\n" +
+	"\x15custom_datetime_field\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x13customDatetimeField\x129\n" +
+	"\x19custom_keyword_list_field\x18\a \x03(\tR\x16customKeywordListField\"\x8c\x03\n" +
+	"\x1bTypedSearchAttributesOutput\x120\n" +
+	"\x14custom_keyword_field\x18\x01 \x01(\tR\x12customKeywordField\x12*\n" +
+	"\x11custom_text_field\x18\x02 \x01(\tR\x0fcustomTextField\x12(\n" +
+	"\x10custom_int_field\x18\x03 \x01(\x03R\x0ecustomIntField\x12.\n" +
+	"\x13custom_double_field\x18\x04 \x01(\x01R\x11customDoubleField\x12*\n" +
+	"\x11custom_bool_field\x18\x05 \x01(\bR\x0fcustomBoolField\x12N\n" +
+	"\x15custom_datetime_field\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x13customDatetimeField\x129\n" +
+	"\x19custom_keyword_list_field\x18\a \x03(\tR\x16customKeywordListField2\xff\a\n" +
 	"\aExample\x12\x97\x03\n" +
 	"\x10SearchAttributes\x122.example.searchattributes.v1.SearchAttributesInput\x1a\x16.google.protobuf.Empty\"\xb6\x02\x8a\xc4\x03\xb1\x02*!search_attributes_${! uuid_v4() }z\x8b\x02CustomKeywordField = customKeywordField \n" +
 	"CustomTextField = customTextField \n" +
@@ -127,6 +327,14 @@ const file_example_searchattributes_v1_searchattributes_proto_rawDesc = "" +
 	"CustomDoubleField = customDoubleField \n" +
 	"CustomBoolField = customBoolField \n" +
 	"CustomDatetimeField = customDatetimeField.ts_parse(\"2006-01-02T15:04:05Z\") \n" +
+	"\x12\xc1\x04\n" +
+	"\x15TypedSearchAttributes\x127.example.searchattributes.v1.TypedSearchAttributesInput\x1a8.example.searchattributes.v1.TypedSearchAttributesOutput\"\xb4\x03\x8a\xc4\x03\xaf\x03*9searchattributes.v1.TypedSearchAttributes/${! uuid_v4() }\xb2\x01\xf0\x02keyword.CustomKeywordField = customKeywordField \n" +
+	"string.CustomTextField = customTextField \n" +
+	"int64.CustomIntField = customIntField.int64() \n" +
+	"float64.CustomDoubleField = customDoubleField \n" +
+	"bool.CustomBoolField = customBoolField \n" +
+	"time.CustomDatetimeField = customDatetimeField.ts_parse(\"2006-01-02T15:04:05Z\") \n" +
+	"keyword_list.CustomKeywordListField = customKeywordListField \n" +
 	"\x1a\x16\x8a\xc4\x03\x12\n" +
 	"\x10searchattributesB\xa4\x02\n" +
 	"\x1fcom.example.searchattributes.v1B\x15SearchattributesProtoP\x01Z\\github.com/cludden/protoc-gen-go-temporal/gen/example/searchattributes/v1;searchattributesv1\xa2\x02\x03ESX\xaa\x02\x1bExample.Searchattributes.V1\xca\x02\x1bExample\\Searchattributes\\V1\xe2\x02'Example\\Searchattributes\\V1\\GPBMetadata\xea\x02\x1dExample::Searchattributes::V1b\x06proto3"
@@ -143,21 +351,27 @@ func file_example_searchattributes_v1_searchattributes_proto_rawDescGZIP() []byt
 	return file_example_searchattributes_v1_searchattributes_proto_rawDescData
 }
 
-var file_example_searchattributes_v1_searchattributes_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_example_searchattributes_v1_searchattributes_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_example_searchattributes_v1_searchattributes_proto_goTypes = []any{
-	(*SearchAttributesInput)(nil), // 0: example.searchattributes.v1.SearchAttributesInput
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),         // 2: google.protobuf.Empty
+	(*SearchAttributesInput)(nil),       // 0: example.searchattributes.v1.SearchAttributesInput
+	(*TypedSearchAttributesInput)(nil),  // 1: example.searchattributes.v1.TypedSearchAttributesInput
+	(*TypedSearchAttributesOutput)(nil), // 2: example.searchattributes.v1.TypedSearchAttributesOutput
+	(*timestamppb.Timestamp)(nil),       // 3: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 4: google.protobuf.Empty
 }
 var file_example_searchattributes_v1_searchattributes_proto_depIdxs = []int32{
-	1, // 0: example.searchattributes.v1.SearchAttributesInput.custom_datetime_field:type_name -> google.protobuf.Timestamp
-	0, // 1: example.searchattributes.v1.Example.SearchAttributes:input_type -> example.searchattributes.v1.SearchAttributesInput
-	2, // 2: example.searchattributes.v1.Example.SearchAttributes:output_type -> google.protobuf.Empty
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 0: example.searchattributes.v1.SearchAttributesInput.custom_datetime_field:type_name -> google.protobuf.Timestamp
+	3, // 1: example.searchattributes.v1.TypedSearchAttributesInput.custom_datetime_field:type_name -> google.protobuf.Timestamp
+	3, // 2: example.searchattributes.v1.TypedSearchAttributesOutput.custom_datetime_field:type_name -> google.protobuf.Timestamp
+	0, // 3: example.searchattributes.v1.Example.SearchAttributes:input_type -> example.searchattributes.v1.SearchAttributesInput
+	1, // 4: example.searchattributes.v1.Example.TypedSearchAttributes:input_type -> example.searchattributes.v1.TypedSearchAttributesInput
+	4, // 5: example.searchattributes.v1.Example.SearchAttributes:output_type -> google.protobuf.Empty
+	2, // 6: example.searchattributes.v1.Example.TypedSearchAttributes:output_type -> example.searchattributes.v1.TypedSearchAttributesOutput
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_example_searchattributes_v1_searchattributes_proto_init() }
@@ -171,7 +385,7 @@ func file_example_searchattributes_v1_searchattributes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_example_searchattributes_v1_searchattributes_proto_rawDesc), len(file_example_searchattributes_v1_searchattributes_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1140,3 +1140,11 @@ func (n *names) serviceRegistrationMutex(service *protogen.Service) string {
 func (n *names) workflowIDExpression(workflow protoreflect.FullName) string {
 	return n.toCamel("%sIDExpression", workflow)
 }
+
+func (n *names) workflowSearchAttributesMapping(workflow protoreflect.FullName) string {
+	return n.toCamel("%sSearchAttributesMapping", workflow)
+}
+
+func (n *names) workflowTypedSearchAttributesMapping(workflow protoreflect.FullName) string {
+	return n.toCamel("%sTypedSearchAttributesMapping", workflow)
+}

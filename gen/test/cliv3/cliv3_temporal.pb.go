@@ -422,6 +422,7 @@ type CreateFooOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -452,6 +453,9 @@ func (o *CreateFooOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -516,6 +520,12 @@ func (o *CreateFooOptions) WithTaskTimeout(d time.Duration) *CreateFooOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *CreateFooOptions) WithTaskQueue(tq string) *CreateFooOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *CreateFooOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *CreateFooOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -881,6 +891,7 @@ type CreateFooChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -911,6 +922,9 @@ func (o *CreateFooChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -993,6 +1007,12 @@ func (o *CreateFooChildOptions) WithTaskTimeout(d time.Duration) *CreateFooChild
 // WithTaskQueue sets the TaskQueue value
 func (o *CreateFooChildOptions) WithTaskQueue(tq string) *CreateFooChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *CreateFooChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *CreateFooChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

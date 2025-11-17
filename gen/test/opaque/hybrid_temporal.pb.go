@@ -241,6 +241,7 @@ type PutHybridExampleOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -271,6 +272,9 @@ func (o *PutHybridExampleOptions) Build(req protoreflect.Message) (client.StartW
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -335,6 +339,12 @@ func (o *PutHybridExampleOptions) WithTaskTimeout(d time.Duration) *PutHybridExa
 // WithTaskQueue sets the TaskQueue value
 func (o *PutHybridExampleOptions) WithTaskQueue(tq string) *PutHybridExampleOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *PutHybridExampleOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *PutHybridExampleOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -536,6 +546,7 @@ type PutHybridExampleChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -566,6 +577,9 @@ func (o *PutHybridExampleChildOptions) Build(ctx workflow.Context, req protorefl
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -648,6 +662,12 @@ func (o *PutHybridExampleChildOptions) WithTaskTimeout(d time.Duration) *PutHybr
 // WithTaskQueue sets the TaskQueue value
 func (o *PutHybridExampleChildOptions) WithTaskQueue(tq string) *PutHybridExampleChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *PutHybridExampleChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *PutHybridExampleChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

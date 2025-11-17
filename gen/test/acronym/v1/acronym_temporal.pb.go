@@ -360,6 +360,7 @@ type ManageAWSOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -396,6 +397,9 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -460,6 +464,12 @@ func (o *ManageAWSOptions) WithTaskTimeout(d time.Duration) *ManageAWSOptions {
 // WithTaskQueue sets the TaskQueue value
 func (o *ManageAWSOptions) WithTaskQueue(tq string) *ManageAWSOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ManageAWSOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ManageAWSOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -541,6 +551,7 @@ type ManageAWSResourceOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -577,6 +588,9 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -641,6 +655,12 @@ func (o *ManageAWSResourceOptions) WithTaskTimeout(d time.Duration) *ManageAWSRe
 // WithTaskQueue sets the TaskQueue value
 func (o *ManageAWSResourceOptions) WithTaskQueue(tq string) *ManageAWSResourceOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ManageAWSResourceOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ManageAWSResourceOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -722,6 +742,7 @@ type SomethingV1FooBarOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -758,6 +779,9 @@ func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -822,6 +846,12 @@ func (o *SomethingV1FooBarOptions) WithTaskTimeout(d time.Duration) *SomethingV1
 // WithTaskQueue sets the TaskQueue value
 func (o *SomethingV1FooBarOptions) WithTaskQueue(tq string) *SomethingV1FooBarOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SomethingV1FooBarOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomethingV1FooBarOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -903,6 +933,7 @@ type SomethingV2FooBarOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -939,6 +970,9 @@ func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1003,6 +1037,12 @@ func (o *SomethingV2FooBarOptions) WithTaskTimeout(d time.Duration) *SomethingV2
 // WithTaskQueue sets the TaskQueue value
 func (o *SomethingV2FooBarOptions) WithTaskQueue(tq string) *SomethingV2FooBarOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SomethingV2FooBarOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomethingV2FooBarOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -1242,6 +1282,7 @@ type ManageAWSChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -1294,6 +1335,9 @@ func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1376,6 +1420,12 @@ func (o *ManageAWSChildOptions) WithTaskTimeout(d time.Duration) *ManageAWSChild
 // WithTaskQueue sets the TaskQueue value
 func (o *ManageAWSChildOptions) WithTaskQueue(tq string) *ManageAWSChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ManageAWSChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ManageAWSChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -1511,6 +1561,7 @@ type ManageAWSResourceChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -1563,6 +1614,9 @@ func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoref
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1645,6 +1699,12 @@ func (o *ManageAWSResourceChildOptions) WithTaskTimeout(d time.Duration) *Manage
 // WithTaskQueue sets the TaskQueue value
 func (o *ManageAWSResourceChildOptions) WithTaskQueue(tq string) *ManageAWSResourceChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ManageAWSResourceChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ManageAWSResourceChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -1780,6 +1840,7 @@ type SomethingV1FooBarChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -1832,6 +1893,9 @@ func (o *SomethingV1FooBarChildOptions) Build(ctx workflow.Context, req protoref
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1914,6 +1978,12 @@ func (o *SomethingV1FooBarChildOptions) WithTaskTimeout(d time.Duration) *Someth
 // WithTaskQueue sets the TaskQueue value
 func (o *SomethingV1FooBarChildOptions) WithTaskQueue(tq string) *SomethingV1FooBarChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SomethingV1FooBarChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomethingV1FooBarChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -2049,6 +2119,7 @@ type SomethingV2FooBarChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -2101,6 +2172,9 @@ func (o *SomethingV2FooBarChildOptions) Build(ctx workflow.Context, req protoref
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -2183,6 +2257,12 @@ func (o *SomethingV2FooBarChildOptions) WithTaskTimeout(d time.Duration) *Someth
 // WithTaskQueue sets the TaskQueue value
 func (o *SomethingV2FooBarChildOptions) WithTaskQueue(tq string) *SomethingV2FooBarChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SomethingV2FooBarChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomethingV2FooBarChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

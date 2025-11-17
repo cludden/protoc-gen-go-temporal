@@ -1200,6 +1200,18 @@ type WorkflowOptions struct {
 	// pulled this task. If a workflow task is lost, it is retried after this timeout.
 	// The resolution is seconds.
 	TaskTimeout *durationpb.Duration `protobuf:"bytes,12,opt,name=task_timeout,json=taskTimeout,proto3" json:"task_timeout,omitempty"`
+	// Bloblang mapping defining default workflow typed search attributes. The mapping should be a map of
+	// search attribute types to a map of search attribute keys to values.
+	// Example:
+	// string.foo = "bar"
+	// string.baz = "qux"
+	// float64.min = 123.0
+	// int64.max = 456
+	// time.created_at = now()
+	// bool.is_active = true
+	// keyword.name = "John Doe"
+	// keyword_list.tags = ["foo", "bar"]
+	TypedSearchAttributes string `protobuf:"bytes,22,opt,name=typed_search_attributes,json=typedSearchAttributes,proto3" json:"typed_search_attributes,omitempty"`
 	// Provides a Versioning Behavior to workflows of this type.
 	VersioningBehavior v1.VersioningBehavior `protobuf:"varint,21,opt,name=versioning_behavior,json=versioningBehavior,proto3,enum=temporal.api.enums.v1.VersioningBehavior" json:"versioning_behavior,omitempty"`
 	// WaitForCancellation specifies whether to wait for canceled child workflow to be ended
@@ -1361,6 +1373,13 @@ func (x *WorkflowOptions) GetTaskTimeout() *durationpb.Duration {
 		return x.TaskTimeout
 	}
 	return nil
+}
+
+func (x *WorkflowOptions) GetTypedSearchAttributes() string {
+	if x != nil {
+		return x.TypedSearchAttributes
+	}
+	return ""
 }
 
 func (x *WorkflowOptions) GetVersioningBehavior() v1.VersioningBehavior {
@@ -1908,7 +1927,7 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x0ewait_for_stage\x18\a \x01(\x0e2\x17.temporal.v1.WaitPolicyR\fwaitForStage\x12<\n" +
 	"\vwait_policy\x18\x03 \x01(\x0e2\x17.temporal.v1.WaitPolicyB\x02\x18\x01R\n" +
 	"waitPolicy\x121\n" +
-	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\xb3\r\n" +
+	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\xeb\r\n" +
 	"\x0fWorkflowOptions\x120\n" +
 	"\x03cli\x18\x13 \x01(\v2\x1e.temporal.v1.CLICommandOptionsR\x03cli\x12\x12\n" +
 	"\x04name\x18\x0e \x01(\tR\x04name\x12\x18\n" +
@@ -1929,7 +1948,8 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x11search_attributes\x18\x0f \x01(\tR\x10searchAttributes\x12\x1d\n" +
 	"\n" +
 	"task_queue\x18\v \x01(\tR\ttaskQueue\x12<\n" +
-	"\ftask_timeout\x18\f \x01(\v2\x19.google.protobuf.DurationR\vtaskTimeout\x12Z\n" +
+	"\ftask_timeout\x18\f \x01(\v2\x19.google.protobuf.DurationR\vtaskTimeout\x126\n" +
+	"\x17typed_search_attributes\x18\x16 \x01(\tR\x15typedSearchAttributes\x12Z\n" +
 	"\x13versioning_behavior\x18\x15 \x01(\x0e2).temporal.api.enums.v1.VersioningBehaviorR\x12versioningBehavior\x122\n" +
 	"\x15wait_for_cancellation\x18\r \x01(\bR\x13waitForCancellation\x12n\n" +
 	"\x1bworkflow_id_conflict_policy\x18\x14 \x01(\x0e2/.temporal.api.enums.v1.WorkflowIdConflictPolicyR\x18workflowIdConflictPolicy\x121\n" +

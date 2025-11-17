@@ -395,6 +395,7 @@ type ShoppingCartOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -431,6 +432,9 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -495,6 +499,12 @@ func (o *ShoppingCartOptions) WithTaskTimeout(d time.Duration) *ShoppingCartOpti
 // WithTaskQueue sets the TaskQueue value
 func (o *ShoppingCartOptions) WithTaskQueue(tq string) *ShoppingCartOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ShoppingCartOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ShoppingCartOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 
@@ -868,6 +878,7 @@ type ShoppingCartChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -920,6 +931,9 @@ func (o *ShoppingCartChildOptions) Build(ctx workflow.Context, req protoreflect.
 	}
 	if v := o.searchAttributes; v != nil {
 		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1002,6 +1016,12 @@ func (o *ShoppingCartChildOptions) WithTaskTimeout(d time.Duration) *ShoppingCar
 // WithTaskQueue sets the TaskQueue value
 func (o *ShoppingCartChildOptions) WithTaskQueue(tq string) *ShoppingCartChildOptions {
 	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ShoppingCartChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ShoppingCartChildOptions {
+	o.typedSearchAttributes = &tsa
 	return o
 }
 

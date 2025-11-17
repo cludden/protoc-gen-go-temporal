@@ -8,9 +8,12 @@
 package searchattributesv1
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	convert "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
 	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpers "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	scheme "github.com/cludden/protoc-gen-go-temporal/pkg/scheme"
@@ -39,17 +42,24 @@ var ExampleTaskQueue = "searchattributes"
 
 // example.searchattributes.v1.Example workflow names
 const (
-	SearchAttributesWorkflowName = "example.searchattributes.v1.Example.SearchAttributes"
+	SearchAttributesWorkflowName      = "example.searchattributes.v1.Example.SearchAttributes"
+	TypedSearchAttributesWorkflowName = "example.searchattributes.v1.Example.TypedSearchAttributes"
 )
 
 // example.searchattributes.v1.Example workflow id expressions
 var (
-	SearchAttributesIdexpression = expression.MustParseExpression("search_attributes_${! uuid_v4() }")
+	SearchAttributesIdexpression      = expression.MustParseExpression("search_attributes_${! uuid_v4() }")
+	TypedSearchAttributesIdexpression = expression.MustParseExpression("searchattributes.v1.TypedSearchAttributes/${! uuid_v4() }")
 )
 
 // example.searchattributes.v1.Example workflow search attribute mappings
 var (
 	SearchAttributesSearchAttributesMapping = expression.MustParseMapping("CustomKeywordField = customKeywordField \nCustomTextField = customTextField \nCustomIntField = customIntField.int64() \nCustomDoubleField = customDoubleField \nCustomBoolField = customBoolField \nCustomDatetimeField = customDatetimeField.ts_parse(\"2006-01-02T15:04:05Z\") \n")
+)
+
+// example.searchattributes.v1.Example workflow typed search attribute mappings
+var (
+	TypedSearchAttributesTypedSearchAttributesMapping = expression.MustParseMapping("keyword.CustomKeywordField = customKeywordField \nstring.CustomTextField = customTextField \nint64.CustomIntField = customIntField.int64() \nfloat64.CustomDoubleField = customDoubleField \nbool.CustomBoolField = customBoolField \ntime.CustomDatetimeField = customDatetimeField.ts_parse(\"2006-01-02T15:04:05Z\") \nkeyword_list.CustomKeywordListField = customKeywordListField \n")
 )
 
 // ExampleClient describes a client for a(n) example.searchattributes.v1.Example worker
@@ -62,6 +72,15 @@ type ExampleClient interface {
 
 	// GetSearchAttributes retrieves a handle to an existing example.searchattributes.v1.Example.SearchAttributes workflow execution
 	GetSearchAttributes(ctx context.Context, workflowID string, runID string) SearchAttributesRun
+
+	// TypedSearchAttributes executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow and blocks until error or response received
+	TypedSearchAttributes(ctx context.Context, req *TypedSearchAttributesInput, opts ...*TypedSearchAttributesOptions) (*TypedSearchAttributesOutput, error)
+
+	// TypedSearchAttributesAsync starts a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow and returns a handle to the workflow run
+	TypedSearchAttributesAsync(ctx context.Context, req *TypedSearchAttributesInput, opts ...*TypedSearchAttributesOptions) (TypedSearchAttributesRun, error)
+
+	// GetTypedSearchAttributes retrieves a handle to an existing example.searchattributes.v1.Example.TypedSearchAttributes workflow execution
+	GetTypedSearchAttributes(ctx context.Context, workflowID string, runID string) TypedSearchAttributesRun
 
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
@@ -177,6 +196,48 @@ func (c *exampleClient) GetSearchAttributes(ctx context.Context, workflowID stri
 	}
 }
 
+// example.searchattributes.v1.Example.TypedSearchAttributes executes a example.searchattributes.v1.Example.TypedSearchAttributes workflow and blocks until error or response received
+func (c *exampleClient) TypedSearchAttributes(ctx context.Context, req *TypedSearchAttributesInput, options ...*TypedSearchAttributesOptions) (*TypedSearchAttributesOutput, error) {
+	run, err := c.TypedSearchAttributesAsync(ctx, req, options...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// TypedSearchAttributesAsync starts a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow and returns a handle to the workflow run
+func (c *exampleClient) TypedSearchAttributesAsync(ctx context.Context, req *TypedSearchAttributesInput, options ...*TypedSearchAttributesOptions) (TypedSearchAttributesRun, error) {
+	var o *TypedSearchAttributesOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewTypedSearchAttributesOptions()
+	}
+	opts, err := o.Build(req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+	}
+	run, err := c.client.ExecuteWorkflow(ctx, opts, TypedSearchAttributesWorkflowName, req)
+	if err != nil {
+		return nil, err
+	}
+	if run == nil {
+		return nil, errors.New("execute workflow returned nil run")
+	}
+	return &typedSearchAttributesRun{
+		client: c,
+		run:    run,
+	}, nil
+}
+
+// GetTypedSearchAttributes fetches an existing example.searchattributes.v1.Example.TypedSearchAttributes execution
+func (c *exampleClient) GetTypedSearchAttributes(ctx context.Context, workflowID string, runID string) TypedSearchAttributesRun {
+	return &typedSearchAttributesRun{
+		client: c,
+		run:    c.client.GetWorkflow(ctx, workflowID, runID),
+	}
+}
+
 // CancelWorkflow requests cancellation of an existing workflow execution
 func (c *exampleClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	return c.client.CancelWorkflow(ctx, workflowID, runID)
@@ -198,6 +259,7 @@ type SearchAttributesOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -248,6 +310,9 @@ func (o *SearchAttributesOptions) Build(req protoreflect.Message) (client.StartW
 			return opts, fmt.Errorf("expected \"SearchAttributes\" search attribute mapping to return map[string]any, got: %T", result)
 		}
 		opts.SearchAttributes = searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -315,6 +380,12 @@ func (o *SearchAttributesOptions) WithTaskQueue(tq string) *SearchAttributesOpti
 	return o
 }
 
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SearchAttributesOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SearchAttributesOptions {
+	o.typedSearchAttributes = &tsa
+	return o
+}
+
 // WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
 func (o *SearchAttributesOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SearchAttributesOptions {
 	o.workflowIdConflictPolicy = policy
@@ -378,12 +449,223 @@ func (r *searchAttributesRun) Terminate(ctx context.Context, reason string, deta
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
+// TypedSearchAttributesOptions provides configuration for a example.searchattributes.v1.Example.TypedSearchAttributes workflow operation
+type TypedSearchAttributesOptions struct {
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+}
+
+// NewTypedSearchAttributesOptions initializes a new TypedSearchAttributesOptions value
+func NewTypedSearchAttributesOptions() *TypedSearchAttributesOptions {
+	return &TypedSearchAttributesOptions{}
+}
+
+// Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
+func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+	opts := o.options
+	if v := o.id; v != nil {
+		opts.ID = *v
+	} else if opts.ID == "" {
+		id, err := expression.EvalExpression(TypedSearchAttributesIdexpression, req)
+		if err != nil {
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", TypedSearchAttributesWorkflowName, err)
+		}
+		opts.ID = id
+	}
+	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = ExampleTaskQueue
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	}
+	if v := o.searchAttributes; v != nil {
+		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
+	} else if opts.TypedSearchAttributes.Size() == 0 {
+		structured, err := expression.ToStructured(req)
+		if err != nil {
+			return opts, fmt.Errorf("error serializing input for \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
+		}
+		result, err := TypedSearchAttributesTypedSearchAttributesMapping.Query(structured)
+		if err != nil {
+			return opts, fmt.Errorf("error executing \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
+		}
+		sa, ok := result.(map[string]any)
+		if !ok {
+			return opts, fmt.Errorf("expected \"TypedSearchAttributes\" typed search attribute mapping to return map[string]any, got: %T", result)
+		}
+		tsa, err := convert.MarshalTypedSearchAttributes(sa)
+		if err != nil {
+			return opts, fmt.Errorf("error marshaling \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
+		}
+		opts.TypedSearchAttributes = tsa
+	}
+	if v := o.executionTimeout; v != nil {
+		opts.WorkflowExecutionTimeout = *v
+	}
+	if v := o.runTimeout; v != nil {
+		opts.WorkflowRunTimeout = *v
+	}
+	if v := o.taskTimeout; v != nil {
+		opts.WorkflowTaskTimeout = *v
+	}
+	return opts, nil
+}
+
+// WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
+func (o *TypedSearchAttributesOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *TypedSearchAttributesOptions {
+	o.options = options
+	return o
+}
+
+// WithExecutionTimeout sets the WorkflowExecutionTimeout value
+func (o *TypedSearchAttributesOptions) WithExecutionTimeout(d time.Duration) *TypedSearchAttributesOptions {
+	o.executionTimeout = &d
+	return o
+}
+
+// WithID sets the ID value
+func (o *TypedSearchAttributesOptions) WithID(id string) *TypedSearchAttributesOptions {
+	o.id = &id
+	return o
+}
+
+// WithIDReusePolicy sets the WorkflowIDReusePolicy value
+func (o *TypedSearchAttributesOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *TypedSearchAttributesOptions {
+	o.idReusePolicy = policy
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *TypedSearchAttributesOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *TypedSearchAttributesOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithRunTimeout sets the WorkflowRunTimeout value
+func (o *TypedSearchAttributesOptions) WithRunTimeout(d time.Duration) *TypedSearchAttributesOptions {
+	o.runTimeout = &d
+	return o
+}
+
+// WithSearchAttributes sets the SearchAttributes value
+func (o *TypedSearchAttributesOptions) WithSearchAttributes(sa map[string]any) *TypedSearchAttributesOptions {
+	o.searchAttributes = sa
+	return o
+}
+
+// WithTaskTimeout sets the WorkflowTaskTimeout value
+func (o *TypedSearchAttributesOptions) WithTaskTimeout(d time.Duration) *TypedSearchAttributesOptions {
+	o.taskTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *TypedSearchAttributesOptions) WithTaskQueue(tq string) *TypedSearchAttributesOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *TypedSearchAttributesOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *TypedSearchAttributesOptions {
+	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *TypedSearchAttributesOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *TypedSearchAttributesOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
+// TypedSearchAttributesRun describes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow run
+type TypedSearchAttributesRun interface {
+	// ID returns the workflow ID
+	ID() string
+
+	// RunID returns the workflow instance ID
+	RunID() string
+
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
+
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*TypedSearchAttributesOutput, error)
+
+	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+	Cancel(ctx context.Context) error
+
+	// Terminate terminates a workflow in execution, returning an error if applicable
+	Terminate(ctx context.Context, reason string, details ...interface{}) error
+}
+
+// typedSearchAttributesRun provides an internal implementation of a(n) TypedSearchAttributesRunRun
+type typedSearchAttributesRun struct {
+	client *exampleClient
+	run    client.WorkflowRun
+}
+
+// ID returns the workflow ID
+func (r *typedSearchAttributesRun) ID() string {
+	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *typedSearchAttributesRun) Run() client.WorkflowRun {
+	return r.run
+}
+
+// RunID returns the execution ID
+func (r *typedSearchAttributesRun) RunID() string {
+	return r.run.GetRunID()
+}
+
+// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+func (r *typedSearchAttributesRun) Cancel(ctx context.Context) error {
+	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
+}
+
+// Get blocks until the workflow is complete, returning the result if applicable
+func (r *typedSearchAttributesRun) Get(ctx context.Context) (*TypedSearchAttributesOutput, error) {
+	var resp TypedSearchAttributesOutput
+	if err := r.run.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Terminate terminates a workflow in execution, returning an error if applicable
+func (r *typedSearchAttributesRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
+}
+
 // Reference to generated workflow functions
 var (
 	// exampleRegistrationMutex is a mutex for registering example.searchattributes.v1.Example workflows
 	exampleRegistrationMutex sync.Mutex
 	// SearchAttributesFunction implements a "example.searchattributes.v1.Example.SearchAttributes" workflow
 	SearchAttributesFunction func(workflow.Context, *SearchAttributesInput) error
+	// TypedSearchAttributesFunction implements a "example.searchattributes.v1.Example.TypedSearchAttributes" workflow
+	TypedSearchAttributesFunction func(workflow.Context, *TypedSearchAttributesInput) (*TypedSearchAttributesOutput, error)
 )
 
 // ExampleWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
@@ -392,6 +674,8 @@ type (
 	ExampleWorkflowFunctions interface {
 		// SearchAttributes executes a "example.searchattributes.v1.Example.SearchAttributes" workflow inline
 		SearchAttributes(workflow.Context, *SearchAttributesInput) error
+		// TypedSearchAttributes executes a "example.searchattributes.v1.Example.TypedSearchAttributes" workflow inline
+		TypedSearchAttributes(workflow.Context, *TypedSearchAttributesInput) (*TypedSearchAttributesOutput, error)
 	}
 	// exampleWorkflowFunctions provides an internal ExampleWorkflowFunctions implementation
 	exampleWorkflowFunctions struct{}
@@ -409,15 +693,27 @@ func (f *exampleWorkflowFunctions) SearchAttributes(ctx workflow.Context, req *S
 	return SearchAttributesFunction(ctx, req)
 }
 
+// TypedSearchAttributes executes a "example.searchattributes.v1.Example.TypedSearchAttributes" workflow inline
+func (f *exampleWorkflowFunctions) TypedSearchAttributes(ctx workflow.Context, req *TypedSearchAttributesInput) (*TypedSearchAttributesOutput, error) {
+	if TypedSearchAttributesFunction == nil {
+		return nil, errors.New("TypedSearchAttributes requires workflow registration via RegisterExampleWorkflows or RegisterTypedSearchAttributesWorkflow")
+	}
+	return TypedSearchAttributesFunction(ctx, req)
+}
+
 // ExampleWorkflows provides methods for initializing new example.searchattributes.v1.Example workflow values
 type ExampleWorkflows interface {
 	// SearchAttributes initializes a new a(n) SearchAttributesWorkflow implementation
 	SearchAttributes(ctx workflow.Context, input *SearchAttributesWorkflowInput) (SearchAttributesWorkflow, error)
+
+	// TypedSearchAttributes initializes a new a(n) TypedSearchAttributesWorkflow implementation
+	TypedSearchAttributes(ctx workflow.Context, input *TypedSearchAttributesWorkflowInput) (TypedSearchAttributesWorkflow, error)
 }
 
 // RegisterExampleWorkflows registers example.searchattributes.v1.Example workflows with the given worker
 func RegisterExampleWorkflows(r worker.WorkflowRegistry, workflows ExampleWorkflows) {
 	RegisterSearchAttributesWorkflow(r, workflows.SearchAttributes)
+	RegisterTypedSearchAttributesWorkflow(r, workflows.TypedSearchAttributes)
 }
 
 // RegisterSearchAttributesWorkflow registers a example.searchattributes.v1.Example.SearchAttributes workflow with the given worker
@@ -499,6 +795,7 @@ type SearchAttributesChildOptions struct {
 	searchAttributes         map[string]any
 	taskQueue                *string
 	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 	dc                       converter.DataConverter
 	parentClosePolicy        enumsv1.ParentClosePolicy
@@ -590,6 +887,9 @@ func (o *SearchAttributesChildOptions) Build(ctx workflow.Context, req protorefl
 			opts.SearchAttributes = searchAttributes
 		}
 	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -674,6 +974,12 @@ func (o *SearchAttributesChildOptions) WithTaskQueue(tq string) *SearchAttribute
 	return o
 }
 
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *SearchAttributesChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SearchAttributesChildOptions {
+	o.typedSearchAttributes = &tsa
+	return o
+}
+
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SearchAttributesChildOptions) WithWaitForCancellation(wait bool) *SearchAttributesChildOptions {
 	o.waitForCancellation = &wait
@@ -719,6 +1025,309 @@ func (r *SearchAttributesChildRun) SelectStart(sel workflow.Selector, fn func(*S
 
 // WaitStart waits for the child workflow to start
 func (r *SearchAttributesChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+	var exec workflow.Execution
+	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
+		return nil, err
+	}
+	return &exec, nil
+}
+
+// RegisterTypedSearchAttributesWorkflow registers a example.searchattributes.v1.Example.TypedSearchAttributes workflow with the given worker
+func RegisterTypedSearchAttributesWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *TypedSearchAttributesWorkflowInput) (TypedSearchAttributesWorkflow, error)) {
+	exampleRegistrationMutex.Lock()
+	defer exampleRegistrationMutex.Unlock()
+	TypedSearchAttributesFunction = buildTypedSearchAttributes(wf)
+	r.RegisterWorkflowWithOptions(TypedSearchAttributesFunction, workflow.RegisterOptions{Name: TypedSearchAttributesWorkflowName})
+}
+
+// buildTypedSearchAttributes converts a TypedSearchAttributes workflow struct into a valid workflow function
+func buildTypedSearchAttributes(ctor func(workflow.Context, *TypedSearchAttributesWorkflowInput) (TypedSearchAttributesWorkflow, error)) func(workflow.Context, *TypedSearchAttributesInput) (*TypedSearchAttributesOutput, error) {
+	return func(ctx workflow.Context, req *TypedSearchAttributesInput) (*TypedSearchAttributesOutput, error) {
+		input := &TypedSearchAttributesWorkflowInput{
+			Req: req,
+		}
+		wf, err := ctor(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		if initializable, ok := wf.(helpers.Initializable); ok {
+			if err := initializable.Initialize(ctx); err != nil {
+				return nil, err
+			}
+		}
+		return wf.Execute(ctx)
+	}
+}
+
+// TypedSearchAttributesWorkflowInput describes the input to a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow constructor
+type TypedSearchAttributesWorkflowInput struct {
+	Req *TypedSearchAttributesInput
+}
+
+// TypedSearchAttributesWorkflow describes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow implementation
+//
+// workflow details: (id: "searchattributes.v1.TypedSearchAttributes/${! uuid_v4() }")
+type TypedSearchAttributesWorkflow interface {
+	// Execute defines the entrypoint to a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow
+	Execute(ctx workflow.Context) (*TypedSearchAttributesOutput, error)
+}
+
+// TypedSearchAttributesChild executes a child example.searchattributes.v1.Example.TypedSearchAttributes workflow and blocks until error or response received
+func TypedSearchAttributesChild(ctx workflow.Context, req *TypedSearchAttributesInput, options ...*TypedSearchAttributesChildOptions) (*TypedSearchAttributesOutput, error) {
+	childRun, err := TypedSearchAttributesChildAsync(ctx, req, options...)
+	if err != nil {
+		return nil, err
+	}
+	return childRun.Get(ctx)
+}
+
+// TypedSearchAttributesChildAsync starts a child example.searchattributes.v1.Example.TypedSearchAttributes workflow and returns a handle to the child workflow run
+func TypedSearchAttributesChildAsync(ctx workflow.Context, req *TypedSearchAttributesInput, options ...*TypedSearchAttributesChildOptions) (*TypedSearchAttributesChildRun, error) {
+	var o *TypedSearchAttributesChildOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewTypedSearchAttributesChildOptions()
+	}
+	opts, err := o.Build(ctx, req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
+	}
+	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
+	return &TypedSearchAttributesChildRun{Future: workflow.ExecuteChildWorkflow(ctx, TypedSearchAttributesWorkflowName, req)}, nil
+}
+
+// TypedSearchAttributesChildOptions provides configuration for a child example.searchattributes.v1.Example.TypedSearchAttributes workflow operation
+type TypedSearchAttributesChildOptions struct {
+	options                  workflow.ChildWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+	dc                       converter.DataConverter
+	parentClosePolicy        enumsv1.ParentClosePolicy
+	waitForCancellation      *bool
+}
+
+// NewTypedSearchAttributesChildOptions initializes a new TypedSearchAttributesChildOptions value
+func NewTypedSearchAttributesChildOptions() *TypedSearchAttributesChildOptions {
+	return &TypedSearchAttributesChildOptions{}
+}
+
+// Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
+func (o *TypedSearchAttributesChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+	opts := o.options
+	if v := o.id; v != nil {
+		opts.WorkflowID = *v
+	} else if opts.WorkflowID == "" {
+		// wrap expression evaluation in local activity
+		// more info: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity
+		if workflow.GetVersion(ctx, "cludden_protoc-gen-go-temporal_64_expression-evaluation-local-activity", workflow.DefaultVersion, 1) == 1 {
+			lao := workflow.GetLocalActivityOptions(ctx)
+			lao.ScheduleToCloseTimeout = time.Second * 10
+			if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
+				id, err := expression.EvalExpression(TypedSearchAttributesIdexpression, req)
+				if err != nil {
+					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", TypedSearchAttributesWorkflowName, err)
+				}
+				return id, nil
+			}).Get(ctx, &opts.WorkflowID); err != nil {
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", TypedSearchAttributesWorkflowName, err)
+			}
+		} else {
+			id, err := expression.EvalExpression(TypedSearchAttributesIdexpression, req)
+			if err != nil {
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", TypedSearchAttributesWorkflowName, err)
+			}
+			opts.WorkflowID = id
+		}
+	}
+	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = ExampleTaskQueue
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	}
+	if v := o.searchAttributes; v != nil {
+		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
+	} else if opts.TypedSearchAttributes.Size() == 0 {
+		sa := make(map[string]any)
+		if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, workflow.LocalActivityOptions{StartToCloseTimeout: time.Second * 10}), func(ctx context.Context) (map[string]any, error) {
+			structured, err := expression.ToStructured(req)
+			if err != nil {
+				return nil, fmt.Errorf("error serializing input for \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
+			}
+			result, err := TypedSearchAttributesTypedSearchAttributesMapping.Query(structured)
+			if err != nil {
+				return nil, fmt.Errorf("error executing \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
+			}
+			sa, ok := result.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("expected \"TypedSearchAttributes\" typed search attribute mapping to return map[string]any, got: %T", result)
+			}
+			return sa, nil
+		}).Get(ctx, &sa); err != nil {
+			return opts, fmt.Errorf("error evaluating typed search attributes for \"TypedSearchAttributesWorkflowName\" workflow: %w", err)
+		}
+		tsa, err := convert.MarshalTypedSearchAttributes(sa)
+		if err != nil {
+			return opts, fmt.Errorf("error marshaling \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
+		}
+		opts.TypedSearchAttributes = tsa
+	}
+	if v := o.executionTimeout; v != nil {
+		opts.WorkflowExecutionTimeout = *v
+	}
+	if v := o.runTimeout; v != nil {
+		opts.WorkflowRunTimeout = *v
+	}
+	if v := o.taskTimeout; v != nil {
+		opts.WorkflowTaskTimeout = *v
+	}
+	if v := o.parentClosePolicy; v != enumsv1.PARENT_CLOSE_POLICY_UNSPECIFIED {
+		opts.ParentClosePolicy = v
+	}
+	if v := o.waitForCancellation; v != nil {
+		opts.WaitForCancellation = *v
+	}
+	return opts, nil
+}
+
+// WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
+func (o *TypedSearchAttributesChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *TypedSearchAttributesChildOptions {
+	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *TypedSearchAttributesChildOptions) WithDataConverter(dc converter.DataConverter) *TypedSearchAttributesChildOptions {
+	o.dc = dc
+	return o
+}
+
+// WithExecutionTimeout sets the WorkflowExecutionTimeout value
+func (o *TypedSearchAttributesChildOptions) WithExecutionTimeout(d time.Duration) *TypedSearchAttributesChildOptions {
+	o.executionTimeout = &d
+	return o
+}
+
+// WithID sets the WorkflowID value
+func (o *TypedSearchAttributesChildOptions) WithID(id string) *TypedSearchAttributesChildOptions {
+	o.id = &id
+	return o
+}
+
+// WithIDReusePolicy sets the WorkflowIDReusePolicy value
+func (o *TypedSearchAttributesChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *TypedSearchAttributesChildOptions {
+	o.idReusePolicy = policy
+	return o
+}
+
+// WithParentClosePolicy sets the WorkflowIDReusePolicy value
+func (o *TypedSearchAttributesChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *TypedSearchAttributesChildOptions {
+	o.parentClosePolicy = policy
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *TypedSearchAttributesChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *TypedSearchAttributesChildOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithRunTimeout sets the WorkflowRunTimeout value
+func (o *TypedSearchAttributesChildOptions) WithRunTimeout(d time.Duration) *TypedSearchAttributesChildOptions {
+	o.runTimeout = &d
+	return o
+}
+
+// WithSearchAttributes sets the SearchAttributes value
+func (o *TypedSearchAttributesChildOptions) WithSearchAttributes(sa map[string]any) *TypedSearchAttributesChildOptions {
+	o.searchAttributes = sa
+	return o
+}
+
+// WithTaskTimeout sets the WorkflowTaskTimeout value
+func (o *TypedSearchAttributesChildOptions) WithTaskTimeout(d time.Duration) *TypedSearchAttributesChildOptions {
+	o.taskTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *TypedSearchAttributesChildOptions) WithTaskQueue(tq string) *TypedSearchAttributesChildOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *TypedSearchAttributesChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *TypedSearchAttributesChildOptions {
+	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithWaitForCancellation sets the WaitForCancellation value
+func (o *TypedSearchAttributesChildOptions) WithWaitForCancellation(wait bool) *TypedSearchAttributesChildOptions {
+	o.waitForCancellation = &wait
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *TypedSearchAttributesChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *TypedSearchAttributesChildOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
+// TypedSearchAttributesChildRun describes a child TypedSearchAttributes workflow run
+type TypedSearchAttributesChildRun struct {
+	Future workflow.ChildWorkflowFuture
+}
+
+// Get blocks until the workflow is completed, returning the response value
+func (r *TypedSearchAttributesChildRun) Get(ctx workflow.Context) (*TypedSearchAttributesOutput, error) {
+	var resp TypedSearchAttributesOutput
+	if err := r.Future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Select adds this completion to the selector. Callback can be nil.
+func (r *TypedSearchAttributesChildRun) Select(sel workflow.Selector, fn func(*TypedSearchAttributesChildRun)) workflow.Selector {
+	return sel.AddFuture(r.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(r)
+		}
+	})
+}
+
+// SelectStart adds waiting for start to the selector. Callback can be nil.
+func (r *TypedSearchAttributesChildRun) SelectStart(sel workflow.Selector, fn func(*TypedSearchAttributesChildRun)) workflow.Selector {
+	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
+		if fn != nil {
+			fn(r)
+		}
+	})
+}
+
+// WaitStart waits for the child workflow to start
+func (r *TypedSearchAttributesChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
 	var exec workflow.Execution
 	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
 		return nil, err
@@ -778,6 +1387,35 @@ func (c *TestExampleClient) SearchAttributesAsync(ctx context.Context, req *Sear
 // GetSearchAttributes is a noop
 func (c *TestExampleClient) GetSearchAttributes(ctx context.Context, workflowID string, runID string) SearchAttributesRun {
 	return &testSearchAttributesRun{env: c.env, workflows: c.workflows}
+}
+
+// TypedSearchAttributes executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow in the test environment
+func (c *TestExampleClient) TypedSearchAttributes(ctx context.Context, req *TypedSearchAttributesInput, opts ...*TypedSearchAttributesOptions) (*TypedSearchAttributesOutput, error) {
+	run, err := c.TypedSearchAttributesAsync(ctx, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// TypedSearchAttributesAsync executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow in the test environment
+func (c *TestExampleClient) TypedSearchAttributesAsync(ctx context.Context, req *TypedSearchAttributesInput, options ...*TypedSearchAttributesOptions) (TypedSearchAttributesRun, error) {
+	var o *TypedSearchAttributesOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewTypedSearchAttributesOptions()
+	}
+	opts, err := o.Build(req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+	}
+	return &testTypedSearchAttributesRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+}
+
+// GetTypedSearchAttributes is a noop
+func (c *TestExampleClient) GetTypedSearchAttributes(ctx context.Context, workflowID string, runID string) TypedSearchAttributesRun {
+	return &testTypedSearchAttributesRun{env: c.env, workflows: c.workflows}
 }
 
 // CancelWorkflow requests cancellation of an existing workflow execution
@@ -842,6 +1480,64 @@ func (r *testSearchAttributesRun) RunID() string {
 
 // Terminate terminates a workflow in execution, returning an error if applicable
 func (r *testSearchAttributesRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
+}
+
+var _ TypedSearchAttributesRun = &testTypedSearchAttributesRun{}
+
+// testTypedSearchAttributesRun provides convenience methods for interacting with a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow in the test environment
+type testTypedSearchAttributesRun struct {
+	client    *TestExampleClient
+	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
+	opts      *client.StartWorkflowOptions
+	req       *TypedSearchAttributesInput
+	workflows ExampleWorkflows
+}
+
+// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+func (r *testTypedSearchAttributesRun) Cancel(ctx context.Context) error {
+	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
+}
+
+// Get retrieves a test example.searchattributes.v1.Example.TypedSearchAttributes workflow result
+func (r *testTypedSearchAttributesRun) Get(context.Context) (*TypedSearchAttributesOutput, error) {
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(TypedSearchAttributesWorkflowName, r.req)
+	}
+	if !r.env.IsWorkflowCompleted() {
+		return nil, errors.New("workflow in progress")
+	}
+	if err := r.env.GetWorkflowError(); err != nil {
+		return nil, err
+	}
+	var result TypedSearchAttributesOutput
+	if err := r.env.GetWorkflowResult(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// ID returns a test example.searchattributes.v1.Example.TypedSearchAttributes workflow run's workflow ID
+func (r *testTypedSearchAttributesRun) ID() string {
+	if r.opts != nil {
+		return r.opts.ID
+	}
+	return ""
+}
+
+// Run noop implementation
+func (r *testTypedSearchAttributesRun) Run() client.WorkflowRun {
+	return nil
+}
+
+// RunID noop implementation
+func (r *testTypedSearchAttributesRun) RunID() string {
+	return ""
+}
+
+// Terminate terminates a workflow in execution, returning an error if applicable
+func (r *testTypedSearchAttributesRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
@@ -1009,6 +1705,110 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				}
 			},
 		},
+		{
+			Name:                   "typed-search-attributes",
+			Usage:                  "executes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow",
+			Category:               "WORKFLOWS",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Name:    "detach",
+					Usage:   "run workflow in the background and print workflow and execution id",
+					Aliases: []string{"d"},
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "searchattributes",
+				},
+				&v2.StringFlag{
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "custom-keyword-field",
+					Usage:    "set the value of the operation's \"CustomKeywordField\" parameter",
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "custom-text-field",
+					Usage:    "set the value of the operation's \"CustomTextField\" parameter",
+					Category: "INPUT",
+				},
+				&v2.Int64Flag{
+					Name:     "custom-int-field",
+					Usage:    "set the value of the operation's \"CustomIntField\" parameter",
+					Category: "INPUT",
+				},
+				&v2.Float64Flag{
+					Name:     "custom-double-field",
+					Usage:    "set the value of the operation's \"CustomDoubleField\" parameter",
+					Category: "INPUT",
+				},
+				&v2.BoolFlag{
+					Name:     "custom-bool-field",
+					Usage:    "set the value of the operation's \"CustomBoolField\" parameter",
+					Category: "INPUT",
+				},
+				&v2.TimestampFlag{
+					Name:     "custom-datetime-field",
+					Usage:    "set the value of the operation's \"CustomDatetimeField\" parameter (e.g. \"2017-01-15T01:30:15.01Z\")",
+					Category: "INPUT",
+					Layout:   time.RFC3339Nano,
+				},
+				&v2.StringSliceFlag{
+					Name:     "custom-keyword-list-field",
+					Usage:    "set the value of the operation's \"CustomKeywordListField\" parameter",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				tc, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer tc.Close()
+				c := NewExampleClient(tc)
+				req, err := UnmarshalCliFlagsToTypedSearchAttributesInput(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				opts := client.StartWorkflowOptions{}
+				if tq := cmd.String("task-queue"); tq != "" {
+					opts.TaskQueue = tq
+				}
+				run, err := c.TypedSearchAttributesAsync(cmd.Context, req, NewTypedSearchAttributesOptions().WithStartWorkflowOptions(opts))
+				if err != nil {
+					return fmt.Errorf("error starting %s workflow: %w", TypedSearchAttributesWorkflowName, err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", run.ID())
+					fmt.Printf("run id: %s\n", run.RunID())
+					return nil
+				}
+				if resp, err := run.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(resp)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
+				}
+			},
+		},
 	}
 	if opts.worker != nil {
 		commands = append(commands, []*v2.Command{
@@ -1091,9 +1891,60 @@ func UnmarshalCliFlagsToSearchAttributesInput(cmd *v2.Context, options ...helper
 	return &result, nil
 }
 
+// UnmarshalCliFlagsToTypedSearchAttributesInput unmarshals a TypedSearchAttributesInput from command line flags
+func UnmarshalCliFlagsToTypedSearchAttributesInput(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*TypedSearchAttributesInput, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
+	var result TypedSearchAttributesInput
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
+		if err != nil {
+			f = cmd.String(opts.FromFile)
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
+		}
+		if err := protojson.Unmarshal(b, &result); err != nil {
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
+		}
+	}
+	if flag := opts.FlagName("custom-keyword-field"); cmd.IsSet(flag) {
+		value := cmd.String(flag)
+		result.CustomKeywordField = value
+	}
+	if flag := opts.FlagName("custom-text-field"); cmd.IsSet(flag) {
+		value := cmd.String(flag)
+		result.CustomTextField = value
+	}
+	if flag := opts.FlagName("custom-int-field"); cmd.IsSet(flag) {
+		value := cmd.Int64(flag)
+		result.CustomIntField = value
+	}
+	if flag := opts.FlagName("custom-double-field"); cmd.IsSet(flag) {
+		value := cmd.Float64(flag)
+		result.CustomDoubleField = value
+	}
+	if flag := opts.FlagName("custom-bool-field"); cmd.IsSet(flag) {
+		value := cmd.Bool(flag)
+		result.CustomBoolField = value
+	}
+	if flag := opts.FlagName("custom-datetime-field"); cmd.IsSet(flag) {
+		v := cmd.Timestamp(flag)
+		value := timestamppb.New(*v)
+		result.CustomDatetimeField = value
+	}
+	if flag := opts.FlagName("custom-keyword-list-field"); cmd.IsSet(flag) {
+		value := cmd.StringSlice(flag)
+		result.CustomKeywordListField = value
+	}
+	return &result, nil
+}
+
 // WithExampleSchemeTypes registers all Example protobuf types with the given scheme
 func WithExampleSchemeTypes() scheme.Option {
 	return func(s *scheme.Scheme) {
 		s.RegisterType(File_example_searchattributes_v1_searchattributes_proto.Messages().ByName("SearchAttributesInput"))
+		s.RegisterType(File_example_searchattributes_v1_searchattributes_proto.Messages().ByName("TypedSearchAttributesInput"))
+		s.RegisterType(File_example_searchattributes_v1_searchattributes_proto.Messages().ByName("TypedSearchAttributesOutput"))
 	}
 }
