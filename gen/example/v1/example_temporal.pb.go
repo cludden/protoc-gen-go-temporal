@@ -828,20 +828,19 @@ func CreateFooChildAsync(ctx workflow.Context, req *CreateFooRequest, options ..
 
 // CreateFooChildOptions provides configuration for a child example.v1.Example.CreateFoo workflow operation
 type CreateFooChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewCreateFooChildOptions initializes a new CreateFooChildOptions value
@@ -991,12 +990,6 @@ func (o *CreateFooChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAtt
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *CreateFooChildOptions) WithWaitForCancellation(wait bool) *CreateFooChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *CreateFooChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CreateFooChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

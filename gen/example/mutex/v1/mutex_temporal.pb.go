@@ -1141,20 +1141,19 @@ func MutexChildAsync(ctx workflow.Context, req *MutexInput, options ...*MutexChi
 
 // MutexChildOptions provides configuration for a child mutex.v1.Mutex workflow operation
 type MutexChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewMutexChildOptions initializes a new MutexChildOptions value
@@ -1310,12 +1309,6 @@ func (o *MutexChildOptions) WithWaitForCancellation(wait bool) *MutexChildOption
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *MutexChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *MutexChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // MutexChildRun describes a child Mutex workflow run
 type MutexChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1439,20 +1432,19 @@ func SampleWorkflowWithMutexChildAsync(ctx workflow.Context, req *SampleWorkflow
 
 // SampleWorkflowWithMutexChildOptions provides configuration for a child example.mutex.v1.Example.SampleWorkflowWithMutex workflow operation
 type SampleWorkflowWithMutexChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSampleWorkflowWithMutexChildOptions initializes a new SampleWorkflowWithMutexChildOptions value
@@ -1598,12 +1590,6 @@ func (o *SampleWorkflowWithMutexChildOptions) WithTypedSearchAttributes(tsa temp
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SampleWorkflowWithMutexChildOptions) WithWaitForCancellation(wait bool) *SampleWorkflowWithMutexChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SampleWorkflowWithMutexChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SampleWorkflowWithMutexChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

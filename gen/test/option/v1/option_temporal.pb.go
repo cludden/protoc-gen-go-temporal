@@ -753,20 +753,19 @@ func WorkflowWithInputChildAsync(ctx workflow.Context, req *WorkflowWithInputReq
 
 // WorkflowWithInputChildOptions provides configuration for a child test.option.v1.Test.WorkflowWithInput workflow operation
 type WorkflowWithInputChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewWorkflowWithInputChildOptions initializes a new WorkflowWithInputChildOptions value
@@ -966,12 +965,6 @@ func (o *WorkflowWithInputChildOptions) WithTypedSearchAttributes(tsa temporal.S
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *WorkflowWithInputChildOptions) WithWaitForCancellation(wait bool) *WorkflowWithInputChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *WorkflowWithInputChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *WorkflowWithInputChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

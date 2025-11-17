@@ -551,20 +551,19 @@ func UpdatableTimerChildAsync(ctx workflow.Context, req *UpdatableTimerInput, op
 
 // UpdatableTimerChildOptions provides configuration for a child UpdatableTimer workflow operation
 type UpdatableTimerChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewUpdatableTimerChildOptions initializes a new UpdatableTimerChildOptions value
@@ -710,12 +709,6 @@ func (o *UpdatableTimerChildOptions) WithTypedSearchAttributes(tsa temporal.Sear
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *UpdatableTimerChildOptions) WithWaitForCancellation(wait bool) *UpdatableTimerChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *UpdatableTimerChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *UpdatableTimerChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

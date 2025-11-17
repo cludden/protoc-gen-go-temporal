@@ -547,20 +547,19 @@ func PutOpaqueExampleChildAsync(ctx workflow.Context, req *OpaqueExample, option
 
 // PutOpaqueExampleChildOptions provides configuration for a child test.opaque.Opaque.PutOpaqueExample workflow operation
 type PutOpaqueExampleChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewPutOpaqueExampleChildOptions initializes a new PutOpaqueExampleChildOptions value
@@ -684,12 +683,6 @@ func (o *PutOpaqueExampleChildOptions) WithTypedSearchAttributes(tsa temporal.Se
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutOpaqueExampleChildOptions) WithWaitForCancellation(wait bool) *PutOpaqueExampleChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *PutOpaqueExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOpaqueExampleChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

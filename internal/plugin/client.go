@@ -2281,13 +2281,13 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 		g.Id("taskQueue").Op("*").String()
 		g.Id("taskTimeout").Op("*").Qual("time", "Duration")
 		g.Id("typedSearchAttributes").Op("*").Qual(temporalPkg, "SearchAttributes")
-		g.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		if child {
 			g.Id("dc").Qual(converterPkg, "DataConverter")
 			g.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
 			g.Id("waitForCancellation").Op("*").Bool()
 		} else {
 			g.Id("enableEagerStart").Op("*").Bool()
+			g.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		}
 	})
 
@@ -2914,14 +2914,16 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			)
 	}
 
-	f.Comment("WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value")
-	f.Func().
-		Params(j.Id("o").Op("*").Id(typeName)).
-		Id("WithWorkflowIdConflictPolicy").
-		Params(j.Id("policy").Qual(enumsPkg, "WorkflowIdConflictPolicy")).
-		Op("*").Id(typeName).
-		Block(
-			j.Id("o").Dot("workflowIdConflictPolicy").Op("=").Id("policy"),
-			j.Return(j.Id("o")),
-		)
+	if !child {
+		f.Comment("WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithWorkflowIdConflictPolicy").
+			Params(j.Id("policy").Qual(enumsPkg, "WorkflowIdConflictPolicy")).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("workflowIdConflictPolicy").Op("=").Id("policy"),
+				j.Return(j.Id("o")),
+			)
+	}
 }

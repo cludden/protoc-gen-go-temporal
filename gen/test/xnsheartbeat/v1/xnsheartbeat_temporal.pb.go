@@ -818,20 +818,19 @@ func TestWorkflowChildAsync(ctx workflow.Context, req *TestWorkflowInput, option
 
 // TestWorkflowChildOptions provides configuration for a child test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow operation
 type TestWorkflowChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewTestWorkflowChildOptions initializes a new TestWorkflowChildOptions value
@@ -955,12 +954,6 @@ func (o *TestWorkflowChildOptions) WithTypedSearchAttributes(tsa temporal.Search
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *TestWorkflowChildOptions) WithWaitForCancellation(wait bool) *TestWorkflowChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *TestWorkflowChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *TestWorkflowChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -2237,20 +2230,19 @@ func CallTestWorkflowChildAsync(ctx workflow.Context, options ...*CallTestWorkfl
 
 // CallTestWorkflowChildOptions provides configuration for a child test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow operation
 type CallTestWorkflowChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewCallTestWorkflowChildOptions initializes a new CallTestWorkflowChildOptions value
@@ -2374,12 +2366,6 @@ func (o *CallTestWorkflowChildOptions) WithTypedSearchAttributes(tsa temporal.Se
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *CallTestWorkflowChildOptions) WithWaitForCancellation(wait bool) *CallTestWorkflowChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *CallTestWorkflowChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CallTestWorkflowChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

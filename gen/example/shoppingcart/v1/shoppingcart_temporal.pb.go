@@ -879,20 +879,19 @@ func ShoppingCartChildAsync(ctx workflow.Context, req *ShoppingCartInput, option
 
 // ShoppingCartChildOptions provides configuration for a child example.shoppingcart.v1.ShoppingCart workflow operation
 type ShoppingCartChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewShoppingCartChildOptions initializes a new ShoppingCartChildOptions value
@@ -1038,12 +1037,6 @@ func (o *ShoppingCartChildOptions) WithTypedSearchAttributes(tsa temporal.Search
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *ShoppingCartChildOptions) WithWaitForCancellation(wait bool) *ShoppingCartChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *ShoppingCartChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ShoppingCartChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

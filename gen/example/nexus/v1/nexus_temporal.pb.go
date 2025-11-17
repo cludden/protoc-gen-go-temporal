@@ -501,20 +501,19 @@ func HelloChildAsync(ctx workflow.Context, req *HelloInput, options ...*HelloChi
 
 // HelloChildOptions provides configuration for a child example.nexus.v1.GreetingService.Hello workflow operation
 type HelloChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewHelloChildOptions initializes a new HelloChildOptions value
@@ -660,12 +659,6 @@ func (o *HelloChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttribu
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *HelloChildOptions) WithWaitForCancellation(wait bool) *HelloChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *HelloChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *HelloChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1769,20 +1762,19 @@ func EchoChildAsync(ctx workflow.Context, req *EchoInput, options ...*EchoChildO
 
 // EchoChildOptions provides configuration for a child example.nexus.v1.EchoService.Echo workflow operation
 type EchoChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewEchoChildOptions initializes a new EchoChildOptions value
@@ -1928,12 +1920,6 @@ func (o *EchoChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttribut
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *EchoChildOptions) WithWaitForCancellation(wait bool) *EchoChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *EchoChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *EchoChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

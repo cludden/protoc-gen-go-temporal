@@ -547,20 +547,19 @@ func PutHybridExampleChildAsync(ctx workflow.Context, req *HybridExample, option
 
 // PutHybridExampleChildOptions provides configuration for a child test.opaque.Hybrid.PutHybridExample workflow operation
 type PutHybridExampleChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewPutHybridExampleChildOptions initializes a new PutHybridExampleChildOptions value
@@ -684,12 +683,6 @@ func (o *PutHybridExampleChildOptions) WithTypedSearchAttributes(tsa temporal.Se
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutHybridExampleChildOptions) WithWaitForCancellation(wait bool) *PutHybridExampleChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *PutHybridExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutHybridExampleChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

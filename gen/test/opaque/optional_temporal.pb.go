@@ -547,20 +547,19 @@ func PutOptionalExampleChildAsync(ctx workflow.Context, req *OptionalExample, op
 
 // PutOptionalExampleChildOptions provides configuration for a child test.opaque.Optional.PutOptionalExample workflow operation
 type PutOptionalExampleChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewPutOptionalExampleChildOptions initializes a new PutOptionalExampleChildOptions value
@@ -684,12 +683,6 @@ func (o *PutOptionalExampleChildOptions) WithTypedSearchAttributes(tsa temporal.
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutOptionalExampleChildOptions) WithWaitForCancellation(wait bool) *PutOptionalExampleChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *PutOptionalExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOptionalExampleChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

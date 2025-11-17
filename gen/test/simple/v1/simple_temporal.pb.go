@@ -2208,20 +2208,19 @@ func SomeWorkflow1ChildAsync(ctx workflow.Context, req *SomeWorkflow1Request, op
 
 // SomeWorkflow1ChildOptions provides configuration for a child mycompany.simple.SomeWorkflow1 workflow operation
 type SomeWorkflow1ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomeWorkflow1ChildOptions initializes a new SomeWorkflow1ChildOptions value
@@ -2370,12 +2369,6 @@ func (o *SomeWorkflow1ChildOptions) WithWaitForCancellation(wait bool) *SomeWork
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomeWorkflow1ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow1ChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // SomeWorkflow1ChildRun describes a child SomeWorkflow1 workflow run
 type SomeWorkflow1ChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -2521,20 +2514,19 @@ func SomeWorkflow2ChildAsync(ctx workflow.Context, options ...*SomeWorkflow2Chil
 
 // SomeWorkflow2ChildOptions provides configuration for a child mycompany.simple.SomeWorkflow2 workflow operation
 type SomeWorkflow2ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomeWorkflow2ChildOptions initializes a new SomeWorkflow2ChildOptions value
@@ -2673,12 +2665,6 @@ func (o *SomeWorkflow2ChildOptions) WithWaitForCancellation(wait bool) *SomeWork
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomeWorkflow2ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow2ChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // SomeWorkflow2ChildRun describes a child SomeWorkflow2 workflow run
 type SomeWorkflow2ChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -2808,20 +2794,19 @@ func SomeWorkflow3ChildAsync(ctx workflow.Context, req *SomeWorkflow3Request, op
 
 // SomeWorkflow3ChildOptions provides configuration for a child mycompany.simple.Simple.SomeWorkflow3 workflow operation
 type SomeWorkflow3ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomeWorkflow3ChildOptions initializes a new SomeWorkflow3ChildOptions value
@@ -2962,12 +2947,6 @@ func (o *SomeWorkflow3ChildOptions) WithWaitForCancellation(wait bool) *SomeWork
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomeWorkflow3ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow3ChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // SomeWorkflow3ChildRun describes a child SomeWorkflow3 workflow run
 type SomeWorkflow3ChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -3088,20 +3067,19 @@ func SomeWorkflow4ChildAsync(ctx workflow.Context, req *v1.PaginatedRequest, opt
 
 // SomeWorkflow4ChildOptions provides configuration for a child mycompany.simple.Simple.SomeWorkflow4 workflow operation
 type SomeWorkflow4ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomeWorkflow4ChildOptions initializes a new SomeWorkflow4ChildOptions value
@@ -3247,12 +3225,6 @@ func (o *SomeWorkflow4ChildOptions) WithTypedSearchAttributes(tsa temporal.Searc
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeWorkflow4ChildOptions) WithWaitForCancellation(wait bool) *SomeWorkflow4ChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomeWorkflow4ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow4ChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -8632,20 +8604,19 @@ func OtherWorkflowChildAsync(ctx workflow.Context, req *OtherWorkflowRequest, op
 
 // OtherWorkflowChildOptions provides configuration for a child mycompany.simple.Other.OtherWorkflow workflow operation
 type OtherWorkflowChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewOtherWorkflowChildOptions initializes a new OtherWorkflowChildOptions value
@@ -8785,12 +8756,6 @@ func (o *OtherWorkflowChildOptions) WithWaitForCancellation(wait bool) *OtherWor
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *OtherWorkflowChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflowChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // OtherWorkflowChildRun describes a child OtherWorkflow workflow run
 type OtherWorkflowChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -8902,20 +8867,19 @@ func OtherWorkflow2ChildAsync(ctx workflow.Context, req *v1.PaginatedRequest, op
 
 // OtherWorkflow2ChildOptions provides configuration for a child mycompany.simple.Other.OtherWorkflow2 workflow operation
 type OtherWorkflow2ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewOtherWorkflow2ChildOptions initializes a new OtherWorkflow2ChildOptions value
@@ -9052,12 +9016,6 @@ func (o *OtherWorkflow2ChildOptions) WithTypedSearchAttributes(tsa temporal.Sear
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *OtherWorkflow2ChildOptions) WithWaitForCancellation(wait bool) *OtherWorkflow2ChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *OtherWorkflow2ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflow2ChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -10921,20 +10879,19 @@ func WhatChildAsync(ctx workflow.Context, req *WhatRequest, options ...*WhatChil
 
 // WhatChildOptions provides configuration for a child mycompany.simple.Ignored.What workflow operation
 type WhatChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewWhatChildOptions initializes a new WhatChildOptions value
@@ -11080,12 +11037,6 @@ func (o *WhatChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttribut
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *WhatChildOptions) WithWaitForCancellation(wait bool) *WhatChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *WhatChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *WhatChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -13000,20 +12951,19 @@ func SomeDeprecatedWorkflow1ChildAsync(ctx workflow.Context, req *SomeDeprecated
 
 // SomeDeprecatedWorkflow1ChildOptions provides configuration for a child mycompany.simple.Deprecated.SomeDeprecatedWorkflow1 workflow operation
 type SomeDeprecatedWorkflow1ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomeDeprecatedWorkflow1ChildOptions initializes a new SomeDeprecatedWorkflow1ChildOptions value
@@ -13137,12 +13087,6 @@ func (o *SomeDeprecatedWorkflow1ChildOptions) WithTypedSearchAttributes(tsa temp
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeDeprecatedWorkflow1ChildOptions) WithWaitForCancellation(wait bool) *SomeDeprecatedWorkflow1ChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomeDeprecatedWorkflow1ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeDeprecatedWorkflow1ChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -13298,20 +13242,19 @@ func SomeDeprecatedWorkflow2ChildAsync(ctx workflow.Context, req *SomeDeprecated
 
 // SomeDeprecatedWorkflow2ChildOptions provides configuration for a child mycompany.simple.Deprecated.SomeDeprecatedWorkflow2 workflow operation
 type SomeDeprecatedWorkflow2ChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomeDeprecatedWorkflow2ChildOptions initializes a new SomeDeprecatedWorkflow2ChildOptions value
@@ -13435,12 +13378,6 @@ func (o *SomeDeprecatedWorkflow2ChildOptions) WithTypedSearchAttributes(tsa temp
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomeDeprecatedWorkflow2ChildOptions) WithWaitForCancellation(wait bool) *SomeDeprecatedWorkflow2ChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomeDeprecatedWorkflow2ChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeDeprecatedWorkflow2ChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

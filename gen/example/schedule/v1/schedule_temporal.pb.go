@@ -482,20 +482,19 @@ func ScheduleChildAsync(ctx workflow.Context, req *ScheduleInput, options ...*Sc
 
 // ScheduleChildOptions provides configuration for a child example.schedule.v1.Schedule workflow operation
 type ScheduleChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewScheduleChildOptions initializes a new ScheduleChildOptions value
@@ -619,12 +618,6 @@ func (o *ScheduleChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttr
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *ScheduleChildOptions) WithWaitForCancellation(wait bool) *ScheduleChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *ScheduleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ScheduleChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

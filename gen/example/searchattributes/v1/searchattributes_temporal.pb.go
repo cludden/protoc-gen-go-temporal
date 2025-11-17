@@ -806,20 +806,19 @@ func SearchAttributesChildAsync(ctx workflow.Context, req *SearchAttributesInput
 
 // SearchAttributesChildOptions provides configuration for a child example.searchattributes.v1.Example.SearchAttributes workflow operation
 type SearchAttributesChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSearchAttributesChildOptions initializes a new SearchAttributesChildOptions value
@@ -1006,12 +1005,6 @@ func (o *SearchAttributesChildOptions) WithWaitForCancellation(wait bool) *Searc
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SearchAttributesChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SearchAttributesChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // SearchAttributesChildRun describes a child SearchAttributes workflow run
 type SearchAttributesChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1122,20 +1115,19 @@ func TypedSearchAttributesChildAsync(ctx workflow.Context, req *TypedSearchAttri
 
 // TypedSearchAttributesChildOptions provides configuration for a child example.searchattributes.v1.Example.TypedSearchAttributes workflow operation
 type TypedSearchAttributesChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewTypedSearchAttributesChildOptions initializes a new TypedSearchAttributesChildOptions value
@@ -1305,12 +1297,6 @@ func (o *TypedSearchAttributesChildOptions) WithTypedSearchAttributes(tsa tempor
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *TypedSearchAttributesChildOptions) WithWaitForCancellation(wait bool) *TypedSearchAttributesChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *TypedSearchAttributesChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *TypedSearchAttributesChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

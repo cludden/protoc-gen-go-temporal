@@ -918,20 +918,19 @@ func FooChildAsync(ctx workflow.Context, req *FooInput, options ...*FooChildOpti
 
 // FooChildOptions provides configuration for a child issue_125.v1.Issue125Service.Foo workflow operation
 type FooChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewFooChildOptions initializes a new FooChildOptions value
@@ -1077,12 +1076,6 @@ func (o *FooChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttribute
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *FooChildOptions) WithWaitForCancellation(wait bool) *FooChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *FooChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *FooChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
