@@ -919,6 +919,44 @@ service Example {
 
 Both synchronous and asynchronous workflow methods accept an optional `<Workflow>Options` value as the final argument. This argument can be used to override the default [client.StartWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/client#StartWorkflowOptions) created using the defaults defined in the schema.
 
+### WithEnableEagerStart
+
+Sets the child workflow `EnableEagerStart` value
+
+<Tabs>
+<TabItem value="with-child-enable-eager-start-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithEnableEagerStart(true),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-enable-eager-start-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      enable_eager_start: true
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ### WithExecutionTimeout
 
 Set the workflow `WorkflowExecutionTimeout` value

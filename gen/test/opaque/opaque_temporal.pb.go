@@ -242,6 +242,7 @@ type PutOpaqueExampleOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -276,6 +277,9 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -291,6 +295,12 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *PutOpaqueExampleOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *PutOpaqueExampleOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *PutOpaqueExampleOptions) WithEnableEagerStart(enable bool) *PutOpaqueExampleOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

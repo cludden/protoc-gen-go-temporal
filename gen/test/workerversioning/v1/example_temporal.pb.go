@@ -351,6 +351,7 @@ type BarOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -391,6 +392,9 @@ func (o *BarOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -406,6 +410,12 @@ func (o *BarOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *BarOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *BarOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *BarOptions) WithEnableEagerStart(enable bool) *BarOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -542,6 +552,7 @@ type BazOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -582,6 +593,9 @@ func (o *BazOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -597,6 +611,12 @@ func (o *BazOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *BazOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *BazOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *BazOptions) WithEnableEagerStart(enable bool) *BazOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -733,6 +753,7 @@ type FooOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -773,6 +794,9 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -788,6 +812,12 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *FooOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *FooOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *FooOptions) WithEnableEagerStart(enable bool) *FooOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -924,6 +954,7 @@ type QuxOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -964,6 +995,9 @@ func (o *QuxOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -979,6 +1013,12 @@ func (o *QuxOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *QuxOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *QuxOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *QuxOptions) WithEnableEagerStart(enable bool) *QuxOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

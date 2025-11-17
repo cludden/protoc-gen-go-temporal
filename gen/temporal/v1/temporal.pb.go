@@ -1172,6 +1172,8 @@ type WorkflowOptions struct {
 	Signal []*WorkflowOptions_Signal `protobuf:"bytes,2,rep,name=signal,proto3" json:"signal,omitempty"`
 	// Updates supported by this workflow
 	Update []*WorkflowOptions_Update `protobuf:"bytes,3,rep,name=update,proto3" json:"update,omitempty"`
+	// Request eager execution for this workflow, if a local worker is available.
+	EnableEagerStart bool `protobuf:"varint,23,opt,name=enable_eager_start,json=enableEagerStart,proto3" json:"enable_eager_start,omitempty"`
 	// The timeout for duration of workflow execution.
 	// It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
 	// of a single workflow run.
@@ -1295,6 +1297,13 @@ func (x *WorkflowOptions) GetUpdate() []*WorkflowOptions_Update {
 		return x.Update
 	}
 	return nil
+}
+
+func (x *WorkflowOptions) GetEnableEagerStart() bool {
+	if x != nil {
+		return x.EnableEagerStart
+	}
+	return false
 }
 
 func (x *WorkflowOptions) GetExecutionTimeout() *durationpb.Duration {
@@ -1927,14 +1936,15 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x0ewait_for_stage\x18\a \x01(\x0e2\x17.temporal.v1.WaitPolicyR\fwaitForStage\x12<\n" +
 	"\vwait_policy\x18\x03 \x01(\x0e2\x17.temporal.v1.WaitPolicyB\x02\x18\x01R\n" +
 	"waitPolicy\x121\n" +
-	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\xeb\r\n" +
+	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\x99\x0e\n" +
 	"\x0fWorkflowOptions\x120\n" +
 	"\x03cli\x18\x13 \x01(\v2\x1e.temporal.v1.CLICommandOptionsR\x03cli\x12\x12\n" +
 	"\x04name\x18\x0e \x01(\tR\x04name\x12\x18\n" +
 	"\aaliases\x18\x11 \x03(\tR\aaliases\x128\n" +
 	"\x05query\x18\x01 \x03(\v2\".temporal.v1.WorkflowOptions.QueryR\x05query\x12;\n" +
 	"\x06signal\x18\x02 \x03(\v2#.temporal.v1.WorkflowOptions.SignalR\x06signal\x12;\n" +
-	"\x06update\x18\x03 \x03(\v2#.temporal.v1.WorkflowOptions.UpdateR\x06update\x12F\n" +
+	"\x06update\x18\x03 \x03(\v2#.temporal.v1.WorkflowOptions.UpdateR\x06update\x12,\n" +
+	"\x12enable_eager_start\x18\x17 \x01(\bR\x10enableEagerStart\x12F\n" +
 	"\x11execution_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x10executionTimeout\x12\x0e\n" +
 	"\x02id\x18\x05 \x01(\tR\x02id\x12B\n" +
 	"\x0fid_reuse_policy\x18\x06 \x01(\x0e2\x1a.temporal.v1.IDReusePolicyR\ridReusePolicy\x12 \n" +

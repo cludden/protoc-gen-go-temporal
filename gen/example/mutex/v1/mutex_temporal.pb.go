@@ -444,6 +444,7 @@ type MutexOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -491,6 +492,9 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -506,6 +510,12 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *MutexOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *MutexOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *MutexOptions) WithEnableEagerStart(enable bool) *MutexOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -670,6 +680,7 @@ type SampleWorkflowWithMutexOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -710,6 +721,9 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -725,6 +739,12 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *SampleWorkflowWithMutexOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *SampleWorkflowWithMutexOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *SampleWorkflowWithMutexOptions) WithEnableEagerStart(enable bool) *SampleWorkflowWithMutexOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

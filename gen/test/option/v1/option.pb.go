@@ -211,17 +211,17 @@ const file_test_option_v1_option_proto_rawDesc = "" +
 	"\x16UpdateWithInputRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\".\n" +
 	"\x18WorkflowWithInputRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name2\xab\x04\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name2\xae\x04\n" +
 	"\x04Test\x12\x91\x01\n" +
 	"\x11ActivityWithInput\x12(.test.option.v1.ActivityWithInputRequest\x1a).test.option.v1.ActivityWithInputResponse\"'\x92\xc4\x03#\n" +
 	"\toption-v2\x12\x02\bx\x1a\x02\b\n" +
 	"\"\x02\b<*\x02\b\x1e2\x04\x1a\x02\b\x05@\x01\x12\x97\x01\n" +
 	"\x0fUpdateWithInput\x12&.test.option.v1.UpdateWithInputRequest\x1a\x16.google.protobuf.Empty\"D\xaa\xc4\x03@\n" +
-	":update-with-input:${! name.or(throw(\"name is required\")) }\x18\x018\x03\x12\xe3\x01\n" +
-	"\x11WorkflowWithInput\x12(.test.option.v1.WorkflowWithInputRequest\x1a\x16.google.protobuf.Empty\"\x8b\x01\x8a\xc4\x03\x86\x01\x1a\x11\n" +
+	":update-with-input:${! name.or(throw(\"name is required\")) }\x18\x018\x03\x12\xe6\x01\n" +
+	"\x11WorkflowWithInput\x12(.test.option.v1.WorkflowWithInputRequest\x1a\x16.google.protobuf.Empty\"\x8e\x01\x8a\xc4\x03\x89\x01\x1a\x11\n" +
 	"\x0fUpdateWithInput\"\x03\b\xd8\x04*<workflow-with-input:${! name.or(throw(\"name is required\")) }0\x02@\x03J\x02 \x05R\x03\b\xac\x02Z\toption-v2b\x02\b\n" +
 	"h\x01z\rname = name \n" +
-	"\xa0\x01\x02\x1a\x0f\x8a\xc4\x03\v\n" +
+	"\xa0\x01\x02\xb8\x01\x01\x1a\x0f\x8a\xc4\x03\v\n" +
 	"\toption-v1B\xc2\x01\n" +
 	"\x12com.test.option.v1B\vOptionProtoP\x01ZEgithub.com/cludden/protoc-gen-go-temporal/gen/test/option/v1;optionv1\xa2\x02\x03TOX\xaa\x02\x0eTest.Option.V1\xca\x02\x0eTest\\Option\\V1\xe2\x02\x1aTest\\Option\\V1\\GPBMetadata\xea\x02\x10Test::Option::V1b\x06proto3"
 

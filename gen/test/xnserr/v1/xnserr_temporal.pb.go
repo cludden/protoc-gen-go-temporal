@@ -189,6 +189,7 @@ type SleepOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -225,6 +226,9 @@ func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -240,6 +244,12 @@ func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *SleepOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *SleepOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *SleepOptions) WithEnableEagerStart(enable bool) *SleepOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -1153,6 +1163,7 @@ type CallSleepOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1187,6 +1198,9 @@ func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1202,6 +1216,12 @@ func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflow
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *CallSleepOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *CallSleepOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *CallSleepOptions) WithEnableEagerStart(enable bool) *CallSleepOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

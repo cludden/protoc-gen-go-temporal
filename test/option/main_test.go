@@ -531,7 +531,8 @@ func (s *OptionSuite) TestWorkflowOptions() {
 		{
 			desc: "defaults",
 			expected: client.StartWorkflowOptions{
-				ID: "workflow-with-input:foo",
+				EnableEagerStart: true,
+				ID:               "workflow-with-input:foo",
 				RetryPolicy: &temporal.RetryPolicy{
 					MaximumAttempts: 5,
 				},
@@ -584,8 +585,10 @@ func (s *OptionSuite) TestWorkflowOptions() {
 						WorkflowExecutionTimeout: time.Second * 599,
 						WorkflowRunTimeout:       time.Second * 299,
 						WorkflowTaskTimeout:      time.Second * 9,
-					}),
+					}).
+					WithEnableEagerStart(false),
 				optionv1.NewWorkflowWithInputOptions().
+					WithEnableEagerStart(false).
 					WithExecutionTimeout(time.Second * 599).
 					WithID("foo").
 					WithWorkflowIdConflictPolicy(enums.WORKFLOW_ID_CONFLICT_POLICY_FAIL).

@@ -396,6 +396,7 @@ type ShoppingCartOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -436,6 +437,9 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -451,6 +455,12 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *ShoppingCartOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ShoppingCartOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *ShoppingCartOptions) WithEnableEagerStart(enable bool) *ShoppingCartOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

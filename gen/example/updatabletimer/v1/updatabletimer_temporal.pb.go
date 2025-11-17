@@ -228,6 +228,7 @@ type UpdatableTimerOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -268,6 +269,9 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -283,6 +287,12 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *UpdatableTimerOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *UpdatableTimerOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *UpdatableTimerOptions) WithEnableEagerStart(enable bool) *UpdatableTimerOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

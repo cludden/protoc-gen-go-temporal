@@ -366,6 +366,7 @@ type TestWorkflowOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -400,6 +401,9 @@ func (o *TestWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkf
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -415,6 +419,12 @@ func (o *TestWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkf
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *TestWorkflowOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *TestWorkflowOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *TestWorkflowOptions) WithEnableEagerStart(enable bool) *TestWorkflowOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -1942,6 +1952,7 @@ type CallTestWorkflowOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1976,6 +1987,9 @@ func (o *CallTestWorkflowOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1991,6 +2005,12 @@ func (o *CallTestWorkflowOptions) Build(req protoreflect.Message) (client.StartW
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *CallTestWorkflowOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *CallTestWorkflowOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *CallTestWorkflowOptions) WithEnableEagerStart(enable bool) *CallTestWorkflowOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

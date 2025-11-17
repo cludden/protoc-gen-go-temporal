@@ -197,6 +197,7 @@ type FooOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -231,6 +232,9 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -246,6 +250,12 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *FooOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *FooOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *FooOptions) WithEnableEagerStart(enable bool) *FooOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 

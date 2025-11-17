@@ -2286,6 +2286,8 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			g.Id("dc").Qual(converterPkg, "DataConverter")
 			g.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
 			g.Id("waitForCancellation").Op("*").Bool()
+		} else {
+			g.Id("enableEagerStart").Op("*").Bool()
 		}
 	})
 
@@ -2667,6 +2669,18 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 				})
 			}
 
+			// set EnableEagerStart
+			if !child {
+				enableEagerStart := g.If(j.Id("v").Op(":=").Id("o").Dot("enableEagerStart"), j.Id("v").Op("!=").Nil()).Block(
+					j.Id("opts").Dot("EnableEagerStart").Op("=").Op("*").Id("v"),
+				)
+				if opts.GetEnableEagerStart() {
+					enableEagerStart.Else().Block(
+						j.Id("opts").Dot("EnableEagerStart").Op("=").Lit(true),
+					)
+				}
+			}
+
 			// set WorkflowExecutionTimeout
 			executionTimeout := g.If(j.Id("v").Op(":=").Id("o").Dot("executionTimeout"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Op("*").Id("v"),
@@ -2754,6 +2768,19 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			Op("*").Id(typeName).
 			Block(
 				j.Id("o").Dot("dc").Op("=").Id("dc"),
+				j.Return(j.Id("o")),
+			)
+	}
+
+	if !child {
+		f.Comment("WithEnableEagerStart sets the EnableEagerStart value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithEnableEagerStart").
+			Params(j.Id("enable").Bool()).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("enableEagerStart").Op("=").Op("&").Id("enable"),
 				j.Return(j.Id("o")),
 			)
 	}

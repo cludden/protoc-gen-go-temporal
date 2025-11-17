@@ -260,6 +260,7 @@ type SearchAttributesOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -314,6 +315,9 @@ func (o *SearchAttributesOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -329,6 +333,12 @@ func (o *SearchAttributesOptions) Build(req protoreflect.Message) (client.StartW
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *SearchAttributesOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *SearchAttributesOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *SearchAttributesOptions) WithEnableEagerStart(enable bool) *SearchAttributesOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -461,6 +471,7 @@ type TypedSearchAttributesOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -519,6 +530,9 @@ func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message) (client.S
 		}
 		opts.TypedSearchAttributes = tsa
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -534,6 +548,12 @@ func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message) (client.S
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *TypedSearchAttributesOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *TypedSearchAttributesOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *TypedSearchAttributesOptions) WithEnableEagerStart(enable bool) *TypedSearchAttributesOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
