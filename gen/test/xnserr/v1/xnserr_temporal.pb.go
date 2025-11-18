@@ -189,6 +189,7 @@ type SleepOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -225,6 +226,9 @@ func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -240,6 +244,12 @@ func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *SleepOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *SleepOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *SleepOptions) WithEnableEagerStart(enable bool) *SleepOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -470,20 +480,19 @@ func SleepChildAsync(ctx workflow.Context, req *SleepRequest, options ...*SleepC
 
 // SleepChildOptions provides configuration for a child test.xnserr.v1.Server.Sleep workflow operation
 type SleepChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSleepChildOptions initializes a new SleepChildOptions value
@@ -611,12 +620,6 @@ func (o *SleepChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttribu
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SleepChildOptions) WithWaitForCancellation(wait bool) *SleepChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SleepChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SleepChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
@@ -1153,6 +1156,7 @@ type CallSleepOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1187,6 +1191,9 @@ func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1202,6 +1209,12 @@ func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflow
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *CallSleepOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *CallSleepOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *CallSleepOptions) WithEnableEagerStart(enable bool) *CallSleepOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -1432,20 +1445,19 @@ func CallSleepChildAsync(ctx workflow.Context, req *CallSleepRequest, options ..
 
 // CallSleepChildOptions provides configuration for a child test.xnserr.v1.Client.CallSleep workflow operation
 type CallSleepChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewCallSleepChildOptions initializes a new CallSleepChildOptions value
@@ -1569,12 +1581,6 @@ func (o *CallSleepChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAtt
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *CallSleepChildOptions) WithWaitForCancellation(wait bool) *CallSleepChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *CallSleepChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *CallSleepChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

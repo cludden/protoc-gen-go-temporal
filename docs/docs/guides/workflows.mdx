@@ -919,6 +919,44 @@ service Example {
 
 Both synchronous and asynchronous workflow methods accept an optional `<Workflow>Options` value as the final argument. This argument can be used to override the default [client.StartWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/client#StartWorkflowOptions) created using the defaults defined in the schema.
 
+### WithEnableEagerStart
+
+Sets the child workflow `EnableEagerStart` value
+
+<Tabs>
+<TabItem value="with-child-enable-eager-start-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithEnableEagerStart(true),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-enable-eager-start-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      enable_eager_start: true
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ### WithExecutionTimeout
 
 Set the workflow `WorkflowExecutionTimeout` value
@@ -1172,6 +1210,43 @@ service Example {
 </TabItem>
 </Tabs>
 
+### WithTaskQueue
+
+Set the workflow `TaskQueue` value
+
+<Tabs>
+<TabItem value="with-task-timeout-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default TaskQueue set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithTaskQueue("example-v3"),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-task-timeout-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  option (temporal.v1.service).task_queue = "example-v1";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "example-v2"
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ### WithTaskTimeout
 
 Set the workflow `WorkflowTaskTimeout` value
@@ -1207,23 +1282,25 @@ service Example {
 </TabItem>
 </Tabs>
 
-### WithTaskQueue
+### WithTypedSearchAttributes
 
-Set the workflow `TaskQueue` value
+Set the workflow `TypedSearchAttributes` value
 
 <Tabs>
-<TabItem value="with-task-timeout-go" label="Go">
+<TabItem value="with-typed-search-attributes-go" label="Go">
 ```go title="example.go"
 func example(ctx context.Context, client examplev1.ExampleClient) error {
-    // override the default TaskQueue set by the generated client
+    // override the default TypedSearchAttributes set by the generated client
     _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
-        WithTaskQueue("example-v3"),
+        WithTypedSearchAttributes(temporal.NewSearchAttributes(
+          temporal.NewSearchAttributeKeyString("foo").ValueSet("baz"),
+        )),
     )
     return err
 }
 ```
 </TabItem>
-<TabItem value="with-task-timeout-schema" label="Schema">
+<TabItem value="with-typed-search-attributes-schema" label="Schema">
 ```protobuf title="example.proto"
 syntax="proto3";
 
@@ -1232,11 +1309,45 @@ package example.v1;
 import "temporal/v1/temporal.proto";
 
 service Example {
-  option (temporal.v1.service).task_queue = "example-v1";
-
   rpc Foo(FooInput) returns (FooOutput) {
     option (temporal.v1.workflow) = {
-      task_queue: "example-v2"
+      typed_search_attributes:
+        'foo = "bar" \n'
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithWorkflowIdConflictPolicy
+
+Set the workflow `WorkflowIdConflictPolicy` value
+
+<Tabs>
+<TabItem value="with-workflow-id-conflict-policy-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    // override the default WorkflowIdConflictPolicy set by the generated client
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithWorkflowIdConflictPolicy(enumspb.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-workflow-id-conflict-policy-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
     };
   }
 }
@@ -1632,6 +1743,47 @@ service Example {
   rpc Bar(BarInput) returns (BarOutput) {
     option (temporal.v1.workflow) = {
       task_queue: "example-v2"
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithTypedSearchAttributes
+
+Sets the child workflow `TypedSearchAttributes` value
+
+<Tabs>
+<TabItem value="with-child-typed-search-attributes-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithTypedSearchAttributes(temporal.NewSearchAttributes(
+          temporal.NewSearchAttributeKeyString("foo").ValueSet("baz"),
+        )),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-typed-search-attributes-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      typed_search_attributes:
+        'foo = "bar" \n'
     };
   }
 }

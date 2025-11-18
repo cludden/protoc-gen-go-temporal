@@ -32,6 +32,7 @@ service Test {
 
   rpc WorkflowWithInput(WorkflowWithInputRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
+      enable_eager_start: true
       execution_timeout: {seconds: 600}
       id: 'workflow-with-input:${! name.or(throw("name is required")) }'
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
@@ -43,7 +44,6 @@ service Test {
       task_timeout: {seconds: 10}
       wait_for_cancellation: true
       workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
-
       update: {ref: 'UpdateWithInput'}
     };
   }

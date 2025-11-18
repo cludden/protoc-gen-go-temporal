@@ -351,6 +351,7 @@ type BarOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -391,6 +392,9 @@ func (o *BarOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -406,6 +410,12 @@ func (o *BarOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *BarOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *BarOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *BarOptions) WithEnableEagerStart(enable bool) *BarOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -542,6 +552,7 @@ type BazOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -582,6 +593,9 @@ func (o *BazOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -597,6 +611,12 @@ func (o *BazOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *BazOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *BazOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *BazOptions) WithEnableEagerStart(enable bool) *BazOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -733,6 +753,7 @@ type FooOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -773,6 +794,9 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -788,6 +812,12 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *FooOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *FooOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *FooOptions) WithEnableEagerStart(enable bool) *FooOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -924,6 +954,7 @@ type QuxOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -964,6 +995,9 @@ func (o *QuxOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -979,6 +1013,12 @@ func (o *QuxOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *QuxOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *QuxOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *QuxOptions) WithEnableEagerStart(enable bool) *QuxOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -1263,20 +1303,19 @@ func BarChildAsync(ctx workflow.Context, req *BarInput, options ...*BarChildOpti
 
 // BarChildOptions provides configuration for a child test.workerversioning.v1.Example.Bar workflow operation
 type BarChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewBarChildOptions initializes a new BarChildOptions value
@@ -1425,12 +1464,6 @@ func (o *BarChildOptions) WithWaitForCancellation(wait bool) *BarChildOptions {
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *BarChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *BarChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // BarChildRun describes a child Bar workflow run
 type BarChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1545,20 +1578,19 @@ func BazChildAsync(ctx workflow.Context, req *BazInput, options ...*BazChildOpti
 
 // BazChildOptions provides configuration for a child test.workerversioning.v1.Example.Baz workflow operation
 type BazChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewBazChildOptions initializes a new BazChildOptions value
@@ -1707,12 +1739,6 @@ func (o *BazChildOptions) WithWaitForCancellation(wait bool) *BazChildOptions {
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *BazChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *BazChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // BazChildRun describes a child Baz workflow run
 type BazChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1824,20 +1850,19 @@ func FooChildAsync(ctx workflow.Context, req *FooInput, options ...*FooChildOpti
 
 // FooChildOptions provides configuration for a child test.workerversioning.v1.Example.Foo workflow operation
 type FooChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewFooChildOptions initializes a new FooChildOptions value
@@ -1986,12 +2011,6 @@ func (o *FooChildOptions) WithWaitForCancellation(wait bool) *FooChildOptions {
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *FooChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *FooChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // FooChildRun describes a child Foo workflow run
 type FooChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -2106,20 +2125,19 @@ func QuxChildAsync(ctx workflow.Context, req *QuxInput, options ...*QuxChildOpti
 
 // QuxChildOptions provides configuration for a child test.workerversioning.v1.Example.Qux workflow operation
 type QuxChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewQuxChildOptions initializes a new QuxChildOptions value
@@ -2265,12 +2283,6 @@ func (o *QuxChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttribute
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *QuxChildOptions) WithWaitForCancellation(wait bool) *QuxChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *QuxChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *QuxChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

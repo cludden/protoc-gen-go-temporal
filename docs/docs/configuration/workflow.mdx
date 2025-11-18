@@ -109,6 +109,23 @@ service Example {
 }
 ```
 
+### enable_eager_start
+
+`bool`
+
+Whether to request eager execution for this workflow, if a local worker is available. Defaults to `false`.
+
+```protobuf
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      enable_eager_start: true
+    };
+  }
+}
+```
+
 ### execution_timeout
 
 [google.protobuf.Duration](https://protobuf.dev/reference/protobuf/google.protobuf/#duration)

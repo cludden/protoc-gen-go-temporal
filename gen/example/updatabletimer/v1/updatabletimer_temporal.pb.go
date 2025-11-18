@@ -228,6 +228,7 @@ type UpdatableTimerOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -268,6 +269,9 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -283,6 +287,12 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *UpdatableTimerOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *UpdatableTimerOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *UpdatableTimerOptions) WithEnableEagerStart(enable bool) *UpdatableTimerOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -541,20 +551,19 @@ func UpdatableTimerChildAsync(ctx workflow.Context, req *UpdatableTimerInput, op
 
 // UpdatableTimerChildOptions provides configuration for a child UpdatableTimer workflow operation
 type UpdatableTimerChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewUpdatableTimerChildOptions initializes a new UpdatableTimerChildOptions value
@@ -700,12 +709,6 @@ func (o *UpdatableTimerChildOptions) WithTypedSearchAttributes(tsa temporal.Sear
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *UpdatableTimerChildOptions) WithWaitForCancellation(wait bool) *UpdatableTimerChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *UpdatableTimerChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *UpdatableTimerChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

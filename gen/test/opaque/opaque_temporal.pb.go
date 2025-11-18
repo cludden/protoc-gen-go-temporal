@@ -242,6 +242,7 @@ type PutOpaqueExampleOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -276,6 +277,9 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -291,6 +295,12 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *PutOpaqueExampleOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *PutOpaqueExampleOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *PutOpaqueExampleOptions) WithEnableEagerStart(enable bool) *PutOpaqueExampleOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -537,20 +547,19 @@ func PutOpaqueExampleChildAsync(ctx workflow.Context, req *OpaqueExample, option
 
 // PutOpaqueExampleChildOptions provides configuration for a child test.opaque.Opaque.PutOpaqueExample workflow operation
 type PutOpaqueExampleChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewPutOpaqueExampleChildOptions initializes a new PutOpaqueExampleChildOptions value
@@ -674,12 +683,6 @@ func (o *PutOpaqueExampleChildOptions) WithTypedSearchAttributes(tsa temporal.Se
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutOpaqueExampleChildOptions) WithWaitForCancellation(wait bool) *PutOpaqueExampleChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *PutOpaqueExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOpaqueExampleChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

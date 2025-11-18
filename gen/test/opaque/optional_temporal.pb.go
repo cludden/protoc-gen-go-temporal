@@ -242,6 +242,7 @@ type PutOptionalExampleOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -276,6 +277,9 @@ func (o *PutOptionalExampleOptions) Build(req protoreflect.Message) (client.Star
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -291,6 +295,12 @@ func (o *PutOptionalExampleOptions) Build(req protoreflect.Message) (client.Star
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *PutOptionalExampleOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *PutOptionalExampleOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *PutOptionalExampleOptions) WithEnableEagerStart(enable bool) *PutOptionalExampleOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -537,20 +547,19 @@ func PutOptionalExampleChildAsync(ctx workflow.Context, req *OptionalExample, op
 
 // PutOptionalExampleChildOptions provides configuration for a child test.opaque.Optional.PutOptionalExample workflow operation
 type PutOptionalExampleChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewPutOptionalExampleChildOptions initializes a new PutOptionalExampleChildOptions value
@@ -674,12 +683,6 @@ func (o *PutOptionalExampleChildOptions) WithTypedSearchAttributes(tsa temporal.
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *PutOptionalExampleChildOptions) WithWaitForCancellation(wait bool) *PutOptionalExampleChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *PutOptionalExampleChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *PutOptionalExampleChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

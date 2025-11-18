@@ -396,6 +396,7 @@ type ShoppingCartOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -436,6 +437,9 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -451,6 +455,12 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *ShoppingCartOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ShoppingCartOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *ShoppingCartOptions) WithEnableEagerStart(enable bool) *ShoppingCartOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -869,20 +879,19 @@ func ShoppingCartChildAsync(ctx workflow.Context, req *ShoppingCartInput, option
 
 // ShoppingCartChildOptions provides configuration for a child example.shoppingcart.v1.ShoppingCart workflow operation
 type ShoppingCartChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewShoppingCartChildOptions initializes a new ShoppingCartChildOptions value
@@ -1028,12 +1037,6 @@ func (o *ShoppingCartChildOptions) WithTypedSearchAttributes(tsa temporal.Search
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *ShoppingCartChildOptions) WithWaitForCancellation(wait bool) *ShoppingCartChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *ShoppingCartChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ShoppingCartChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 

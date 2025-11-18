@@ -255,6 +255,9 @@ message WorkflowOptions {
   // Updates supported by this workflow
   repeated Update update = 3;
 
+  // Request eager execution for this workflow, if a local worker is available.
+  bool enable_eager_start = 23;
+
   // The timeout for duration of workflow execution.
   // It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
   // of a single workflow run.

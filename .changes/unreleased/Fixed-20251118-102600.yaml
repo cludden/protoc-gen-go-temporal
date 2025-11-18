@@ -1,0 +1,6 @@
+kind: Fixed
+body: Remove WorkflowIDConflictPolicy from child options
+time: 2025-11-18T10:26:00.060562-07:00
+custom:
+    Author: cludden
+    PullRequest: "132"

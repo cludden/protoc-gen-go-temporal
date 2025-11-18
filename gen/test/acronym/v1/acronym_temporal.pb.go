@@ -361,6 +361,7 @@ type ManageAWSOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -401,6 +402,9 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -416,6 +420,12 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *ManageAWSOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ManageAWSOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *ManageAWSOptions) WithEnableEagerStart(enable bool) *ManageAWSOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -552,6 +562,7 @@ type ManageAWSResourceOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -592,6 +603,9 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -607,6 +621,12 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *ManageAWSResourceOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ManageAWSResourceOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *ManageAWSResourceOptions) WithEnableEagerStart(enable bool) *ManageAWSResourceOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -743,6 +763,7 @@ type SomethingV1FooBarOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -783,6 +804,9 @@ func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -798,6 +822,12 @@ func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.Start
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *SomethingV1FooBarOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *SomethingV1FooBarOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *SomethingV1FooBarOptions) WithEnableEagerStart(enable bool) *SomethingV1FooBarOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -934,6 +964,7 @@ type SomethingV2FooBarOptions struct {
 	taskQueue                *string
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -974,6 +1005,9 @@ func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -989,6 +1023,12 @@ func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.Start
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
 func (o *SomethingV2FooBarOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *SomethingV2FooBarOptions {
 	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *SomethingV2FooBarOptions) WithEnableEagerStart(enable bool) *SomethingV2FooBarOptions {
+	o.enableEagerStart = &enable
 	return o
 }
 
@@ -1273,20 +1313,19 @@ func ManageAWSChildAsync(ctx workflow.Context, req *ManageAWSRequest, options ..
 
 // ManageAWSChildOptions provides configuration for a child test.acronym.v1.AWS.ManageAWS workflow operation
 type ManageAWSChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewManageAWSChildOptions initializes a new ManageAWSChildOptions value
@@ -1435,12 +1474,6 @@ func (o *ManageAWSChildOptions) WithWaitForCancellation(wait bool) *ManageAWSChi
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *ManageAWSChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ManageAWSChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // ManageAWSChildRun describes a child ManageAWS workflow run
 type ManageAWSChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1552,20 +1585,19 @@ func ManageAWSResourceChildAsync(ctx workflow.Context, req *ManageAWSResourceReq
 
 // ManageAWSResourceChildOptions provides configuration for a child test.acronym.v1.AWS.ManageAWSResource workflow operation
 type ManageAWSResourceChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewManageAWSResourceChildOptions initializes a new ManageAWSResourceChildOptions value
@@ -1714,12 +1746,6 @@ func (o *ManageAWSResourceChildOptions) WithWaitForCancellation(wait bool) *Mana
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *ManageAWSResourceChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ManageAWSResourceChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // ManageAWSResourceChildRun describes a child ManageAWSResource workflow run
 type ManageAWSResourceChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -1831,20 +1857,19 @@ func SomethingV1FooBarChildAsync(ctx workflow.Context, req *SomethingV1FooBarReq
 
 // SomethingV1FooBarChildOptions provides configuration for a child test.acronym.v1.AWS.SomethingV1FooBar workflow operation
 type SomethingV1FooBarChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomethingV1FooBarChildOptions initializes a new SomethingV1FooBarChildOptions value
@@ -1993,12 +2018,6 @@ func (o *SomethingV1FooBarChildOptions) WithWaitForCancellation(wait bool) *Some
 	return o
 }
 
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomethingV1FooBarChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomethingV1FooBarChildOptions {
-	o.workflowIdConflictPolicy = policy
-	return o
-}
-
 // SomethingV1FooBarChildRun describes a child SomethingV1FooBar workflow run
 type SomethingV1FooBarChildRun struct {
 	Future workflow.ChildWorkflowFuture
@@ -2110,20 +2129,19 @@ func SomethingV2FooBarChildAsync(ctx workflow.Context, req *SomethingV2FooBarReq
 
 // SomethingV2FooBarChildOptions provides configuration for a child test.acronym.v1.AWS.SomethingV2FooBar workflow operation
 type SomethingV2FooBarChildOptions struct {
-	options                  workflow.ChildWorkflowOptions
-	executionTimeout         *time.Duration
-	id                       *string
-	idReusePolicy            enumsv1.WorkflowIdReusePolicy
-	retryPolicy              *temporal.RetryPolicy
-	runTimeout               *time.Duration
-	searchAttributes         map[string]any
-	taskQueue                *string
-	taskTimeout              *time.Duration
-	typedSearchAttributes    *temporal.SearchAttributes
-	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
-	dc                       converter.DataConverter
-	parentClosePolicy        enumsv1.ParentClosePolicy
-	waitForCancellation      *bool
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
 }
 
 // NewSomethingV2FooBarChildOptions initializes a new SomethingV2FooBarChildOptions value
@@ -2269,12 +2287,6 @@ func (o *SomethingV2FooBarChildOptions) WithTypedSearchAttributes(tsa temporal.S
 // WithWaitForCancellation sets the WaitForCancellation value
 func (o *SomethingV2FooBarChildOptions) WithWaitForCancellation(wait bool) *SomethingV2FooBarChildOptions {
 	o.waitForCancellation = &wait
-	return o
-}
-
-// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
-func (o *SomethingV2FooBarChildOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomethingV2FooBarChildOptions {
-	o.workflowIdConflictPolicy = policy
 	return o
 }
 
