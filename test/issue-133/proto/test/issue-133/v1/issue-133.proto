@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package issue_133.v1;
+
+import "temporal/v1/temporal.proto";
+
+service CreateUserWorkflowService {
+  option (temporal.v1.service) = {task_queue: "default"};
+
+  rpc CreateUserInAPIActivity(CreateUserInAPIRequest) returns (CreateUserInAPIResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 30}
+      retry_policy: {max_attempts: 3}
+      name: "CreateUserInAPIActivity"
+    };
+  }
+}
+
+message CreateUserInAPIRequest {
+  string email = 3;
+}
+
+message CreateUserInAPIResponse {
+  bool success = 1;
+}

@@ -1,0 +1,6 @@
+kind: Fixed
+body: Fix activity future acronym casing
+time: 2025-11-20T07:52:58.689972-07:00
+custom:
+    Author: cludden
+    PullRequest: "134"
