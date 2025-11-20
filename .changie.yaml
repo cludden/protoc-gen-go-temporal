@@ -24,7 +24,7 @@ kinds:
 newlines:
   afterChangelogHeader: 3
   beforeChangelogVersion: 1
-  afterVersion: 1
+  beforeKind: 1
   afterKind: 1
   endOfVersion: 3
 envPrefix: CHANGIE_
