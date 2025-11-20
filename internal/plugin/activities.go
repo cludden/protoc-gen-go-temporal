@@ -85,7 +85,7 @@ func (m *Manifest) genActivityFunction(f *j.File, activity protoreflect.FullName
 		}).
 		ParamsFunc(func(g *j.Group) {
 			if async {
-				g.Op("*").Id(fmt.Sprintf("%sFuture", method.GoName))
+				g.Op("*").Id(m.Names().activityFuture(activity))
 			} else {
 				if hasOutput {
 					g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
@@ -141,7 +141,7 @@ func (m *Manifest) genActivityFunction(f *j.File, activity protoreflect.FullName
 				}
 				g.ReturnFunc(func(g *j.Group) {
 					if async {
-						g.Op("&").Id(m.toCamel("%sFuture", activity)).Values(
+						g.Op("&").Id(m.Names().activityFuture(activity)).Values(
 							j.Id("Future").Op(":").Id("errF"),
 						)
 					} else {
@@ -178,7 +178,7 @@ func (m *Manifest) genActivityFunction(f *j.File, activity protoreflect.FullName
 				)
 
 			// initialize activity future
-			g.Id("future").Op(":=").Op("&").Id(m.toCamel("%sFuture", activity)).ValuesFunc(func(g *j.Group) {
+			g.Id("future").Op(":=").Op("&").Id(m.Names().activityFuture(activity)).ValuesFunc(func(g *j.Group) {
 				methodName := "ExecuteActivity"
 				if local {
 					methodName = "ExecuteLocalActivity"
@@ -205,7 +205,7 @@ func (m *Manifest) genActivityFunction(f *j.File, activity protoreflect.FullName
 
 // genActivityFuture generates a <Activity>Future struct
 func (m *Manifest) genActivityFuture(f *j.File, activity protoreflect.FullName) {
-	future := m.toCamel("%sFuture", activity)
+	future := m.Names().activityFuture(activity)
 
 	f.Commentf("%s describes a(n) %s activity execution", future, m.fqnForActivity(activity))
 	f.Type().Id(future).Struct(
@@ -217,7 +217,7 @@ func (m *Manifest) genActivityFuture(f *j.File, activity protoreflect.FullName) 
 func (m *Manifest) genActivityFutureGetMethod(f *j.File, activity protoreflect.FullName) {
 	method := m.methods[activity]
 	hasOutput := !isEmpty(method.Output)
-	future := m.toCamel("%sFuture", activity)
+	future := m.Names().activityFuture(activity)
 
 	f.Comment("Get blocks on the activity's completion, returning the response")
 	f.Func().
@@ -252,7 +252,7 @@ func (m *Manifest) genActivityFutureGetMethod(f *j.File, activity protoreflect.F
 
 // genActivityFutureSelectMethod generates a <Workflow>Future's Select method
 func (m *Manifest) genActivityFutureSelectMethod(f *j.File, activity protoreflect.FullName) {
-	future := m.toCamel("%sFuture", activity)
+	future := m.Names().activityFuture(activity)
 
 	f.Comment("Select adds the activity's completion to the selector, callback can be nil")
 	f.Func().
@@ -672,4 +672,8 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 				j.Return(j.Id("o")),
 			)
 	}
+}
+
+func (n *names) activityFuture(activity protoreflect.FullName) string {
+	return n.toCamel("%sFuture", activity)
 }

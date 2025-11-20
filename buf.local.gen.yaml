@@ -21,7 +21,7 @@ plugins:
       # - enable-debug-logging=true
       - enable-patch-support=true
       - enable-xns=true
-      - ignore-acronyms=AWS;URN
+      - ignore-acronyms=API;AWS;URN
       - patches=64_ENABLED
       - paths=source_relative
       - workflow-update-enabled=true
