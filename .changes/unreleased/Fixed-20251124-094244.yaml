@@ -1,0 +1,6 @@
+kind: Fixed
+body: Fix activities interface name casing
+time: 2025-11-24T09:42:44.570216-07:00
+custom:
+    Author: cludden
+    PullRequest: "136"

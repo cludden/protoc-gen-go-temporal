@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package test.issue_135.v1;
+
+import "temporal/v1/temporal.proto";
+
+// Service defines the Temporal activities for SSH operations.
+service FOOBar {
+  // CheckStatus checks if the SSH connection to a host is reachable.
+  rpc Do(DoRequest) returns (DoResponse) {
+    option (temporal.v1.activity) = {name: "DoName"};
+  }
+}
+
+message DoRequest {}
+
+message DoResponse {}
