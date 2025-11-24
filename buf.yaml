@@ -18,6 +18,7 @@ modules:
   - path: test/expression/proto
   - path: test/issue-125/proto
   - path: test/issue-133/proto
+  - path: test/issue-135/proto
   - path: test/opaque/proto
   - path: test/option/proto
   - path: test/patch/proto

@@ -8,13 +8,15 @@ import (
 
 	j "github.com/dave/jennifer/jen"
 	"github.com/hako/durafmt"
+	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // genActivitiesInterface generates an <Service>Activities interface
 func (m *Manifest) genActivitiesInterface(f *j.File) {
-	f.Commentf("%sActivities describes available worker activities", m.Service.GoName)
-	f.Type().Id(fmt.Sprintf("%sActivities", m.Service.GoName)).InterfaceFunc(func(g *j.Group) {
+	iface := m.Names().activitiesIface(m.Service)
+	f.Commentf("%s describes available worker activities", iface)
+	f.Type().Id(iface).InterfaceFunc(func(g *j.Group) {
 		for _, activity := range m.activitiesOrdered {
 			if m.methods[activity].Desc.Parent() != m.Service.Desc {
 				continue
@@ -283,11 +285,13 @@ func (m *Manifest) genActivityFutureSelectMethod(f *j.File, activity protoreflec
 
 // genActivityRegisterAllFunction generates a Register<Service>Activities public function
 func (m *Manifest) genActivityRegisterAllFunction(f *j.File) {
-	f.Commentf("Register%sActivities registers activities with a worker", m.Service.GoName)
-	f.Func().Id(fmt.Sprintf("Register%sActivities", m.Service.GoName)).
+	iface := m.Names().activitiesIface(m.Service)
+	fn := fmt.Sprintf("Register%s", iface)
+	f.Commentf("%s registers activities with a worker", fn)
+	f.Func().Id(fn).
 		Params(
 			j.Id("r").Qual(workerPkg, "ActivityRegistry"),
-			j.Id("activities").Id(m.toCamel("%sActivities", m.Service.GoName)),
+			j.Id("activities").Id(iface),
 		).
 		BlockFunc(func(g *j.Group) {
 			for _, activity := range m.activitiesOrdered {
@@ -672,6 +676,10 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 				j.Return(j.Id("o")),
 			)
 	}
+}
+
+func (n *names) activitiesIface(service *protogen.Service) string {
+	return n.caser.ToCamel(fmt.Sprintf("%sActivities", service.GoName))
 }
 
 func (n *names) activityFuture(activity protoreflect.FullName) string {
