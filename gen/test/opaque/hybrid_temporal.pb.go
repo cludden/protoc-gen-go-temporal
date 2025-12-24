@@ -511,6 +511,18 @@ type PutHybridExampleWorkflowInput struct {
 	SignalHybrid *SignalHybridSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *PutHybridExampleWorkflowInput) ContinueAsNew(ctx workflow.Context, input *HybridExample, options ...workflow.ContinueAsNewErrorOptions) (*HybridExample, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], PutHybridExampleWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, PutHybridExampleWorkflowName, next)
+}
+
 // PutHybridExampleWorkflow describes a(n) test.opaque.Hybrid.PutHybridExample workflow implementation
 type PutHybridExampleWorkflow interface {
 	// Execute defines the entrypoint to a(n) test.opaque.Hybrid.PutHybridExample workflow

@@ -1095,6 +1095,18 @@ type MutexWorkflowInput struct {
 	ReleaseLock *ReleaseLockSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *MutexWorkflowInput) ContinueAsNew(ctx workflow.Context, input *MutexInput, options ...workflow.ContinueAsNewErrorOptions) error {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], MutexWorkflowName, next)
+	}
+	return workflow.NewContinueAsNewError(ctx, MutexWorkflowName, next)
+}
+
 // Mutex is a workflow that manages concurrent access to a resource
 // identified by `resource_id`.
 //
@@ -1389,6 +1401,18 @@ func buildSampleWorkflowWithMutex(ctor func(workflow.Context, *SampleWorkflowWit
 // SampleWorkflowWithMutexWorkflowInput describes the input to a(n) example.mutex.v1.Example.SampleWorkflowWithMutex workflow constructor
 type SampleWorkflowWithMutexWorkflowInput struct {
 	Req *SampleWorkflowWithMutexInput
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SampleWorkflowWithMutexWorkflowInput) ContinueAsNew(ctx workflow.Context, input *SampleWorkflowWithMutexInput, options ...workflow.ContinueAsNewErrorOptions) error {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SampleWorkflowWithMutexWorkflowName, next)
+	}
+	return workflow.NewContinueAsNewError(ctx, SampleWorkflowWithMutexWorkflowName, next)
 }
 
 // SampleWorkflowWithMutex is a sample workflow that demonstrates how to

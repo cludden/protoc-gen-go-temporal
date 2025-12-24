@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	commonv1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	simplepb "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/v1"
 	simplemocks "github.com/cludden/protoc-gen-go-temporal/mocks/test/simple/v1"
@@ -26,6 +27,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func TestSomeWorkflow1WithTestClient(t *testing.T) {
@@ -622,4 +624,57 @@ func TestLocalActivityOptions(t *testing.T) {
 	})
 	require.True(t, env.IsWorkflowCompleted())
 	require.ErrorContains(t, env.GetWorkflowError(), "uh oh")
+}
+
+func TestContinueAsNew(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simple := simplepb.NewTestSimpleClient(env, &Workflows{}, nil)
+	out, err := simple.ExampleContinueAsNew(context.Background(), &simplepb.ExampleContinueAsNewRequest{
+		Remaining: 3,
+	})
+	require.Nil(t, out)
+	require.Error(t, err)
+	require.True(t, workflow.IsContinueAsNewError(err))
+	var canerr *workflow.ContinueAsNewError
+	require.ErrorAs(t, err, &canerr)
+	require.NotNil(t, canerr)
+	var next simplepb.ExampleContinueAsNewRequest
+	require.NoError(t, converter.GetDefaultDataConverter().FromPayloads(canerr.Input, &next))
+	require.Equal(t, int32(2), next.GetRemaining())
+	require.Nil(t, next.GetRetryPolicy())
+}
+
+func TestContinueAsNewWithOptions(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	simple := simplepb.NewTestSimpleClient(env, &Workflows{}, nil)
+	out, err := simple.ExampleContinueAsNew(context.Background(), &simplepb.ExampleContinueAsNewRequest{
+		Remaining: 3,
+		RetryPolicy: &temporalv1.RetryPolicy{
+			InitialInterval:    durationpb.New(time.Second * 10),
+			BackoffCoefficient: 2.0,
+			MaxInterval:        durationpb.New(time.Second * 30),
+			MaxAttempts:        5,
+		},
+	})
+	require.Nil(t, out)
+	require.Error(t, err)
+	require.True(t, workflow.IsContinueAsNewError(err))
+	var canerr *workflow.ContinueAsNewError
+	require.ErrorAs(t, err, &canerr)
+	require.NotNil(t, canerr)
+	var next simplepb.ExampleContinueAsNewRequest
+	require.NoError(t, converter.GetDefaultDataConverter().FromPayloads(canerr.Input, &next))
+	require.Equal(t, int32(2), next.GetRemaining())
+	require.NotNil(t, next.GetRetryPolicy())
+	require.Equal(t, time.Second*10, next.GetRetryPolicy().GetInitialInterval().AsDuration())
+	require.Equal(t, 2.0, next.GetRetryPolicy().GetBackoffCoefficient())
+	require.Equal(t, time.Second*30, next.GetRetryPolicy().GetMaxInterval().AsDuration())
+	require.Equal(t, int32(5), next.GetRetryPolicy().GetMaxAttempts())
+	require.NotNil(t, canerr.RetryPolicy)
+	require.Equal(t, time.Second*10, canerr.RetryPolicy.InitialInterval)
+	require.Equal(t, 2.0, canerr.RetryPolicy.BackoffCoefficient)
+	require.Equal(t, time.Second*30, canerr.RetryPolicy.MaximumInterval)
+	require.Equal(t, int32(5), canerr.RetryPolicy.MaximumAttempts)
 }

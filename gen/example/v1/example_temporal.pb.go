@@ -784,6 +784,18 @@ type CreateFooWorkflowInput struct {
 	SetFooProgress *SetFooProgressSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *CreateFooWorkflowInput) ContinueAsNew(ctx workflow.Context, input *CreateFooRequest, options ...workflow.ContinueAsNewErrorOptions) (*CreateFooResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], CreateFooWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, CreateFooWorkflowName, next)
+}
+
 // CreateFoo creates a new foo operation
 //
 // workflow details: (name: "example.v1.Example.CreateFoo", id: "create-foo/${! name.slug() }")

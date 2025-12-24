@@ -463,6 +463,18 @@ type HelloWorkflowInput struct {
 	Req *HelloInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *HelloWorkflowInput) ContinueAsNew(ctx workflow.Context, input *HelloInput, options ...workflow.ContinueAsNewErrorOptions) (*HelloOutput, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], HelloWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, HelloWorkflowName, next)
+}
+
 // generates a friendly greeting based on the input name and language
 //
 // workflow details: (name: "example.nexus.v1.GreetingService.Hello", id: "example.nexus.v1.Hello/${! language.or(throw("language required")) }/${! name.slug() }")
@@ -1722,6 +1734,18 @@ func buildEcho(ctor func(workflow.Context, *EchoWorkflowInput) (EchoWorkflow, er
 // EchoWorkflowInput describes the input to a(n) example.nexus.v1.EchoService.Echo workflow constructor
 type EchoWorkflowInput struct {
 	Req *EchoInput
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *EchoWorkflowInput) ContinueAsNew(ctx workflow.Context, input *EchoInput, options ...workflow.ContinueAsNewErrorOptions) (*EchoOutput, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], EchoWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, EchoWorkflowName, next)
 }
 
 // echoes back the input string

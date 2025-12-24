@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	temporalv1 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	v1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	convert "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
 	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
@@ -50,18 +51,20 @@ var SimpleTaskQueue = "my-task-queue"
 
 // mycompany.simple.Simple workflow names
 const (
-	SomeWorkflow1WorkflowName = "mycompany.simple.SomeWorkflow1"
-	SomeWorkflow2WorkflowName = "mycompany.simple.SomeWorkflow2"
-	SomeWorkflow3WorkflowName = "mycompany.simple.Simple.SomeWorkflow3"
-	SomeWorkflow4WorkflowName = "mycompany.simple.Simple.SomeWorkflow4"
+	ExampleContinueAsNewWorkflowName = "mycompany.simple.Simple.ExampleContinueAsNew"
+	SomeWorkflow1WorkflowName        = "mycompany.simple.SomeWorkflow1"
+	SomeWorkflow2WorkflowName        = "mycompany.simple.SomeWorkflow2"
+	SomeWorkflow3WorkflowName        = "mycompany.simple.Simple.SomeWorkflow3"
+	SomeWorkflow4WorkflowName        = "mycompany.simple.Simple.SomeWorkflow4"
 )
 
 // mycompany.simple.Simple workflow id expressions
 var (
-	SomeWorkflow1Idexpression = expression.MustParseExpression("some-workflow-1/${! id }/${! uuid_v4() }")
-	SomeWorkflow2Idexpression = expression.MustParseExpression("some-workflow-2/${! uuid_v4() }")
-	SomeWorkflow3Idexpression = expression.MustParseExpression("some-workflow-3/${! id }/${! requestVal }")
-	SomeWorkflow4Idexpression = expression.MustParseExpression("some-workflow-4/${! uuid_v4() }")
+	ExampleContinueAsNewIdexpression = expression.MustParseExpression("example-continue-as-new/${! uuid_v4() }")
+	SomeWorkflow1Idexpression        = expression.MustParseExpression("some-workflow-1/${! id }/${! uuid_v4() }")
+	SomeWorkflow2Idexpression        = expression.MustParseExpression("some-workflow-2/${! uuid_v4() }")
+	SomeWorkflow3Idexpression        = expression.MustParseExpression("some-workflow-3/${! id }/${! requestVal }")
+	SomeWorkflow4Idexpression        = expression.MustParseExpression("some-workflow-4/${! uuid_v4() }")
 )
 
 // mycompany.simple.Simple activity names
@@ -103,6 +106,15 @@ var (
 
 // SimpleClient describes a client for a(n) mycompany.simple.Simple worker
 type SimpleClient interface {
+	// ExampleContinueAsNew executes a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow and blocks until error or response received
+	ExampleContinueAsNew(ctx context.Context, req *ExampleContinueAsNewRequest, opts ...*ExampleContinueAsNewOptions) (*ExampleContinueAsNewResponse, error)
+
+	// ExampleContinueAsNewAsync starts a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow and returns a handle to the workflow run
+	ExampleContinueAsNewAsync(ctx context.Context, req *ExampleContinueAsNewRequest, opts ...*ExampleContinueAsNewOptions) (ExampleContinueAsNewRun, error)
+
+	// GetExampleContinueAsNew retrieves a handle to an existing mycompany.simple.Simple.ExampleContinueAsNew workflow execution
+	GetExampleContinueAsNew(ctx context.Context, workflowID string, runID string) ExampleContinueAsNewRun
+
 	// SomeWorkflow1 does some workflow thing.
 	SomeWorkflow1(ctx context.Context, req *SomeWorkflow1Request, opts ...*SomeWorkflow1Options) (*SomeWorkflow1Response, error)
 
@@ -271,6 +283,48 @@ func (opts *simpleClientOptions) getLogger() *slog.Logger {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// mycompany.simple.Simple.ExampleContinueAsNew executes a mycompany.simple.Simple.ExampleContinueAsNew workflow and blocks until error or response received
+func (c *simpleClient) ExampleContinueAsNew(ctx context.Context, req *ExampleContinueAsNewRequest, options ...*ExampleContinueAsNewOptions) (*ExampleContinueAsNewResponse, error) {
+	run, err := c.ExampleContinueAsNewAsync(ctx, req, options...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// ExampleContinueAsNewAsync starts a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow and returns a handle to the workflow run
+func (c *simpleClient) ExampleContinueAsNewAsync(ctx context.Context, req *ExampleContinueAsNewRequest, options ...*ExampleContinueAsNewOptions) (ExampleContinueAsNewRun, error) {
+	var o *ExampleContinueAsNewOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewExampleContinueAsNewOptions()
+	}
+	opts, err := o.Build(req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+	}
+	run, err := c.client.ExecuteWorkflow(ctx, opts, ExampleContinueAsNewWorkflowName, req)
+	if err != nil {
+		return nil, err
+	}
+	if run == nil {
+		return nil, errors.New("execute workflow returned nil run")
+	}
+	return &exampleContinueAsNewRun{
+		client: c,
+		run:    run,
+	}, nil
+}
+
+// GetExampleContinueAsNew fetches an existing mycompany.simple.Simple.ExampleContinueAsNew execution
+func (c *simpleClient) GetExampleContinueAsNew(ctx context.Context, workflowID string, runID string) ExampleContinueAsNewRun {
+	return &exampleContinueAsNewRun{
+		client: c,
+		run:    c.client.GetWorkflow(ctx, workflowID, runID),
+	}
 }
 
 // SomeWorkflow1 does some workflow thing.
@@ -844,6 +898,207 @@ func (c *simpleClient) GetSomeUpdate2(ctx context.Context, req client.GetWorkflo
 		client: c,
 		handle: c.client.GetWorkflowUpdateHandle(req),
 	}, nil
+}
+
+// ExampleContinueAsNewOptions provides configuration for a mycompany.simple.Simple.ExampleContinueAsNew workflow operation
+type ExampleContinueAsNewOptions struct {
+	options                  client.StartWorkflowOptions
+	executionTimeout         *time.Duration
+	id                       *string
+	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	retryPolicy              *temporal.RetryPolicy
+	runTimeout               *time.Duration
+	searchAttributes         map[string]any
+	taskQueue                *string
+	taskTimeout              *time.Duration
+	typedSearchAttributes    *temporal.SearchAttributes
+	enableEagerStart         *bool
+	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
+}
+
+// NewExampleContinueAsNewOptions initializes a new ExampleContinueAsNewOptions value
+func NewExampleContinueAsNewOptions() *ExampleContinueAsNewOptions {
+	return &ExampleContinueAsNewOptions{}
+}
+
+// Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
+func (o *ExampleContinueAsNewOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+	opts := o.options
+	if v := o.id; v != nil {
+		opts.ID = *v
+	} else if opts.ID == "" {
+		id, err := expression.EvalExpression(ExampleContinueAsNewIdexpression, req)
+		if err != nil {
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ExampleContinueAsNewWorkflowName, err)
+		}
+		opts.ID = id
+	}
+	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.workflowIdConflictPolicy; v != enumsv1.WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED {
+		opts.WorkflowIDConflictPolicy = v
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = SimpleTaskQueue
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	}
+	if v := o.searchAttributes; v != nil {
+		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
+	}
+	if v := o.enableEagerStart; v != nil {
+		opts.EnableEagerStart = *v
+	}
+	if v := o.executionTimeout; v != nil {
+		opts.WorkflowExecutionTimeout = *v
+	}
+	if v := o.runTimeout; v != nil {
+		opts.WorkflowRunTimeout = *v
+	}
+	if v := o.taskTimeout; v != nil {
+		opts.WorkflowTaskTimeout = *v
+	}
+	return opts, nil
+}
+
+// WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
+func (o *ExampleContinueAsNewOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *ExampleContinueAsNewOptions {
+	o.options = options
+	return o
+}
+
+// WithEnableEagerStart sets the EnableEagerStart value
+func (o *ExampleContinueAsNewOptions) WithEnableEagerStart(enable bool) *ExampleContinueAsNewOptions {
+	o.enableEagerStart = &enable
+	return o
+}
+
+// WithExecutionTimeout sets the WorkflowExecutionTimeout value
+func (o *ExampleContinueAsNewOptions) WithExecutionTimeout(d time.Duration) *ExampleContinueAsNewOptions {
+	o.executionTimeout = &d
+	return o
+}
+
+// WithID sets the ID value
+func (o *ExampleContinueAsNewOptions) WithID(id string) *ExampleContinueAsNewOptions {
+	o.id = &id
+	return o
+}
+
+// WithIDReusePolicy sets the WorkflowIDReusePolicy value
+func (o *ExampleContinueAsNewOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ExampleContinueAsNewOptions {
+	o.idReusePolicy = policy
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *ExampleContinueAsNewOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ExampleContinueAsNewOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithRunTimeout sets the WorkflowRunTimeout value
+func (o *ExampleContinueAsNewOptions) WithRunTimeout(d time.Duration) *ExampleContinueAsNewOptions {
+	o.runTimeout = &d
+	return o
+}
+
+// WithSearchAttributes sets the SearchAttributes value
+func (o *ExampleContinueAsNewOptions) WithSearchAttributes(sa map[string]any) *ExampleContinueAsNewOptions {
+	o.searchAttributes = sa
+	return o
+}
+
+// WithTaskTimeout sets the WorkflowTaskTimeout value
+func (o *ExampleContinueAsNewOptions) WithTaskTimeout(d time.Duration) *ExampleContinueAsNewOptions {
+	o.taskTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *ExampleContinueAsNewOptions) WithTaskQueue(tq string) *ExampleContinueAsNewOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ExampleContinueAsNewOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ExampleContinueAsNewOptions {
+	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
+func (o *ExampleContinueAsNewOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ExampleContinueAsNewOptions {
+	o.workflowIdConflictPolicy = policy
+	return o
+}
+
+// ExampleContinueAsNewRun describes a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow run
+type ExampleContinueAsNewRun interface {
+	// ID returns the workflow ID
+	ID() string
+
+	// RunID returns the workflow instance ID
+	RunID() string
+
+	// Run returns the inner client.WorkflowRun
+	Run() client.WorkflowRun
+
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) (*ExampleContinueAsNewResponse, error)
+
+	// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+	Cancel(ctx context.Context) error
+
+	// Terminate terminates a workflow in execution, returning an error if applicable
+	Terminate(ctx context.Context, reason string, details ...interface{}) error
+}
+
+// exampleContinueAsNewRun provides an internal implementation of a(n) ExampleContinueAsNewRunRun
+type exampleContinueAsNewRun struct {
+	client *simpleClient
+	run    client.WorkflowRun
+}
+
+// ID returns the workflow ID
+func (r *exampleContinueAsNewRun) ID() string {
+	return r.run.GetID()
+}
+
+// Run returns the inner client.WorkflowRun
+func (r *exampleContinueAsNewRun) Run() client.WorkflowRun {
+	return r.run
+}
+
+// RunID returns the execution ID
+func (r *exampleContinueAsNewRun) RunID() string {
+	return r.run.GetRunID()
+}
+
+// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+func (r *exampleContinueAsNewRun) Cancel(ctx context.Context) error {
+	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
+}
+
+// Get blocks until the workflow is complete, returning the result if applicable
+func (r *exampleContinueAsNewRun) Get(ctx context.Context) (*ExampleContinueAsNewResponse, error) {
+	var resp ExampleContinueAsNewResponse
+	if err := r.run.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Terminate terminates a workflow in execution, returning an error if applicable
+func (r *exampleContinueAsNewRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
 // SomeWorkflow1Options provides configuration for a mycompany.simple.SomeWorkflow1 workflow operation
@@ -2006,6 +2261,8 @@ func (o *SomeUpdate2Options) WithWaitPolicy(policy client.WorkflowUpdateStage) *
 var (
 	// simpleRegistrationMutex is a mutex for registering mycompany.simple.Simple workflows
 	simpleRegistrationMutex sync.Mutex
+	// ExampleContinueAsNewFunction implements a "mycompany.simple.Simple.ExampleContinueAsNew" workflow
+	ExampleContinueAsNewFunction func(workflow.Context, *ExampleContinueAsNewRequest) (*ExampleContinueAsNewResponse, error)
 	// SomeWorkflow1 does some workflow thing.
 	SomeWorkflow1Function func(workflow.Context, *SomeWorkflow1Request) (*SomeWorkflow1Response, error)
 	// SomeWorkflow2 does some workflow thing.
@@ -2021,6 +2278,8 @@ var (
 type (
 	// SimpleWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 	SimpleWorkflowFunctions interface {
+		// ExampleContinueAsNew executes a "mycompany.simple.Simple.ExampleContinueAsNew" workflow inline
+		ExampleContinueAsNew(workflow.Context, *ExampleContinueAsNewRequest) (*ExampleContinueAsNewResponse, error)
 		// SomeWorkflow1 does some workflow thing.
 		SomeWorkflow1(workflow.Context, *SomeWorkflow1Request) (*SomeWorkflow1Response, error)
 		// SomeWorkflow2 does some workflow thing.
@@ -2037,6 +2296,14 @@ type (
 
 func NewSimpleWorkflowFunctions() SimpleWorkflowFunctions {
 	return &simpleWorkflowFunctions{}
+}
+
+// ExampleContinueAsNew executes a "mycompany.simple.Simple.ExampleContinueAsNew" workflow inline
+func (f *simpleWorkflowFunctions) ExampleContinueAsNew(ctx workflow.Context, req *ExampleContinueAsNewRequest) (*ExampleContinueAsNewResponse, error) {
+	if ExampleContinueAsNewFunction == nil {
+		return nil, errors.New("ExampleContinueAsNew requires workflow registration via RegisterSimpleWorkflows or RegisterExampleContinueAsNewWorkflow")
+	}
+	return ExampleContinueAsNewFunction(ctx, req)
 }
 
 // SomeWorkflow1 does some workflow thing.
@@ -2074,6 +2341,9 @@ func (f *simpleWorkflowFunctions) SomeWorkflow4(ctx workflow.Context, req *v1.Pa
 
 // SimpleWorkflows provides methods for initializing new mycompany.simple.Simple workflow values
 type SimpleWorkflows interface {
+	// ExampleContinueAsNew initializes a new a(n) ExampleContinueAsNewWorkflow implementation
+	ExampleContinueAsNew(ctx workflow.Context, input *ExampleContinueAsNewWorkflowInput) (ExampleContinueAsNewWorkflow, error)
+
 	// SomeWorkflow1 does some workflow thing.
 	SomeWorkflow1(ctx workflow.Context, input *SomeWorkflow1WorkflowInput) (SomeWorkflow1Workflow, error)
 
@@ -2090,10 +2360,295 @@ type SimpleWorkflows interface {
 
 // RegisterSimpleWorkflows registers mycompany.simple.Simple workflows with the given worker
 func RegisterSimpleWorkflows(r worker.WorkflowRegistry, workflows SimpleWorkflows) {
+	RegisterExampleContinueAsNewWorkflow(r, workflows.ExampleContinueAsNew)
 	RegisterSomeWorkflow1Workflow(r, workflows.SomeWorkflow1)
 	RegisterSomeWorkflow2Workflow(r, workflows.SomeWorkflow2)
 	RegisterSomeWorkflow3Workflow(r, workflows.SomeWorkflow3)
 	RegisterSomeWorkflow4Workflow(r, workflows.SomeWorkflow4)
+}
+
+// RegisterExampleContinueAsNewWorkflow registers a mycompany.simple.Simple.ExampleContinueAsNew workflow with the given worker
+func RegisterExampleContinueAsNewWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *ExampleContinueAsNewWorkflowInput) (ExampleContinueAsNewWorkflow, error)) {
+	simpleRegistrationMutex.Lock()
+	defer simpleRegistrationMutex.Unlock()
+	ExampleContinueAsNewFunction = buildExampleContinueAsNew(wf)
+	r.RegisterWorkflowWithOptions(ExampleContinueAsNewFunction, workflow.RegisterOptions{Name: ExampleContinueAsNewWorkflowName})
+}
+
+// buildExampleContinueAsNew converts a ExampleContinueAsNew workflow struct into a valid workflow function
+func buildExampleContinueAsNew(ctor func(workflow.Context, *ExampleContinueAsNewWorkflowInput) (ExampleContinueAsNewWorkflow, error)) func(workflow.Context, *ExampleContinueAsNewRequest) (*ExampleContinueAsNewResponse, error) {
+	return func(ctx workflow.Context, req *ExampleContinueAsNewRequest) (*ExampleContinueAsNewResponse, error) {
+		input := &ExampleContinueAsNewWorkflowInput{
+			Req: req,
+		}
+		wf, err := ctor(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		if initializable, ok := wf.(helpers.Initializable); ok {
+			if err := initializable.Initialize(ctx); err != nil {
+				return nil, err
+			}
+		}
+		return wf.Execute(ctx)
+	}
+}
+
+// ExampleContinueAsNewWorkflowInput describes the input to a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow constructor
+type ExampleContinueAsNewWorkflowInput struct {
+	Req *ExampleContinueAsNewRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *ExampleContinueAsNewWorkflowInput) ContinueAsNew(ctx workflow.Context, input *ExampleContinueAsNewRequest, options ...workflow.ContinueAsNewErrorOptions) (*ExampleContinueAsNewResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], ExampleContinueAsNewWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, ExampleContinueAsNewWorkflowName, next)
+}
+
+// ExampleContinueAsNewWorkflow describes a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow implementation
+//
+// workflow details: (id: "example-continue-as-new/${! uuid_v4() }")
+type ExampleContinueAsNewWorkflow interface {
+	// Execute defines the entrypoint to a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow
+	Execute(ctx workflow.Context) (*ExampleContinueAsNewResponse, error)
+}
+
+// ExampleContinueAsNewChild executes a child mycompany.simple.Simple.ExampleContinueAsNew workflow and blocks until error or response received
+func ExampleContinueAsNewChild(ctx workflow.Context, req *ExampleContinueAsNewRequest, options ...*ExampleContinueAsNewChildOptions) (*ExampleContinueAsNewResponse, error) {
+	childRun, err := ExampleContinueAsNewChildAsync(ctx, req, options...)
+	if err != nil {
+		return nil, err
+	}
+	return childRun.Get(ctx)
+}
+
+// ExampleContinueAsNewChildAsync starts a child mycompany.simple.Simple.ExampleContinueAsNew workflow and returns a handle to the child workflow run
+func ExampleContinueAsNewChildAsync(ctx workflow.Context, req *ExampleContinueAsNewRequest, options ...*ExampleContinueAsNewChildOptions) (*ExampleContinueAsNewChildRun, error) {
+	var o *ExampleContinueAsNewChildOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewExampleContinueAsNewChildOptions()
+	}
+	opts, err := o.Build(ctx, req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
+	}
+	ctx = workflow.WithChildOptions(ctx, opts)
+	if o.dc != nil {
+		ctx = workflow.WithDataConverter(ctx, o.dc)
+	}
+	return &ExampleContinueAsNewChildRun{Future: workflow.ExecuteChildWorkflow(ctx, ExampleContinueAsNewWorkflowName, req)}, nil
+}
+
+// ExampleContinueAsNewChildOptions provides configuration for a child mycompany.simple.Simple.ExampleContinueAsNew workflow operation
+type ExampleContinueAsNewChildOptions struct {
+	options               workflow.ChildWorkflowOptions
+	executionTimeout      *time.Duration
+	id                    *string
+	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	retryPolicy           *temporal.RetryPolicy
+	runTimeout            *time.Duration
+	searchAttributes      map[string]any
+	taskQueue             *string
+	taskTimeout           *time.Duration
+	typedSearchAttributes *temporal.SearchAttributes
+	dc                    converter.DataConverter
+	parentClosePolicy     enumsv1.ParentClosePolicy
+	waitForCancellation   *bool
+}
+
+// NewExampleContinueAsNewChildOptions initializes a new ExampleContinueAsNewChildOptions value
+func NewExampleContinueAsNewChildOptions() *ExampleContinueAsNewChildOptions {
+	return &ExampleContinueAsNewChildOptions{}
+}
+
+// Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
+func (o *ExampleContinueAsNewChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+	opts := o.options
+	if v := o.id; v != nil {
+		opts.WorkflowID = *v
+	} else if opts.WorkflowID == "" {
+		// wrap expression evaluation in local activity
+		// more info: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/patches#pv_64-expression-evaluation-local-activity
+		if workflow.GetVersion(ctx, "cludden_protoc-gen-go-temporal_64_expression-evaluation-local-activity", workflow.DefaultVersion, 1) == 1 {
+			lao := workflow.GetLocalActivityOptions(ctx)
+			lao.ScheduleToCloseTimeout = time.Second * 10
+			if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
+				id, err := expression.EvalExpression(ExampleContinueAsNewIdexpression, req)
+				if err != nil {
+					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", ExampleContinueAsNewWorkflowName, err)
+				}
+				return id, nil
+			}).Get(ctx, &opts.WorkflowID); err != nil {
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ExampleContinueAsNewWorkflowName, err)
+			}
+		} else {
+			id, err := expression.EvalExpression(ExampleContinueAsNewIdexpression, req)
+			if err != nil {
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", ExampleContinueAsNewWorkflowName, err)
+			}
+			opts.WorkflowID = id
+		}
+	}
+	if v := o.idReusePolicy; v != enumsv1.WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED {
+		opts.WorkflowIDReusePolicy = v
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = SimpleTaskQueue
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	}
+	if v := o.searchAttributes; v != nil {
+		opts.SearchAttributes = o.searchAttributes
+	}
+	if v := o.typedSearchAttributes; v != nil {
+		opts.TypedSearchAttributes = *v
+	}
+	if v := o.executionTimeout; v != nil {
+		opts.WorkflowExecutionTimeout = *v
+	}
+	if v := o.runTimeout; v != nil {
+		opts.WorkflowRunTimeout = *v
+	}
+	if v := o.taskTimeout; v != nil {
+		opts.WorkflowTaskTimeout = *v
+	}
+	if v := o.parentClosePolicy; v != enumsv1.PARENT_CLOSE_POLICY_UNSPECIFIED {
+		opts.ParentClosePolicy = v
+	}
+	if v := o.waitForCancellation; v != nil {
+		opts.WaitForCancellation = *v
+	}
+	return opts, nil
+}
+
+// WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
+func (o *ExampleContinueAsNewChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *ExampleContinueAsNewChildOptions {
+	o.options = options
+	return o
+}
+
+// WithDataConverter registers a DataConverter for the child workflow
+func (o *ExampleContinueAsNewChildOptions) WithDataConverter(dc converter.DataConverter) *ExampleContinueAsNewChildOptions {
+	o.dc = dc
+	return o
+}
+
+// WithExecutionTimeout sets the WorkflowExecutionTimeout value
+func (o *ExampleContinueAsNewChildOptions) WithExecutionTimeout(d time.Duration) *ExampleContinueAsNewChildOptions {
+	o.executionTimeout = &d
+	return o
+}
+
+// WithID sets the WorkflowID value
+func (o *ExampleContinueAsNewChildOptions) WithID(id string) *ExampleContinueAsNewChildOptions {
+	o.id = &id
+	return o
+}
+
+// WithIDReusePolicy sets the WorkflowIDReusePolicy value
+func (o *ExampleContinueAsNewChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ExampleContinueAsNewChildOptions {
+	o.idReusePolicy = policy
+	return o
+}
+
+// WithParentClosePolicy sets the WorkflowIDReusePolicy value
+func (o *ExampleContinueAsNewChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ExampleContinueAsNewChildOptions {
+	o.parentClosePolicy = policy
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *ExampleContinueAsNewChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *ExampleContinueAsNewChildOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithRunTimeout sets the WorkflowRunTimeout value
+func (o *ExampleContinueAsNewChildOptions) WithRunTimeout(d time.Duration) *ExampleContinueAsNewChildOptions {
+	o.runTimeout = &d
+	return o
+}
+
+// WithSearchAttributes sets the SearchAttributes value
+func (o *ExampleContinueAsNewChildOptions) WithSearchAttributes(sa map[string]any) *ExampleContinueAsNewChildOptions {
+	o.searchAttributes = sa
+	return o
+}
+
+// WithTaskTimeout sets the WorkflowTaskTimeout value
+func (o *ExampleContinueAsNewChildOptions) WithTaskTimeout(d time.Duration) *ExampleContinueAsNewChildOptions {
+	o.taskTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *ExampleContinueAsNewChildOptions) WithTaskQueue(tq string) *ExampleContinueAsNewChildOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithTypedSearchAttributes sets the TypedSearchAttributes value
+func (o *ExampleContinueAsNewChildOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ExampleContinueAsNewChildOptions {
+	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithWaitForCancellation sets the WaitForCancellation value
+func (o *ExampleContinueAsNewChildOptions) WithWaitForCancellation(wait bool) *ExampleContinueAsNewChildOptions {
+	o.waitForCancellation = &wait
+	return o
+}
+
+// ExampleContinueAsNewChildRun describes a child ExampleContinueAsNew workflow run
+type ExampleContinueAsNewChildRun struct {
+	Future workflow.ChildWorkflowFuture
+}
+
+// Get blocks until the workflow is completed, returning the response value
+func (r *ExampleContinueAsNewChildRun) Get(ctx workflow.Context) (*ExampleContinueAsNewResponse, error) {
+	var resp ExampleContinueAsNewResponse
+	if err := r.Future.Get(ctx, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Select adds this completion to the selector. Callback can be nil.
+func (r *ExampleContinueAsNewChildRun) Select(sel workflow.Selector, fn func(*ExampleContinueAsNewChildRun)) workflow.Selector {
+	return sel.AddFuture(r.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(r)
+		}
+	})
+}
+
+// SelectStart adds waiting for start to the selector. Callback can be nil.
+func (r *ExampleContinueAsNewChildRun) SelectStart(sel workflow.Selector, fn func(*ExampleContinueAsNewChildRun)) workflow.Selector {
+	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
+		if fn != nil {
+			fn(r)
+		}
+	})
+}
+
+// WaitStart waits for the child workflow to start
+func (r *ExampleContinueAsNewChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+	var exec workflow.Execution
+	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
+		return nil, err
+	}
+	return &exec, nil
 }
 
 // RegisterSomeWorkflow1Workflow registers a mycompany.simple.Simple.SomeWorkflow1 workflow with the given worker
@@ -2153,6 +2708,18 @@ type SomeWorkflow1WorkflowInput struct {
 	Req         *SomeWorkflow1Request
 	SomeSignal1 *SomeSignal1Signal
 	SomeSignal2 *SomeSignal2Signal
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow1WorkflowInput) ContinueAsNew(ctx workflow.Context, input *SomeWorkflow1Request, options ...workflow.ContinueAsNewErrorOptions) (*SomeWorkflow1Response, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomeWorkflow1WorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeWorkflow1WorkflowName, next)
 }
 
 // SomeWorkflow1 does some workflow thing.
@@ -2470,6 +3037,14 @@ type SomeWorkflow2WorkflowInput struct {
 	SomeSignal1 *SomeSignal1Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow2WorkflowInput) ContinueAsNew(ctx workflow.Context, options ...workflow.ContinueAsNewErrorOptions) error {
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomeWorkflow2WorkflowName)
+	}
+	return workflow.NewContinueAsNewError(ctx, SomeWorkflow2WorkflowName)
+}
+
 // SomeWorkflow2 does some workflow thing.
 //
 // workflow details: (name: "mycompany.simple.SomeWorkflow2", id: "some-workflow-2/${! uuid_v4() }")
@@ -2751,6 +3326,18 @@ type SomeWorkflow3WorkflowInput struct {
 	SomeSignal2 *SomeSignal2Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow3WorkflowInput) ContinueAsNew(ctx workflow.Context, input *SomeWorkflow3Request, options ...workflow.ContinueAsNewErrorOptions) error {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomeWorkflow3WorkflowName, next)
+	}
+	return workflow.NewContinueAsNewError(ctx, SomeWorkflow3WorkflowName, next)
+}
+
 // SomeWorkflow3 does some workflow thing.
 // Deprecated: Use SomeWorkflow2 instead.
 //
@@ -3027,6 +3614,18 @@ func buildSomeWorkflow4(ctor func(workflow.Context, *SomeWorkflow4WorkflowInput)
 // SomeWorkflow4WorkflowInput describes the input to a(n) mycompany.simple.Simple.SomeWorkflow4 workflow constructor
 type SomeWorkflow4WorkflowInput struct {
 	Req *v1.PaginatedRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow4WorkflowInput) ContinueAsNew(ctx workflow.Context, input *v1.PaginatedRequest, options ...workflow.ContinueAsNewErrorOptions) (*v1.PaginatedResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomeWorkflow4WorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeWorkflow4WorkflowName, next)
 }
 
 // SomeWorkflow4 retrieves a paginated list of items
@@ -5582,6 +6181,35 @@ func NewTestSimpleClient(env *testsuite.TestWorkflowEnvironment, workflows Simpl
 	return &TestSimpleClient{env, workflows}
 }
 
+// ExampleContinueAsNew executes a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow in the test environment
+func (c *TestSimpleClient) ExampleContinueAsNew(ctx context.Context, req *ExampleContinueAsNewRequest, opts ...*ExampleContinueAsNewOptions) (*ExampleContinueAsNewResponse, error) {
+	run, err := c.ExampleContinueAsNewAsync(ctx, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return run.Get(ctx)
+}
+
+// ExampleContinueAsNewAsync executes a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow in the test environment
+func (c *TestSimpleClient) ExampleContinueAsNewAsync(ctx context.Context, req *ExampleContinueAsNewRequest, options ...*ExampleContinueAsNewOptions) (ExampleContinueAsNewRun, error) {
+	var o *ExampleContinueAsNewOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewExampleContinueAsNewOptions()
+	}
+	opts, err := o.Build(req.ProtoReflect())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
+	}
+	return &testExampleContinueAsNewRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+}
+
+// GetExampleContinueAsNew is a noop
+func (c *TestSimpleClient) GetExampleContinueAsNew(ctx context.Context, workflowID string, runID string) ExampleContinueAsNewRun {
+	return &testExampleContinueAsNewRun{env: c.env, workflows: c.workflows}
+}
+
 // SomeWorkflow1 executes a(n) mycompany.simple.SomeWorkflow1 workflow in the test environment
 func (c *TestSimpleClient) SomeWorkflow1(ctx context.Context, req *SomeWorkflow1Request, opts ...*SomeWorkflow1Options) (*SomeWorkflow1Response, error) {
 	run, err := c.SomeWorkflow1Async(ctx, req, opts...)
@@ -6083,6 +6711,64 @@ func (h *testSomeUpdate2Handle) UpdateID() string {
 // WorkflowID implementation
 func (h *testSomeUpdate2Handle) WorkflowID() string {
 	return h.workflowID
+}
+
+var _ ExampleContinueAsNewRun = &testExampleContinueAsNewRun{}
+
+// testExampleContinueAsNewRun provides convenience methods for interacting with a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow in the test environment
+type testExampleContinueAsNewRun struct {
+	client    *TestSimpleClient
+	env       *testsuite.TestWorkflowEnvironment
+	isStarted atomic.Bool
+	opts      *client.StartWorkflowOptions
+	req       *ExampleContinueAsNewRequest
+	workflows SimpleWorkflows
+}
+
+// Cancel requests cancellation of a workflow in execution, returning an error if applicable
+func (r *testExampleContinueAsNewRun) Cancel(ctx context.Context) error {
+	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
+}
+
+// Get retrieves a test mycompany.simple.Simple.ExampleContinueAsNew workflow result
+func (r *testExampleContinueAsNewRun) Get(context.Context) (*ExampleContinueAsNewResponse, error) {
+	if r.isStarted.CompareAndSwap(false, true) {
+		r.env.ExecuteWorkflow(ExampleContinueAsNewWorkflowName, r.req)
+	}
+	if !r.env.IsWorkflowCompleted() {
+		return nil, errors.New("workflow in progress")
+	}
+	if err := r.env.GetWorkflowError(); err != nil {
+		return nil, err
+	}
+	var result ExampleContinueAsNewResponse
+	if err := r.env.GetWorkflowResult(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// ID returns a test mycompany.simple.Simple.ExampleContinueAsNew workflow run's workflow ID
+func (r *testExampleContinueAsNewRun) ID() string {
+	if r.opts != nil {
+		return r.opts.ID
+	}
+	return ""
+}
+
+// Run noop implementation
+func (r *testExampleContinueAsNewRun) Run() client.WorkflowRun {
+	return nil
+}
+
+// RunID noop implementation
+func (r *testExampleContinueAsNewRun) RunID() string {
+	return ""
+}
+
+// Terminate terminates a workflow in execution, returning an error if applicable
+func (r *testExampleContinueAsNewRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
 var _ SomeWorkflow1Run = &testSomeWorkflow1Run{}
@@ -6824,6 +7510,84 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 			},
 		},
 		{
+			Name:                   "example-continue-as-new",
+			Usage:                  "executes a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow",
+			Category:               "WORKFLOWS",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Name:    "detach",
+					Usage:   "run workflow in the background and print workflow and execution id",
+					Aliases: []string{"d"},
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "my-task-queue",
+				},
+				&v2.StringFlag{
+					Name:     "input-file",
+					Usage:    "path to json-formatted input file",
+					Aliases:  []string{"f"},
+					Category: "INPUT",
+				},
+				&v2.Int64Flag{
+					Name:     "remaining",
+					Usage:    "set the value of the operation's \"Remaining\" parameter",
+					Category: "INPUT",
+				},
+				&v2.StringFlag{
+					Name:     "retry-policy",
+					Usage:    "set the value of the operation's \"RetryPolicy\" parameter (json-encoded: {initialInterval: <google.protobuf.Duration>, backoffCoefficient: <double>, maxInterval: <google.protobuf.Duration>, maxAttempts: <int32>, nonRetryableErrorTypes: <string>})",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				tc, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer tc.Close()
+				c := NewSimpleClient(tc)
+				req, err := UnmarshalCliFlagsToExampleContinueAsNewRequest(cmd, helpers.UnmarshalCliFlagsOptions{FromFile: "input-file"})
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				opts := client.StartWorkflowOptions{}
+				if tq := cmd.String("task-queue"); tq != "" {
+					opts.TaskQueue = tq
+				}
+				run, err := c.ExampleContinueAsNewAsync(cmd.Context, req, NewExampleContinueAsNewOptions().WithStartWorkflowOptions(opts))
+				if err != nil {
+					return fmt.Errorf("error starting %s workflow: %w", ExampleContinueAsNewWorkflowName, err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", run.ID())
+					fmt.Printf("run id: %s\n", run.RunID())
+					return nil
+				}
+				if resp, err := run.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					b, err := protojson.Marshal(resp)
+					if err != nil {
+						return fmt.Errorf("error serializing response json: %w", err)
+					}
+					var out bytes.Buffer
+					if err := json.Indent(&out, b, "", "  "); err != nil {
+						return fmt.Errorf("error formatting json: %w", err)
+					}
+					fmt.Println(out.String())
+					return nil
+				}
+			},
+		},
+		{
 			Name:                   "some-workflow-1",
 			Usage:                  "SomeWorkflow1 does some workflow thing.",
 			Category:               "WORKFLOWS",
@@ -7525,6 +8289,41 @@ func UnmarshalCliFlagsToSomeUpdate2Request(cmd *v2.Context, options ...helpers.U
 	return &result, nil
 }
 
+// UnmarshalCliFlagsToExampleContinueAsNewRequest unmarshals a ExampleContinueAsNewRequest from command line flags
+func UnmarshalCliFlagsToExampleContinueAsNewRequest(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*ExampleContinueAsNewRequest, error) {
+	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
+	var result ExampleContinueAsNewRequest
+	if opts.FromFile != "" && cmd.IsSet(opts.FromFile) {
+		f, err := gohomedir.Expand(cmd.String(opts.FromFile))
+		if err != nil {
+			f = cmd.String(opts.FromFile)
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", opts.FromFile, err)
+		}
+		if err := protojson.Unmarshal(b, &result); err != nil {
+			return nil, fmt.Errorf("error parsing %s json: %w", opts.FromFile, err)
+		}
+	}
+	if flag := opts.FlagName("remaining"); cmd.IsSet(flag) {
+		value, err := convert.SafeCast[int64, int32](cmd.Int64(flag))
+		if err != nil {
+			return nil, err
+		}
+		result.Remaining = value
+	}
+	if flag := opts.FlagName("retry-policy"); cmd.IsSet(flag) {
+		var tmp temporalv1.RetryPolicy
+		if err := protojson.Unmarshal([]byte(cmd.String(flag)), &tmp); err != nil {
+			return nil, fmt.Errorf("error unmarshalling \"retry-policy\" flag: %w", err)
+		}
+		value := &tmp
+		result.RetryPolicy = value
+	}
+	return &result, nil
+}
+
 // UnmarshalCliFlagsToSomeWorkflow1Request unmarshals a SomeWorkflow1Request from command line flags
 func UnmarshalCliFlagsToSomeWorkflow1Request(cmd *v2.Context, options ...helpers.UnmarshalCliFlagsOptions) (*SomeWorkflow1Request, error) {
 	opts := helpers.FlattenUnmarshalCliFlagsOptions(options...)
@@ -7631,6 +8430,8 @@ func WithSimpleSchemeTypes() scheme.Option {
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeQuery2Response"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeUpdate2Request"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeUpdate2Response"))
+		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("ExampleContinueAsNewRequest"))
+		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("ExampleContinueAsNewResponse"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow1Request"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow1Response"))
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("SomeWorkflow3Request"))
@@ -8566,6 +9367,18 @@ type OtherWorkflowWorkflowInput struct {
 	Req *OtherWorkflowRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *OtherWorkflowWorkflowInput) ContinueAsNew(ctx workflow.Context, input *OtherWorkflowRequest, options ...workflow.ContinueAsNewErrorOptions) (*OtherWorkflowResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], OtherWorkflowWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, OtherWorkflowWorkflowName, next)
+}
+
 // OtherWorkflowWorkflow describes a(n) mycompany.simple.Other.OtherWorkflow workflow implementation
 //
 // workflow details: (id: "other-workflow/${!uuid_v4()}")
@@ -8827,6 +9640,18 @@ func buildOtherWorkflow2(ctor func(workflow.Context, *OtherWorkflow2WorkflowInpu
 // OtherWorkflow2WorkflowInput describes the input to a(n) mycompany.simple.Other.OtherWorkflow2 workflow constructor
 type OtherWorkflow2WorkflowInput struct {
 	Req *v1.PaginatedRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *OtherWorkflow2WorkflowInput) ContinueAsNew(ctx workflow.Context, input *v1.PaginatedRequest, options ...workflow.ContinueAsNewErrorOptions) (*v1.PaginatedResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], OtherWorkflow2WorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, OtherWorkflow2WorkflowName, next)
 }
 
 // OtherWorkflow2Workflow describes a(n) mycompany.simple.Other.OtherWorkflow2 workflow implementation
@@ -10839,6 +11664,18 @@ func buildWhat(ctor func(workflow.Context, *WhatWorkflowInput) (WhatWorkflow, er
 // WhatWorkflowInput describes the input to a(n) mycompany.simple.Ignored.What workflow constructor
 type WhatWorkflowInput struct {
 	Req *WhatRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *WhatWorkflowInput) ContinueAsNew(ctx workflow.Context, input *WhatRequest, options ...workflow.ContinueAsNewErrorOptions) error {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], WhatWorkflowName, next)
+	}
+	return workflow.NewContinueAsNewError(ctx, WhatWorkflowName, next)
 }
 
 // WhatWorkflow describes a(n) mycompany.simple.Ignored.What workflow implementation
@@ -12895,6 +13732,18 @@ type SomeDeprecatedWorkflow1WorkflowInput struct {
 	SomeDeprecatedSignal1 *SomeDeprecatedSignal1Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeDeprecatedWorkflow1WorkflowInput) ContinueAsNew(ctx workflow.Context, input *SomeDeprecatedMessage, options ...workflow.ContinueAsNewErrorOptions) (*SomeDeprecatedMessage, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomeDeprecatedWorkflow1WorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeDeprecatedWorkflow1WorkflowName, next)
+}
+
 // SomeDeprecatedWorkflow1 does something
 //
 // Deprecated: Do not use.
@@ -13184,6 +14033,18 @@ func buildSomeDeprecatedWorkflow2(ctor func(workflow.Context, *SomeDeprecatedWor
 type SomeDeprecatedWorkflow2WorkflowInput struct {
 	Req                   *SomeDeprecatedMessage
 	SomeDeprecatedSignal2 *SomeDeprecatedSignal2Signal
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeDeprecatedWorkflow2WorkflowInput) ContinueAsNew(ctx workflow.Context, input *SomeDeprecatedMessage, options ...workflow.ContinueAsNewErrorOptions) (*SomeDeprecatedMessage, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomeDeprecatedWorkflow2WorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeDeprecatedWorkflow2WorkflowName, next)
 }
 
 // SomeDeprecatedWorkflow2 does something else
