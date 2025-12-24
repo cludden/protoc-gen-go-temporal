@@ -444,6 +444,15 @@ type SleepWorkflowInput struct {
 	Req *SleepRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SleepWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*SleepRequest) error {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return workflow.NewContinueAsNewError(ctx, SleepWorkflowName, next)
+}
+
 // SleepWorkflow describes a(n) test.xnserr.v1.Server.Sleep workflow implementation
 type SleepWorkflow interface {
 	// Execute defines the entrypoint to a(n) test.xnserr.v1.Server.Sleep workflow
@@ -1407,6 +1416,15 @@ func buildCallSleep(ctor func(workflow.Context, *CallSleepWorkflowInput) (CallSl
 // CallSleepWorkflowInput describes the input to a(n) test.xnserr.v1.Client.CallSleep workflow constructor
 type CallSleepWorkflowInput struct {
 	Req *CallSleepRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *CallSleepWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*CallSleepRequest) error {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return workflow.NewContinueAsNewError(ctx, CallSleepWorkflowName, next)
 }
 
 // CallSleepWorkflow describes a(n) test.xnserr.v1.Client.CallSleep workflow implementation

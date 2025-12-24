@@ -847,6 +847,15 @@ type CreateFooWorkflowInput struct {
 	SignalFoo *SignalFooSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *CreateFooWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*CreateFooInput) (*CreateFooOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, CreateFooWorkflowName, next)
+}
+
 // CreateFooWorkflow describes a(n) test.cliv3.CreateFoo workflow implementation
 type CreateFooWorkflow interface {
 	// Execute defines the entrypoint to a(n) test.cliv3.CreateFoo workflow

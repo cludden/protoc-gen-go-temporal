@@ -511,6 +511,15 @@ type PutOpaqueExampleWorkflowInput struct {
 	SignalOpaque *SignalOpaqueSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *PutOpaqueExampleWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*OpaqueExample) (*OpaqueExample, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, PutOpaqueExampleWorkflowName, next)
+}
+
 // PutOpaqueExampleWorkflow describes a(n) test.opaque.Opaque.PutOpaqueExample workflow implementation
 type PutOpaqueExampleWorkflow interface {
 	// Execute defines the entrypoint to a(n) test.opaque.Opaque.PutOpaqueExample workflow

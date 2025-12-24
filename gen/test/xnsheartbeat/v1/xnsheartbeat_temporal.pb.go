@@ -779,6 +779,15 @@ type TestWorkflowWorkflowInput struct {
 	TestSignal *TestSignalSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *TestWorkflowWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*TestWorkflowInput) (*TestWorkflowOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, TestWorkflowWorkflowName, next)
+}
+
 // TestWorkflowWorkflow describes a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow implementation
 type TestWorkflowWorkflow interface {
 	// Execute defines the entrypoint to a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow
@@ -2193,6 +2202,11 @@ func buildCallTestWorkflow(ctor func(workflow.Context, *CallTestWorkflowWorkflow
 
 // CallTestWorkflowWorkflowInput describes the input to a(n) test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow constructor
 type CallTestWorkflowWorkflowInput struct{}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *CallTestWorkflowWorkflowInput) ContinueAsNew(ctx workflow.Context) error {
+	return workflow.NewContinueAsNewError(ctx, CallTestWorkflowWorkflowName)
+}
 
 // CallTestWorkflowWorkflow describes a(n) test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow implementation
 type CallTestWorkflowWorkflow interface {

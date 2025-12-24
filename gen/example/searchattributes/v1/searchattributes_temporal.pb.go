@@ -768,6 +768,15 @@ type SearchAttributesWorkflowInput struct {
 	Req *SearchAttributesInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SearchAttributesWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*SearchAttributesInput) error {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return workflow.NewContinueAsNewError(ctx, SearchAttributesWorkflowName, next)
+}
+
 // SearchAttributesWorkflow describes a(n) example.searchattributes.v1.Example.SearchAttributes workflow implementation
 //
 // workflow details: (id: "search_attributes_${! uuid_v4() }")
@@ -1075,6 +1084,15 @@ func buildTypedSearchAttributes(ctor func(workflow.Context, *TypedSearchAttribut
 // TypedSearchAttributesWorkflowInput describes the input to a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow constructor
 type TypedSearchAttributesWorkflowInput struct {
 	Req *TypedSearchAttributesInput
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *TypedSearchAttributesWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*TypedSearchAttributesInput) (*TypedSearchAttributesOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, TypedSearchAttributesWorkflowName, next)
 }
 
 // TypedSearchAttributesWorkflow describes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow implementation

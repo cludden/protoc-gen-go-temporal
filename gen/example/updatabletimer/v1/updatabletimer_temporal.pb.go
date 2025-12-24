@@ -510,6 +510,15 @@ type UpdatableTimerWorkflowInput struct {
 	UpdateWakeUpTime *UpdateWakeUpTimeSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *UpdatableTimerWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*UpdatableTimerInput) error {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return workflow.NewContinueAsNewError(ctx, UpdatableTimerWorkflowName, next)
+}
+
 // UpdatableTimer describes an updatable timer workflow
 //
 // workflow details: (id: "updatable-timer/${! name.or(uuid_v4()) }")

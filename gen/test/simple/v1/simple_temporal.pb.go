@@ -2155,6 +2155,15 @@ type SomeWorkflow1WorkflowInput struct {
 	SomeSignal2 *SomeSignal2Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow1WorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*SomeWorkflow1Request) (*SomeWorkflow1Response, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeWorkflow1WorkflowName, next)
+}
+
 // SomeWorkflow1 does some workflow thing.
 //
 // workflow details: (name: "mycompany.simple.SomeWorkflow1", id: "some-workflow-1/${! id }/${! uuid_v4() }")
@@ -2470,6 +2479,11 @@ type SomeWorkflow2WorkflowInput struct {
 	SomeSignal1 *SomeSignal1Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow2WorkflowInput) ContinueAsNew(ctx workflow.Context) error {
+	return workflow.NewContinueAsNewError(ctx, SomeWorkflow2WorkflowName)
+}
+
 // SomeWorkflow2 does some workflow thing.
 //
 // workflow details: (name: "mycompany.simple.SomeWorkflow2", id: "some-workflow-2/${! uuid_v4() }")
@@ -2751,6 +2765,15 @@ type SomeWorkflow3WorkflowInput struct {
 	SomeSignal2 *SomeSignal2Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow3WorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*SomeWorkflow3Request) error {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return workflow.NewContinueAsNewError(ctx, SomeWorkflow3WorkflowName, next)
+}
+
 // SomeWorkflow3 does some workflow thing.
 // Deprecated: Use SomeWorkflow2 instead.
 //
@@ -3027,6 +3050,15 @@ func buildSomeWorkflow4(ctor func(workflow.Context, *SomeWorkflow4WorkflowInput)
 // SomeWorkflow4WorkflowInput describes the input to a(n) mycompany.simple.Simple.SomeWorkflow4 workflow constructor
 type SomeWorkflow4WorkflowInput struct {
 	Req *v1.PaginatedRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeWorkflow4WorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*v1.PaginatedRequest) (*v1.PaginatedResponse, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeWorkflow4WorkflowName, next)
 }
 
 // SomeWorkflow4 retrieves a paginated list of items
@@ -8566,6 +8598,15 @@ type OtherWorkflowWorkflowInput struct {
 	Req *OtherWorkflowRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *OtherWorkflowWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*OtherWorkflowRequest) (*OtherWorkflowResponse, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, OtherWorkflowWorkflowName, next)
+}
+
 // OtherWorkflowWorkflow describes a(n) mycompany.simple.Other.OtherWorkflow workflow implementation
 //
 // workflow details: (id: "other-workflow/${!uuid_v4()}")
@@ -8827,6 +8868,15 @@ func buildOtherWorkflow2(ctor func(workflow.Context, *OtherWorkflow2WorkflowInpu
 // OtherWorkflow2WorkflowInput describes the input to a(n) mycompany.simple.Other.OtherWorkflow2 workflow constructor
 type OtherWorkflow2WorkflowInput struct {
 	Req *v1.PaginatedRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *OtherWorkflow2WorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*v1.PaginatedRequest) (*v1.PaginatedResponse, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, OtherWorkflow2WorkflowName, next)
 }
 
 // OtherWorkflow2Workflow describes a(n) mycompany.simple.Other.OtherWorkflow2 workflow implementation
@@ -10839,6 +10889,15 @@ func buildWhat(ctor func(workflow.Context, *WhatWorkflowInput) (WhatWorkflow, er
 // WhatWorkflowInput describes the input to a(n) mycompany.simple.Ignored.What workflow constructor
 type WhatWorkflowInput struct {
 	Req *WhatRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *WhatWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*WhatRequest) error {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return workflow.NewContinueAsNewError(ctx, WhatWorkflowName, next)
 }
 
 // WhatWorkflow describes a(n) mycompany.simple.Ignored.What workflow implementation
@@ -12895,6 +12954,15 @@ type SomeDeprecatedWorkflow1WorkflowInput struct {
 	SomeDeprecatedSignal1 *SomeDeprecatedSignal1Signal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeDeprecatedWorkflow1WorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*SomeDeprecatedMessage) (*SomeDeprecatedMessage, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeDeprecatedWorkflow1WorkflowName, next)
+}
+
 // SomeDeprecatedWorkflow1 does something
 //
 // Deprecated: Do not use.
@@ -13184,6 +13252,15 @@ func buildSomeDeprecatedWorkflow2(ctor func(workflow.Context, *SomeDeprecatedWor
 type SomeDeprecatedWorkflow2WorkflowInput struct {
 	Req                   *SomeDeprecatedMessage
 	SomeDeprecatedSignal2 *SomeDeprecatedSignal2Signal
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomeDeprecatedWorkflow2WorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*SomeDeprecatedMessage) (*SomeDeprecatedMessage, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomeDeprecatedWorkflow2WorkflowName, next)
 }
 
 // SomeDeprecatedWorkflow2 does something else
