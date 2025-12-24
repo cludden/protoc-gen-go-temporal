@@ -483,6 +483,15 @@ type HelloWorkflowInput struct {
 	Goodbye *GoodbyeSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *HelloWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*HelloRequest) (*HelloResponse, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, HelloWorkflowName, next)
+}
+
 // Hello prints a friendly greeting and waits for goodbye
 //
 // workflow details: (name: "example.v1.Hello", id: "hello/${! name.or("World") }")

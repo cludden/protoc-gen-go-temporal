@@ -51,6 +51,166 @@ service Example {
 </TabItem>
 </Tabs>
 
+## Workflow Input
+
+Every workflow definition generates a `<Workflow>WorkflowInput` struct that contains the workflow input and any registered signals. It is passed to the workflow constructor and should be embedded in the workflow struct to allow for query and update handlers to access the workflow input.
+
+### Req
+
+If the workflow specifies a non-empty input message type, the generated `<Workflow>WorkflowInput` struct will include a `Req` field that contains a reference to the workflow input.
+
+<Tabs>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+)
+
+type HelloWorkflow struct {
+    *examplev1.HelloWorkflowInput
+}
+
+func (w *HelloWorkflow) Execute(ctx workflow.Context) (*examplev1.HelloOutput, error) {
+    return &examplev1.HelloOutput{
+        Result: fmt.Sprintf("Hello %s!", w.Req.GetName()),
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+
+message HelloInput {
+  string name = 1;
+}
+
+message HelloOutput {
+  string result = 1;
+}
+```
+</TabItem>
+</Tabs>
+
+### \{Signal\}
+
+If the workflow definition specifies one or more signals, the generated `<Workflow>WorkflowInput` struct will include a corresponding`{Signal}` field for each registered signalthat contains a reference to the [typed signal value](/docs/guides/signals).
+
+<Tabs>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+)
+
+type HelloWorkflow struct {
+    *examplev1.HelloWorkflowInput
+}
+
+func (w *HelloWorkflow) Execute(ctx workflow.Context) (*examplev1.HelloOutput, error) {
+    bar, _ := w.Bar.Receive(ctx)
+    return &examplev1.HelloOutput{
+        Result: fmt.Sprintf("%s %s!", bar.GetMessage(), w.Req.GetName()),
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      signal: {ref: "Bar"}
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+message HelloInput {
+  string name = 1;
+}
+
+message HelloOutput {
+  string result = 1;
+}
+
+message BarInput {
+  string message = 1;
+}
+```
+</TabItem>
+</Tabs>
+
+### ContinueAsNew
+
+The generated `<Workflow>WorkflowInput` struct includes a `ContinueAsNew` method that returns an appropriately configured `ContinueAsNewError`. This method is used to continue a workflow as a new workflow execution.
+
+<Tabs>
+<TabItem value="implementation-go" label="Go">
+```go title="example.go"
+package example
+
+import (
+    examplev1 "path/to/gen/example/v1"
+)
+
+type HelloWorkflow struct {
+    *examplev1.HelloWorkflowInput
+}
+
+func (w *HelloWorkflow) Execute(ctx workflow.Context) (*examplev1.HelloOutput, error) {
+    if workflow.GetInfo(ctx).GetContinueAsNewSuggested() {
+        return w.ContinueAsNew(ctx, &examplev1.HelloInput{
+            Name: strings.ToUpper(w.Req.GetName()),
+        })
+    }
+    return &examplev1.HelloOutput{
+        Result: fmt.Sprintf("Hello %s!", w.Req.GetName()),
+    }, nil
+}
+```
+</TabItem>
+<TabItem value="implementation-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ## Parameters
 
 Every `<Workflow>Workflow` interface includes an `Execute` method that defines the workflow entrypoint. The signature of this method varies based on whether or not the workflow specifies a non-empty output message type.

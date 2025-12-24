@@ -464,6 +464,15 @@ type ProvisionFooWorkflowInput struct {
 	Req *ProvisionFooRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *ProvisionFooWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*ProvisionFooRequest) (*ProvisionFooResponse, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, ProvisionFooWorkflowName, next)
+}
+
 // ProvisionFooWorkflow describes a(n) example.xns.v1.Xns.ProvisionFoo workflow implementation
 //
 // workflow details: (id: "provision-foo/${! name.slug() }")
@@ -1784,6 +1793,15 @@ func buildCreateFoo(ctor func(workflow.Context, *CreateFooWorkflowInput) (Create
 type CreateFooWorkflowInput struct {
 	Req            *CreateFooRequest
 	SetFooProgress *SetFooProgressSignal
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *CreateFooWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*CreateFooRequest) (*CreateFooResponse, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, CreateFooWorkflowName, next)
 }
 
 // CreateFoo creates a new foo operation

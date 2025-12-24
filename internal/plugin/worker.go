@@ -982,6 +982,7 @@ func (m *Manifest) genWorkerWorkflowInput(f *j.File, workflow protoreflect.FullN
 	opts := m.workflows[workflow]
 	method := m.methods[workflow]
 	hasInput := !isEmpty(method.Input)
+	hasOutput := !isEmpty(method.Output)
 
 	f.Commentf("%s describes the input to a(n) %s workflow constructor", typeName, m.fqnForWorkflow(workflow))
 	f.Type().Id(typeName).StructFunc(func(g *j.Group) {
@@ -995,6 +996,48 @@ func (m *Manifest) genWorkerWorkflowInput(f *j.File, workflow protoreflect.FullN
 			g.Id(m.methods[signal].GoName).Op("*").Add(m.Qual(signal, m.toCamel("%sSignal", signal)))
 		}
 	})
+
+	f.Comment("ContinueAsNew returns an appropriately configured ContinueAsNewError")
+	f.Func().
+		ParamsFunc(func(g *j.Group) {
+			g.Id("i").Op("*").Id(typeName)
+		}).
+		Id("ContinueAsNew").
+		ParamsFunc(func(g *j.Group) {
+			g.Id("ctx").Qual(workflowPkg, "Context")
+			if hasInput {
+				g.Id("nextInput").Op("...").Op("*").Qual(string(method.Input.GoIdent.GoImportPath), m.getMessageName(method.Input))
+			}
+		}).
+		ParamsFunc(func(g *j.Group) {
+			if hasOutput {
+				g.Op("*").Qual(string(method.Output.GoIdent.GoImportPath), m.getMessageName(method.Output))
+			}
+			g.Error()
+		}).
+		BlockFunc(func(g *j.Group) {
+			if hasInput {
+				g.Id("next").Op(":=").Id("i").Dot("Req")
+				g.IfFunc(func(g *j.Group) {
+					g.Len(j.Id("nextInput")).Op(">").Lit(0).Op("&&").Id("nextInput").Index(j.Lit(0)).Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.Id("next").Op("=").Id("nextInput").Index(j.Lit(0))
+				})
+			}
+
+			g.ReturnFunc(func(g *j.Group) {
+				if hasOutput {
+					g.Nil()
+				}
+				g.Qual(workflowPkg, "NewContinueAsNewError").CallFunc(func(g *j.Group) {
+					g.Id("ctx")
+					g.Id(m.Names().workflowName(workflow))
+					if hasInput {
+						g.Id("next")
+					}
+				})
+			})
+		})
 }
 
 // genWorkerWorkflowInterface generates a <Workflow> interface

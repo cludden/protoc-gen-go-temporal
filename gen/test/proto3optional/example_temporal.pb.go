@@ -454,6 +454,15 @@ type FooWorkflowInput struct {
 	Req *FooInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *FooWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*FooInput) (*FooOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, FooWorkflowName, next)
+}
+
 // FooWorkflow describes a(n) test.proto3optional.FooService.Foo workflow implementation
 type FooWorkflow interface {
 	// Execute defines the entrypoint to a(n) test.proto3optional.FooService.Foo workflow

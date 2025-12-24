@@ -1265,6 +1265,15 @@ type BarWorkflowInput struct {
 	Req *BarInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *BarWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*BarInput) (*BarOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, BarWorkflowName, next)
+}
+
 // BarWorkflow describes a(n) test.workerversioning.v1.Example.Bar workflow implementation
 //
 // workflow details: (id: "workflowversioning.v1.Bar/${! uuid_v4()}")
@@ -1540,6 +1549,15 @@ type BazWorkflowInput struct {
 	Req *BazInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *BazWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*BazInput) (*BazOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, BazWorkflowName, next)
+}
+
 // BazWorkflow describes a(n) test.workerversioning.v1.Example.Baz workflow implementation
 //
 // workflow details: (id: "workflowversioning.v1.Baz/${! uuid_v4()}")
@@ -1810,6 +1828,15 @@ func buildFoo(ctor func(workflow.Context, *FooWorkflowInput) (FooWorkflow, error
 // FooWorkflowInput describes the input to a(n) test.workerversioning.v1.Example.Foo workflow constructor
 type FooWorkflowInput struct {
 	Req *FooInput
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *FooWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*FooInput) (*FooOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, FooWorkflowName, next)
 }
 
 // FooWorkflow describes a(n) test.workerversioning.v1.Example.Foo workflow implementation
@@ -2085,6 +2112,15 @@ func buildQux(ctor func(workflow.Context, *QuxWorkflowInput) (QuxWorkflow, error
 // QuxWorkflowInput describes the input to a(n) test.workerversioning.v1.Example.Qux workflow constructor
 type QuxWorkflowInput struct {
 	Req *QuxInput
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *QuxWorkflowInput) ContinueAsNew(ctx workflow.Context, nextInput ...*QuxInput) (*QuxOutput, error) {
+	next := i.Req
+	if len(nextInput) > 0 && nextInput[0] != nil {
+		next = nextInput[0]
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, QuxWorkflowName, next)
 }
 
 // QuxWorkflow describes a(n) test.workerversioning.v1.Example.Qux workflow implementation
