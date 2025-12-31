@@ -446,6 +446,18 @@ type ScheduleWorkflowInput struct {
 	Req *ScheduleInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *ScheduleWorkflowInput) ContinueAsNew(ctx workflow.Context, input *ScheduleInput, options ...workflow.ContinueAsNewErrorOptions) (*ScheduleOutput, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], ScheduleWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, ScheduleWorkflowName, next)
+}
+
 // ScheduleWorkflow describes a(n) example.schedule.v1.Schedule workflow implementation
 type ScheduleWorkflow interface {
 	// Execute defines the entrypoint to a(n) example.schedule.v1.Schedule workflow

@@ -38,6 +38,74 @@ func (_m *MockSimpleWorkflowFunctions) EXPECT() *MockSimpleWorkflowFunctions_Exp
 	return &MockSimpleWorkflowFunctions_Expecter{mock: &_m.Mock}
 }
 
+// ExampleContinueAsNew provides a mock function for the type MockSimpleWorkflowFunctions
+func (_mock *MockSimpleWorkflowFunctions) ExampleContinueAsNew(v workflow.Context, exampleContinueAsNewRequest *v1.ExampleContinueAsNewRequest) (*v1.ExampleContinueAsNewResponse, error) {
+	ret := _mock.Called(v, exampleContinueAsNewRequest)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExampleContinueAsNew")
+	}
+
+	var r0 *v1.ExampleContinueAsNewResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(workflow.Context, *v1.ExampleContinueAsNewRequest) (*v1.ExampleContinueAsNewResponse, error)); ok {
+		return returnFunc(v, exampleContinueAsNewRequest)
+	}
+	if returnFunc, ok := ret.Get(0).(func(workflow.Context, *v1.ExampleContinueAsNewRequest) *v1.ExampleContinueAsNewResponse); ok {
+		r0 = returnFunc(v, exampleContinueAsNewRequest)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ExampleContinueAsNewResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(workflow.Context, *v1.ExampleContinueAsNewRequest) error); ok {
+		r1 = returnFunc(v, exampleContinueAsNewRequest)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExampleContinueAsNew'
+type MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call struct {
+	*mock.Call
+}
+
+// ExampleContinueAsNew is a helper method to define mock.On call
+//   - v workflow.Context
+//   - exampleContinueAsNewRequest *v1.ExampleContinueAsNewRequest
+func (_e *MockSimpleWorkflowFunctions_Expecter) ExampleContinueAsNew(v interface{}, exampleContinueAsNewRequest interface{}) *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call {
+	return &MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call{Call: _e.mock.On("ExampleContinueAsNew", v, exampleContinueAsNewRequest)}
+}
+
+func (_c *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call) Run(run func(v workflow.Context, exampleContinueAsNewRequest *v1.ExampleContinueAsNewRequest)) *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 workflow.Context
+		if args[0] != nil {
+			arg0 = args[0].(workflow.Context)
+		}
+		var arg1 *v1.ExampleContinueAsNewRequest
+		if args[1] != nil {
+			arg1 = args[1].(*v1.ExampleContinueAsNewRequest)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call) Return(exampleContinueAsNewResponse *v1.ExampleContinueAsNewResponse, err error) *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call {
+	_c.Call.Return(exampleContinueAsNewResponse, err)
+	return _c
+}
+
+func (_c *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call) RunAndReturn(run func(v workflow.Context, exampleContinueAsNewRequest *v1.ExampleContinueAsNewRequest) (*v1.ExampleContinueAsNewResponse, error)) *MockSimpleWorkflowFunctions_ExampleContinueAsNew_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SomeWorkflow1 provides a mock function for the type MockSimpleWorkflowFunctions
 func (_mock *MockSimpleWorkflowFunctions) SomeWorkflow1(v workflow.Context, someWorkflow1Request *v1.SomeWorkflow1Request) (*v1.SomeWorkflow1Response, error) {
 	ret := _mock.Called(v, someWorkflow1Request)

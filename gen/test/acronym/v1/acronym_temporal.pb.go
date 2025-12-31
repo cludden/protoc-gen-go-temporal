@@ -1275,6 +1275,18 @@ type ManageAWSWorkflowInput struct {
 	Req *ManageAWSRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *ManageAWSWorkflowInput) ContinueAsNew(ctx workflow.Context, input *ManageAWSRequest, options ...workflow.ContinueAsNewErrorOptions) (*ManageAWSResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], ManageAWSWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, ManageAWSWorkflowName, next)
+}
+
 // ManageAWS does some workflow thing.
 //
 // workflow details: (name: "test.acronym.v1.AWS.ManageAWS", id: "manage-aws/${! urn }/${! uuid_v4() }")
@@ -1545,6 +1557,18 @@ func buildManageAWSResource(ctor func(workflow.Context, *ManageAWSResourceWorkfl
 // ManageAWSResourceWorkflowInput describes the input to a(n) test.acronym.v1.AWS.ManageAWSResource workflow constructor
 type ManageAWSResourceWorkflowInput struct {
 	Req *ManageAWSResourceRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *ManageAWSResourceWorkflowInput) ContinueAsNew(ctx workflow.Context, input *ManageAWSResourceRequest, options ...workflow.ContinueAsNewErrorOptions) (*ManageAWSResourceResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], ManageAWSResourceWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, ManageAWSResourceWorkflowName, next)
 }
 
 // ManageAWSResource does some workflow thing.
@@ -1819,6 +1843,18 @@ type SomethingV1FooBarWorkflowInput struct {
 	Req *SomethingV1FooBarRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomethingV1FooBarWorkflowInput) ContinueAsNew(ctx workflow.Context, input *SomethingV1FooBarRequest, options ...workflow.ContinueAsNewErrorOptions) (*SomethingV1FooBarResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomethingV1FooBarWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomethingV1FooBarWorkflowName, next)
+}
+
 // SomethingV1FooBar does some workflow thing.
 //
 // workflow details: (name: "test.acronym.v1.AWS.SomethingV1FooBar", id: "something-v1-foo-bar/${! urn }/${! uuid_v4() }")
@@ -2089,6 +2125,18 @@ func buildSomethingV2FooBar(ctor func(workflow.Context, *SomethingV2FooBarWorkfl
 // SomethingV2FooBarWorkflowInput describes the input to a(n) test.acronym.v1.AWS.SomethingV2FooBar workflow constructor
 type SomethingV2FooBarWorkflowInput struct {
 	Req *SomethingV2FooBarRequest
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SomethingV2FooBarWorkflowInput) ContinueAsNew(ctx workflow.Context, input *SomethingV2FooBarRequest, options ...workflow.ContinueAsNewErrorOptions) (*SomethingV2FooBarResponse, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SomethingV2FooBarWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, SomethingV2FooBarWorkflowName, next)
 }
 
 // SomethingV2FooBar does some workflow thing.

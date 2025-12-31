@@ -31,6 +31,7 @@
         - [mycompany.simple.SomeWorkflow2](#mycompany-simple-someworkflow2-workflow)
         - [mycompany.simple.Simple.SomeWorkflow3](#mycompany-simple-simple-someworkflow3-workflow)
         - [mycompany.simple.Simple.SomeWorkflow4](#mycompany-simple-simple-someworkflow4-workflow)
+        - [mycompany.simple.Simple.ExampleContinueAsNew](#mycompany-simple-simple-examplecontinueasnew-workflow)
       - [Queries](#mycompany-simple-simple-queries)
         - [mycompany.simple.Simple.SomeQuery1](#mycompany-simple-simple-somequery1-query)
         - [mycompany.simple.Simple.SomeQuery2](#mycompany-simple-simple-somequery2-query)
@@ -85,6 +86,8 @@
         - [mycompany.simple.Deprecated.SomeDeprecatedActivity1](#mycompany-simple-deprecated-somedeprecatedactivity1-activity)
         - [mycompany.simple.Deprecated.SomeDeprecatedActivity2](#mycompany-simple-deprecated-somedeprecatedactivity2-activity)
   - Messages
+    - [mycompany.simple.ExampleContinueAsNewRequest](#mycompany-simple-examplecontinueasnewrequest)
+    - [mycompany.simple.ExampleContinueAsNewResponse](#mycompany-simple-examplecontinueasnewresponse)
     - [mycompany.simple.Foo](#mycompany-simple-foo)
     - [mycompany.simple.LonelyActivity1Request](#mycompany-simple-lonelyactivity1request)
     - [mycompany.simple.LonelyActivity1Response](#mycompany-simple-lonelyactivity1response)
@@ -292,6 +295,9 @@
 - [temporal.api.enums.v1](#temporal-api-enums-v1)
   - Messages
     - [temporal.api.enums.v1.WorkflowIdConflictPolicy](#temporal-api-enums-v1-workflowidconflictpolicy)
+- [temporal.v1](#temporal-v1)
+  - Messages
+    - [temporal.v1.RetryPolicy](#temporal-v1-retrypolicy)
 - [temporal.xns.v1](#temporal-xns-v1)
   - Messages
     - [temporal.xns.v1.IDReusePolicy](#temporal-xns-v1-idreusepolicy)
@@ -904,6 +910,45 @@ go_name: NextCursor</pre></td>
 <table>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>id</td><td><pre><code>some-workflow-4/${! uuid_v4() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+---
+<a name="mycompany-simple-simple-examplecontinueasnew-workflow"></a>
+### mycompany.simple.Simple.ExampleContinueAsNew
+
+**Input:** [mycompany.simple.ExampleContinueAsNewRequest](#mycompany-simple-examplecontinueasnewrequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>remaining</td>
+<td>int32</td>
+<td><pre>
+json_name: remaining
+go_name: Remaining</pre></td>
+</tr><tr>
+<td>retry_policy</td>
+<td><a href="#temporal-v1-retrypolicy">temporal.v1.RetryPolicy</a></td>
+<td><pre>
+json_name: retryPolicy
+go_name: RetryPolicy</pre></td>
+</tr>
+</table>
+
+**Output:** [mycompany.simple.ExampleContinueAsNewResponse](#mycompany-simple-examplecontinueasnewresponse)
+
+
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>example-continue-as-new/${! uuid_v4() }</code></pre></td></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
 </table>  
 
@@ -2213,6 +2258,37 @@ Deprecated: a custom activity deprecation message.
 
 <a name="mycompany-simple-messages"></a>
 ## Messages
+
+<a name="mycompany-simple-examplecontinueasnewrequest"></a>
+### mycompany.simple.ExampleContinueAsNewRequest
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>remaining</td>
+<td>int32</td>
+<td><pre>
+json_name: remaining
+go_name: Remaining</pre></td>
+</tr><tr>
+<td>retry_policy</td>
+<td><a href="#temporal-v1-retrypolicy">temporal.v1.RetryPolicy</a></td>
+<td><pre>
+json_name: retryPolicy
+go_name: RetryPolicy</pre></td>
+</tr>
+</table>
+
+
+
+<a name="mycompany-simple-examplecontinueasnewresponse"></a>
+### mycompany.simple.ExampleContinueAsNewResponse
+
+
 
 <a name="mycompany-simple-foo"></a>
 ### mycompany.simple.Foo
@@ -11362,6 +11438,61 @@ Terminate the running workflow before starting a new one.
 </pre></td>
 </tr>
 </table>
+
+
+<a name="temporal-v1"></a>
+# temporal.v1
+
+<a name="temporal-v1-messages"></a>
+## Messages
+
+<a name="temporal-v1-retrypolicy"></a>
+### temporal.v1.RetryPolicy
+
+<pre>
+RetryPolicy describes configuration for activity or child workflow retries
+</pre>
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>backoff_coefficient</td>
+<td>double</td>
+<td><pre>
+json_name: backoffCoefficient
+go_name: BackoffCoefficient</pre></td>
+</tr><tr>
+<td>initial_interval</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: initialInterval
+go_name: InitialInterval</pre></td>
+</tr><tr>
+<td>max_attempts</td>
+<td>int32</td>
+<td><pre>
+json_name: maxAttempts
+go_name: MaxAttempts</pre></td>
+</tr><tr>
+<td>max_interval</td>
+<td><a href="#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: maxInterval
+go_name: MaxInterval</pre></td>
+</tr><tr>
+<td>non_retryable_error_types</td>
+<td>string</td>
+<td><pre>
+json_name: nonRetryableErrorTypes
+go_name: NonRetryableErrorTypes</pre></td>
+</tr>
+</table>
+
+
 
 
 <a name="temporal-xns-v1"></a>

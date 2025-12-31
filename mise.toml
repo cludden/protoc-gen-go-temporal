@@ -1,3 +1,6 @@
+[settings]
+experimental = true
+
 [tools]
 changie = "latest"
 "github:bufbuild/buf" = "1.56.0"
@@ -12,6 +15,7 @@ go = "1.23.6"
 "go:github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus" = "v0.0.8"
 "go:github.com/mfridman/tparse" = "v0.17.0"
 goreleaser = "latest"
+node = "latest"
 protoc = "latest"
 
 [tasks.build]

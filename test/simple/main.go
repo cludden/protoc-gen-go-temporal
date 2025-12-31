@@ -225,6 +225,40 @@ func (wf *someWorkflow4) Execute(ctx workflow.Context) (resp *commonv1.Paginated
 
 // ============================================================================
 
+type exampleContinueAsNewWorkflow struct {
+	*simplepb.ExampleContinueAsNewWorkflowInput
+}
+
+func (w *Workflows) ExampleContinueAsNew(
+	ctx workflow.Context,
+	input *simplepb.ExampleContinueAsNewWorkflowInput,
+) (simplepb.ExampleContinueAsNewWorkflow, error) {
+	return &exampleContinueAsNewWorkflow{input}, nil
+}
+
+func (w *exampleContinueAsNewWorkflow) Execute(
+	ctx workflow.Context,
+) (*simplepb.ExampleContinueAsNewResponse, error) {
+	if w.Req.Remaining > 0 {
+		w.Req.Remaining--
+		var opts []workflow.ContinueAsNewErrorOptions
+		if w.Req.GetRetryPolicy() != nil {
+			opts = append(opts, workflow.ContinueAsNewErrorOptions{
+				RetryPolicy: &temporal.RetryPolicy{
+					InitialInterval:    w.Req.GetRetryPolicy().GetInitialInterval().AsDuration(),
+					BackoffCoefficient: w.Req.GetRetryPolicy().GetBackoffCoefficient(),
+					MaximumInterval:    w.Req.GetRetryPolicy().GetMaxInterval().AsDuration(),
+					MaximumAttempts:    w.Req.GetRetryPolicy().GetMaxAttempts(),
+				},
+			})
+		}
+		return w.ContinueAsNew(ctx, w.Req, opts...)
+	}
+	return &simplepb.ExampleContinueAsNewResponse{}, nil
+}
+
+// ============================================================================
+
 type Activities struct{}
 
 var ActivityEvents []string

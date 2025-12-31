@@ -7,7 +7,7 @@
 package v1
 
 import (
-	_ "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
+	v11 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	v1 "github.com/cludden/protoc-gen-go-temporal/gen/test/simple/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1665,6 +1665,94 @@ func (*SomeDeprecatedMessage) Descriptor() ([]byte, []int) {
 	return file_test_simple_v1_simple_proto_rawDescGZIP(), []int{27}
 }
 
+type ExampleContinueAsNewRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Remaining     int32                  `protobuf:"varint,1,opt,name=remaining,proto3" json:"remaining,omitempty"`
+	RetryPolicy   *v11.RetryPolicy       `protobuf:"bytes,2,opt,name=retry_policy,json=retryPolicy,proto3" json:"retry_policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExampleContinueAsNewRequest) Reset() {
+	*x = ExampleContinueAsNewRequest{}
+	mi := &file_test_simple_v1_simple_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExampleContinueAsNewRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExampleContinueAsNewRequest) ProtoMessage() {}
+
+func (x *ExampleContinueAsNewRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_test_simple_v1_simple_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExampleContinueAsNewRequest.ProtoReflect.Descriptor instead.
+func (*ExampleContinueAsNewRequest) Descriptor() ([]byte, []int) {
+	return file_test_simple_v1_simple_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ExampleContinueAsNewRequest) GetRemaining() int32 {
+	if x != nil {
+		return x.Remaining
+	}
+	return 0
+}
+
+func (x *ExampleContinueAsNewRequest) GetRetryPolicy() *v11.RetryPolicy {
+	if x != nil {
+		return x.RetryPolicy
+	}
+	return nil
+}
+
+type ExampleContinueAsNewResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExampleContinueAsNewResponse) Reset() {
+	*x = ExampleContinueAsNewResponse{}
+	mi := &file_test_simple_v1_simple_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExampleContinueAsNewResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExampleContinueAsNewResponse) ProtoMessage() {}
+
+func (x *ExampleContinueAsNewResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_test_simple_v1_simple_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExampleContinueAsNewResponse.ProtoReflect.Descriptor instead.
+func (*ExampleContinueAsNewResponse) Descriptor() ([]byte, []int) {
+	return file_test_simple_v1_simple_proto_rawDescGZIP(), []int{29}
+}
+
 type OtherWorkflowRequest_Bar struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Bar           string                 `protobuf:"bytes,1,opt,name=bar,proto3" json:"bar,omitempty"`
@@ -1674,7 +1762,7 @@ type OtherWorkflowRequest_Bar struct {
 
 func (x *OtherWorkflowRequest_Bar) Reset() {
 	*x = OtherWorkflowRequest_Bar{}
-	mi := &file_test_simple_v1_simple_proto_msgTypes[28]
+	mi := &file_test_simple_v1_simple_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1686,7 +1774,7 @@ func (x *OtherWorkflowRequest_Bar) String() string {
 func (*OtherWorkflowRequest_Bar) ProtoMessage() {}
 
 func (x *OtherWorkflowRequest_Bar) ProtoReflect() protoreflect.Message {
-	mi := &file_test_simple_v1_simple_proto_msgTypes[28]
+	mi := &file_test_simple_v1_simple_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1718,7 +1806,7 @@ type OtherWorkflowRequest_Baz struct {
 
 func (x *OtherWorkflowRequest_Baz) Reset() {
 	*x = OtherWorkflowRequest_Baz{}
-	mi := &file_test_simple_v1_simple_proto_msgTypes[29]
+	mi := &file_test_simple_v1_simple_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1730,7 +1818,7 @@ func (x *OtherWorkflowRequest_Baz) String() string {
 func (*OtherWorkflowRequest_Baz) ProtoMessage() {}
 
 func (x *OtherWorkflowRequest_Baz) ProtoReflect() protoreflect.Message {
-	mi := &file_test_simple_v1_simple_proto_msgTypes[29]
+	mi := &file_test_simple_v1_simple_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1850,11 +1938,15 @@ const file_test_simple_v1_simple_proto_rawDesc = "" +
 	"\x04blah\x18\x01 \x01(\tR\x04blah\"\x18\n" +
 	"\x16LonelyActivity1Request\"\x19\n" +
 	"\x17LonelyActivity1Response\"\x17\n" +
-	"\x15SomeDeprecatedMessage*@\n" +
+	"\x15SomeDeprecatedMessage\"x\n" +
+	"\x1bExampleContinueAsNewRequest\x12\x1c\n" +
+	"\tremaining\x18\x01 \x01(\x05R\tremaining\x12;\n" +
+	"\fretry_policy\x18\x02 \x01(\v2\x18.temporal.v1.RetryPolicyR\vretryPolicy\"\x1e\n" +
+	"\x1cExampleContinueAsNewResponse*@\n" +
 	"\tOtherEnum\x12\x15\n" +
 	"\x11OTHER_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tOTHER_FOO\x10\x01\x12\r\n" +
-	"\tOTHER_BAR\x10\x022\xbd\x10\n" +
+	"\tOTHER_BAR\x10\x022\xe4\x11\n" +
 	"\x06Simple\x12\xaa\x02\n" +
 	"\rSomeWorkflow1\x12&.mycompany.simple.SomeWorkflow1Request\x1a'.mycompany.simple.SomeWorkflow1Response\"\xc7\x01\x8a\xc4\x03\xc2\x01\n" +
 	"\f\n" +
@@ -1895,7 +1987,8 @@ const file_test_simple_v1_simple_proto_rawDesc = "" +
 	"2\r \x03*\tsomething\xaa\xc4\x03F\n" +
 	"@some-update/${! requestVal.not_empty().catch(\"default\").slug() }\x10\x01\x18\x03\x12\xa4\x01\n" +
 	"\vSomeUpdate2\x12$.mycompany.simple.SomeUpdate2Request\x1a%.mycompany.simple.SomeUpdate2Response\"H\xaa\xc4\x03D\n" +
-	"Bsome-update-2/${! requestVal.not_empty().catch(\"default\").slug() }\x1a\x13\x8a\xc4\x03\x0f\n" +
+	"Bsome-update-2/${! requestVal.not_empty().catch(\"default\").slug() }\x12\xa4\x01\n" +
+	"\x14ExampleContinueAsNew\x12-.mycompany.simple.ExampleContinueAsNewRequest\x1a..mycompany.simple.ExampleContinueAsNewResponse\"-\x8a\xc4\x03)*'example-continue-as-new/${! uuid_v4() }\x1a\x13\x8a\xc4\x03\x0f\n" +
 	"\rmy-task-queue2\xf3\x04\n" +
 	"\x05Other\x12\x8c\x01\n" +
 	"\rOtherWorkflow\x12&.mycompany.simple.OtherWorkflowRequest\x1a'.mycompany.simple.OtherWorkflowResponse\"*\x8a\xc4\x03\x1e*\x1cother-workflow/${!uuid_v4()}\x92\xc4\x03\x04\"\x02\b\x1e\x12\x93\x01\n" +
@@ -1949,127 +2042,133 @@ func file_test_simple_v1_simple_proto_rawDescGZIP() []byte {
 }
 
 var file_test_simple_v1_simple_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_test_simple_v1_simple_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_test_simple_v1_simple_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_test_simple_v1_simple_proto_goTypes = []any{
-	(OtherEnum)(0),                   // 0: mycompany.simple.OtherEnum
-	(*SomeWorkflow1Request)(nil),     // 1: mycompany.simple.SomeWorkflow1Request
-	(*SomeWorkflow1Response)(nil),    // 2: mycompany.simple.SomeWorkflow1Response
-	(*SomeWorkflow3Request)(nil),     // 3: mycompany.simple.SomeWorkflow3Request
-	(*SomeActivity2Request)(nil),     // 4: mycompany.simple.SomeActivity2Request
-	(*SomeActivity3Request)(nil),     // 5: mycompany.simple.SomeActivity3Request
-	(*SomeActivity3Response)(nil),    // 6: mycompany.simple.SomeActivity3Response
-	(*SomeQuery1Response)(nil),       // 7: mycompany.simple.SomeQuery1Response
-	(*SomeQuery2Request)(nil),        // 8: mycompany.simple.SomeQuery2Request
-	(*SomeQuery2Response)(nil),       // 9: mycompany.simple.SomeQuery2Response
-	(*SomeSignal2Request)(nil),       // 10: mycompany.simple.SomeSignal2Request
-	(*SomeSignal3Request)(nil),       // 11: mycompany.simple.SomeSignal3Request
-	(*SomeSignal3Response)(nil),      // 12: mycompany.simple.SomeSignal3Response
-	(*SomeUpdate1Request)(nil),       // 13: mycompany.simple.SomeUpdate1Request
-	(*SomeUpdate1Response)(nil),      // 14: mycompany.simple.SomeUpdate1Response
-	(*SomeUpdate2Request)(nil),       // 15: mycompany.simple.SomeUpdate2Request
-	(*SomeUpdate2Response)(nil),      // 16: mycompany.simple.SomeUpdate2Response
-	(*OtherWorkflowRequest)(nil),     // 17: mycompany.simple.OtherWorkflowRequest
-	(*OtherWorkflowResponse)(nil),    // 18: mycompany.simple.OtherWorkflowResponse
-	(*OtherQueryResponse)(nil),       // 19: mycompany.simple.OtherQueryResponse
-	(*OtherSignalRequest)(nil),       // 20: mycompany.simple.OtherSignalRequest
-	(*OtherUpdateRequest)(nil),       // 21: mycompany.simple.OtherUpdateRequest
-	(*OtherUpdateResponse)(nil),      // 22: mycompany.simple.OtherUpdateResponse
-	(*Foo)(nil),                      // 23: mycompany.simple.Foo
-	(*Qux)(nil),                      // 24: mycompany.simple.Qux
-	(*WhatRequest)(nil),              // 25: mycompany.simple.WhatRequest
-	(*LonelyActivity1Request)(nil),   // 26: mycompany.simple.LonelyActivity1Request
-	(*LonelyActivity1Response)(nil),  // 27: mycompany.simple.LonelyActivity1Response
-	(*SomeDeprecatedMessage)(nil),    // 28: mycompany.simple.SomeDeprecatedMessage
-	(*OtherWorkflowRequest_Bar)(nil), // 29: mycompany.simple.OtherWorkflowRequest.Bar
-	(*OtherWorkflowRequest_Baz)(nil), // 30: mycompany.simple.OtherWorkflowRequest.Baz
-	(*durationpb.Duration)(nil),      // 31: google.protobuf.Duration
-	(*emptypb.Empty)(nil),            // 32: google.protobuf.Empty
-	(*timestamppb.Timestamp)(nil),    // 33: google.protobuf.Timestamp
-	(v1.Example)(0),                  // 34: mycompany.simple.common.v1.Example
-	(*v1.PaginatedRequest)(nil),      // 35: mycompany.simple.common.v1.PaginatedRequest
-	(*v1.PaginatedResponse)(nil),     // 36: mycompany.simple.common.v1.PaginatedResponse
+	(OtherEnum)(0),                       // 0: mycompany.simple.OtherEnum
+	(*SomeWorkflow1Request)(nil),         // 1: mycompany.simple.SomeWorkflow1Request
+	(*SomeWorkflow1Response)(nil),        // 2: mycompany.simple.SomeWorkflow1Response
+	(*SomeWorkflow3Request)(nil),         // 3: mycompany.simple.SomeWorkflow3Request
+	(*SomeActivity2Request)(nil),         // 4: mycompany.simple.SomeActivity2Request
+	(*SomeActivity3Request)(nil),         // 5: mycompany.simple.SomeActivity3Request
+	(*SomeActivity3Response)(nil),        // 6: mycompany.simple.SomeActivity3Response
+	(*SomeQuery1Response)(nil),           // 7: mycompany.simple.SomeQuery1Response
+	(*SomeQuery2Request)(nil),            // 8: mycompany.simple.SomeQuery2Request
+	(*SomeQuery2Response)(nil),           // 9: mycompany.simple.SomeQuery2Response
+	(*SomeSignal2Request)(nil),           // 10: mycompany.simple.SomeSignal2Request
+	(*SomeSignal3Request)(nil),           // 11: mycompany.simple.SomeSignal3Request
+	(*SomeSignal3Response)(nil),          // 12: mycompany.simple.SomeSignal3Response
+	(*SomeUpdate1Request)(nil),           // 13: mycompany.simple.SomeUpdate1Request
+	(*SomeUpdate1Response)(nil),          // 14: mycompany.simple.SomeUpdate1Response
+	(*SomeUpdate2Request)(nil),           // 15: mycompany.simple.SomeUpdate2Request
+	(*SomeUpdate2Response)(nil),          // 16: mycompany.simple.SomeUpdate2Response
+	(*OtherWorkflowRequest)(nil),         // 17: mycompany.simple.OtherWorkflowRequest
+	(*OtherWorkflowResponse)(nil),        // 18: mycompany.simple.OtherWorkflowResponse
+	(*OtherQueryResponse)(nil),           // 19: mycompany.simple.OtherQueryResponse
+	(*OtherSignalRequest)(nil),           // 20: mycompany.simple.OtherSignalRequest
+	(*OtherUpdateRequest)(nil),           // 21: mycompany.simple.OtherUpdateRequest
+	(*OtherUpdateResponse)(nil),          // 22: mycompany.simple.OtherUpdateResponse
+	(*Foo)(nil),                          // 23: mycompany.simple.Foo
+	(*Qux)(nil),                          // 24: mycompany.simple.Qux
+	(*WhatRequest)(nil),                  // 25: mycompany.simple.WhatRequest
+	(*LonelyActivity1Request)(nil),       // 26: mycompany.simple.LonelyActivity1Request
+	(*LonelyActivity1Response)(nil),      // 27: mycompany.simple.LonelyActivity1Response
+	(*SomeDeprecatedMessage)(nil),        // 28: mycompany.simple.SomeDeprecatedMessage
+	(*ExampleContinueAsNewRequest)(nil),  // 29: mycompany.simple.ExampleContinueAsNewRequest
+	(*ExampleContinueAsNewResponse)(nil), // 30: mycompany.simple.ExampleContinueAsNewResponse
+	(*OtherWorkflowRequest_Bar)(nil),     // 31: mycompany.simple.OtherWorkflowRequest.Bar
+	(*OtherWorkflowRequest_Baz)(nil),     // 32: mycompany.simple.OtherWorkflowRequest.Baz
+	(*durationpb.Duration)(nil),          // 33: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                // 34: google.protobuf.Empty
+	(*timestamppb.Timestamp)(nil),        // 35: google.protobuf.Timestamp
+	(v1.Example)(0),                      // 36: mycompany.simple.common.v1.Example
+	(*v11.RetryPolicy)(nil),              // 37: temporal.v1.RetryPolicy
+	(*v1.PaginatedRequest)(nil),          // 38: mycompany.simple.common.v1.PaginatedRequest
+	(*v1.PaginatedResponse)(nil),         // 39: mycompany.simple.common.v1.PaginatedResponse
 }
 var file_test_simple_v1_simple_proto_depIdxs = []int32{
-	30, // 0: mycompany.simple.OtherWorkflowRequest.baz:type_name -> mycompany.simple.OtherWorkflowRequest.Baz
+	32, // 0: mycompany.simple.OtherWorkflowRequest.baz:type_name -> mycompany.simple.OtherWorkflowRequest.Baz
 	24, // 1: mycompany.simple.OtherWorkflowRequest.qux:type_name -> mycompany.simple.Qux
 	23, // 2: mycompany.simple.OtherWorkflowRequest.foo:type_name -> mycompany.simple.Foo
-	29, // 3: mycompany.simple.OtherWorkflowRequest.bar:type_name -> mycompany.simple.OtherWorkflowRequest.Bar
-	31, // 4: mycompany.simple.OtherWorkflowRequest.example_duration:type_name -> google.protobuf.Duration
-	32, // 5: mycompany.simple.OtherWorkflowRequest.example_empty:type_name -> google.protobuf.Empty
-	33, // 6: mycompany.simple.OtherWorkflowRequest.example_timestamp:type_name -> google.protobuf.Timestamp
+	31, // 3: mycompany.simple.OtherWorkflowRequest.bar:type_name -> mycompany.simple.OtherWorkflowRequest.Bar
+	33, // 4: mycompany.simple.OtherWorkflowRequest.example_duration:type_name -> google.protobuf.Duration
+	34, // 5: mycompany.simple.OtherWorkflowRequest.example_empty:type_name -> google.protobuf.Empty
+	35, // 6: mycompany.simple.OtherWorkflowRequest.example_timestamp:type_name -> google.protobuf.Timestamp
 	0,  // 7: mycompany.simple.OtherWorkflowRequest.example_enum:type_name -> mycompany.simple.OtherEnum
-	34, // 8: mycompany.simple.OtherWorkflowRequest.common_enum:type_name -> mycompany.simple.common.v1.Example
-	1,  // 9: mycompany.simple.Simple.SomeWorkflow1:input_type -> mycompany.simple.SomeWorkflow1Request
-	32, // 10: mycompany.simple.Simple.SomeWorkflow2:input_type -> google.protobuf.Empty
-	3,  // 11: mycompany.simple.Simple.SomeWorkflow3:input_type -> mycompany.simple.SomeWorkflow3Request
-	35, // 12: mycompany.simple.Simple.SomeWorkflow4:input_type -> mycompany.simple.common.v1.PaginatedRequest
-	32, // 13: mycompany.simple.Simple.SomeActivity1:input_type -> google.protobuf.Empty
-	4,  // 14: mycompany.simple.Simple.SomeActivity2:input_type -> mycompany.simple.SomeActivity2Request
-	5,  // 15: mycompany.simple.Simple.SomeActivity3:input_type -> mycompany.simple.SomeActivity3Request
-	32, // 16: mycompany.simple.Simple.SomeActivity4:input_type -> google.protobuf.Empty
-	32, // 17: mycompany.simple.Simple.SomeQuery1:input_type -> google.protobuf.Empty
-	8,  // 18: mycompany.simple.Simple.SomeQuery2:input_type -> mycompany.simple.SomeQuery2Request
-	32, // 19: mycompany.simple.Simple.SomeSignal1:input_type -> google.protobuf.Empty
-	10, // 20: mycompany.simple.Simple.SomeSignal2:input_type -> mycompany.simple.SomeSignal2Request
-	11, // 21: mycompany.simple.Simple.SomeSignal3:input_type -> mycompany.simple.SomeSignal3Request
-	13, // 22: mycompany.simple.Simple.SomeUpdate1:input_type -> mycompany.simple.SomeUpdate1Request
-	15, // 23: mycompany.simple.Simple.SomeUpdate2:input_type -> mycompany.simple.SomeUpdate2Request
-	17, // 24: mycompany.simple.Other.OtherWorkflow:input_type -> mycompany.simple.OtherWorkflowRequest
-	35, // 25: mycompany.simple.Other.OtherWorkflow2:input_type -> mycompany.simple.common.v1.PaginatedRequest
-	32, // 26: mycompany.simple.Other.OtherQuery:input_type -> google.protobuf.Empty
-	20, // 27: mycompany.simple.Other.OtherSignal:input_type -> mycompany.simple.OtherSignalRequest
-	21, // 28: mycompany.simple.Other.OtherUpdate:input_type -> mycompany.simple.OtherUpdateRequest
-	32, // 29: mycompany.simple.Nothing.Foo:input_type -> google.protobuf.Empty
-	25, // 30: mycompany.simple.Ignored.What:input_type -> mycompany.simple.WhatRequest
-	26, // 31: mycompany.simple.OnlyActivities.LonelyActivity1:input_type -> mycompany.simple.LonelyActivity1Request
-	28, // 32: mycompany.simple.Deprecated.SomeDeprecatedWorkflow1:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 33: mycompany.simple.Deprecated.SomeDeprecatedWorkflow2:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 34: mycompany.simple.Deprecated.SomeDeprecatedActivity1:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 35: mycompany.simple.Deprecated.SomeDeprecatedActivity2:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 36: mycompany.simple.Deprecated.SomeDeprecatedQuery1:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 37: mycompany.simple.Deprecated.SomeDeprecatedQuery2:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 38: mycompany.simple.Deprecated.SomeDeprecatedSignal1:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 39: mycompany.simple.Deprecated.SomeDeprecatedSignal2:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 40: mycompany.simple.Deprecated.SomeDeprecatedUpdate1:input_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 41: mycompany.simple.Deprecated.SomeDeprecatedUpdate2:input_type -> mycompany.simple.SomeDeprecatedMessage
-	2,  // 42: mycompany.simple.Simple.SomeWorkflow1:output_type -> mycompany.simple.SomeWorkflow1Response
-	32, // 43: mycompany.simple.Simple.SomeWorkflow2:output_type -> google.protobuf.Empty
-	32, // 44: mycompany.simple.Simple.SomeWorkflow3:output_type -> google.protobuf.Empty
-	36, // 45: mycompany.simple.Simple.SomeWorkflow4:output_type -> mycompany.simple.common.v1.PaginatedResponse
-	32, // 46: mycompany.simple.Simple.SomeActivity1:output_type -> google.protobuf.Empty
-	32, // 47: mycompany.simple.Simple.SomeActivity2:output_type -> google.protobuf.Empty
-	6,  // 48: mycompany.simple.Simple.SomeActivity3:output_type -> mycompany.simple.SomeActivity3Response
-	32, // 49: mycompany.simple.Simple.SomeActivity4:output_type -> google.protobuf.Empty
-	7,  // 50: mycompany.simple.Simple.SomeQuery1:output_type -> mycompany.simple.SomeQuery1Response
-	9,  // 51: mycompany.simple.Simple.SomeQuery2:output_type -> mycompany.simple.SomeQuery2Response
-	32, // 52: mycompany.simple.Simple.SomeSignal1:output_type -> google.protobuf.Empty
-	32, // 53: mycompany.simple.Simple.SomeSignal2:output_type -> google.protobuf.Empty
-	12, // 54: mycompany.simple.Simple.SomeSignal3:output_type -> mycompany.simple.SomeSignal3Response
-	14, // 55: mycompany.simple.Simple.SomeUpdate1:output_type -> mycompany.simple.SomeUpdate1Response
-	16, // 56: mycompany.simple.Simple.SomeUpdate2:output_type -> mycompany.simple.SomeUpdate2Response
-	18, // 57: mycompany.simple.Other.OtherWorkflow:output_type -> mycompany.simple.OtherWorkflowResponse
-	36, // 58: mycompany.simple.Other.OtherWorkflow2:output_type -> mycompany.simple.common.v1.PaginatedResponse
-	19, // 59: mycompany.simple.Other.OtherQuery:output_type -> mycompany.simple.OtherQueryResponse
-	32, // 60: mycompany.simple.Other.OtherSignal:output_type -> google.protobuf.Empty
-	22, // 61: mycompany.simple.Other.OtherUpdate:output_type -> mycompany.simple.OtherUpdateResponse
-	32, // 62: mycompany.simple.Nothing.Foo:output_type -> google.protobuf.Empty
-	32, // 63: mycompany.simple.Ignored.What:output_type -> google.protobuf.Empty
-	27, // 64: mycompany.simple.OnlyActivities.LonelyActivity1:output_type -> mycompany.simple.LonelyActivity1Response
-	28, // 65: mycompany.simple.Deprecated.SomeDeprecatedWorkflow1:output_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 66: mycompany.simple.Deprecated.SomeDeprecatedWorkflow2:output_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 67: mycompany.simple.Deprecated.SomeDeprecatedActivity1:output_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 68: mycompany.simple.Deprecated.SomeDeprecatedActivity2:output_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 69: mycompany.simple.Deprecated.SomeDeprecatedQuery1:output_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 70: mycompany.simple.Deprecated.SomeDeprecatedQuery2:output_type -> mycompany.simple.SomeDeprecatedMessage
-	32, // 71: mycompany.simple.Deprecated.SomeDeprecatedSignal1:output_type -> google.protobuf.Empty
-	32, // 72: mycompany.simple.Deprecated.SomeDeprecatedSignal2:output_type -> google.protobuf.Empty
-	28, // 73: mycompany.simple.Deprecated.SomeDeprecatedUpdate1:output_type -> mycompany.simple.SomeDeprecatedMessage
-	28, // 74: mycompany.simple.Deprecated.SomeDeprecatedUpdate2:output_type -> mycompany.simple.SomeDeprecatedMessage
-	42, // [42:75] is the sub-list for method output_type
-	9,  // [9:42] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	36, // 8: mycompany.simple.OtherWorkflowRequest.common_enum:type_name -> mycompany.simple.common.v1.Example
+	37, // 9: mycompany.simple.ExampleContinueAsNewRequest.retry_policy:type_name -> temporal.v1.RetryPolicy
+	1,  // 10: mycompany.simple.Simple.SomeWorkflow1:input_type -> mycompany.simple.SomeWorkflow1Request
+	34, // 11: mycompany.simple.Simple.SomeWorkflow2:input_type -> google.protobuf.Empty
+	3,  // 12: mycompany.simple.Simple.SomeWorkflow3:input_type -> mycompany.simple.SomeWorkflow3Request
+	38, // 13: mycompany.simple.Simple.SomeWorkflow4:input_type -> mycompany.simple.common.v1.PaginatedRequest
+	34, // 14: mycompany.simple.Simple.SomeActivity1:input_type -> google.protobuf.Empty
+	4,  // 15: mycompany.simple.Simple.SomeActivity2:input_type -> mycompany.simple.SomeActivity2Request
+	5,  // 16: mycompany.simple.Simple.SomeActivity3:input_type -> mycompany.simple.SomeActivity3Request
+	34, // 17: mycompany.simple.Simple.SomeActivity4:input_type -> google.protobuf.Empty
+	34, // 18: mycompany.simple.Simple.SomeQuery1:input_type -> google.protobuf.Empty
+	8,  // 19: mycompany.simple.Simple.SomeQuery2:input_type -> mycompany.simple.SomeQuery2Request
+	34, // 20: mycompany.simple.Simple.SomeSignal1:input_type -> google.protobuf.Empty
+	10, // 21: mycompany.simple.Simple.SomeSignal2:input_type -> mycompany.simple.SomeSignal2Request
+	11, // 22: mycompany.simple.Simple.SomeSignal3:input_type -> mycompany.simple.SomeSignal3Request
+	13, // 23: mycompany.simple.Simple.SomeUpdate1:input_type -> mycompany.simple.SomeUpdate1Request
+	15, // 24: mycompany.simple.Simple.SomeUpdate2:input_type -> mycompany.simple.SomeUpdate2Request
+	29, // 25: mycompany.simple.Simple.ExampleContinueAsNew:input_type -> mycompany.simple.ExampleContinueAsNewRequest
+	17, // 26: mycompany.simple.Other.OtherWorkflow:input_type -> mycompany.simple.OtherWorkflowRequest
+	38, // 27: mycompany.simple.Other.OtherWorkflow2:input_type -> mycompany.simple.common.v1.PaginatedRequest
+	34, // 28: mycompany.simple.Other.OtherQuery:input_type -> google.protobuf.Empty
+	20, // 29: mycompany.simple.Other.OtherSignal:input_type -> mycompany.simple.OtherSignalRequest
+	21, // 30: mycompany.simple.Other.OtherUpdate:input_type -> mycompany.simple.OtherUpdateRequest
+	34, // 31: mycompany.simple.Nothing.Foo:input_type -> google.protobuf.Empty
+	25, // 32: mycompany.simple.Ignored.What:input_type -> mycompany.simple.WhatRequest
+	26, // 33: mycompany.simple.OnlyActivities.LonelyActivity1:input_type -> mycompany.simple.LonelyActivity1Request
+	28, // 34: mycompany.simple.Deprecated.SomeDeprecatedWorkflow1:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 35: mycompany.simple.Deprecated.SomeDeprecatedWorkflow2:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 36: mycompany.simple.Deprecated.SomeDeprecatedActivity1:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 37: mycompany.simple.Deprecated.SomeDeprecatedActivity2:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 38: mycompany.simple.Deprecated.SomeDeprecatedQuery1:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 39: mycompany.simple.Deprecated.SomeDeprecatedQuery2:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 40: mycompany.simple.Deprecated.SomeDeprecatedSignal1:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 41: mycompany.simple.Deprecated.SomeDeprecatedSignal2:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 42: mycompany.simple.Deprecated.SomeDeprecatedUpdate1:input_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 43: mycompany.simple.Deprecated.SomeDeprecatedUpdate2:input_type -> mycompany.simple.SomeDeprecatedMessage
+	2,  // 44: mycompany.simple.Simple.SomeWorkflow1:output_type -> mycompany.simple.SomeWorkflow1Response
+	34, // 45: mycompany.simple.Simple.SomeWorkflow2:output_type -> google.protobuf.Empty
+	34, // 46: mycompany.simple.Simple.SomeWorkflow3:output_type -> google.protobuf.Empty
+	39, // 47: mycompany.simple.Simple.SomeWorkflow4:output_type -> mycompany.simple.common.v1.PaginatedResponse
+	34, // 48: mycompany.simple.Simple.SomeActivity1:output_type -> google.protobuf.Empty
+	34, // 49: mycompany.simple.Simple.SomeActivity2:output_type -> google.protobuf.Empty
+	6,  // 50: mycompany.simple.Simple.SomeActivity3:output_type -> mycompany.simple.SomeActivity3Response
+	34, // 51: mycompany.simple.Simple.SomeActivity4:output_type -> google.protobuf.Empty
+	7,  // 52: mycompany.simple.Simple.SomeQuery1:output_type -> mycompany.simple.SomeQuery1Response
+	9,  // 53: mycompany.simple.Simple.SomeQuery2:output_type -> mycompany.simple.SomeQuery2Response
+	34, // 54: mycompany.simple.Simple.SomeSignal1:output_type -> google.protobuf.Empty
+	34, // 55: mycompany.simple.Simple.SomeSignal2:output_type -> google.protobuf.Empty
+	12, // 56: mycompany.simple.Simple.SomeSignal3:output_type -> mycompany.simple.SomeSignal3Response
+	14, // 57: mycompany.simple.Simple.SomeUpdate1:output_type -> mycompany.simple.SomeUpdate1Response
+	16, // 58: mycompany.simple.Simple.SomeUpdate2:output_type -> mycompany.simple.SomeUpdate2Response
+	30, // 59: mycompany.simple.Simple.ExampleContinueAsNew:output_type -> mycompany.simple.ExampleContinueAsNewResponse
+	18, // 60: mycompany.simple.Other.OtherWorkflow:output_type -> mycompany.simple.OtherWorkflowResponse
+	39, // 61: mycompany.simple.Other.OtherWorkflow2:output_type -> mycompany.simple.common.v1.PaginatedResponse
+	19, // 62: mycompany.simple.Other.OtherQuery:output_type -> mycompany.simple.OtherQueryResponse
+	34, // 63: mycompany.simple.Other.OtherSignal:output_type -> google.protobuf.Empty
+	22, // 64: mycompany.simple.Other.OtherUpdate:output_type -> mycompany.simple.OtherUpdateResponse
+	34, // 65: mycompany.simple.Nothing.Foo:output_type -> google.protobuf.Empty
+	34, // 66: mycompany.simple.Ignored.What:output_type -> google.protobuf.Empty
+	27, // 67: mycompany.simple.OnlyActivities.LonelyActivity1:output_type -> mycompany.simple.LonelyActivity1Response
+	28, // 68: mycompany.simple.Deprecated.SomeDeprecatedWorkflow1:output_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 69: mycompany.simple.Deprecated.SomeDeprecatedWorkflow2:output_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 70: mycompany.simple.Deprecated.SomeDeprecatedActivity1:output_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 71: mycompany.simple.Deprecated.SomeDeprecatedActivity2:output_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 72: mycompany.simple.Deprecated.SomeDeprecatedQuery1:output_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 73: mycompany.simple.Deprecated.SomeDeprecatedQuery2:output_type -> mycompany.simple.SomeDeprecatedMessage
+	34, // 74: mycompany.simple.Deprecated.SomeDeprecatedSignal1:output_type -> google.protobuf.Empty
+	34, // 75: mycompany.simple.Deprecated.SomeDeprecatedSignal2:output_type -> google.protobuf.Empty
+	28, // 76: mycompany.simple.Deprecated.SomeDeprecatedUpdate1:output_type -> mycompany.simple.SomeDeprecatedMessage
+	28, // 77: mycompany.simple.Deprecated.SomeDeprecatedUpdate2:output_type -> mycompany.simple.SomeDeprecatedMessage
+	44, // [44:78] is the sub-list for method output_type
+	10, // [10:44] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_test_simple_v1_simple_proto_init() }
@@ -2107,7 +2206,7 @@ func file_test_simple_v1_simple_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_test_simple_v1_simple_proto_rawDesc), len(file_test_simple_v1_simple_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   30,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   6,
 		},

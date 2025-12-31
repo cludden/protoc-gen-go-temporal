@@ -874,6 +874,18 @@ type FooWorkflowInput struct {
 	Req *FooInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *FooWorkflowInput) ContinueAsNew(ctx workflow.Context, input *FooInput, options ...workflow.ContinueAsNewErrorOptions) (*FooOutput, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], FooWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, FooWorkflowName, next)
+}
+
 // FooWorkflow describes a(n) issue_125.v1.Issue125Service.Foo workflow implementation
 //
 // workflow details: (id: "foo/${! id }")

@@ -832,6 +832,18 @@ type ShoppingCartWorkflowInput struct {
 	Checkout *CheckoutSignal
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *ShoppingCartWorkflowInput) ContinueAsNew(ctx workflow.Context, input *ShoppingCartInput, options ...workflow.ContinueAsNewErrorOptions) (*ShoppingCartOutput, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], ShoppingCartWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, ShoppingCartWorkflowName, next)
+}
+
 // ShoppingCartWorkflow describes a(n) example.shoppingcart.v1.ShoppingCart workflow implementation
 //
 // workflow details: (id: "example.shoppingcart.v1.ShoppingCart/${! nanoid() }")

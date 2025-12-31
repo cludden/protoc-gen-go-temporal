@@ -768,6 +768,18 @@ type SearchAttributesWorkflowInput struct {
 	Req *SearchAttributesInput
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *SearchAttributesWorkflowInput) ContinueAsNew(ctx workflow.Context, input *SearchAttributesInput, options ...workflow.ContinueAsNewErrorOptions) error {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], SearchAttributesWorkflowName, next)
+	}
+	return workflow.NewContinueAsNewError(ctx, SearchAttributesWorkflowName, next)
+}
+
 // SearchAttributesWorkflow describes a(n) example.searchattributes.v1.Example.SearchAttributes workflow implementation
 //
 // workflow details: (id: "search_attributes_${! uuid_v4() }")
@@ -1075,6 +1087,18 @@ func buildTypedSearchAttributes(ctor func(workflow.Context, *TypedSearchAttribut
 // TypedSearchAttributesWorkflowInput describes the input to a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow constructor
 type TypedSearchAttributesWorkflowInput struct {
 	Req *TypedSearchAttributesInput
+}
+
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *TypedSearchAttributesWorkflowInput) ContinueAsNew(ctx workflow.Context, input *TypedSearchAttributesInput, options ...workflow.ContinueAsNewErrorOptions) (*TypedSearchAttributesOutput, error) {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return nil, workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], TypedSearchAttributesWorkflowName, next)
+	}
+	return nil, workflow.NewContinueAsNewError(ctx, TypedSearchAttributesWorkflowName, next)
 }
 
 // TypedSearchAttributesWorkflow describes a(n) example.searchattributes.v1.Example.TypedSearchAttributes workflow implementation

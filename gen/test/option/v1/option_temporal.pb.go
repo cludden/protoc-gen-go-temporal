@@ -712,6 +712,18 @@ type WorkflowWithInputWorkflowInput struct {
 	Req *WorkflowWithInputRequest
 }
 
+// ContinueAsNew returns an appropriately configured ContinueAsNewError
+func (i *WorkflowWithInputWorkflowInput) ContinueAsNew(ctx workflow.Context, input *WorkflowWithInputRequest, options ...workflow.ContinueAsNewErrorOptions) error {
+	next := i.Req
+	if input != nil {
+		next = input
+	}
+	if len(options) > 0 {
+		return workflow.NewContinueAsNewErrorWithOptions(ctx, options[0], WorkflowWithInputWorkflowName, next)
+	}
+	return workflow.NewContinueAsNewError(ctx, WorkflowWithInputWorkflowName, next)
+}
+
 // WorkflowWithInputWorkflow describes a(n) test.option.v1.Test.WorkflowWithInput workflow implementation
 //
 // workflow details: (id: "workflow-with-input:${! name.or(throw("name is required")) }")
