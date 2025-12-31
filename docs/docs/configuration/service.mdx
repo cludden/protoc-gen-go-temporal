@@ -18,18 +18,53 @@ service Example {
 
 ## Options
 
-### cli
+### cli.aliases
 
-[[]temporal.v1.CLIOptions](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.CLIOptions)
+`[]string`
 
-Configures the cli command generated for the service.
+Adds additional aliases to the CLI command.
 
 ```protobuf
 service Example {
   option (temporal.v1.cli) = {
-    name: "example"
-    usage: "example operations"
+    aliases: ["e"]
   };
+}
+```
+
+### cli.ignore
+
+`bool`
+
+Prevents the generation of CLI command.
+
+```protobuf
+service Example {
+  option (temporal.v1.cli) = {ignore: true};
+}
+```
+
+### cli.name
+
+`string`
+
+Overrides the default CLI command name.
+
+```protobuf
+service Example {
+  option (temporal.v1.cli) = {name: "start-example"};
+}
+```
+
+### cli.usage
+
+`string`
+
+Overrides the default CLI command usage.
+
+```protobuf
+service Example {
+  option (temporal.v1.cli) = {usage: "generate a friendly greeting"};
 }
 ```
 

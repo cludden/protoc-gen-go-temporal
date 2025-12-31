@@ -422,6 +422,7 @@ type CLIOptions struct {
 	Ignore        bool                   `protobuf:"varint,1,opt,name=ignore,proto3" json:"ignore,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Usage         string                 `protobuf:"bytes,3,opt,name=usage,proto3" json:"usage,omitempty"`
+	Aliases       []string               `protobuf:"bytes,4,rep,name=aliases,proto3" json:"aliases,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -475,6 +476,13 @@ func (x *CLIOptions) GetUsage() string {
 		return x.Usage
 	}
 	return ""
+}
+
+func (x *CLIOptions) GetAliases() []string {
+	if x != nil {
+		return x.Aliases
+	}
+	return nil
 }
 
 type CLICommandOptions struct {
@@ -1875,12 +1883,13 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x16start_to_close_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x13startToCloseTimeout\x12F\n" +
 	"\x11heartbeat_timeout\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\x10heartbeatTimeout\x122\n" +
 	"\x15wait_for_cancellation\x18\b \x01(\bR\x13waitForCancellation\x12;\n" +
-	"\fretry_policy\x18\x06 \x01(\v2\x18.temporal.v1.RetryPolicyR\vretryPolicy\"N\n" +
+	"\fretry_policy\x18\x06 \x01(\v2\x18.temporal.v1.RetryPolicyR\vretryPolicy\"h\n" +
 	"\n" +
 	"CLIOptions\x12\x16\n" +
 	"\x06ignore\x18\x01 \x01(\bR\x06ignore\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
-	"\x05usage\x18\x03 \x01(\tR\x05usage\"o\n" +
+	"\x05usage\x18\x03 \x01(\tR\x05usage\x12\x18\n" +
+	"\aaliases\x18\x04 \x03(\tR\aaliases\"o\n" +
 	"\x11CLICommandOptions\x12\x16\n" +
 	"\x06ignore\x18\x01 \x01(\bR\x06ignore\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +

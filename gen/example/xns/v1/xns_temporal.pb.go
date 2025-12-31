@@ -884,6 +884,7 @@ func NewXnsCli(options ...*XnsCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "xns",
+		Usage:                     "example.xns.v1.Xns operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -897,6 +898,7 @@ func NewXnsCliCommand(options ...*XnsCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "xns",
+		Usage:       "example.xns.v1.Xns operations",
 		Subcommands: subcommands,
 	}, nil
 }
@@ -2706,6 +2708,7 @@ func NewExampleCli(options ...*ExampleCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "example",
+		Usage:                     "example.xns.v1.Example operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -2719,6 +2722,7 @@ func NewExampleCliCommand(options ...*ExampleCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "example",
+		Usage:       "example.xns.v1.Example operations",
 		Subcommands: subcommands,
 	}, nil
 }

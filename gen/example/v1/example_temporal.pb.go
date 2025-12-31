@@ -1692,6 +1692,7 @@ func NewExampleCli(options ...*ExampleCliOptions) (*cliv3.Command, error) {
 	}
 	return &cliv3.Command{
 		Name:                      "example",
+		Aliases:                   []string{"xnsv1", "cliv3", "enumsv1", "temporalv1", "updatev1"},
 		Usage:                     "example.v1.Example operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,

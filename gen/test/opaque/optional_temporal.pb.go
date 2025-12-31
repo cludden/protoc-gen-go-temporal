@@ -1002,6 +1002,7 @@ func NewOptionalCli(options ...*OptionalCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "optional",
+		Usage:                     "test.opaque.Optional operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1015,6 +1016,7 @@ func NewOptionalCliCommand(options ...*OptionalCliOptions) (*v2.Command, error) 
 	}
 	return &v2.Command{
 		Name:        "optional",
+		Usage:       "test.opaque.Optional operations",
 		Subcommands: subcommands,
 	}, nil
 }

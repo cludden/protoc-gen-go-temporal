@@ -10,6 +10,11 @@ import "test/simple/common/v1/common.proto";
 
 service Simple {
   option (temporal.v1.service) = {task_queue: 'my-task-queue'};
+  option (temporal.v1.cli) = {
+    name: 'simple'
+    usage: 'Simple operations'
+    aliases: ['s']
+  };
 
   // SomeWorkflow1 does some workflow thing.
   rpc SomeWorkflow1(SomeWorkflow1Request) returns (SomeWorkflow1Response) {

@@ -60,6 +60,7 @@ message CLIOptions {
   bool ignore = 1;
   string name = 2;
   string usage = 3;
+  repeated string aliases = 4;
 }
 
 message CLICommandOptions {

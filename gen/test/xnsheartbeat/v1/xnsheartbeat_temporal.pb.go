@@ -1415,6 +1415,7 @@ func NewXnsHeartbeatServiceCli(options ...*XnsHeartbeatServiceCliOptions) (*v2.A
 	}
 	return &v2.App{
 		Name:                      "xns-heartbeat-service",
+		Usage:                     "test.xnsheartbeat.v1.XnsHeartbeatService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1428,6 +1429,7 @@ func NewXnsHeartbeatServiceCliCommand(options ...*XnsHeartbeatServiceCliOptions)
 	}
 	return &v2.Command{
 		Name:        "xns-heartbeat-service",
+		Usage:       "test.xnsheartbeat.v1.XnsHeartbeatService operations",
 		Subcommands: subcommands,
 	}, nil
 }
@@ -2593,6 +2595,7 @@ func NewXnsHeartbeatCallerServiceCli(options ...*XnsHeartbeatCallerServiceCliOpt
 	}
 	return &v2.App{
 		Name:                      "xns-heartbeat-caller-service",
+		Usage:                     "test.xnsheartbeat.v1.XnsHeartbeatCallerService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -2606,6 +2609,7 @@ func NewXnsHeartbeatCallerServiceCliCommand(options ...*XnsHeartbeatCallerServic
 	}
 	return &v2.Command{
 		Name:        "xns-heartbeat-caller-service",
+		Usage:       "test.xnsheartbeat.v1.XnsHeartbeatCallerService operations",
 		Subcommands: subcommands,
 	}, nil
 }

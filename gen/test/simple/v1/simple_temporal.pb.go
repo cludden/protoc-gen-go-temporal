@@ -7099,6 +7099,7 @@ func NewSimpleCli(options ...*SimpleCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "simple",
+		Usage:                     "Simple operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -7112,6 +7113,8 @@ func NewSimpleCliCommand(options ...*SimpleCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "simple",
+		Aliases:     []string{"s"},
+		Usage:       "Simple operations",
 		Subcommands: subcommands,
 	}, nil
 }
@@ -10572,6 +10575,7 @@ func NewOtherCli(options ...*OtherCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "other",
+		Usage:                     "mycompany.simple.Other operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -10585,6 +10589,7 @@ func NewOtherCliCommand(options ...*OtherCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "other",
+		Usage:       "mycompany.simple.Other operations",
 		Subcommands: subcommands,
 	}, nil
 }
@@ -15519,6 +15524,7 @@ func NewDeprecatedCli(options ...*DeprecatedCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "deprecated",
+		Usage:                     "mycompany.simple.Deprecated operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -15532,6 +15538,7 @@ func NewDeprecatedCliCommand(options ...*DeprecatedCliOptions) (*v2.Command, err
 	}
 	return &v2.Command{
 		Name:        "deprecated",
+		Usage:       "mycompany.simple.Deprecated operations",
 		Subcommands: subcommands,
 	}, nil
 }

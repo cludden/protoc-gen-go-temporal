@@ -3337,6 +3337,7 @@ func NewAWSCli(options ...*AWSCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "aws",
+		Usage:                     "test.acronym.v1.AWS operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -3350,6 +3351,7 @@ func NewAWSCliCommand(options ...*AWSCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "aws",
+		Usage:       "test.acronym.v1.AWS operations",
 		Subcommands: subcommands,
 	}, nil
 }

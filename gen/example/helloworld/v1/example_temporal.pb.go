@@ -982,6 +982,7 @@ func NewExampleCli(options ...*ExampleCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "example",
+		Usage:                     "example.helloworld.v1.Example operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -995,6 +996,7 @@ func NewExampleCliCommand(options ...*ExampleCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "example",
+		Usage:       "example.helloworld.v1.Example operations",
 		Subcommands: subcommands,
 	}, nil
 }

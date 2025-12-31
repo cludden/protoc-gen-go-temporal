@@ -839,6 +839,7 @@ func NewServerCli(options ...*ServerCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "server",
+		Usage:                     "test.xnserr.v1.Server operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -852,6 +853,7 @@ func NewServerCliCommand(options ...*ServerCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "server",
+		Usage:       "test.xnserr.v1.Server operations",
 		Subcommands: subcommands,
 	}, nil
 }
@@ -1812,6 +1814,7 @@ func NewClientCli(options ...*ClientCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "client",
+		Usage:                     "test.xnserr.v1.Client operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1825,6 +1828,7 @@ func NewClientCliCommand(options ...*ClientCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "client",
+		Usage:       "test.xnserr.v1.Client operations",
 		Subcommands: subcommands,
 	}, nil
 }

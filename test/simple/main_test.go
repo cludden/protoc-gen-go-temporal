@@ -320,7 +320,7 @@ func TestCli(t *testing.T) {
 	}{
 		{
 			cmd:   []string{"-h"},
-			match: []string{`COMMANDS:\s+simple\s+other\b`},
+			match: []string{`COMMANDS:\s+simple,\s+s\s+Simple\s+operations\s+other\s+mycompany.simple.Other operations\b`},
 		},
 	}
 
