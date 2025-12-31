@@ -107,7 +107,7 @@ func (m *Manifest) genCliV3New(f *j.File) {
 	commandsCtor := m.Names().cliV3CommandsCtor()
 	cmdOpts := proto.GetExtension(m.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
 	name := cmp.Or(cmdOpts.GetName(), m.caser.ToKebab(m.Service.GoName))
-	cmdOpts.GetAliases()
+	aliases := cmdOpts.GetAliases()
 
 	f.Commentf("%s initializes a cli app for a(n) %s service", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).

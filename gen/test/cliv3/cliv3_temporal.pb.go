@@ -1526,7 +1526,6 @@ func NewExampleServiceCli(options ...*ExampleServiceCliOptions) (*cliv3.Command,
 	}
 	return &cliv3.Command{
 		Name:                      "example-service",
-		Aliases:                   []string{"enumsv1", "temporalv1", "updatev1", "xnsv1", "cliv3"},
 		Usage:                     "test.cliv3.ExampleService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
