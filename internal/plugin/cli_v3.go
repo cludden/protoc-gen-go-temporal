@@ -107,6 +107,7 @@ func (m *Manifest) genCliV3New(f *j.File) {
 	commandsCtor := m.Names().cliV3CommandsCtor()
 	cmdOpts := proto.GetExtension(m.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
 	name := cmp.Or(cmdOpts.GetName(), m.caser.ToKebab(m.Service.GoName))
+	cmdOpts.GetAliases()
 
 	f.Commentf("%s initializes a cli app for a(n) %s service", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).
@@ -125,6 +126,13 @@ func (m *Manifest) genCliV3New(f *j.File) {
 			j.Return(
 				j.Op("&").Qual(cliV3Pkg, "Command").CustomFunc(multiLineValues, func(g *j.Group) {
 					g.Id("Name").Op(":").Lit(name)
+					if len(aliases) > 0 {
+						g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+							for _, alias := range aliases {
+								g.Lit(alias)
+							}
+						})
+					}
 					if usage := cmdOpts.GetUsage(); usage != "" {
 						g.Id("Usage").Op(":").Lit(usage)
 					} else {

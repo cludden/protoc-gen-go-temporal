@@ -1002,6 +1002,7 @@ func NewOpenCli(options ...*OpenCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "open",
+		Usage:                     "test.opaque.Open operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1015,6 +1016,7 @@ func NewOpenCliCommand(options ...*OpenCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "open",
+		Usage:       "test.opaque.Open operations",
 		Subcommands: subcommands,
 	}, nil
 }

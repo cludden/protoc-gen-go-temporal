@@ -1148,6 +1148,7 @@ func NewGreetingServiceCli(options ...*GreetingServiceCliOptions) (*cliv3.Comman
 	}
 	return &cliv3.Command{
 		Name:                      "greeting",
+		Aliases:                   []string{"cliv3", "enumsv1", "temporalv1", "updatev1", "xnsv1"},
 		Usage:                     "example.nexus.v1.GreetingService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
@@ -2156,6 +2157,7 @@ func NewEchoServiceCli(options ...*EchoServiceCliOptions) (*cliv3.Command, error
 	}
 	return &cliv3.Command{
 		Name:                      "echo",
+		Aliases:                   []string{"temporalv1", "updatev1", "xnsv1", "cliv3", "enumsv1"},
 		Usage:                     "example.nexus.v1.EchoService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,

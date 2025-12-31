@@ -116,6 +116,16 @@ func (m *Manifest) renderCLI(f *j.File) {
 func (m *Manifest) genCliNew(f *j.File) {
 	functionName := m.toCamel("New%sCli", m.Service.GoName)
 	optionsName := m.toCamel("%sCliOptions", m.Service.GoName)
+	cmdOpts := proto.GetExtension(m.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
+
+	name := cmp.Or(cmdOpts.GetName(), m.caser.ToKebab(m.Service.GoName))
+	if name == "" {
+		name = m.caser.ToKebab(m.Service.GoName)
+	}
+	usage := cmdOpts.GetUsage()
+	if usage == "" {
+		usage = string(m.Service.Desc.FullName()) + " operations"
+	}
 
 	f.Commentf("%s initializes a cli for a(n) %s service", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).
@@ -133,7 +143,8 @@ func (m *Manifest) genCliNew(f *j.File) {
 			),
 			j.Return(
 				j.Op("&").Qual(cliPkg, "App").CustomFunc(multiLineValues, func(g *j.Group) {
-					g.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
+					g.Id("Name").Op(":").Lit(name)
+					g.Id("Usage").Op(":").Lit(usage)
 					g.Id("Commands").Op(":").Id("commands")
 					g.Id("DisableSliceFlagSeparator").Op(":").True()
 				}),
@@ -146,6 +157,10 @@ func (m *Manifest) genCliNew(f *j.File) {
 func (m *Manifest) genCliNewCommand(f *j.File) {
 	functionName := m.toCamel("New%sCliCommand", m.Service.GoName)
 	optionsName := m.toCamel("%sCliOptions", m.Service.GoName)
+	cmdOpts := proto.GetExtension(m.Service.Desc.Options(), temporalv1.E_Cli).(*temporalv1.CLIOptions)
+	name := cmp.Or(cmdOpts.GetName(), m.caser.ToKebab(m.Service.GoName))
+	usage := cmp.Or(cmdOpts.GetUsage(), string(m.Service.Desc.FullName())+" operations")
+	aliases := cmdOpts.GetAliases()
 
 	f.Commentf("%s initializes a cli command for a %s service with subcommands for each query, signal, update, and workflow", functionName, m.Service.Desc.FullName())
 	f.Func().Id(functionName).
@@ -163,7 +178,15 @@ func (m *Manifest) genCliNewCommand(f *j.File) {
 			),
 			j.Return(
 				j.Op("&").Qual(cliPkg, "Command").CustomFunc(multiLineValues, func(g *j.Group) {
-					g.Id("Name").Op(":").Lit(m.caser.ToKebab(m.Service.GoName))
+					g.Id("Name").Op(":").Lit(name)
+					if len(aliases) > 0 {
+						g.Id("Aliases").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+							for _, alias := range aliases {
+								g.Lit(alias)
+							}
+						})
+					}
+					g.Id("Usage").Op(":").Lit(usage)
 					g.Id("Subcommands").Op(":").Id("subcommands")
 				}),
 				j.Nil(),

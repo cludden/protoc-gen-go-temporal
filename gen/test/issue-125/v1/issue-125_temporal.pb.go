@@ -1495,6 +1495,7 @@ func NewIssue125ServiceCli(options ...*Issue125ServiceCliOptions) (*v2.App, erro
 	}
 	return &v2.App{
 		Name:                      "issue-125-service",
+		Usage:                     "issue_125.v1.Issue125Service operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1508,6 +1509,7 @@ func NewIssue125ServiceCliCommand(options ...*Issue125ServiceCliOptions) (*v2.Co
 	}
 	return &v2.Command{
 		Name:        "issue-125-service",
+		Usage:       "issue_125.v1.Issue125Service operations",
 		Subcommands: subcommands,
 	}, nil
 }

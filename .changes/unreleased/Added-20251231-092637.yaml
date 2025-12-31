@@ -1,0 +1,6 @@
+kind: Added
+body: Add aliases support for service cli command
+time: 2025-12-31T09:26:37.878354-07:00
+custom:
+    Author: cludden
+    PullRequest: "140"

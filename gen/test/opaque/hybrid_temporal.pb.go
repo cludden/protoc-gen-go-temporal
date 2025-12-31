@@ -1002,6 +1002,7 @@ func NewHybridCli(options ...*HybridCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "hybrid",
+		Usage:                     "test.opaque.Hybrid operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1015,6 +1016,7 @@ func NewHybridCliCommand(options ...*HybridCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "hybrid",
+		Usage:       "test.opaque.Hybrid operations",
 		Subcommands: subcommands,
 	}, nil
 }

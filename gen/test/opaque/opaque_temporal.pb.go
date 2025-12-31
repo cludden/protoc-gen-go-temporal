@@ -1002,6 +1002,7 @@ func NewOpaqueCli(options ...*OpaqueCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "opaque",
+		Usage:                     "test.opaque.Opaque operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1015,6 +1016,7 @@ func NewOpaqueCliCommand(options ...*OpaqueCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "opaque",
+		Usage:       "test.opaque.Opaque operations",
 		Subcommands: subcommands,
 	}, nil
 }

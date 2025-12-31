@@ -1113,6 +1113,7 @@ func NewFooServiceCli(options ...*FooServiceCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "foo-service",
+		Usage:                     "test.patch.FooService operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1126,6 +1127,7 @@ func NewFooServiceCliCommand(options ...*FooServiceCliOptions) (*v2.Command, err
 	}
 	return &v2.Command{
 		Name:        "foo-service",
+		Usage:       "test.patch.FooService operations",
 		Subcommands: subcommands,
 	}, nil
 }

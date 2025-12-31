@@ -1518,6 +1518,7 @@ func NewShoppingCartCli(options ...*ShoppingCartCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "shopping-cart",
+		Usage:                     "example.shoppingcart.v1.ShoppingCart operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1531,6 +1532,7 @@ func NewShoppingCartCliCommand(options ...*ShoppingCartCliOptions) (*v2.Command,
 	}
 	return &v2.Command{
 		Name:        "shopping-cart",
+		Usage:       "example.shoppingcart.v1.ShoppingCart operations",
 		Subcommands: subcommands,
 	}, nil
 }

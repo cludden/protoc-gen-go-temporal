@@ -1560,6 +1560,7 @@ func NewTestCli(options ...*TestCliOptions) (*v2.App, error) {
 	}
 	return &v2.App{
 		Name:                      "test",
+		Usage:                     "test.option.v1.Test operations",
 		Commands:                  commands,
 		DisableSliceFlagSeparator: true,
 	}, nil
@@ -1573,6 +1574,7 @@ func NewTestCliCommand(options ...*TestCliOptions) (*v2.Command, error) {
 	}
 	return &v2.Command{
 		Name:        "test",
+		Usage:       "test.option.v1.Test operations",
 		Subcommands: subcommands,
 	}, nil
 }

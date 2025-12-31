@@ -1946,7 +1946,7 @@ const file_test_simple_v1_simple_proto_rawDesc = "" +
 	"\tOtherEnum\x12\x15\n" +
 	"\x11OTHER_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tOTHER_FOO\x10\x01\x12\r\n" +
-	"\tOTHER_BAR\x10\x022\xe4\x11\n" +
+	"\tOTHER_BAR\x10\x022\x86\x12\n" +
 	"\x06Simple\x12\xaa\x02\n" +
 	"\rSomeWorkflow1\x12&.mycompany.simple.SomeWorkflow1Request\x1a'.mycompany.simple.SomeWorkflow1Response\"\xc7\x01\x8a\xc4\x03\xc2\x01\n" +
 	"\f\n" +
@@ -1988,8 +1988,8 @@ const file_test_simple_v1_simple_proto_rawDesc = "" +
 	"@some-update/${! requestVal.not_empty().catch(\"default\").slug() }\x10\x01\x18\x03\x12\xa4\x01\n" +
 	"\vSomeUpdate2\x12$.mycompany.simple.SomeUpdate2Request\x1a%.mycompany.simple.SomeUpdate2Response\"H\xaa\xc4\x03D\n" +
 	"Bsome-update-2/${! requestVal.not_empty().catch(\"default\").slug() }\x12\xa4\x01\n" +
-	"\x14ExampleContinueAsNew\x12-.mycompany.simple.ExampleContinueAsNewRequest\x1a..mycompany.simple.ExampleContinueAsNewResponse\"-\x8a\xc4\x03)*'example-continue-as-new/${! uuid_v4() }\x1a\x13\x8a\xc4\x03\x0f\n" +
-	"\rmy-task-queue2\xf3\x04\n" +
+	"\x14ExampleContinueAsNew\x12-.mycompany.simple.ExampleContinueAsNewRequest\x1a..mycompany.simple.ExampleContinueAsNewResponse\"-\x8a\xc4\x03)*'example-continue-as-new/${! uuid_v4() }\x1a5\x8a\xc4\x03\x0f\n" +
+	"\rmy-task-queue\x92\xc4\x03\x1e\x12\x06simple\x1a\x11Simple operations\"\x01s2\xf3\x04\n" +
 	"\x05Other\x12\x8c\x01\n" +
 	"\rOtherWorkflow\x12&.mycompany.simple.OtherWorkflowRequest\x1a'.mycompany.simple.OtherWorkflowResponse\"*\x8a\xc4\x03\x1e*\x1cother-workflow/${!uuid_v4()}\x92\xc4\x03\x04\"\x02\b\x1e\x12\x93\x01\n" +
 	"\x0eOtherWorkflow2\x12,.mycompany.simple.common.v1.PaginatedRequest\x1a-.mycompany.simple.common.v1.PaginatedResponse\"$\x8a\xc4\x03 *\x1eother-workflow-2/${!uuid_v4()}\x12P\n" +
