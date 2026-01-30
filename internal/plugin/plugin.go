@@ -43,6 +43,7 @@ type Config struct {
 	EnableDebugLogging         bool
 	EnablePatchSupport         bool
 	EnableXNS                  bool
+	ModuleMap                  []string
 	NexusEnabled               bool
 	NexusExcludeOperationTags  string
 	NexusIncludeOperationTags  string
@@ -66,6 +67,7 @@ type Plugin struct {
 	excludeServiceTags   map[string]struct{}
 	includeOperationTags map[string]struct{}
 	includeServiceTags   map[string]struct{}
+	moduleMap            map[string]string
 }
 
 func Run(commit, version string) {
@@ -88,6 +90,7 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.EnablePatchSupport, "enable-patch-support", false, "enables support for alta/protopatch renaming")
 	flags.BoolVar(&cfg.EnableXNS, "enable-xns", false, "enable experimental cross-namespace workflow client")
 	flags.StringVar(&cfg.IgnoreAcronyms, "ignore-acronyms", "", "semicolon-delimited string of acronyms to ignore when converting generated output to camel case")
+	flags.StringArrayVarP(&cfg.ModuleMap, "module-map", "M", []string{}, "[EXPERIMENTAL] list of <proto_file>=<go_import_path> (e.g. -Mgoogle/protobuf/timestamp.proto=google.golang.org/protobuf/types/known/timestamppb)")
 	flags.BoolVar(&cfg.NexusEnabled, "nexus", false, "enable nexus handler generation")
 	flags.StringVar(&cfg.NexusExcludeOperationTags, "nexus-exclude-operation-tags", "", "semicolon-delimited list of operation tags to exclude from nexus generation")
 	flags.StringVar(&cfg.NexusIncludeOperationTags, "nexus-include-operation-tags", "", "semicolon-delimited list of operation tags to include in nexus generation")
@@ -98,10 +101,11 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", true, "enable experimental workflow update (DEPRECATED)")
 
 	return &Plugin{
-		Commit:  commit,
-		Version: version,
-		cfg:     &cfg,
-		flags:   flags,
+		Commit:    commit,
+		Version:   version,
+		cfg:       &cfg,
+		flags:     flags,
+		moduleMap: make(map[string]string),
 	}
 }
 
@@ -115,6 +119,14 @@ func (p *Plugin) Run(plugin *protogen.Plugin) (err error) {
 	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 	plugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO3
 	plugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2023
+
+	for _, m := range p.cfg.ModuleMap {
+		fields := strings.SplitN(m, "=", 2)
+		if len(fields) != 2 {
+			return fmt.Errorf("invalid module map: %s", m)
+		}
+		p.moduleMap[fields[0]] = fields[1]
+	}
 
 	p.Plugin = plugin
 	services, err := parse(p)
