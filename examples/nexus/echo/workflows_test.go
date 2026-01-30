@@ -8,6 +8,7 @@ import (
 	nexusv1 "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1"
 	"github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1nexustemporal"
 	"github.com/cludden/protoc-gen-go-temporal/internal/testutil"
+	temporalnexus "github.com/nexus-rpc/sdk-go/nexus"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/nexus/v1"
 	"go.temporal.io/api/operatorservice/v1"
@@ -50,4 +51,16 @@ func TestE2E(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "¡Hola! World 👋", out.GetMessage())
+
+	// Trigger a bad request by not specifying the language.
+	_, err = echo.Echo(ctx, &nexusv1.EchoInput{
+		Name:     "World",
+		Language: nexusv1.Language_LANGUAGE_UNSPECIFIED,
+	})
+	require.Error(t, err)
+
+	var nexusErr *temporalnexus.HandlerError
+	require.ErrorAs(t, err, &nexusErr)
+	require.Equal(t, temporalnexus.HandlerErrorTypeBadRequest, nexusErr.Type)
+	require.False(t, nexusErr.Retryable())
 }

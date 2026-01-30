@@ -1323,7 +1323,7 @@ const (
 
 // example.nexus.v1.EchoService workflow id expressions
 var (
-	EchoIdexpression = expression.MustParseExpression("example.nexus.v1.Echo/${! language.or(throw(\"language required\")) }/${! name.slug() }")
+	EchoIdexpression = expression.MustParseExpression("example.nexus.v1.Echo/${ language }/${! name.slug() }")
 )
 
 // EchoServiceClient describes a client for a(n) example.nexus.v1.EchoService worker
@@ -1750,7 +1750,7 @@ func (i *EchoWorkflowInput) ContinueAsNew(ctx workflow.Context, input *EchoInput
 
 // echoes back the input string
 //
-// workflow details: (name: "example.nexus.v1.EchoService.Echo", id: "example.nexus.v1.Echo/${! language.or(throw("language required")) }/${! name.slug() }")
+// workflow details: (name: "example.nexus.v1.EchoService.Echo", id: "example.nexus.v1.Echo/${ language }/${! name.slug() }")
 type EchoWorkflow interface {
 	// Execute defines the entrypoint to a(n) example.nexus.v1.EchoService.Echo workflow
 	Execute(ctx workflow.Context) (*EchoOutput, error)
