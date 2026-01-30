@@ -1,6 +1,0 @@
-kind: Added
-body: Add experimental -M support for go import path overrides
-time: 2026-01-30T09:06:04.726582-07:00
-custom:
-    Author: cludden
-    PullRequest: "142"
