@@ -130,6 +130,9 @@ func parse(p *Plugin) (*Manifest, error) {
 	}
 
 	for _, file := range p.Files {
+		if goImportPath, ok := p.moduleMap[string(file.Desc.FullName())]; ok {
+			file.GoImportPath = protogen.GoImportPath(goImportPath)
+		}
 		if !file.Generate {
 			continue
 		}
