@@ -25,7 +25,7 @@ func (h *GreetingServiceNexusHandler) Hello(name string) nexus.Operation[*v1.Hel
 		Handler: func(ctx context.Context, input *v1.HelloInput, opts nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[*v1.HelloOutput], error) {
 			o, err := v1.NewHelloOptions().Build(input.ProtoReflect())
 			if err != nil {
-				return nil, err
+				return nil, nexus.HandlerErrorf(nexus.HandlerErrorTypeBadRequest, "failed to build workflow options: %w", err)
 			}
 			return temporalnexus.ExecuteUntypedWorkflow[*v1.HelloOutput](ctx, opts, o, v1.HelloWorkflowName, input)
 		},

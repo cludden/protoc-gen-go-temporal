@@ -25,7 +25,7 @@ service EchoService {
 
   // echoes back the input string
   rpc Echo(EchoInput) returns (EchoOutput) {
-    option (temporal.v1.workflow) = {id: 'example.nexus.v1.Echo/${! language.or(throw("language required")) }/${! name.slug() }'};
+    option (temporal.v1.workflow) = {id: 'example.nexus.v1.Echo/${ language }/${! name.slug() }'};
   }
 }
 

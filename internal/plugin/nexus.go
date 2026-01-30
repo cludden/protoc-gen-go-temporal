@@ -85,7 +85,14 @@ func (p *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *prot
 											}
 										})
 										g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
-											g.Return(j.Nil(), j.Err())
+											g.Return(
+												j.Nil(),
+												j.Qual(nexusPkg, "HandlerErrorf").Call(
+													j.Qual(nexusPkg, "HandlerErrorTypeBadRequest"),
+													j.Lit("failed to build workflow options: %w"),
+													j.Err(),
+												),
+											)
 										})
 										g.Return(
 											j.Qual(temporalnexusPkg, "ExecuteUntypedWorkflow").TypesFunc(func(g *j.Group) {

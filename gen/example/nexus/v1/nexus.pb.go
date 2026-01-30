@@ -305,9 +305,9 @@ const file_example_nexus_v1_nexus_proto_rawDesc = "" +
 	"\x0fGreetingService\x12\xaa\x01\n" +
 	"\x05Hello\x12\x1c.example.nexus.v1.HelloInput\x1a\x1d.example.nexus.v1.HelloOutput\"d\x8a\xc4\x03X*Vexample.nexus.v1.Hello/${! language.or(throw(\"language required\")) }/${! name.slug() }\x92\xc4\x03\x04\"\x02\b\x05\x1a\x1f\x8a\xc4\x03\r\n" +
 	"\vgreeting-v1\x92\xc4\x03\n" +
-	"\x12\bgreeting2\xd5\x01\n" +
-	"\vEchoService\x12\x9e\x01\n" +
-	"\x04Echo\x12\x1b.example.nexus.v1.EchoInput\x1a\x1c.example.nexus.v1.EchoOutput\"[\x8a\xc4\x03W*Uexample.nexus.v1.Echo/${! language.or(throw(\"language required\")) }/${! name.slug() }\x1a%\x8a\xc4\x03\t\n" +
+	"\x12\bgreeting2\xb4\x01\n" +
+	"\vEchoService\x12~\n" +
+	"\x04Echo\x12\x1b.example.nexus.v1.EchoInput\x1a\x1c.example.nexus.v1.EchoOutput\";\x8a\xc4\x037*5example.nexus.v1.Echo/${ language }/${! name.slug() }\x1a%\x8a\xc4\x03\t\n" +
 	"\aecho-v1\x92\xc4\x03\x06\x12\x04echoʂ\x04\n" +
 	"\x12\bdisabledB\xcc\x01\n" +
 	"\x14com.example.nexus.v1B\n" +
