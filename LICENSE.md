@@ -1,8 +1,8 @@
-Copyright for portions of project cludden/protoc-gen-go-temporal are held by Chad Retz, 2021 as part of project cretz/temporal-sdk-go-advanced. All other copyright for project cludden/protoc-gen-go-temporal are held by Chris Ludden, 2025.
+Copyright for portions of project cludden/protoc-gen-go-temporal are held by Chad Retz, 2026 as part of project cretz/temporal-sdk-go-advanced. All other copyright for project cludden/protoc-gen-go-temporal are held by Chris Ludden, 2026.
 
 MIT License
 
-Copyright (c) 2025 Chris Ludden
+Copyright (c) 2026 Chris Ludden
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@ SOFTWARE.
 
 MIT License
 
-Copyright (c) 2021 Chad Retz
+Copyright (c) 2026 Chad Retz
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

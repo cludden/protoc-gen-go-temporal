@@ -85,4 +85,4 @@ See the [documentation](https://cludden.github.io/protoc-gen-go-temporal/) for g
 
 ## License
 Licensed under the [MIT License](LICENSE.md)  
-Copyright for portions of project cludden/protoc-gen-go-temporal are held by Chad Retz, 2021 as part of project cretz/temporal-sdk-go-advanced. All other copyright for project cludden/protoc-gen-go-temporal are held by Chris Ludden, 2025.
+Copyright for portions of project cludden/protoc-gen-go-temporal are held by Chad Retz, 2021 as part of project cretz/temporal-sdk-go-advanced. All other copyright for project cludden/protoc-gen-go-temporal are held by Chris Ludden, 2026.
