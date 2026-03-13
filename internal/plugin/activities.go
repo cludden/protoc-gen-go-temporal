@@ -455,9 +455,10 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 				Block(
 					j.Id("opts").Dot("ScheduleToCloseTimeout").Op("=").Op("*").Id("v"),
 				)
-			if d := opts.GetScheduleToCloseTimeout().AsDuration(); d > 0 {
+			if d := opts.GetScheduleToCloseTimeout(); d != nil {
+				dd := d.AsDuration()
 				scheduleToCloseTimeout.Else().If(j.Id("opts").Dot("ScheduleToCloseTimeout").Op("==").Lit(0)).Block(
-					j.Id("opts").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+					j.Id("opts").Dot("ScheduleToCloseTimeout").Op("=").Id(strconv.FormatInt(dd.Nanoseconds(), 10)).Comment(durafmt.Parse(dd).String()),
 				)
 			}
 
@@ -479,9 +480,10 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 				Block(
 					j.Id("opts").Dot("StartToCloseTimeout").Op("=").Op("*").Id("v"),
 				)
-			if d := opts.GetStartToCloseTimeout().AsDuration(); d > 0 {
+			if d := opts.GetStartToCloseTimeout(); d != nil {
+				dd := d.AsDuration()
 				startToCloseTimeout.Else().If(j.Id("opts").Dot("StartToCloseTimeout").Op("==").Lit(0)).Block(
-					j.Id("opts").Dot("StartToCloseTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+					j.Id("opts").Dot("StartToCloseTimeout").Op("=").Id(strconv.FormatInt(dd.Nanoseconds(), 10)).Comment(durafmt.Parse(dd).String()),
 				)
 			}
 

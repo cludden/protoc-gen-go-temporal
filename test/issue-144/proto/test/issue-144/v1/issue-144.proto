@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package issue_144.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Issue144Service {
+  rpc ExplicitZeroScheduleTimeout(Input) returns (Output) {
+    option (temporal.v1.activity) = {
+      schedule_to_close_timeout: {seconds: 0}
+    };
+  }
+
+  rpc UnsetScheduleTimeout(Input) returns (Output) {
+    option (temporal.v1.activity) = {};
+  }
+}
+
+message Input {}
+
+message Output {}
