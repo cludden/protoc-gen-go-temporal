@@ -120,8 +120,9 @@ type ExampleClient interface {
 
 // exampleClient implements a temporal client for a example.mutex.v1.Example service
 type exampleClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewExampleClient initializes a new example.mutex.v1.Example client
@@ -133,8 +134,9 @@ func NewExampleClient(c client.Client, options ...*exampleClientOptions) Example
 		cfg = NewExampleClientOptions()
 	}
 	return &exampleClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -159,7 +161,8 @@ func NewExampleClientWithOptions(c client.Client, opts client.Options, options .
 
 // exampleClientOptions describes optional runtime configuration for a ExampleClient
 type exampleClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewExampleClientOptions initializes a new exampleClientOptions value
@@ -175,12 +178,23 @@ func (opts *exampleClientOptions) WithLogger(l *slog.Logger) *exampleClientOptio
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *exampleClientOptions) WithTaskQueue(tq string) *exampleClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *exampleClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// exampleClientOptionsContext describes context for the Example client options builder
+type exampleClientOptionsContext struct {
+	client *exampleClient
 }
 
 // Mutex is a workflow that manages concurrent access to a resource
@@ -202,7 +216,7 @@ func (c *exampleClient) MutexAsync(ctx context.Context, req *MutexInput, options
 	} else {
 		o = NewMutexOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &exampleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -240,12 +254,12 @@ func NewMutexWithAcquireLockOptions() *MutexWithAcquireLockOptions {
 }
 
 // Build transforms MutexWithAcquireLockOptions into valid client.UpdateWithStartWorkflowOptions
-func (o *MutexWithAcquireLockOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *MutexInput, update *AcquireLockInput) (options client.UpdateWithStartWorkflowOptions, err error) {
+func (o *MutexWithAcquireLockOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *MutexInput, update *AcquireLockInput, extraArgs ...*exampleClientOptionsContext) (options client.UpdateWithStartWorkflowOptions, err error) {
 	options = o.options
 	if o.workflowOptions == nil {
 		o.workflowOptions = NewMutexOptions()
 	}
-	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	swo, err := o.workflowOptions.Build(input.ProtoReflect(), extraArgs...)
 	if err != nil {
 		return options, err
 	}
@@ -305,7 +319,7 @@ func (c *exampleClient) MutexWithAcquireLockAsync(ctx context.Context, req *Mute
 	}
 	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
 		return c.client.NewWithStartWorkflowOperation(swo, MutexWorkflowName, req)
-	}, req, update)
+	}, req, update, &exampleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
@@ -338,7 +352,7 @@ func (c *exampleClient) SampleWorkflowWithMutexAsync(ctx context.Context, req *S
 	} else {
 		o = NewSampleWorkflowWithMutexOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &exampleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -454,8 +468,19 @@ func NewMutexOptions() *MutexOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *MutexOptions) Build(req protoreflect.Message, extraArgs ...*exampleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *exampleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &exampleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ExampleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -474,7 +499,7 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -690,8 +715,19 @@ func NewSampleWorkflowWithMutexOptions() *SampleWorkflowWithMutexOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message, extraArgs ...*exampleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *exampleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &exampleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ExampleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -710,7 +746,7 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1176,6 +1212,7 @@ func NewMutexChildOptions() *MutexChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *MutexChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ExampleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1207,7 +1244,7 @@ func (o *MutexChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1479,6 +1516,7 @@ func NewSampleWorkflowWithMutexChildOptions() *SampleWorkflowWithMutexChildOptio
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SampleWorkflowWithMutexChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ExampleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1510,7 +1548,7 @@ func (o *SampleWorkflowWithMutexChildOptions) Build(ctx workflow.Context, req pr
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2631,7 +2669,11 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				handle, _, err := client.MutexWithAcquireLockAsync(cmd.Context, input, update)
+				opts := NewMutexWithAcquireLockOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithMutexOptions(NewMutexOptions().WithTaskQueue(cmd.String("task-queue")))
+				}
+				handle, _, err := client.MutexWithAcquireLockAsync(cmd.Context, input, update, opts)
 				if err != nil {
 					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
@@ -2665,6 +2707,13 @@ func newExampleCommands(options ...*ExampleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "mutex",
 				},
 				&v2.StringFlag{
 					Aliases:  []string{"f"},

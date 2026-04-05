@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package test.client_task_queue.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service ClientTaskQueueService {
+  option (temporal.v1.service).task_queue = "foo";
+
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "bar"
+      signal: {
+        ref: "Bar"
+        start: true
+      }
+      update: {
+        ref: "Baz"
+        start: true
+      }
+    };
+  }
+
+  rpc Qux(QuxInput) returns (QuxOutput) {
+    option (temporal.v1.workflow) = {
+      signal: {
+        ref: "Bar"
+        start: true
+      }
+      update: {
+        ref: "Baz"
+        start: true
+      }
+    };
+  }
+
+  rpc Bar(BarInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Baz(BazInput) returns (BazOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+
+message FooInput {
+  string id = 1;
+}
+
+message FooOutput {
+  string result = 1;
+}
+
+message BarInput {
+  string id = 1;
+}
+
+message BarOutput {
+  string result = 1;
+}
+
+message BazInput {
+  string id = 1;
+}
+
+message BazOutput {
+  string result = 1;
+}
+
+message QuxInput {
+  string id = 1;
+}
+
+message QuxOutput {
+  string result = 1;
+}

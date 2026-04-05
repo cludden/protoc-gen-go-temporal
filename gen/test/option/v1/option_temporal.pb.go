@@ -100,8 +100,9 @@ type TestClient interface {
 
 // testClient implements a temporal client for a test.option.v1.Test service
 type testClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewTestClient initializes a new test.option.v1.Test client
@@ -113,8 +114,9 @@ func NewTestClient(c client.Client, options ...*testClientOptions) TestClient {
 		cfg = NewTestClientOptions()
 	}
 	return &testClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -139,7 +141,8 @@ func NewTestClientWithOptions(c client.Client, opts client.Options, options ...*
 
 // testClientOptions describes optional runtime configuration for a TestClient
 type testClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewTestClientOptions initializes a new testClientOptions value
@@ -155,12 +158,23 @@ func (opts *testClientOptions) WithLogger(l *slog.Logger) *testClientOptions {
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *testClientOptions) WithTaskQueue(tq string) *testClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *testClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// testClientOptionsContext describes context for the Test client options builder
+type testClientOptionsContext struct {
+	client *testClient
 }
 
 // test.option.v1.Test.WorkflowWithInput executes a test.option.v1.Test.WorkflowWithInput workflow and blocks until error or response received
@@ -180,7 +194,7 @@ func (c *testClient) WorkflowWithInputAsync(ctx context.Context, req *WorkflowWi
 	} else {
 		o = NewWorkflowWithInputOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &testClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -287,8 +301,19 @@ func NewWorkflowWithInputOptions() *WorkflowWithInputOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *WorkflowWithInputOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *WorkflowWithInputOptions) Build(req protoreflect.Message, extraArgs ...*testClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *testClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &testClientOptionsContext{}
+	}
+
+	defaultTaskQueue := "option-v2"
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -311,7 +336,7 @@ func (o *WorkflowWithInputOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = "option-v2"
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -788,6 +813,7 @@ func NewWorkflowWithInputChildOptions() *WorkflowWithInputChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *WorkflowWithInputChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := "option-v2"
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -821,7 +847,7 @@ func (o *WorkflowWithInputChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = "option-v2"
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

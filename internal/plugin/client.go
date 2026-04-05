@@ -92,8 +92,21 @@ func (n *names) clientWorkflowOptions(workflow protoreflect.FullName) string {
 	return n.toCamel("%sOptions", workflow)
 }
 
+func (n *names) clientWorkflowOptionsContext() string {
+	return n.toLowerCamel("%sClientOptionsContext", n.Service.GoName)
+}
+
 func (n *names) clientWorkflowOptionsCtor(workflow protoreflect.FullName) string {
 	return n.toCamel("New%sOptions", workflow)
+}
+
+func (m *Manifest) genClientWorkflowOptionsContext(f *j.File) {
+	typeName := m.Names().clientWorkflowOptionsContext()
+
+	f.Commentf("%s describes context for the %s client options builder", typeName, m.Service.GoName)
+	f.Type().Id(typeName).StructFunc(func(g *j.Group) {
+		g.Id("client").Op("*").Id(m.Names().clientImpl())
+	})
 }
 
 // genClientImpl generates a <service>Client implementation
@@ -106,6 +119,7 @@ func (m *Manifest) genClientImpl(f *j.File) {
 		StructFunc(func(g *j.Group) {
 			g.Id("client").Qual(clientPkg, "Client")
 			g.Id("log").Op("*").Qual("log/slog", "Logger")
+			g.Id("taskQueue").String()
 		})
 }
 
@@ -141,6 +155,7 @@ func (m *Manifest) genClientImplConstructor(f *j.File) {
 					multiLineValues,
 					j.Id("client").Op(":").Id("c"),
 					j.Id("log").Op(":").Id("cfg").Dot("getLogger").Call(),
+					j.Id("taskQueue").Op(":").Id("cfg").Dot("taskQueue"),
 				),
 			),
 		)
@@ -397,6 +412,9 @@ func (m *Manifest) genClientImplSignalWithStartMethodAsync(f *j.File, workflow, 
 				} else {
 					g.Nil()
 				}
+				g.Op("&").Id(m.Names().clientWorkflowOptionsContext()).ValuesFunc(func(g *j.Group) {
+					g.Id("client").Op(":").Id("c")
+				})
 			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
@@ -735,6 +753,9 @@ func (m *Manifest) genClientImplUpdateWithStartMethodAsync(f *j.File, workflow, 
 				if hasUpdateInput {
 					g.Id("update")
 				}
+				g.Op("&").Id(m.Names().clientWorkflowOptionsContext()).ValuesFunc(func(g *j.Group) {
+					g.Id("client").Op(":").Id("c")
+				})
 			})
 			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
 				g.Return(j.Nil(), j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing UpdateWorkflowWithOptions: %w"), j.Err()))
@@ -803,6 +824,7 @@ func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update p
 			if hasUpdateInput {
 				g.Id("update").Op("*").Qual(string(handler.Input.GoIdent.GoImportPath), m.getMessageName(handler.Input))
 			}
+			g.Id("extraArgs").Op("...").Op("*").Id(m.Names().clientWorkflowOptionsContext())
 		}).
 		ParamsFunc(func(g *j.Group) {
 			g.Id("options").Qual(clientPkg, "UpdateWithStartWorkflowOptions")
@@ -824,6 +846,7 @@ func (m *Manifest) genClientUpdateWithStartOptions(f *j.File, workflow, update p
 				} else {
 					g.Nil()
 				}
+				g.Id("extraArgs").Op("...")
 			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Id("options"), j.Err()),
@@ -1068,6 +1091,9 @@ func (m *Manifest) genClientImplWorkflowMethodAsync(f *j.File, workflow protoref
 				} else {
 					g.Nil()
 				}
+				g.Op("&").Id(m.Names().clientWorkflowOptionsContext()).ValuesFunc(func(g *j.Group) {
+					g.Id("client").Op(":").Id("c")
+				})
 			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Nil(), j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client.StartWorkflowOptions: %w"), j.Err())),
@@ -1448,6 +1474,7 @@ func (m *Manifest) genClientOptions(f *j.File) {
 	f.Commentf("%s describes optional runtime configuration for a %s", typeName, m.toCamel("%sClient", m.Service.GoName))
 	f.Type().Id(typeName).Struct(
 		j.Id("log").Op("*").Qual("log/slog", "Logger"),
+		j.Id("taskQueue").String(),
 	)
 
 	constructorName := m.toCamel("New%sClientOptions", m.Service.GoName)
@@ -1466,6 +1493,17 @@ func (m *Manifest) genClientOptions(f *j.File) {
 			j.If(j.Id("l").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("log").Op("=").Id("l"),
 			),
+			j.Return(j.Id("opts")),
+		)
+
+	f.Comment("WithTaskQueue can be used to override the default task queue for this client")
+	f.Func().
+		Params(j.Id("opts").Op("*").Id(typeName)).
+		Id("WithTaskQueue").
+		Params(j.Id("tq").String()).
+		Op("*").Id(typeName).
+		Block(
+			j.Id("opts").Dot("taskQueue").Op("=").Id("tq"),
 			j.Return(j.Id("opts")),
 		)
 
@@ -2305,6 +2343,9 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 				g.Id("ctx").Qual(workflowPkg, "Context")
 			}
 			g.Id("req").Qual(protoreflectPkg, "Message")
+			if !child {
+				g.Id("extraArgs").Op("...").Op("*").Id(m.Names().clientWorkflowOptionsContext())
+			}
 		}).
 		Params(
 			j.Qual(optionsPkg, optionsType),
@@ -2312,6 +2353,32 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 		).
 		BlockFunc(func(g *j.Group) {
 			g.Id("opts").Op(":=").Id("o").Dot("options")
+
+			if !child {
+				g.Var().Id("extra").Op("*").Id(m.Names().clientWorkflowOptionsContext())
+				g.IfFunc(func(g *j.Group) {
+					g.Len(j.Id("extraArgs")).Op(">").Lit(0).Op("&&").
+						Id("extraArgs").Index(j.Lit(0)).Op("!=").Nil()
+				}).BlockFunc(func(g *j.Group) {
+					g.Id("extra").Op("=").Id("extraArgs").Index(j.Lit(0))
+				}).Else().BlockFunc(func(g *j.Group) {
+					g.Id("extra").Op("=").Op("&").Id(m.Names().clientWorkflowOptionsContext()).Values()
+				}).Line()
+			}
+
+			if opts.GetTaskQueue() != "" {
+				g.Id("defaultTaskQueue").Op(":=").Lit(opts.GetTaskQueue())
+			} else {
+				g.Id("defaultTaskQueue").Op(":=").Id(m.Names().taskQueue())
+			}
+			if !child {
+				g.IfFunc(func(g *j.Group) {
+					g.Id("extra").Dot("client").Op("!=").Nil().Op("&&").
+						Id("extra").Dot("client").Dot("taskQueue").Op("!=").Lit("")
+				}).BlockFunc(func(g *j.Group) {
+					g.Id("defaultTaskQueue").Op("=").Id("extra").Dot("client").Dot("taskQueue")
+				})
+			}
 
 			// set ID
 			idFieldName := "ID"
@@ -2425,19 +2492,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			g.If(j.Id("v").Op(":=").Id("o").Dot("taskQueue"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("TaskQueue").Op("=").Op("*").Id("v"),
 			).Else().If(j.Id("opts").Dot("TaskQueue").Op("==").Lit("")).BlockFunc(func(g *j.Group) {
-				var taskQueueVar j.Code
-				if tq := opts.GetTaskQueue(); tq != "" {
-					taskQueueVar = j.Lit(tq)
-				} else if tq = m.opts.GetTaskQueue(); tq != "" {
-					taskQueueVar = j.Id(m.toCamel("%sTaskQueue", m.Service.GoName))
-				}
-				if taskQueueVar != nil {
-					g.Id("opts").Dot("TaskQueue").Op("=").Add(taskQueueVar)
-				} else if child {
-					g.Id("opts").Dot("TaskQueue").Op("=").Qual(workflowPkg, "GetInfo").Call(j.Id("ctx")).Dot("TaskQueueName")
-				} else {
-					g.Return(j.Id("opts"), j.Qual("errors", "New").Call(j.Lit("TaskQueue is required")))
-				}
+				g.Id("opts").Dot("TaskQueue").Op("=").Id("defaultTaskQueue")
 			})
 
 			// set RetryPolicy

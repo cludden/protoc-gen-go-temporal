@@ -73,8 +73,9 @@ type GreetingServiceClient interface {
 
 // greetingServiceClient implements a temporal client for a example.nexus.v1.GreetingService service
 type greetingServiceClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewGreetingServiceClient initializes a new example.nexus.v1.GreetingService client
@@ -86,8 +87,9 @@ func NewGreetingServiceClient(c client.Client, options ...*greetingServiceClient
 		cfg = NewGreetingServiceClientOptions()
 	}
 	return &greetingServiceClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -112,7 +114,8 @@ func NewGreetingServiceClientWithOptions(c client.Client, opts client.Options, o
 
 // greetingServiceClientOptions describes optional runtime configuration for a GreetingServiceClient
 type greetingServiceClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewGreetingServiceClientOptions initializes a new greetingServiceClientOptions value
@@ -128,12 +131,23 @@ func (opts *greetingServiceClientOptions) WithLogger(l *slog.Logger) *greetingSe
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *greetingServiceClientOptions) WithTaskQueue(tq string) *greetingServiceClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *greetingServiceClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// greetingServiceClientOptionsContext describes context for the GreetingService client options builder
+type greetingServiceClientOptionsContext struct {
+	client *greetingServiceClient
 }
 
 // generates a friendly greeting based on the input name and language
@@ -153,7 +167,7 @@ func (c *greetingServiceClient) HelloAsync(ctx context.Context, req *HelloInput,
 	} else {
 		o = NewHelloOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &greetingServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -210,8 +224,19 @@ func NewHelloOptions() *HelloOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *HelloOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *HelloOptions) Build(req protoreflect.Message, extraArgs ...*greetingServiceClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *greetingServiceClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &greetingServiceClientOptionsContext{}
+	}
+
+	defaultTaskQueue := GreetingServiceTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -230,7 +255,7 @@ func (o *HelloOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = GreetingServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -536,6 +561,7 @@ func NewHelloChildOptions() *HelloChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *HelloChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := GreetingServiceTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -567,7 +593,7 @@ func (o *HelloChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = GreetingServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1346,8 +1372,9 @@ type EchoServiceClient interface {
 
 // echoServiceClient implements a temporal client for a example.nexus.v1.EchoService service
 type echoServiceClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewEchoServiceClient initializes a new example.nexus.v1.EchoService client
@@ -1359,8 +1386,9 @@ func NewEchoServiceClient(c client.Client, options ...*echoServiceClientOptions)
 		cfg = NewEchoServiceClientOptions()
 	}
 	return &echoServiceClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -1385,7 +1413,8 @@ func NewEchoServiceClientWithOptions(c client.Client, opts client.Options, optio
 
 // echoServiceClientOptions describes optional runtime configuration for a EchoServiceClient
 type echoServiceClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewEchoServiceClientOptions initializes a new echoServiceClientOptions value
@@ -1401,12 +1430,23 @@ func (opts *echoServiceClientOptions) WithLogger(l *slog.Logger) *echoServiceCli
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *echoServiceClientOptions) WithTaskQueue(tq string) *echoServiceClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *echoServiceClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// echoServiceClientOptionsContext describes context for the EchoService client options builder
+type echoServiceClientOptionsContext struct {
+	client *echoServiceClient
 }
 
 // echoes back the input string
@@ -1426,7 +1466,7 @@ func (c *echoServiceClient) EchoAsync(ctx context.Context, req *EchoInput, optio
 	} else {
 		o = NewEchoOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &echoServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -1483,8 +1523,19 @@ func NewEchoOptions() *EchoOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *EchoOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *EchoOptions) Build(req protoreflect.Message, extraArgs ...*echoServiceClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *echoServiceClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &echoServiceClientOptionsContext{}
+	}
+
+	defaultTaskQueue := EchoServiceTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -1503,7 +1554,7 @@ func (o *EchoOptions) Build(req protoreflect.Message) (client.StartWorkflowOptio
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = EchoServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1809,6 +1860,7 @@ func NewEchoChildOptions() *EchoChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *EchoChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := EchoServiceTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1840,7 +1892,7 @@ func (o *EchoChildOptions) Build(ctx workflow.Context, req protoreflect.Message)
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = EchoServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

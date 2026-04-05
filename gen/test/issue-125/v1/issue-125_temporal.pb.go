@@ -96,8 +96,9 @@ type Issue125ServiceClient interface {
 
 // issue125ServiceClient implements a temporal client for a issue_125.v1.Issue125Service service
 type issue125ServiceClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewIssue125ServiceClient initializes a new issue_125.v1.Issue125Service client
@@ -109,8 +110,9 @@ func NewIssue125ServiceClient(c client.Client, options ...*issue125ServiceClient
 		cfg = NewIssue125ServiceClientOptions()
 	}
 	return &issue125ServiceClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -135,7 +137,8 @@ func NewIssue125ServiceClientWithOptions(c client.Client, opts client.Options, o
 
 // issue125ServiceClientOptions describes optional runtime configuration for a Issue125ServiceClient
 type issue125ServiceClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewIssue125ServiceClientOptions initializes a new issue125ServiceClientOptions value
@@ -151,12 +154,23 @@ func (opts *issue125ServiceClientOptions) WithLogger(l *slog.Logger) *issue125Se
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *issue125ServiceClientOptions) WithTaskQueue(tq string) *issue125ServiceClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *issue125ServiceClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// issue125ServiceClientOptionsContext describes context for the Issue125Service client options builder
+type issue125ServiceClientOptionsContext struct {
+	client *issue125ServiceClient
 }
 
 // issue_125.v1.Issue125Service.Foo executes a issue_125.v1.Issue125Service.Foo workflow and blocks until error or response received
@@ -176,7 +190,7 @@ func (c *issue125ServiceClient) FooAsync(ctx context.Context, req *FooInput, opt
 	} else {
 		o = NewFooOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &issue125ServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -333,8 +347,19 @@ func NewFooOptions() *FooOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *FooOptions) Build(req protoreflect.Message, extraArgs ...*issue125ServiceClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *issue125ServiceClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &issue125ServiceClientOptionsContext{}
+	}
+
+	defaultTaskQueue := Issue125ServiceTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -353,7 +378,7 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = Issue125ServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -953,6 +978,7 @@ func NewFooChildOptions() *FooChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *FooChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := Issue125ServiceTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -984,7 +1010,7 @@ func (o *FooChildOptions) Build(ctx workflow.Context, req protoreflect.Message) 
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = Issue125ServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

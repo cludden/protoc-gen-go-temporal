@@ -163,6 +163,24 @@
     - [test.activity.v1.BazOutput](#test-activity-v1-bazoutput)
     - [test.activity.v1.FooInput](#test-activity-v1-fooinput)
     - [test.activity.v1.FooOutput](#test-activity-v1-foooutput)
+- [test.client_task_queue.v1](#test-client_task_queue-v1)
+  - Services
+    - [test.client_task_queue.v1.ClientTaskQueueService](#test-client_task_queue-v1-clienttaskqueueservice)
+      - [Workflows](#test-client_task_queue-v1-clienttaskqueueservice-workflows)
+        - [test.client_task_queue.v1.ClientTaskQueueService.Foo](#test-client_task_queue-v1-clienttaskqueueservice-foo-workflow)
+        - [test.client_task_queue.v1.ClientTaskQueueService.Qux](#test-client_task_queue-v1-clienttaskqueueservice-qux-workflow)
+      - [Signals](#test-client_task_queue-v1-clienttaskqueueservice-signals)
+        - [test.client_task_queue.v1.ClientTaskQueueService.Bar](#test-client_task_queue-v1-clienttaskqueueservice-bar-signal)
+      - [Updates](#test-client_task_queue-v1-clienttaskqueueservice-updates)
+        - [test.client_task_queue.v1.ClientTaskQueueService.Baz](#test-client_task_queue-v1-clienttaskqueueservice-baz-update)
+  - Messages
+    - [test.client_task_queue.v1.BarInput](#test-client_task_queue-v1-barinput)
+    - [test.client_task_queue.v1.BazInput](#test-client_task_queue-v1-bazinput)
+    - [test.client_task_queue.v1.BazOutput](#test-client_task_queue-v1-bazoutput)
+    - [test.client_task_queue.v1.FooInput](#test-client_task_queue-v1-fooinput)
+    - [test.client_task_queue.v1.FooOutput](#test-client_task_queue-v1-foooutput)
+    - [test.client_task_queue.v1.QuxInput](#test-client_task_queue-v1-quxinput)
+    - [test.client_task_queue.v1.QuxOutput](#test-client_task_queue-v1-quxoutput)
 - [test.editions](#test-editions)
   - Services
     - [test.editions.FooService](#test-editions-fooservice)
@@ -3818,6 +3836,349 @@ go_name: Input</pre></td>
 <td><pre>
 json_name: output
 go_name: Output</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1"></a>
+# test.client_task_queue.v1
+
+<a name="test-client_task_queue-v1-services"></a>
+## Services
+
+<a name="test-client_task_queue-v1-clienttaskqueueservice"></a>
+## test.client_task_queue.v1.ClientTaskQueueService
+
+<a name="test-client_task_queue-v1-clienttaskqueueservice-workflows"></a>
+### Workflows
+
+---
+<a name="test-client_task_queue-v1-clienttaskqueueservice-foo-workflow"></a>
+### test.client_task_queue.v1.ClientTaskQueueService.Foo
+
+**Input:** [test.client_task_queue.v1.FooInput](#test-client_task_queue-v1-fooinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+**Output:** [test.client_task_queue.v1.FooOutput](#test-client_task_queue-v1-foooutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+<tr><td>task_queue</td><td><pre><code>bar</code></pre></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#test-client_task_queue-v1-clienttaskqueueservice-bar-signal">test.client_task_queue.v1.ClientTaskQueueService.Bar</a></td><td>true</td></tr>
+</table>
+
+**Updates:**
+
+<table>
+<tr><th>Update</th></tr>
+<tr><td><a href="#test-client_task_queue-v1-clienttaskqueueservice-baz-update">test.client_task_queue.v1.ClientTaskQueueService.Baz</a></td></tr>
+</table>
+
+---
+<a name="test-client_task_queue-v1-clienttaskqueueservice-qux-workflow"></a>
+### test.client_task_queue.v1.ClientTaskQueueService.Qux
+
+**Input:** [test.client_task_queue.v1.QuxInput](#test-client_task_queue-v1-quxinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+**Output:** [test.client_task_queue.v1.QuxOutput](#test-client_task_queue-v1-quxoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
+
+**Signals:**
+
+<table>
+<tr><th>Signal</th><th>Start</th></tr>
+<tr><td><a href="#test-client_task_queue-v1-clienttaskqueueservice-bar-signal">test.client_task_queue.v1.ClientTaskQueueService.Bar</a></td><td>true</td></tr>
+</table>
+
+**Updates:**
+
+<table>
+<tr><th>Update</th></tr>
+<tr><td><a href="#test-client_task_queue-v1-clienttaskqueueservice-baz-update">test.client_task_queue.v1.ClientTaskQueueService.Baz</a></td></tr>
+</table>   
+
+<a name="test-client_task_queue-v1-clienttaskqueueservice-signals"></a>
+### Signals
+
+---
+<a name="test-client_task_queue-v1-clienttaskqueueservice-bar-signal"></a>
+### test.client_task_queue.v1.ClientTaskQueueService.Bar
+
+
+
+**Input:** [test.client_task_queue.v1.BarInput](#test-client_task_queue-v1-barinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>  
+
+<a name="test-client_task_queue-v1-clienttaskqueueservice-updates"></a>
+### Updates
+
+---
+<a name="test-client_task_queue-v1-clienttaskqueueservice-baz-update"></a>
+### test.client_task_queue.v1.ClientTaskQueueService.Baz
+
+
+
+**Input:** [test.client_task_queue.v1.BazInput](#test-client_task_queue-v1-bazinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+**Output:** [test.client_task_queue.v1.BazOutput](#test-client_task_queue-v1-bazoutput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table> 
+
+<a name="test-client_task_queue-v1-messages"></a>
+## Messages
+
+<a name="test-client_task_queue-v1-barinput"></a>
+### test.client_task_queue.v1.BarInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1-bazinput"></a>
+### test.client_task_queue.v1.BazInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1-bazoutput"></a>
+### test.client_task_queue.v1.BazOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1-fooinput"></a>
+### test.client_task_queue.v1.FooInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1-foooutput"></a>
+### test.client_task_queue.v1.FooOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1-quxinput"></a>
+### test.client_task_queue.v1.QuxInput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>id</td>
+<td>string</td>
+<td><pre>
+json_name: id
+go_name: Id</pre></td>
+</tr>
+</table>
+
+
+
+<a name="test-client_task_queue-v1-quxoutput"></a>
+### test.client_task_queue.v1.QuxOutput
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>result</td>
+<td>string</td>
+<td><pre>
+json_name: result
+go_name: Result</pre></td>
 </tr>
 </table>
 

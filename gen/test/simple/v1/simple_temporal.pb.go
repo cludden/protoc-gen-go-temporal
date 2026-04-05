@@ -222,8 +222,9 @@ type SimpleClient interface {
 
 // simpleClient implements a temporal client for a mycompany.simple.Simple service
 type simpleClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewSimpleClient initializes a new mycompany.simple.Simple client
@@ -235,8 +236,9 @@ func NewSimpleClient(c client.Client, options ...*simpleClientOptions) SimpleCli
 		cfg = NewSimpleClientOptions()
 	}
 	return &simpleClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -261,7 +263,8 @@ func NewSimpleClientWithOptions(c client.Client, opts client.Options, options ..
 
 // simpleClientOptions describes optional runtime configuration for a SimpleClient
 type simpleClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewSimpleClientOptions initializes a new simpleClientOptions value
@@ -277,12 +280,23 @@ func (opts *simpleClientOptions) WithLogger(l *slog.Logger) *simpleClientOptions
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *simpleClientOptions) WithTaskQueue(tq string) *simpleClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *simpleClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// simpleClientOptionsContext describes context for the Simple client options builder
+type simpleClientOptionsContext struct {
+	client *simpleClient
 }
 
 // mycompany.simple.Simple.ExampleContinueAsNew executes a mycompany.simple.Simple.ExampleContinueAsNew workflow and blocks until error or response received
@@ -302,7 +316,7 @@ func (c *simpleClient) ExampleContinueAsNewAsync(ctx context.Context, req *Examp
 	} else {
 		o = NewExampleContinueAsNewOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -344,7 +358,7 @@ func (c *simpleClient) SomeWorkflow1Async(ctx context.Context, req *SomeWorkflow
 	} else {
 		o = NewSomeWorkflow1Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -382,12 +396,12 @@ func NewSomeWorkflow1WithSomeUpdate2Options() *SomeWorkflow1WithSomeUpdate2Optio
 }
 
 // Build transforms SomeWorkflow1WithSomeUpdate2Options into valid client.UpdateWithStartWorkflowOptions
-func (o *SomeWorkflow1WithSomeUpdate2Options) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *SomeWorkflow1Request, update *SomeUpdate2Request) (options client.UpdateWithStartWorkflowOptions, err error) {
+func (o *SomeWorkflow1WithSomeUpdate2Options) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *SomeWorkflow1Request, update *SomeUpdate2Request, extraArgs ...*simpleClientOptionsContext) (options client.UpdateWithStartWorkflowOptions, err error) {
 	options = o.options
 	if o.workflowOptions == nil {
 		o.workflowOptions = NewSomeWorkflow1Options()
 	}
-	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	swo, err := o.workflowOptions.Build(input.ProtoReflect(), extraArgs...)
 	if err != nil {
 		return options, err
 	}
@@ -447,7 +461,7 @@ func (c *simpleClient) SomeWorkflow1WithSomeUpdate2Async(ctx context.Context, re
 	}
 	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
 		return c.client.NewWithStartWorkflowOperation(swo, SomeWorkflow1WorkflowName, req)
-	}, req, update)
+	}, req, update, &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
@@ -478,7 +492,7 @@ func (c *simpleClient) SomeWorkflow2Async(ctx context.Context, options ...*SomeW
 	} else {
 		o = NewSomeWorkflow2Options()
 	}
-	opts, err := o.Build(nil)
+	opts, err := o.Build(nil, &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -520,7 +534,7 @@ func (c *simpleClient) SomeWorkflow2WithSomeSignal1Async(ctx context.Context, op
 	} else {
 		o = NewSomeWorkflow2Options()
 	}
-	opts, err := o.Build(nil)
+	opts, err := o.Build(nil, &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -547,12 +561,12 @@ func NewSomeWorkflow2WithSomeUpdate1Options() *SomeWorkflow2WithSomeUpdate1Optio
 }
 
 // Build transforms SomeWorkflow2WithSomeUpdate1Options into valid client.UpdateWithStartWorkflowOptions
-func (o *SomeWorkflow2WithSomeUpdate1Options) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, update *SomeUpdate1Request) (options client.UpdateWithStartWorkflowOptions, err error) {
+func (o *SomeWorkflow2WithSomeUpdate1Options) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, update *SomeUpdate1Request, extraArgs ...*simpleClientOptionsContext) (options client.UpdateWithStartWorkflowOptions, err error) {
 	options = o.options
 	if o.workflowOptions == nil {
 		o.workflowOptions = NewSomeWorkflow2Options()
 	}
-	swo, err := o.workflowOptions.Build(nil)
+	swo, err := o.workflowOptions.Build(nil, extraArgs...)
 	if err != nil {
 		return options, err
 	}
@@ -612,7 +626,7 @@ func (c *simpleClient) SomeWorkflow2WithSomeUpdate1Async(ctx context.Context, up
 	}
 	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
 		return c.client.NewWithStartWorkflowOperation(swo, SomeWorkflow2WorkflowName)
-	}, update)
+	}, update, &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
@@ -647,7 +661,7 @@ func (c *simpleClient) SomeWorkflow3Async(ctx context.Context, req *SomeWorkflow
 	} else {
 		o = NewSomeWorkflow3Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -697,7 +711,7 @@ func (c *simpleClient) SomeWorkflow3WithSomeSignal2Async(ctx context.Context, re
 	} else {
 		o = NewSomeWorkflow3Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -728,7 +742,7 @@ func (c *simpleClient) SomeWorkflow4Async(ctx context.Context, req *v1.Paginated
 	} else {
 		o = NewSomeWorkflow4Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &simpleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -922,8 +936,19 @@ func NewExampleContinueAsNewOptions() *ExampleContinueAsNewOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *ExampleContinueAsNewOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ExampleContinueAsNewOptions) Build(req protoreflect.Message, extraArgs ...*simpleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *simpleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &simpleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := SimpleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -942,7 +967,7 @@ func (o *ExampleContinueAsNewOptions) Build(req protoreflect.Message) (client.St
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1123,8 +1148,19 @@ func NewSomeWorkflow1Options() *SomeWorkflow1Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomeWorkflow1Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomeWorkflow1Options) Build(req protoreflect.Message, extraArgs ...*simpleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *simpleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &simpleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := SimpleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -1143,7 +1179,7 @@ func (o *SomeWorkflow1Options) Build(req protoreflect.Message) (client.StartWork
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1388,8 +1424,19 @@ func NewSomeWorkflow2Options() *SomeWorkflow2Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomeWorkflow2Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomeWorkflow2Options) Build(req protoreflect.Message, extraArgs ...*simpleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *simpleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &simpleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := SimpleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -1408,7 +1455,7 @@ func (o *SomeWorkflow2Options) Build(req protoreflect.Message) (client.StartWork
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1609,8 +1656,19 @@ func NewSomeWorkflow3Options() *SomeWorkflow3Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomeWorkflow3Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomeWorkflow3Options) Build(req protoreflect.Message, extraArgs ...*simpleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *simpleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &simpleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := "my-task-queue-2"
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -1631,7 +1689,7 @@ func (o *SomeWorkflow3Options) Build(req protoreflect.Message) (client.StartWork
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = "my-task-queue-2"
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1822,8 +1880,19 @@ func NewSomeWorkflow4Options() *SomeWorkflow4Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomeWorkflow4Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomeWorkflow4Options) Build(req protoreflect.Message, extraArgs ...*simpleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *simpleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &simpleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := SimpleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -1842,7 +1911,7 @@ func (o *SomeWorkflow4Options) Build(req protoreflect.Message) (client.StartWork
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2472,6 +2541,7 @@ func NewExampleContinueAsNewChildOptions() *ExampleContinueAsNewChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *ExampleContinueAsNewChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := SimpleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -2503,7 +2573,7 @@ func (o *ExampleContinueAsNewChildOptions) Build(ctx workflow.Context, req proto
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2798,6 +2868,7 @@ func NewSomeWorkflow1ChildOptions() *SomeWorkflow1ChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomeWorkflow1ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := SimpleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -2829,7 +2900,7 @@ func (o *SomeWorkflow1ChildOptions) Build(ctx workflow.Context, req protoreflect
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -3112,6 +3183,7 @@ func NewSomeWorkflow2ChildOptions() *SomeWorkflow2ChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomeWorkflow2ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := SimpleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -3133,7 +3205,7 @@ func (o *SomeWorkflow2ChildOptions) Build(ctx workflow.Context, req protoreflect
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -3404,6 +3476,7 @@ func NewSomeWorkflow3ChildOptions() *SomeWorkflow3ChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomeWorkflow3ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := "my-task-queue-2"
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -3421,7 +3494,7 @@ func (o *SomeWorkflow3ChildOptions) Build(ctx workflow.Context, req protoreflect
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = "my-task-queue-2"
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -3689,6 +3762,7 @@ func NewSomeWorkflow4ChildOptions() *SomeWorkflow4ChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomeWorkflow4ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := SimpleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -3720,7 +3794,7 @@ func (o *SomeWorkflow4ChildOptions) Build(ctx workflow.Context, req protoreflect
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = SimpleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -7690,7 +7764,11 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				handle, _, err := client.SomeWorkflow1WithSomeUpdate2Async(cmd.Context, input, update)
+				opts := NewSomeWorkflow1WithSomeUpdate2Options()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithSomeWorkflow1Options(NewSomeWorkflow1Options().WithTaskQueue(cmd.String("task-queue")))
+				}
+				handle, _, err := client.SomeWorkflow1WithSomeUpdate2Async(cmd.Context, input, update, opts)
 				if err != nil {
 					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
@@ -7724,6 +7802,13 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "my-task-queue",
 				},
 				&v2.StringFlag{
 					Aliases:  []string{"f"},
@@ -7820,6 +7905,13 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Usage:   "run workflow in the background and print workflow and execution id",
 					Aliases: []string{"d"},
 				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "my-task-queue",
+				},
 			},
 			Action: func(cmd *v2.Context) error {
 				c, err := opts.clientForCommand(cmd)
@@ -7828,7 +7920,11 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				}
 				defer c.Close()
 				client := NewSimpleClient(c)
-				run, err := client.SomeWorkflow2WithSomeSignal1Async(cmd.Context)
+				opts := NewSomeWorkflow2Options()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.SomeWorkflow2WithSomeSignal1Async(cmd.Context, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", SomeWorkflow2WorkflowName, SomeSignal1SignalName, err)
 				}
@@ -7858,7 +7954,11 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				handle, _, err := client.SomeWorkflow2WithSomeUpdate1Async(cmd.Context, update)
+				opts := NewSomeWorkflow2WithSomeUpdate1Options()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithSomeWorkflow2Options(NewSomeWorkflow2Options().WithTaskQueue(cmd.String("task-queue")))
+				}
+				handle, _, err := client.SomeWorkflow2WithSomeUpdate1Async(cmd.Context, update, opts)
 				if err != nil {
 					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
@@ -7892,6 +7992,13 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "my-task-queue",
 				},
 				&v2.StringFlag{
 					Aliases:  []string{"u"},
@@ -7993,6 +8100,13 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "my-task-queue-2",
+				},
+				&v2.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -8040,7 +8154,11 @@ func newSimpleCommands(options ...*SimpleCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.SomeWorkflow3WithSomeSignal2Async(cmd.Context, req, signal)
+				opts := NewSomeWorkflow3Options()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.SomeWorkflow3WithSomeSignal2Async(cmd.Context, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", SomeWorkflow3WorkflowName, SomeSignal2SignalName, err)
 				}
@@ -8527,8 +8645,9 @@ type OtherClient interface {
 
 // otherClient implements a temporal client for a mycompany.simple.Other service
 type otherClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewOtherClient initializes a new mycompany.simple.Other client
@@ -8540,8 +8659,9 @@ func NewOtherClient(c client.Client, options ...*otherClientOptions) OtherClient
 		cfg = NewOtherClientOptions()
 	}
 	return &otherClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -8566,7 +8686,8 @@ func NewOtherClientWithOptions(c client.Client, opts client.Options, options ...
 
 // otherClientOptions describes optional runtime configuration for a OtherClient
 type otherClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewOtherClientOptions initializes a new otherClientOptions value
@@ -8582,12 +8703,23 @@ func (opts *otherClientOptions) WithLogger(l *slog.Logger) *otherClientOptions {
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *otherClientOptions) WithTaskQueue(tq string) *otherClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *otherClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// otherClientOptionsContext describes context for the Other client options builder
+type otherClientOptionsContext struct {
+	client *otherClient
 }
 
 // mycompany.simple.Other.OtherWorkflow executes a mycompany.simple.Other.OtherWorkflow workflow and blocks until error or response received
@@ -8607,7 +8739,7 @@ func (c *otherClient) OtherWorkflowAsync(ctx context.Context, req *OtherWorkflow
 	} else {
 		o = NewOtherWorkflowOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &otherClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -8649,7 +8781,7 @@ func (c *otherClient) OtherWorkflow2Async(ctx context.Context, req *v1.Paginated
 	} else {
 		o = NewOtherWorkflow2Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &otherClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -8772,8 +8904,19 @@ func NewOtherWorkflowOptions() *OtherWorkflowOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *OtherWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *OtherWorkflowOptions) Build(req protoreflect.Message, extraArgs ...*otherClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *otherClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &otherClientOptionsContext{}
+	}
+
+	defaultTaskQueue := OtherTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -8792,7 +8935,7 @@ func (o *OtherWorkflowOptions) Build(req protoreflect.Message) (client.StartWork
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OtherTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -8973,8 +9116,19 @@ func NewOtherWorkflow2Options() *OtherWorkflow2Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *OtherWorkflow2Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *OtherWorkflow2Options) Build(req protoreflect.Message, extraArgs ...*otherClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *otherClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &otherClientOptionsContext{}
+	}
+
+	defaultTaskQueue := OtherTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -8993,7 +9147,7 @@ func (o *OtherWorkflow2Options) Build(req protoreflect.Message) (client.StartWor
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OtherTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -9443,6 +9597,7 @@ func NewOtherWorkflowChildOptions() *OtherWorkflowChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *OtherWorkflowChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := OtherTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -9465,7 +9620,7 @@ func (o *OtherWorkflowChildOptions) Build(ctx workflow.Context, req protoreflect
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OtherTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -9718,6 +9873,7 @@ func NewOtherWorkflow2ChildOptions() *OtherWorkflow2ChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *OtherWorkflow2ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := OtherTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -9740,7 +9896,7 @@ func (o *OtherWorkflow2ChildOptions) Build(ctx workflow.Context, req protoreflec
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OtherTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -11255,6 +11411,9 @@ func WithOtherSchemeTypes() scheme.Option {
 	}
 }
 
+// IgnoredTaskQueue is the default task-queue for a mycompany.simple.Ignored worker
+var IgnoredTaskQueue = ""
+
 // mycompany.simple.Ignored workflow names
 const (
 	WhatWorkflowName = "mycompany.simple.Ignored.What"
@@ -11285,8 +11444,9 @@ type IgnoredClient interface {
 
 // ignoredClient implements a temporal client for a mycompany.simple.Ignored service
 type ignoredClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewIgnoredClient initializes a new mycompany.simple.Ignored client
@@ -11298,8 +11458,9 @@ func NewIgnoredClient(c client.Client, options ...*ignoredClientOptions) Ignored
 		cfg = NewIgnoredClientOptions()
 	}
 	return &ignoredClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -11324,7 +11485,8 @@ func NewIgnoredClientWithOptions(c client.Client, opts client.Options, options .
 
 // ignoredClientOptions describes optional runtime configuration for a IgnoredClient
 type ignoredClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewIgnoredClientOptions initializes a new ignoredClientOptions value
@@ -11340,12 +11502,23 @@ func (opts *ignoredClientOptions) WithLogger(l *slog.Logger) *ignoredClientOptio
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *ignoredClientOptions) WithTaskQueue(tq string) *ignoredClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *ignoredClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// ignoredClientOptionsContext describes context for the Ignored client options builder
+type ignoredClientOptionsContext struct {
+	client *ignoredClient
 }
 
 // mycompany.simple.Ignored.What executes a mycompany.simple.Ignored.What workflow and blocks until error or response received
@@ -11365,7 +11538,7 @@ func (c *ignoredClient) WhatAsync(ctx context.Context, req *WhatRequest, options
 	} else {
 		o = NewWhatOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &ignoredClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -11422,8 +11595,19 @@ func NewWhatOptions() *WhatOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *WhatOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *WhatOptions) Build(req protoreflect.Message, extraArgs ...*ignoredClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *ignoredClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &ignoredClientOptionsContext{}
+	}
+
+	defaultTaskQueue := IgnoredTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -11442,7 +11626,7 @@ func (o *WhatOptions) Build(req protoreflect.Message) (client.StartWorkflowOptio
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		return opts, errors.New("TaskQueue is required")
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -11744,6 +11928,7 @@ func NewWhatChildOptions() *WhatChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *WhatChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := IgnoredTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -11775,7 +11960,7 @@ func (o *WhatChildOptions) Build(ctx workflow.Context, req protoreflect.Message)
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = workflow.GetInfo(ctx).TaskQueueName
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -12047,6 +12232,9 @@ func WithIgnoredSchemeTypes() scheme.Option {
 		s.RegisterType(File_test_simple_v1_simple_proto.Messages().ByName("WhatRequest"))
 	}
 }
+
+// OnlyActivitiesTaskQueue is the default task-queue for a mycompany.simple.OnlyActivities worker
+var OnlyActivitiesTaskQueue = ""
 
 // mycompany.simple.OnlyActivities activity names
 const (
@@ -12332,6 +12520,9 @@ func WithOnlyActivitiesSchemeTypes() scheme.Option {
 	}
 }
 
+// DeprecatedTaskQueue is the default task-queue for a mycompany.simple.Deprecated worker
+var DeprecatedTaskQueue = ""
+
 // mycompany.simple.Deprecated workflow names
 const (
 	SomeDeprecatedWorkflow1WorkflowName = "mycompany.simple.Deprecated.SomeDeprecatedWorkflow1"
@@ -12473,8 +12664,9 @@ type DeprecatedClient interface {
 
 // deprecatedClient implements a temporal client for a mycompany.simple.Deprecated service
 type deprecatedClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewDeprecatedClient initializes a new mycompany.simple.Deprecated client
@@ -12486,8 +12678,9 @@ func NewDeprecatedClient(c client.Client, options ...*deprecatedClientOptions) D
 		cfg = NewDeprecatedClientOptions()
 	}
 	return &deprecatedClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -12512,7 +12705,8 @@ func NewDeprecatedClientWithOptions(c client.Client, opts client.Options, option
 
 // deprecatedClientOptions describes optional runtime configuration for a DeprecatedClient
 type deprecatedClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewDeprecatedClientOptions initializes a new deprecatedClientOptions value
@@ -12528,12 +12722,23 @@ func (opts *deprecatedClientOptions) WithLogger(l *slog.Logger) *deprecatedClien
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *deprecatedClientOptions) WithTaskQueue(tq string) *deprecatedClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *deprecatedClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// deprecatedClientOptionsContext describes context for the Deprecated client options builder
+type deprecatedClientOptionsContext struct {
+	client *deprecatedClient
 }
 
 // SomeDeprecatedWorkflow1 does something
@@ -12559,7 +12764,7 @@ func (c *deprecatedClient) SomeDeprecatedWorkflow1Async(ctx context.Context, req
 	} else {
 		o = NewSomeDeprecatedWorkflow1Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &deprecatedClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -12611,7 +12816,7 @@ func (c *deprecatedClient) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1Async
 	} else {
 		o = NewSomeDeprecatedWorkflow1Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &deprecatedClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -12648,7 +12853,7 @@ func (c *deprecatedClient) SomeDeprecatedWorkflow2Async(ctx context.Context, req
 	} else {
 		o = NewSomeDeprecatedWorkflow2Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &deprecatedClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -12700,7 +12905,7 @@ func (c *deprecatedClient) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2Async
 	} else {
 		o = NewSomeDeprecatedWorkflow2Options()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &deprecatedClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -12910,8 +13115,19 @@ func NewSomeDeprecatedWorkflow1Options() *SomeDeprecatedWorkflow1Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomeDeprecatedWorkflow1Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomeDeprecatedWorkflow1Options) Build(req protoreflect.Message, extraArgs ...*deprecatedClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *deprecatedClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &deprecatedClientOptionsContext{}
+	}
+
+	defaultTaskQueue := DeprecatedTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -12924,7 +13140,7 @@ func (o *SomeDeprecatedWorkflow1Options) Build(req protoreflect.Message) (client
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		return opts, errors.New("TaskQueue is required")
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -13153,8 +13369,19 @@ func NewSomeDeprecatedWorkflow2Options() *SomeDeprecatedWorkflow2Options {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomeDeprecatedWorkflow2Options) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomeDeprecatedWorkflow2Options) Build(req protoreflect.Message, extraArgs ...*deprecatedClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *deprecatedClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &deprecatedClientOptionsContext{}
+	}
+
+	defaultTaskQueue := DeprecatedTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -13167,7 +13394,7 @@ func (o *SomeDeprecatedWorkflow2Options) Build(req protoreflect.Message) (client
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		return opts, errors.New("TaskQueue is required")
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -13828,6 +14055,7 @@ func NewSomeDeprecatedWorkflow1ChildOptions() *SomeDeprecatedWorkflow1ChildOptio
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomeDeprecatedWorkflow1ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := DeprecatedTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -13837,7 +14065,7 @@ func (o *SomeDeprecatedWorkflow1ChildOptions) Build(ctx workflow.Context, req pr
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = workflow.GetInfo(ctx).TaskQueueName
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -14131,6 +14359,7 @@ func NewSomeDeprecatedWorkflow2ChildOptions() *SomeDeprecatedWorkflow2ChildOptio
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomeDeprecatedWorkflow2ChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := DeprecatedTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -14140,7 +14369,7 @@ func (o *SomeDeprecatedWorkflow2ChildOptions) Build(ctx workflow.Context, req pr
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = workflow.GetInfo(ctx).TaskQueueName
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -15970,6 +16199,13 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
+					Name:     "task-queue",
+					Usage:    "task queue name",
+					Aliases:  []string{"t"},
+					EnvVars:  []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Required: true,
+				},
+				&v2.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -15997,7 +16233,11 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1Async(cmd.Context, req, signal)
+				opts := NewSomeDeprecatedWorkflow1Options()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1Async(cmd.Context, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", SomeDeprecatedWorkflow1WorkflowName, SomeDeprecatedSignal1SignalName, err)
 				}
@@ -16106,6 +16346,13 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
+					Name:     "task-queue",
+					Usage:    "task queue name",
+					Aliases:  []string{"t"},
+					EnvVars:  []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Required: true,
+				},
+				&v2.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -16133,7 +16380,11 @@ func newDeprecatedCommands(options ...*DeprecatedCliOptions) ([]*v2.Command, err
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2Async(cmd.Context, req, signal)
+				opts := NewSomeDeprecatedWorkflow2Options()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2Async(cmd.Context, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", SomeDeprecatedWorkflow2WorkflowName, SomeDeprecatedSignal2SignalName, err)
 				}

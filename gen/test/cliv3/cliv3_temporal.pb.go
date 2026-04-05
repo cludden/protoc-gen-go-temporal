@@ -107,8 +107,9 @@ type ExampleServiceClient interface {
 
 // exampleServiceClient implements a temporal client for a test.cliv3.ExampleService service
 type exampleServiceClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewExampleServiceClient initializes a new test.cliv3.ExampleService client
@@ -120,8 +121,9 @@ func NewExampleServiceClient(c client.Client, options ...*exampleServiceClientOp
 		cfg = NewExampleServiceClientOptions()
 	}
 	return &exampleServiceClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -146,7 +148,8 @@ func NewExampleServiceClientWithOptions(c client.Client, opts client.Options, op
 
 // exampleServiceClientOptions describes optional runtime configuration for a ExampleServiceClient
 type exampleServiceClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewExampleServiceClientOptions initializes a new exampleServiceClientOptions value
@@ -162,12 +165,23 @@ func (opts *exampleServiceClientOptions) WithLogger(l *slog.Logger) *exampleServ
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *exampleServiceClientOptions) WithTaskQueue(tq string) *exampleServiceClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *exampleServiceClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// exampleServiceClientOptionsContext describes context for the ExampleService client options builder
+type exampleServiceClientOptionsContext struct {
+	client *exampleServiceClient
 }
 
 // test.cliv3.ExampleService.CreateFoo executes a test.cliv3.CreateFoo workflow and blocks until error or response received
@@ -187,7 +201,7 @@ func (c *exampleServiceClient) CreateFooAsync(ctx context.Context, req *CreateFo
 	} else {
 		o = NewCreateFooOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &exampleServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -229,7 +243,7 @@ func (c *exampleServiceClient) CreateFooWithSignalFooAsync(ctx context.Context, 
 	} else {
 		o = NewCreateFooOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &exampleServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -256,12 +270,12 @@ func NewCreateFooWithUpdateFooOptions() *CreateFooWithUpdateFooOptions {
 }
 
 // Build transforms CreateFooWithUpdateFooOptions into valid client.UpdateWithStartWorkflowOptions
-func (o *CreateFooWithUpdateFooOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *CreateFooInput, update *UpdateFooInput) (options client.UpdateWithStartWorkflowOptions, err error) {
+func (o *CreateFooWithUpdateFooOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *CreateFooInput, update *UpdateFooInput, extraArgs ...*exampleServiceClientOptionsContext) (options client.UpdateWithStartWorkflowOptions, err error) {
 	options = o.options
 	if o.workflowOptions == nil {
 		o.workflowOptions = NewCreateFooOptions()
 	}
-	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	swo, err := o.workflowOptions.Build(input.ProtoReflect(), extraArgs...)
 	if err != nil {
 		return options, err
 	}
@@ -321,7 +335,7 @@ func (c *exampleServiceClient) CreateFooWithUpdateFooAsync(ctx context.Context, 
 	}
 	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
 		return c.client.NewWithStartWorkflowOperation(swo, CreateFooWorkflowName, req)
-	}, req, update)
+	}, req, update, &exampleServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
@@ -433,8 +447,19 @@ func NewCreateFooOptions() *CreateFooOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *CreateFooOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *CreateFooOptions) Build(req protoreflect.Message, extraArgs ...*exampleServiceClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *exampleServiceClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &exampleServiceClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ExampleServiceTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -447,7 +472,7 @@ func (o *CreateFooOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -927,6 +952,7 @@ func NewCreateFooChildOptions() *CreateFooChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *CreateFooChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ExampleServiceTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -936,7 +962,7 @@ func (o *CreateFooChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1819,6 +1845,13 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Aliases: []string{"d"},
 				},
 				&cliv3.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					Sources: cliv3.NewValueSourceChain(cliv3.EnvVar("TEMPORAL_TASK_QUEUE_NAME"), cliv3.EnvVar("TEMPORAL_TASK_QUEUE"), cliv3.EnvVar("TASK_QUEUE_NAME"), cliv3.EnvVar("TASK_QUEUE")),
+					Value:   "example-cliv3",
+				},
+				&cliv3.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -1867,7 +1900,11 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.CreateFooWithSignalFooAsync(ctx, req, signal)
+				opts := NewCreateFooOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.CreateFooWithSignalFooAsync(ctx, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", CreateFooWorkflowName, SignalFooSignalName, err)
 				}
@@ -1910,7 +1947,11 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				handle, _, err := client.CreateFooWithUpdateFooAsync(ctx, input, update)
+				opts := NewCreateFooWithUpdateFooOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithCreateFooOptions(NewCreateFooOptions().WithTaskQueue(cmd.String("task-queue")))
+				}
+				handle, _, err := client.CreateFooWithUpdateFooAsync(ctx, input, update, opts)
 				if err != nil {
 					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
@@ -1944,6 +1985,13 @@ func newExampleServiceCommands(options ...*ExampleServiceCliOptions) ([]*cliv3.C
 					Aliases: []string{"d"},
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&cliv3.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					Sources: cliv3.NewValueSourceChain(cliv3.EnvVar("TEMPORAL_TASK_QUEUE_NAME"), cliv3.EnvVar("TEMPORAL_TASK_QUEUE"), cliv3.EnvVar("TASK_QUEUE_NAME"), cliv3.EnvVar("TASK_QUEUE")),
+					Value:   "example-cliv3",
 				},
 				&cliv3.StringFlag{
 					Aliases:  []string{"f"},

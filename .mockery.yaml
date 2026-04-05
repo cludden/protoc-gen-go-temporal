@@ -45,6 +45,16 @@ packages:
       pkgname: clientmocks
     interfaces:
       Client: {}
+      WithStartWorkflowOperation:
+        configs:
+          - replace-type:
+              go.temporal.io/sdk/internal:
+                Context:
+                  pkg-path: go.temporal.io/sdk/workflow
+                  type-name: Context
+                WorkflowRun:
+                  pkg-path: go.temporal.io/sdk/client
+                  type-name: WorkflowRun
       WorkflowRun:
         configs:
           - replace-type:
@@ -55,6 +65,16 @@ packages:
                 WorkflowRunGetOptions:
                   pkg-path: go.temporal.io/sdk/client
                   type-name: WorkflowRunGetOptions
+      WorkflowUpdateHandle:
+        configs:
+          - replace-type:
+              go.temporal.io/sdk/internal:
+                Context:
+                  pkg-path: go.temporal.io/sdk/workflow
+                  type-name: Context
+                WorkflowRun:
+                  pkg-path: go.temporal.io/sdk/client
+                  type-name: WorkflowRun
   go.temporal.io/sdk/worker:
     config:
       dir: mocks/go.temporal.io/sdk/worker

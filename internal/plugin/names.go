@@ -17,3 +17,7 @@ func (n *names) updateName(update protoreflect.FullName) string {
 func (n *names) workflowName(workflow protoreflect.FullName) string {
 	return n.toCamel("%sWorkflowName", workflow)
 }
+
+func (n *names) taskQueue() string {
+	return n.toCamel("%sTaskQueue", n.Service.GoName)
+}

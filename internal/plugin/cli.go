@@ -1122,6 +1122,7 @@ func (m *Manifest) genCliWorkflowCommand(g *j.Group, workflow protoreflect.FullN
 // genCliWorkflowWithSignalCommand generates a <Workflow>-with-<Signal> command
 func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protoreflect.FullName, opts *temporalv1.WorkflowOptions_Signal) {
 	method := m.methods[w]
+	wopts := m.workflows[w]
 	hasInput := !isEmpty(method.Input)
 	hasOutput := !isEmpty(method.Output)
 	handler := m.methods[signal]
@@ -1175,6 +1176,32 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 				g.Id("Name").Op(":").Lit("detach")
 				g.Id("Usage").Op(":").Lit(strings.TrimSpace("run workflow in the background and print workflow and execution id"))
 				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("d"))
+			})
+
+			// add task-queue flag
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("task-queue")
+				g.Id("Usage").Op(":").Lit("task queue name")
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("t"))
+				if m.cfg.CliV3Enabled {
+					g.Id("Sources").Op(":").Qual(cliV3Pkg, "NewValueSourceChain").CallFunc(func(g *j.Group) {
+						for _, envVar := range []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"} {
+							g.Qual(cliV3Pkg, "EnvVar").Call(j.Lit(envVar))
+						}
+					})
+				} else {
+					g.Id("EnvVars").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+						for _, envVar := range []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"} {
+							g.Lit(envVar)
+						}
+					})
+				}
+				tq := cmp.Or(wopts.GetTaskQueue(), m.opts.GetTaskQueue())
+				if tq == "" {
+					g.Id("Required").Op(":").True()
+				} else {
+					g.Id("Value").Op(":").Lit(tq)
+				}
 			})
 
 			if hasInput {
@@ -1280,6 +1307,11 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 				)
 			}
 
+			g.Id("opts").Op(":=").Id(m.Names().clientWorkflowOptionsCtor(w)).Call()
+			g.If(j.Id("cmd").Dot("String").Call(j.Lit("task-queue")).Op("!=").Lit("")).BlockFunc(func(g *j.Group) {
+				g.Id("opts").Op("=").Id("opts").Dot("WithTaskQueue").Call(j.Id("cmd").Dot("String").Call(j.Lit("task-queue")))
+			})
+
 			// execute operation
 			g.List(j.Id("run"), j.Err()).Op(":=").Id("client").Dot(m.toCamel("%sWith%sAsync", w, signal)).CallFunc(func(g *j.Group) {
 				if m.cfg.CliV3Enabled {
@@ -1293,6 +1325,7 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 				if hasSignalInput {
 					g.Id("signal")
 				}
+				g.Id("opts")
 			})
 			g.If(j.Err().Op("!=").Nil()).Block(
 				j.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error starting %s workflow with %s signal: %w"), j.Id(m.toCamel("%sWorkflowName", w)), j.Qual(m.goImportPathForMethod(signal), m.toCamel("%sSignalName", signal)), j.Err())),
@@ -1340,6 +1373,7 @@ func (m *Manifest) genCliWorkflowWithSignalCommand(g *j.Group, w, signal protore
 
 func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protoreflect.FullName, opts *temporalv1.WorkflowOptions_Update) {
 	method := m.methods[w]
+	wopts := m.workflows[w]
 	hasWorkflowInput := !isEmpty(method.Input)
 	handler := m.methods[update]
 	hasUpdateInput := !isEmpty(handler.Input)
@@ -1398,6 +1432,32 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 				g[j.Id("Usage")] = j.Lit(strings.TrimSpace("run workflow update in the background and print workflow, execution, and update id"))
 				g[j.Id("Aliases")] = j.Index().String().Values(j.Lit("d"))
 			}))
+
+			// add task-queue flag
+			g.Op("&").Qual(pkg, "StringFlag").CustomFunc(multiLineValues, func(g *j.Group) {
+				g.Id("Name").Op(":").Lit("task-queue")
+				g.Id("Usage").Op(":").Lit("task queue name")
+				g.Id("Aliases").Op(":").Index().String().Values(j.Lit("t"))
+				if m.cfg.CliV3Enabled {
+					g.Id("Sources").Op(":").Qual(cliV3Pkg, "NewValueSourceChain").CallFunc(func(g *j.Group) {
+						for _, envVar := range []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"} {
+							g.Qual(cliV3Pkg, "EnvVar").Call(j.Lit(envVar))
+						}
+					})
+				} else {
+					g.Id("EnvVars").Op(":").Index().String().ValuesFunc(func(g *j.Group) {
+						for _, envVar := range []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"} {
+							g.Lit(envVar)
+						}
+					})
+				}
+				tq := cmp.Or(wopts.GetTaskQueue(), m.opts.GetTaskQueue())
+				if tq == "" {
+					g.Id("Required").Op(":").True()
+				} else {
+					g.Id("Value").Op(":").Lit(tq)
+				}
+			})
 
 			// add workflow input flags
 			if hasWorkflowInput {
@@ -1464,6 +1524,7 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 				g.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error initializing client for command: %w"), j.Err()))
 			})
 			g.Defer().Id("c").Dot("Close").Call()
+
 			g.Id("client").Op(":=").Id(clientCtor).Call(j.Id("c"))
 
 			// unmarshal workflow input
@@ -1503,6 +1564,13 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 				})
 			}
 
+			g.Id("opts").Op(":=").Id(m.Names().clientUpdateWithStartOptionsCtor(w, update)).Call()
+			g.If(j.Id("cmd").Dot("String").Call(j.Lit("task-queue")).Op("!=").Lit("")).BlockFunc(func(g *j.Group) {
+				g.Id("opts").Op("=").Id("opts").Dot(m.toCamel("With%s", m.Names().clientWorkflowOptions(w))).Call(
+					j.Id(m.Names().clientWorkflowOptionsCtor(w)).Call().Dot("WithTaskQueue").Call(j.Id("cmd").Dot("String").Call(j.Lit("task-queue"))),
+				)
+			})
+
 			// execute operation
 			g.List(j.Id("handle"), j.Id("_"), j.Err()).Op(":=").Id("client").Dot(updateWithStart).CallFunc(func(g *j.Group) {
 				if m.cfg.CliV3Enabled {
@@ -1516,6 +1584,7 @@ func (m *Manifest) genCliWorkflowWithUpdateCommand(g *j.Group, w, update protore
 				if hasUpdateInput {
 					g.Id("update")
 				}
+				g.Id("opts")
 			})
 			g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
 				g.Return(j.Qual("fmt", "Errorf").Call(j.Lit("error starting workflow with update: %w"), j.Err()))

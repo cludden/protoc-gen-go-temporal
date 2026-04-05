@@ -79,8 +79,9 @@ type HybridClient interface {
 
 // hybridClient implements a temporal client for a test.opaque.Hybrid service
 type hybridClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewHybridClient initializes a new test.opaque.Hybrid client
@@ -92,8 +93,9 @@ func NewHybridClient(c client.Client, options ...*hybridClientOptions) HybridCli
 		cfg = NewHybridClientOptions()
 	}
 	return &hybridClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -118,7 +120,8 @@ func NewHybridClientWithOptions(c client.Client, opts client.Options, options ..
 
 // hybridClientOptions describes optional runtime configuration for a HybridClient
 type hybridClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewHybridClientOptions initializes a new hybridClientOptions value
@@ -134,12 +137,23 @@ func (opts *hybridClientOptions) WithLogger(l *slog.Logger) *hybridClientOptions
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *hybridClientOptions) WithTaskQueue(tq string) *hybridClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *hybridClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// hybridClientOptionsContext describes context for the Hybrid client options builder
+type hybridClientOptionsContext struct {
+	client *hybridClient
 }
 
 // test.opaque.Hybrid.PutHybridExample executes a test.opaque.Hybrid.PutHybridExample workflow and blocks until error or response received
@@ -159,7 +173,7 @@ func (c *hybridClient) PutHybridExampleAsync(ctx context.Context, req *HybridExa
 	} else {
 		o = NewPutHybridExampleOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &hybridClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -201,7 +215,7 @@ func (c *hybridClient) PutHybridExampleWithSignalHybridAsync(ctx context.Context
 	} else {
 		o = NewPutHybridExampleOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &hybridClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -252,8 +266,19 @@ func NewPutHybridExampleOptions() *PutHybridExampleOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *PutHybridExampleOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *PutHybridExampleOptions) Build(req protoreflect.Message, extraArgs ...*hybridClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *hybridClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &hybridClientOptionsContext{}
+	}
+
+	defaultTaskQueue := HybridTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -266,7 +291,7 @@ func (o *PutHybridExampleOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = HybridTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -582,6 +607,7 @@ func NewPutHybridExampleChildOptions() *PutHybridExampleChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *PutHybridExampleChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := HybridTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -591,7 +617,7 @@ func (o *PutHybridExampleChildOptions) Build(ctx workflow.Context, req protorefl
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = HybridTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1680,6 +1706,13 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "opaque-hybrid",
+				},
+				&v2.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -2283,7 +2316,11 @@ func newHybridCommands(options ...*HybridCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.PutHybridExampleWithSignalHybridAsync(cmd.Context, req, signal)
+				opts := NewPutHybridExampleOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.PutHybridExampleWithSignalHybridAsync(cmd.Context, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", PutHybridExampleWorkflowName, SignalHybridSignalName, err)
 				}

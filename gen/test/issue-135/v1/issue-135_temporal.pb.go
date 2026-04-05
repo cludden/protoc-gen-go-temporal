@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+// FOOBarTaskQueue is the default task-queue for a test.issue_135.v1.FOOBar worker
+var FOOBarTaskQueue = ""
+
 // test.issue_135.v1.FOOBar activity names
 const (
 	DoActivityName = "DoName"

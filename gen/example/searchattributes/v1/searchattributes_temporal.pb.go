@@ -91,8 +91,9 @@ type ExampleClient interface {
 
 // exampleClient implements a temporal client for a example.searchattributes.v1.Example service
 type exampleClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewExampleClient initializes a new example.searchattributes.v1.Example client
@@ -104,8 +105,9 @@ func NewExampleClient(c client.Client, options ...*exampleClientOptions) Example
 		cfg = NewExampleClientOptions()
 	}
 	return &exampleClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -130,7 +132,8 @@ func NewExampleClientWithOptions(c client.Client, opts client.Options, options .
 
 // exampleClientOptions describes optional runtime configuration for a ExampleClient
 type exampleClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewExampleClientOptions initializes a new exampleClientOptions value
@@ -146,12 +149,23 @@ func (opts *exampleClientOptions) WithLogger(l *slog.Logger) *exampleClientOptio
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *exampleClientOptions) WithTaskQueue(tq string) *exampleClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *exampleClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// exampleClientOptionsContext describes context for the Example client options builder
+type exampleClientOptionsContext struct {
+	client *exampleClient
 }
 
 // example.searchattributes.v1.Example.SearchAttributes executes a example.searchattributes.v1.Example.SearchAttributes workflow and blocks until error or response received
@@ -171,7 +185,7 @@ func (c *exampleClient) SearchAttributesAsync(ctx context.Context, req *SearchAt
 	} else {
 		o = NewSearchAttributesOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &exampleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -213,7 +227,7 @@ func (c *exampleClient) TypedSearchAttributesAsync(ctx context.Context, req *Typ
 	} else {
 		o = NewTypedSearchAttributesOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &exampleClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -270,8 +284,19 @@ func NewSearchAttributesOptions() *SearchAttributesOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SearchAttributesOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SearchAttributesOptions) Build(req protoreflect.Message, extraArgs ...*exampleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *exampleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &exampleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ExampleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -290,7 +315,7 @@ func (o *SearchAttributesOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -481,8 +506,19 @@ func NewTypedSearchAttributesOptions() *TypedSearchAttributesOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message, extraArgs ...*exampleClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *exampleClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &exampleClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ExampleTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -501,7 +537,7 @@ func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message) (client.S
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -841,6 +877,7 @@ func NewSearchAttributesChildOptions() *SearchAttributesChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SearchAttributesChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ExampleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -872,7 +909,7 @@ func (o *SearchAttributesChildOptions) Build(ctx workflow.Context, req protorefl
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1162,6 +1199,7 @@ func NewTypedSearchAttributesChildOptions() *TypedSearchAttributesChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *TypedSearchAttributesChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ExampleTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1193,7 +1231,7 @@ func (o *TypedSearchAttributesChildOptions) Build(ctx workflow.Context, req prot
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ExampleTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

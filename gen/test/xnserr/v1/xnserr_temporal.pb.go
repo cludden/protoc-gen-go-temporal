@@ -62,8 +62,9 @@ type ServerClient interface {
 
 // serverClient implements a temporal client for a test.xnserr.v1.Server service
 type serverClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewServerClient initializes a new test.xnserr.v1.Server client
@@ -75,8 +76,9 @@ func NewServerClient(c client.Client, options ...*serverClientOptions) ServerCli
 		cfg = NewServerClientOptions()
 	}
 	return &serverClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -101,7 +103,8 @@ func NewServerClientWithOptions(c client.Client, opts client.Options, options ..
 
 // serverClientOptions describes optional runtime configuration for a ServerClient
 type serverClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewServerClientOptions initializes a new serverClientOptions value
@@ -117,12 +120,23 @@ func (opts *serverClientOptions) WithLogger(l *slog.Logger) *serverClientOptions
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *serverClientOptions) WithTaskQueue(tq string) *serverClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *serverClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// serverClientOptionsContext describes context for the Server client options builder
+type serverClientOptionsContext struct {
+	client *serverClient
 }
 
 // test.xnserr.v1.Server.Sleep executes a test.xnserr.v1.Server.Sleep workflow and blocks until error or response received
@@ -142,7 +156,7 @@ func (c *serverClient) SleepAsync(ctx context.Context, req *SleepRequest, option
 	} else {
 		o = NewSleepOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &serverClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -199,8 +213,19 @@ func NewSleepOptions() *SleepOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SleepOptions) Build(req protoreflect.Message, extraArgs ...*serverClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *serverClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &serverClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ServerTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -215,7 +240,7 @@ func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ServerTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -515,6 +540,7 @@ func NewSleepChildOptions() *SleepChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SleepChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ServerTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -526,7 +552,7 @@ func (o *SleepChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ServerTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1043,8 +1069,9 @@ type ClientClient interface {
 
 // clientClient implements a temporal client for a test.xnserr.v1.Client service
 type clientClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewClientClient initializes a new test.xnserr.v1.Client client
@@ -1056,8 +1083,9 @@ func NewClientClient(c client.Client, options ...*clientClientOptions) ClientCli
 		cfg = NewClientClientOptions()
 	}
 	return &clientClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -1082,7 +1110,8 @@ func NewClientClientWithOptions(c client.Client, opts client.Options, options ..
 
 // clientClientOptions describes optional runtime configuration for a ClientClient
 type clientClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewClientClientOptions initializes a new clientClientOptions value
@@ -1098,12 +1127,23 @@ func (opts *clientClientOptions) WithLogger(l *slog.Logger) *clientClientOptions
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *clientClientOptions) WithTaskQueue(tq string) *clientClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *clientClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// clientClientOptionsContext describes context for the Client client options builder
+type clientClientOptionsContext struct {
+	client *clientClient
 }
 
 // test.xnserr.v1.Client.CallSleep executes a test.xnserr.v1.Client.CallSleep workflow and blocks until error or response received
@@ -1123,7 +1163,7 @@ func (c *clientClient) CallSleepAsync(ctx context.Context, req *CallSleepRequest
 	} else {
 		o = NewCallSleepOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &clientClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -1180,8 +1220,19 @@ func NewCallSleepOptions() *CallSleepOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *CallSleepOptions) Build(req protoreflect.Message, extraArgs ...*clientClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *clientClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &clientClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ClientTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -1194,7 +1245,7 @@ func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ClientTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1494,6 +1545,7 @@ func NewCallSleepChildOptions() *CallSleepChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *CallSleepChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ClientTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -1503,7 +1555,7 @@ func (o *CallSleepChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ClientTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

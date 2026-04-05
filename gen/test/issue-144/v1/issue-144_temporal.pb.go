@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+// Issue144ServiceTaskQueue is the default task-queue for a issue_144.v1.Issue144Service worker
+var Issue144ServiceTaskQueue = ""
+
 // issue_144.v1.Issue144Service activity names
 const (
 	ExplicitZeroScheduleTimeoutActivityName = "issue_144.v1.Issue144Service.ExplicitZeroScheduleTimeout"

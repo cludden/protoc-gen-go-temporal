@@ -92,8 +92,9 @@ type XnsHeartbeatServiceClient interface {
 
 // xnsHeartbeatServiceClient implements a temporal client for a test.xnsheartbeat.v1.XnsHeartbeatService service
 type xnsHeartbeatServiceClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewXnsHeartbeatServiceClient initializes a new test.xnsheartbeat.v1.XnsHeartbeatService client
@@ -105,8 +106,9 @@ func NewXnsHeartbeatServiceClient(c client.Client, options ...*xnsHeartbeatServi
 		cfg = NewXnsHeartbeatServiceClientOptions()
 	}
 	return &xnsHeartbeatServiceClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -131,7 +133,8 @@ func NewXnsHeartbeatServiceClientWithOptions(c client.Client, opts client.Option
 
 // xnsHeartbeatServiceClientOptions describes optional runtime configuration for a XnsHeartbeatServiceClient
 type xnsHeartbeatServiceClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewXnsHeartbeatServiceClientOptions initializes a new xnsHeartbeatServiceClientOptions value
@@ -147,12 +150,23 @@ func (opts *xnsHeartbeatServiceClientOptions) WithLogger(l *slog.Logger) *xnsHea
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *xnsHeartbeatServiceClientOptions) WithTaskQueue(tq string) *xnsHeartbeatServiceClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *xnsHeartbeatServiceClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// xnsHeartbeatServiceClientOptionsContext describes context for the XnsHeartbeatService client options builder
+type xnsHeartbeatServiceClientOptionsContext struct {
+	client *xnsHeartbeatServiceClient
 }
 
 // test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow executes a test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow and blocks until error or response received
@@ -172,7 +186,7 @@ func (c *xnsHeartbeatServiceClient) TestWorkflowAsync(ctx context.Context, req *
 	} else {
 		o = NewTestWorkflowOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &xnsHeartbeatServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -210,12 +224,12 @@ func NewTestWorkflowWithTestUpdateOptions() *TestWorkflowWithTestUpdateOptions {
 }
 
 // Build transforms TestWorkflowWithTestUpdateOptions into valid client.UpdateWithStartWorkflowOptions
-func (o *TestWorkflowWithTestUpdateOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *TestWorkflowInput, update *TestUpdateInput) (options client.UpdateWithStartWorkflowOptions, err error) {
+func (o *TestWorkflowWithTestUpdateOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *TestWorkflowInput, update *TestUpdateInput, extraArgs ...*xnsHeartbeatServiceClientOptionsContext) (options client.UpdateWithStartWorkflowOptions, err error) {
 	options = o.options
 	if o.workflowOptions == nil {
 		o.workflowOptions = NewTestWorkflowOptions()
 	}
-	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	swo, err := o.workflowOptions.Build(input.ProtoReflect(), extraArgs...)
 	if err != nil {
 		return options, err
 	}
@@ -275,7 +289,7 @@ func (c *xnsHeartbeatServiceClient) TestWorkflowWithTestUpdateAsync(ctx context.
 	}
 	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
 		return c.client.NewWithStartWorkflowOperation(swo, TestWorkflowWorkflowName, req)
-	}, req, update)
+	}, req, update, &xnsHeartbeatServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
@@ -376,8 +390,19 @@ func NewTestWorkflowOptions() *TestWorkflowOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *TestWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *TestWorkflowOptions) Build(req protoreflect.Message, extraArgs ...*xnsHeartbeatServiceClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *xnsHeartbeatServiceClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &xnsHeartbeatServiceClientOptionsContext{}
+	}
+
+	defaultTaskQueue := XnsHeartbeatServiceTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -390,7 +415,7 @@ func (o *TestWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkf
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = XnsHeartbeatServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -853,6 +878,7 @@ func NewTestWorkflowChildOptions() *TestWorkflowChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *TestWorkflowChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := XnsHeartbeatServiceTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -862,7 +888,7 @@ func (o *TestWorkflowChildOptions) Build(ctx workflow.Context, req protoreflect.
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = XnsHeartbeatServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1644,7 +1670,11 @@ func newXnsHeartbeatServiceCommands(options ...*XnsHeartbeatServiceCliOptions) (
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				handle, _, err := client.TestWorkflowWithTestUpdateAsync(cmd.Context, input, update)
+				opts := NewTestWorkflowWithTestUpdateOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTestWorkflowOptions(NewTestWorkflowOptions().WithTaskQueue(cmd.String("task-queue")))
+				}
+				handle, _, err := client.TestWorkflowWithTestUpdateAsync(cmd.Context, input, update, opts)
 				if err != nil {
 					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
@@ -1678,6 +1708,13 @@ func newXnsHeartbeatServiceCommands(options ...*XnsHeartbeatServiceCliOptions) (
 					Aliases: []string{"d"},
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "xnsheartbeat-v1",
 				},
 				&v2.StringFlag{
 					Aliases:  []string{"f"},
@@ -1832,8 +1869,9 @@ type XnsHeartbeatCallerServiceClient interface {
 
 // xnsHeartbeatCallerServiceClient implements a temporal client for a test.xnsheartbeat.v1.XnsHeartbeatCallerService service
 type xnsHeartbeatCallerServiceClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewXnsHeartbeatCallerServiceClient initializes a new test.xnsheartbeat.v1.XnsHeartbeatCallerService client
@@ -1845,8 +1883,9 @@ func NewXnsHeartbeatCallerServiceClient(c client.Client, options ...*xnsHeartbea
 		cfg = NewXnsHeartbeatCallerServiceClientOptions()
 	}
 	return &xnsHeartbeatCallerServiceClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -1871,7 +1910,8 @@ func NewXnsHeartbeatCallerServiceClientWithOptions(c client.Client, opts client.
 
 // xnsHeartbeatCallerServiceClientOptions describes optional runtime configuration for a XnsHeartbeatCallerServiceClient
 type xnsHeartbeatCallerServiceClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewXnsHeartbeatCallerServiceClientOptions initializes a new xnsHeartbeatCallerServiceClientOptions value
@@ -1887,12 +1927,23 @@ func (opts *xnsHeartbeatCallerServiceClientOptions) WithLogger(l *slog.Logger) *
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *xnsHeartbeatCallerServiceClientOptions) WithTaskQueue(tq string) *xnsHeartbeatCallerServiceClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *xnsHeartbeatCallerServiceClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// xnsHeartbeatCallerServiceClientOptionsContext describes context for the XnsHeartbeatCallerService client options builder
+type xnsHeartbeatCallerServiceClientOptionsContext struct {
+	client *xnsHeartbeatCallerServiceClient
 }
 
 // test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow executes a test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow and blocks until error or response received
@@ -1912,7 +1963,7 @@ func (c *xnsHeartbeatCallerServiceClient) CallTestWorkflowAsync(ctx context.Cont
 	} else {
 		o = NewCallTestWorkflowOptions()
 	}
-	opts, err := o.Build(nil)
+	opts, err := o.Build(nil, &xnsHeartbeatCallerServiceClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -1969,8 +2020,19 @@ func NewCallTestWorkflowOptions() *CallTestWorkflowOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *CallTestWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *CallTestWorkflowOptions) Build(req protoreflect.Message, extraArgs ...*xnsHeartbeatCallerServiceClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *xnsHeartbeatCallerServiceClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &xnsHeartbeatCallerServiceClientOptionsContext{}
+	}
+
+	defaultTaskQueue := XnsHeartbeatCallerServiceTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -1983,7 +2045,7 @@ func (o *CallTestWorkflowOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = XnsHeartbeatCallerServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2275,6 +2337,7 @@ func NewCallTestWorkflowChildOptions() *CallTestWorkflowChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *CallTestWorkflowChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := XnsHeartbeatCallerServiceTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -2284,7 +2347,7 @@ func (o *CallTestWorkflowChildOptions) Build(ctx workflow.Context, req protorefl
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = XnsHeartbeatCallerServiceTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

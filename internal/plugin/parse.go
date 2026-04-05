@@ -331,11 +331,9 @@ func (m *Manifest) fqnForWorkflow(workflow protoreflect.FullName) string {
 // genConstants generates constants
 func (m *Manifest) genConstants(f *j.File) {
 	// add task queue
-	if taskQueue := m.opts.GetTaskQueue(); taskQueue != "" {
-		name := m.toCamel("%sTaskQueue", m.Service.GoName)
-		f.Commentf("%s is the default task-queue for a %s worker", name, m.Service.Desc.FullName())
-		f.Var().Id(name).Op("=").Lit(taskQueue)
-	}
+	name := m.Names().taskQueue()
+	f.Commentf("%s is the default task-queue for a %s worker", name, m.Service.Desc.FullName())
+	f.Var().Id(name).Op("=").Lit(m.opts.GetTaskQueue())
 
 	// add workflow names
 	var workflows []protoreflect.FullName
@@ -756,6 +754,7 @@ func (m *Manifest) renderService(f *j.File, file *protogen.File, service *protog
 		m.genClientImpl(f)
 		m.genClientImplConstructor(f)
 		m.genClientOptions(f)
+		m.genClientWorkflowOptionsContext(f)
 
 		// generate client workflow methods
 		for _, workflow := range m.workflowsOrdered {

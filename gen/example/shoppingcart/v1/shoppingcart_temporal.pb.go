@@ -111,8 +111,9 @@ type ShoppingCartClient interface {
 
 // shoppingCartClient implements a temporal client for a example.shoppingcart.v1.ShoppingCart service
 type shoppingCartClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewShoppingCartClient initializes a new example.shoppingcart.v1.ShoppingCart client
@@ -124,8 +125,9 @@ func NewShoppingCartClient(c client.Client, options ...*shoppingCartClientOption
 		cfg = NewShoppingCartClientOptions()
 	}
 	return &shoppingCartClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -150,7 +152,8 @@ func NewShoppingCartClientWithOptions(c client.Client, opts client.Options, opti
 
 // shoppingCartClientOptions describes optional runtime configuration for a ShoppingCartClient
 type shoppingCartClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewShoppingCartClientOptions initializes a new shoppingCartClientOptions value
@@ -166,12 +169,23 @@ func (opts *shoppingCartClientOptions) WithLogger(l *slog.Logger) *shoppingCartC
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *shoppingCartClientOptions) WithTaskQueue(tq string) *shoppingCartClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *shoppingCartClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// shoppingCartClientOptionsContext describes context for the ShoppingCart client options builder
+type shoppingCartClientOptionsContext struct {
+	client *shoppingCartClient
 }
 
 // example.shoppingcart.v1.ShoppingCart.ShoppingCart executes a example.shoppingcart.v1.ShoppingCart workflow and blocks until error or response received
@@ -191,7 +205,7 @@ func (c *shoppingCartClient) ShoppingCartAsync(ctx context.Context, req *Shoppin
 	} else {
 		o = NewShoppingCartOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &shoppingCartClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -229,12 +243,12 @@ func NewShoppingCartWithUpdateCartOptions() *ShoppingCartWithUpdateCartOptions {
 }
 
 // Build transforms ShoppingCartWithUpdateCartOptions into valid client.UpdateWithStartWorkflowOptions
-func (o *ShoppingCartWithUpdateCartOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *ShoppingCartInput, update *UpdateCartInput) (options client.UpdateWithStartWorkflowOptions, err error) {
+func (o *ShoppingCartWithUpdateCartOptions) Build(ctx context.Context, op func(client.StartWorkflowOptions) client.WithStartWorkflowOperation, input *ShoppingCartInput, update *UpdateCartInput, extraArgs ...*shoppingCartClientOptionsContext) (options client.UpdateWithStartWorkflowOptions, err error) {
 	options = o.options
 	if o.workflowOptions == nil {
 		o.workflowOptions = NewShoppingCartOptions()
 	}
-	swo, err := o.workflowOptions.Build(input.ProtoReflect())
+	swo, err := o.workflowOptions.Build(input.ProtoReflect(), extraArgs...)
 	if err != nil {
 		return options, err
 	}
@@ -294,7 +308,7 @@ func (c *shoppingCartClient) ShoppingCartWithUpdateCartAsync(ctx context.Context
 	}
 	opts, err := o.Build(ctx, func(swo client.StartWorkflowOptions) client.WithStartWorkflowOperation {
 		return c.client.NewWithStartWorkflowOperation(swo, ShoppingCartWorkflowName, req)
-	}, req, update)
+	}, req, update, &shoppingCartClientOptionsContext{client: c})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
 	}
@@ -406,8 +420,19 @@ func NewShoppingCartOptions() *ShoppingCartOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ShoppingCartOptions) Build(req protoreflect.Message, extraArgs ...*shoppingCartClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *shoppingCartClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &shoppingCartClientOptionsContext{}
+	}
+
+	defaultTaskQueue := ShoppingCartTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -426,7 +451,7 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ShoppingCartTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -914,6 +939,7 @@ func NewShoppingCartChildOptions() *ShoppingCartChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *ShoppingCartChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := ShoppingCartTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -945,7 +971,7 @@ func (o *ShoppingCartChildOptions) Build(ctx workflow.Context, req protoreflect.
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = ShoppingCartTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1815,7 +1841,11 @@ func newShoppingCartCommands(options ...*ShoppingCartCliOptions) ([]*v2.Command,
 				if err != nil {
 					return fmt.Errorf("error unmarshalling update: %w", err)
 				}
-				handle, _, err := client.ShoppingCartWithUpdateCartAsync(cmd.Context, input, update)
+				opts := NewShoppingCartWithUpdateCartOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithShoppingCartOptions(NewShoppingCartOptions().WithTaskQueue(cmd.String("task-queue")))
+				}
+				handle, _, err := client.ShoppingCartWithUpdateCartAsync(cmd.Context, input, update, opts)
 				if err != nil {
 					return fmt.Errorf("error starting workflow with update: %w", err)
 				}
@@ -1849,6 +1879,13 @@ func newShoppingCartCommands(options ...*ShoppingCartCliOptions) ([]*v2.Command,
 					Aliases: []string{"d"},
 					Name:    "detach",
 					Usage:   "run workflow update in the background and print workflow, execution, and update id",
+				},
+				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "example-shoppingcart-v1",
 				},
 				&v2.StringFlag{
 					Aliases:  []string{"f"},

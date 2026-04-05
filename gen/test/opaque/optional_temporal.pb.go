@@ -79,8 +79,9 @@ type OptionalClient interface {
 
 // optionalClient implements a temporal client for a test.opaque.Optional service
 type optionalClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewOptionalClient initializes a new test.opaque.Optional client
@@ -92,8 +93,9 @@ func NewOptionalClient(c client.Client, options ...*optionalClientOptions) Optio
 		cfg = NewOptionalClientOptions()
 	}
 	return &optionalClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -118,7 +120,8 @@ func NewOptionalClientWithOptions(c client.Client, opts client.Options, options 
 
 // optionalClientOptions describes optional runtime configuration for a OptionalClient
 type optionalClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewOptionalClientOptions initializes a new optionalClientOptions value
@@ -134,12 +137,23 @@ func (opts *optionalClientOptions) WithLogger(l *slog.Logger) *optionalClientOpt
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *optionalClientOptions) WithTaskQueue(tq string) *optionalClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *optionalClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// optionalClientOptionsContext describes context for the Optional client options builder
+type optionalClientOptionsContext struct {
+	client *optionalClient
 }
 
 // test.opaque.Optional.PutOptionalExample executes a test.opaque.Optional.PutOptionalExample workflow and blocks until error or response received
@@ -159,7 +173,7 @@ func (c *optionalClient) PutOptionalExampleAsync(ctx context.Context, req *Optio
 	} else {
 		o = NewPutOptionalExampleOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &optionalClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -201,7 +215,7 @@ func (c *optionalClient) PutOptionalExampleWithSignalOptionalAsync(ctx context.C
 	} else {
 		o = NewPutOptionalExampleOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &optionalClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -252,8 +266,19 @@ func NewPutOptionalExampleOptions() *PutOptionalExampleOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *PutOptionalExampleOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *PutOptionalExampleOptions) Build(req protoreflect.Message, extraArgs ...*optionalClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *optionalClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &optionalClientOptionsContext{}
+	}
+
+	defaultTaskQueue := OptionalTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -266,7 +291,7 @@ func (o *PutOptionalExampleOptions) Build(req protoreflect.Message) (client.Star
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OptionalTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -582,6 +607,7 @@ func NewPutOptionalExampleChildOptions() *PutOptionalExampleChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *PutOptionalExampleChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := OptionalTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -591,7 +617,7 @@ func (o *PutOptionalExampleChildOptions) Build(ctx workflow.Context, req protore
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OptionalTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1680,6 +1706,13 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "opaque-optional",
+				},
+				&v2.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -2283,7 +2316,11 @@ func newOptionalCommands(options ...*OptionalCliOptions) ([]*v2.Command, error) 
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.PutOptionalExampleWithSignalOptionalAsync(cmd.Context, req, signal)
+				opts := NewPutOptionalExampleOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.PutOptionalExampleWithSignalOptionalAsync(cmd.Context, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", PutOptionalExampleWorkflowName, SignalOptionalSignalName, err)
 				}

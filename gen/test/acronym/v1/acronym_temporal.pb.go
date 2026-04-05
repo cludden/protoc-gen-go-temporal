@@ -108,8 +108,9 @@ type AWSClient interface {
 
 // awsClient implements a temporal client for a test.acronym.v1.AWS service
 type awsClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewAWSClient initializes a new test.acronym.v1.AWS client
@@ -121,8 +122,9 @@ func NewAWSClient(c client.Client, options ...*awsClientOptions) AWSClient {
 		cfg = NewAWSClientOptions()
 	}
 	return &awsClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -147,7 +149,8 @@ func NewAWSClientWithOptions(c client.Client, opts client.Options, options ...*a
 
 // awsClientOptions describes optional runtime configuration for a AWSClient
 type awsClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewAWSClientOptions initializes a new awsClientOptions value
@@ -163,12 +166,23 @@ func (opts *awsClientOptions) WithLogger(l *slog.Logger) *awsClientOptions {
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *awsClientOptions) WithTaskQueue(tq string) *awsClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *awsClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// awsClientOptionsContext describes context for the AWS client options builder
+type awsClientOptionsContext struct {
+	client *awsClient
 }
 
 // ManageAWS does some workflow thing.
@@ -188,7 +202,7 @@ func (c *awsClient) ManageAWSAsync(ctx context.Context, req *ManageAWSRequest, o
 	} else {
 		o = NewManageAWSOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &awsClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -230,7 +244,7 @@ func (c *awsClient) ManageAWSResourceAsync(ctx context.Context, req *ManageAWSRe
 	} else {
 		o = NewManageAWSResourceOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &awsClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -272,7 +286,7 @@ func (c *awsClient) SomethingV1FooBarAsync(ctx context.Context, req *SomethingV1
 	} else {
 		o = NewSomethingV1FooBarOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &awsClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -314,7 +328,7 @@ func (c *awsClient) SomethingV2FooBarAsync(ctx context.Context, req *SomethingV2
 	} else {
 		o = NewSomethingV2FooBarOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &awsClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -371,8 +385,19 @@ func NewManageAWSOptions() *ManageAWSOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ManageAWSOptions) Build(req protoreflect.Message, extraArgs ...*awsClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *awsClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &awsClientOptionsContext{}
+	}
+
+	defaultTaskQueue := AWSTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -391,7 +416,7 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -572,8 +597,19 @@ func NewManageAWSResourceOptions() *ManageAWSResourceOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *ManageAWSResourceOptions) Build(req protoreflect.Message, extraArgs ...*awsClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *awsClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &awsClientOptionsContext{}
+	}
+
+	defaultTaskQueue := AWSTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -592,7 +628,7 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -773,8 +809,19 @@ func NewSomethingV1FooBarOptions() *SomethingV1FooBarOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message, extraArgs ...*awsClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *awsClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &awsClientOptionsContext{}
+	}
+
+	defaultTaskQueue := AWSTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -793,7 +840,7 @@ func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -974,8 +1021,19 @@ func NewSomethingV2FooBarOptions() *SomethingV2FooBarOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message, extraArgs ...*awsClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *awsClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &awsClientOptionsContext{}
+	}
+
+	defaultTaskQueue := AWSTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
@@ -994,7 +1052,7 @@ func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1348,6 +1406,7 @@ func NewManageAWSChildOptions() *ManageAWSChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := AWSTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1379,7 +1438,7 @@ func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1632,6 +1691,7 @@ func NewManageAWSResourceChildOptions() *ManageAWSResourceChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := AWSTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1663,7 +1723,7 @@ func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1916,6 +1976,7 @@ func NewSomethingV1FooBarChildOptions() *SomethingV1FooBarChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomethingV1FooBarChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := AWSTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -1947,7 +2008,7 @@ func (o *SomethingV1FooBarChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2200,6 +2261,7 @@ func NewSomethingV2FooBarChildOptions() *SomethingV2FooBarChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *SomethingV2FooBarChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := AWSTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	} else if opts.WorkflowID == "" {
@@ -2231,7 +2293,7 @@ func (o *SomethingV2FooBarChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = AWSTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

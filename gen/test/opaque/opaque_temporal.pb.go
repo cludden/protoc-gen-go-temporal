@@ -79,8 +79,9 @@ type OpaqueClient interface {
 
 // opaqueClient implements a temporal client for a test.opaque.Opaque service
 type opaqueClient struct {
-	client client.Client
-	log    *slog.Logger
+	client    client.Client
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewOpaqueClient initializes a new test.opaque.Opaque client
@@ -92,8 +93,9 @@ func NewOpaqueClient(c client.Client, options ...*opaqueClientOptions) OpaqueCli
 		cfg = NewOpaqueClientOptions()
 	}
 	return &opaqueClient{
-		client: c,
-		log:    cfg.getLogger(),
+		client:    c,
+		log:       cfg.getLogger(),
+		taskQueue: cfg.taskQueue,
 	}
 }
 
@@ -118,7 +120,8 @@ func NewOpaqueClientWithOptions(c client.Client, opts client.Options, options ..
 
 // opaqueClientOptions describes optional runtime configuration for a OpaqueClient
 type opaqueClientOptions struct {
-	log *slog.Logger
+	log       *slog.Logger
+	taskQueue string
 }
 
 // NewOpaqueClientOptions initializes a new opaqueClientOptions value
@@ -134,12 +137,23 @@ func (opts *opaqueClientOptions) WithLogger(l *slog.Logger) *opaqueClientOptions
 	return opts
 }
 
+// WithTaskQueue can be used to override the default task queue for this client
+func (opts *opaqueClientOptions) WithTaskQueue(tq string) *opaqueClientOptions {
+	opts.taskQueue = tq
+	return opts
+}
+
 // getLogger returns the configured logger, or the default logger
 func (opts *opaqueClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
+}
+
+// opaqueClientOptionsContext describes context for the Opaque client options builder
+type opaqueClientOptionsContext struct {
+	client *opaqueClient
 }
 
 // test.opaque.Opaque.PutOpaqueExample executes a test.opaque.Opaque.PutOpaqueExample workflow and blocks until error or response received
@@ -159,7 +173,7 @@ func (c *opaqueClient) PutOpaqueExampleAsync(ctx context.Context, req *OpaqueExa
 	} else {
 		o = NewPutOpaqueExampleOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &opaqueClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -201,7 +215,7 @@ func (c *opaqueClient) PutOpaqueExampleWithSignalOpaqueAsync(ctx context.Context
 	} else {
 		o = NewPutOpaqueExampleOptions()
 	}
-	opts, err := o.Build(req.ProtoReflect())
+	opts, err := o.Build(req.ProtoReflect(), &opaqueClientOptionsContext{client: c})
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
@@ -252,8 +266,19 @@ func NewPutOpaqueExampleOptions() *PutOpaqueExampleOptions {
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message, extraArgs ...*opaqueClientOptionsContext) (client.StartWorkflowOptions, error) {
 	opts := o.options
+	var extra *opaqueClientOptionsContext
+	if len(extraArgs) > 0 && extraArgs[0] != nil {
+		extra = extraArgs[0]
+	} else {
+		extra = &opaqueClientOptionsContext{}
+	}
+
+	defaultTaskQueue := OpaqueTaskQueue
+	if extra.client != nil && extra.client.taskQueue != "" {
+		defaultTaskQueue = extra.client.taskQueue
+	}
 	if v := o.id; v != nil {
 		opts.ID = *v
 	}
@@ -266,7 +291,7 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OpaqueTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -582,6 +607,7 @@ func NewPutOpaqueExampleChildOptions() *PutOpaqueExampleChildOptions {
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
 func (o *PutOpaqueExampleChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
+	defaultTaskQueue := OpaqueTaskQueue
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
 	}
@@ -591,7 +617,7 @@ func (o *PutOpaqueExampleChildOptions) Build(ctx workflow.Context, req protorefl
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OpaqueTaskQueue
+		opts.TaskQueue = defaultTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1680,6 +1706,13 @@ func newOpaqueCommands(options ...*OpaqueCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"d"},
 				},
 				&v2.StringFlag{
+					Name:    "task-queue",
+					Usage:   "task queue name",
+					Aliases: []string{"t"},
+					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
+					Value:   "opaque-opaque",
+				},
+				&v2.StringFlag{
 					Name:     "input-file",
 					Usage:    "path to json-formatted input file",
 					Aliases:  []string{"f"},
@@ -2283,7 +2316,11 @@ func newOpaqueCommands(options ...*OpaqueCliOptions) ([]*v2.Command, error) {
 				if err != nil {
 					return fmt.Errorf("error unmarshalling signal: %w", err)
 				}
-				run, err := client.PutOpaqueExampleWithSignalOpaqueAsync(cmd.Context, req, signal)
+				opts := NewPutOpaqueExampleOptions()
+				if cmd.String("task-queue") != "" {
+					opts = opts.WithTaskQueue(cmd.String("task-queue"))
+				}
+				run, err := client.PutOpaqueExampleWithSignalOpaqueAsync(cmd.Context, req, signal, opts)
 				if err != nil {
 					return fmt.Errorf("error starting %s workflow with %s signal: %w", PutOpaqueExampleWorkflowName, SignalOpaqueSignalName, err)
 				}
