@@ -128,6 +128,8 @@ protoc --go_temporal_opt=disable-workflow-input-rename=true
 
 Enables [doc generation](/docs/guides/documentation) by specifying the output path.
 
+When the value resolves to a file path (e.g. `./proto/README.md`), all packages are rendered into a single file. When the value resolves to a directory (a path with a trailing separator, or pointing at an existing directory), one documentation file is generated per proto package, mirroring the proto source tree, with a `README.md` index at the directory root.
+
 <Tabs>
 <TabItem value="docs-out-buf" label="Buf">
 ```yaml title="buf.gen.yaml"
@@ -143,6 +145,66 @@ plugins:
 protoc --go_temporal_opt=docs-out=./proto/README.md
 ```
 </TabItem>
+<TabItem value="docs-out-buf-dir" label="Buf (per-package)">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: docs-out=./docs/
+    strategy: all
+```
+</TabItem>
+<TabItem value="docs-out-protoc-dir" label="Protoc (per-package)">
+```sh
+protoc --go_temporal_opt=docs-out=./docs/
+```
+</TabItem>
+</Tabs>
+
+### docs-filename
+
+`string` (default: `README.md`)
+
+Per-package output filename in [directory mode](#docs-out). Must be a flat filename (no path separators). Ignored when `docs-out` resolves to a file.
+
+<Tabs>
+<TabItem value="docs-filename-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: docs-out=./docs/,docs-filename=README.mdx
+    strategy: all
+```
+</TabItem>
+<TabItem value="docs-filename-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=docs-out=./docs/,docs-filename=README.mdx
+```
+</TabItem>
+</Tabs>
+
+### docs-index
+
+`string` (default: `README.md`)
+
+Filename of the index file written at the root of the output directory in [directory mode](#docs-out). Must be a flat filename (no path separators). Ignored when `docs-out` resolves to a file.
+
+<Tabs>
+<TabItem value="docs-index-buf" label="Buf">
+```yaml title="buf.gen.yaml"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt: docs-out=./docs/,docs-index=index.md
+    strategy: all
+```
+</TabItem>
+<TabItem value="docs-index-protoc" label="Protoc">
+```sh
+protoc --go_temporal_opt=docs-out=./docs/,docs-index=index.md
+```
+</TabItem>
 </Tabs>
 
 ### docs-template
@@ -152,7 +214,7 @@ protoc --go_temporal_opt=docs-out=./proto/README.md
 Specifies the path to a custom template to use for generated documentation. See the [guide](/docs/guides/documentation) for more details.
 
 :::info
-Requires the [docs-out](#docs-out) plugin option to be defined.
+Requires the [docs-out](#docs-out) plugin option to be defined. In [directory mode](#docs-out), the template must define both `package` and `index` sub-templates.
 :::
 
 <Tabs>

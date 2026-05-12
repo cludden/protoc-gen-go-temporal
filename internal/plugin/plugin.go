@@ -37,6 +37,8 @@ type Config struct {
 	CliEnabled                 bool
 	CliV3Enabled               bool
 	DisableWorkflowInputRename bool
+	DocsFilename               string
+	DocsIndex                  string
 	DocsOut                    string
 	DocsTemplate               string
 	EnableCodec                bool
@@ -83,6 +85,8 @@ func New(commit, version string) *Plugin {
 	flags.BoolVar(&cfg.CliV3Enabled, "cli-v3", false, "enable cli generation using urfave/cli/v3")
 	flags.BoolVar(&cfg.CliCategories, "cli-categories", true, "enable cli categories")
 	flags.BoolVar(&cfg.DisableWorkflowInputRename, "disable-workflow-input-rename", false, "disable renaming of \"<Workflow>WorkflowInput\"")
+	flags.StringVar(&cfg.DocsFilename, "docs-filename", "README.md", "per-package filename in directory mode")
+	flags.StringVar(&cfg.DocsIndex, "docs-index", "README.md", "root index filename in directory mode")
 	flags.StringVar(&cfg.DocsOut, "docs-out", "", "docs output path")
 	flags.StringVar(&cfg.DocsTemplate, "docs-template", "basic", "built-in template name or path to custom template file")
 	flags.BoolVar(&cfg.EnableCodec, "enable-codec", false, "enables experimental codec support")

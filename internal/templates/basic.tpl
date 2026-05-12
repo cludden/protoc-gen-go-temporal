@@ -1,15 +1,33 @@
+{{- /*
+basic.tpl renders Temporal documentation in one of two modes:
+
+  - Single-file mode: the unnamed root body (below the defined templates)
+    iterates every package and emits one README. Used when --docs-out
+    resolves to a file path.
+  - Directory mode: the plugin invokes "package" once per proto package
+    and "index" once for the top-level table of contents. Used when
+    --docs-out resolves to a directory.
+
+The "message", "enum", and "package" templates are shared by both modes.
+CurrentPackage is set to the rendering package in directory mode so
+docslink can produce cross-package relative file links; in single-file
+mode it is "" and docslink falls back to bare anchors.
+*/ -}}
 {{- define "message" -}}
-{{ if gt (len .Fields) 0 -}}
+{{- $msg := .Msg -}}
+{{- $currentPkg := .CurrentPackage -}}
+{{- $data := .Data -}}
+{{ if gt (len $msg.Fields) 0 -}}
 <table>
 <tr>
 <th>Attribute</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
-{{ range $f := .Fields -}}
+{{ range $f := $msg.Fields -}}
 <tr>
 <td>{{ $f.Descriptor.Name }}</td>
-<td>{{ if contains "." $f.Type }}<a href="#{{ $f.Type | slug }}">{{ $f.Type }}</a>{{ else }}{{ $f.Type }}{{ end }}</td>
+<td>{{ if contains "." $f.Type }}<a href="{{ docslink $f.Type "" $currentPkg $data }}">{{ $f.Type }}</a>{{ else }}{{ $f.Type }}{{ end }}</td>
 <td>
 {{- if or $f.Comments.Leading $f.GoName $f.GoTags $f.JSONName }}<pre>
 {{- if $f.Comments.Leading }}
@@ -49,6 +67,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 {{- define "package" }}
 {{- $data := .Data }}
 {{- $pkgName := .Package }}
+{{- $currentPkg := .CurrentPackage }}
 {{- $pkg := index $data.Packages $pkgName }}
 
 <a name="{{ $pkgName | slug }}"></a>
@@ -93,16 +112,16 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 {{- if $w.Input }}
 
-**Input:** [{{ $w.Input }}](#{{ $w.Input | slug }})
+**Input:** [{{ $w.Input }}]({{ docslink $w.Input "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $w.Input) }}
+{{ template "message" (dict "Msg" (index $data.Messages $w.Input) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 
 {{- if $w.Output }}
 
-**Output:** [{{ $w.Output }}](#{{ $w.Output | slug }})
+**Output:** [{{ $w.Output }}]({{ docslink $w.Output "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $w.Output) }}
+{{ template "message" (dict "Msg" (index $data.Messages $w.Output) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 
 **Defaults:**
@@ -197,7 +216,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 <table>
 <tr><th>Query</th></tr>
 {{- range $q, $opt := $w.Queries }}
-<tr><td><a href="#{{ $q | slug }}-query">{{ $q }}</a></td></tr>
+<tr><td><a href="{{ docslink $q "-query" $currentPkg $data }}">{{ $q }}</a></td></tr>
 {{- end }}
 </table>
 {{- end }}
@@ -209,7 +228,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 <table>
 <tr><th>Signal</th><th>Start</th></tr>
 {{- range $s, $opt := $w.Signals }}
-<tr><td><a href="#{{ $s | slug }}-signal">{{ $s }}</a></td><td>{{ $opt.Start }}</td></tr>
+<tr><td><a href="{{ docslink $s "-signal" $currentPkg $data }}">{{ $s }}</a></td><td>{{ $opt.Start }}</td></tr>
 {{- end }}
 </table>
 {{- end }}
@@ -221,7 +240,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 <table>
 <tr><th>Update</th></tr>
 {{- range $u, $opt := $w.Updates }}
-<tr><td><a href="#{{ $u | slug }}-update">{{ $u }}</a></td></tr>
+<tr><td><a href="{{ docslink $u "-update" $currentPkg $data }}">{{ $u }}</a></td></tr>
 {{- end }}
 </table>
 {{- end }}
@@ -250,17 +269,17 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 {{- if $q.Input }}
 
-**Input:** [{{ $q.Input }}](#{{ $q.Input | slug }})
+**Input:** [{{ $q.Input }}]({{ docslink $q.Input "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $q.Input) }}
+{{ template "message" (dict "Msg" (index $data.Messages $q.Input) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 
 {{- if $q.Output }}
 
-**Output:** [{{ $q.Output }}](#{{ $q.Output | slug }})
+**Output:** [{{ $q.Output }}]({{ docslink $q.Output "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $q.Output) }}
-{{- end }} 
+{{ template "message" (dict "Msg" (index $data.Messages $q.Output) "CurrentPackage" $currentPkg "Data" $data) }}
+{{- end }}
 {{- end }} {{/* range queries */}}
 {{- end }} {{/* if queries > 0 */}}
 
@@ -283,9 +302,9 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 {{- if $s.Input }}
 
-**Input:** [{{ $s.Input }}](#{{ $s.Input | slug }})
+**Input:** [{{ $s.Input }}]({{ docslink $s.Input "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $s.Input) }}
+{{ template "message" (dict "Msg" (index $data.Messages $s.Input) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 {{- end }} {{/* range signals */}}
 {{- end }} {{/* if signals > 0 */}}
@@ -311,17 +330,17 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 {{- if $u.Input }}
 
-**Input:** [{{ $u.Input }}](#{{ $u.Input | slug }})
+**Input:** [{{ $u.Input }}]({{ docslink $u.Input "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $u.Input) }}
+{{ template "message" (dict "Msg" (index $data.Messages $u.Input) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 
 {{- if $u.Output }}
 
-**Output:** [{{ $u.Output }}](#{{ $u.Output | slug }})
+**Output:** [{{ $u.Output }}]({{ docslink $u.Output "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $u.Output) }}
-{{- end }} 
+{{ template "message" (dict "Msg" (index $data.Messages $u.Output) "CurrentPackage" $currentPkg "Data" $data) }}
+{{- end }}
 
 {{- if $u.HasNonDefaultOptions }}
 
@@ -361,16 +380,16 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 {{- if $a.Input }}
 
-**Input:** [{{ $a.Input }}](#{{ $a.Input | slug }})
+**Input:** [{{ $a.Input }}]({{ docslink $a.Input "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $a.Input) }}
+{{ template "message" (dict "Msg" (index $data.Messages $a.Input) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 
 {{- if $a.Output }}
 
-**Output:** [{{ $a.Output }}](#{{ $a.Output | slug }})
+**Output:** [{{ $a.Output }}]({{ docslink $a.Output "" $currentPkg $data }})
 
-{{ template "message" (index $data.Messages $a.Output) }}
+{{ template "message" (dict "Msg" (index $data.Messages $a.Output) "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end }}
 
 {{- if $a.HasNonDefaultOptions }}
@@ -440,7 +459,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 {{- end }}
 {{- if gt (len $msg.Fields) 0 }}
 
-{{ template "message" $msg }}
+{{ template "message" (dict "Msg" $msg "CurrentPackage" $currentPkg "Data" $data) }}
 {{- end -}}
 {{- end -}}
 {{- if (index $data.Enums $msgName) }}
@@ -528,12 +547,80 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 {{- range $pkgName, $pkg := $data.Packages -}}
 {{ if $pkg.HasTemporalResources -}}
-{{ template "package" (dict "Data" $data "Package" $pkgName) }}
+{{ template "package" (dict "Data" $data "Package" $pkgName "CurrentPackage" "") }}
 {{- end }}
 {{- end -}}
 
 {{- range $pkgName, $pkg := $data.Packages -}}
 {{- if and (not $pkg.HasTemporalResources) (gt (len $pkg.ReferencedMessages) 0) }}
-{{ template "package" (dict "Data" $data "Package" $pkgName) }}
+{{ template "package" (dict "Data" $data "Package" $pkgName "CurrentPackage" "") }}
 {{- end }}
+{{- end -}}
+
+{{- define "index" -}}
+{{- $data := .Data }}
+{{- $filename := .Filename }}
+# Documentation
+{{ range $pkgName, $pkg := $data.Packages -}}
+{{- if $pkg.HasTemporalResources }}
+- [{{ $pkgName }}]({{ $pkg.Dir }}/{{ $filename }})
+  - Services
+    {{- range $svcI, $svcName := $pkg.Services }}
+    {{- $svc := index $data.Services $svcName }}
+    {{- if $svc.HasTemporalResources }}
+    - [{{ $svcName }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $svcName | slug }})
+      {{- if (gt (len $svc.Workflows) 0) }}
+      - [Workflows]({{ $pkg.Dir }}/{{ $filename }}#{{ $svcName | slug }}-workflows)
+        {{- range $wI, $wName := $svc.Workflows }}
+        {{- $w := (index $data.Workflows $wName )}}
+        - [{{ $w.Name }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $w.Name | slug }}-workflow)
+        {{- end }}
+      {{- end }}
+      {{- if (gt (len $svc.Queries) 0) }}
+      - [Queries]({{ $pkg.Dir }}/{{ $filename }}#{{ $svcName | slug }}-queries)
+        {{- range $qI, $qName := $svc.Queries }}
+        {{- $q := (index $data.Queries $qName )}}
+        - [{{ $q.Name }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $q.Name | slug }}-query)
+        {{- end }}
+      {{- end }}
+      {{- if (gt (len $svc.Signals) 0) }}
+      - [Signals]({{ $pkg.Dir }}/{{ $filename }}#{{ $svcName | slug }}-signals)
+        {{- range $sI, $sName := $svc.Signals }}
+        {{- $s := (index $data.Signals $sName )}}
+        - [{{ $s.Name }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $s.Name | slug }}-signal)
+        {{- end }}
+      {{- end }}
+      {{- if (gt (len $svc.Updates) 0) }}
+      - [Updates]({{ $pkg.Dir }}/{{ $filename }}#{{ $svcName | slug }}-updates)
+        {{- range $uI, $uName := $svc.Updates }}
+        {{- $u := (index $data.Updates $uName )}}
+        - [{{ $u.Name }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $u.Name | slug }}-update)
+        {{- end }}
+      {{- end }}
+      {{- if (gt (len $svc.Activities) 0) }}
+      - [Activities]({{ $pkg.Dir }}/{{ $filename }}#{{ $svcName | slug }}-activities)
+        {{- range $aI, $aName := $svc.Activities }}
+        {{- $a := (index $data.Activities $aName )}}
+        - [{{ $a.Name }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $a.Name | slug }}-activity)
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  {{- if gt (len $pkg.ReferencedMessages) 0 }}
+  - Messages
+    {{- range $msgI, $msgName := $pkg.ReferencedMessages }}
+    - [{{ $msgName }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $msgName | slug }})
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- range $pkgName, $pkg := $data.Packages }}
+{{- if and (not $pkg.HasTemporalResources) (gt (len $pkg.ReferencedMessages) 0) }}
+- [{{ $pkgName }}]({{ $pkg.Dir }}/{{ $filename }})
+  - Messages
+    {{- range $msgI, $msgName := $pkg.ReferencedMessages }}
+    - [{{ $msgName }}]({{ $pkg.Dir }}/{{ $filename }}#{{ $msgName | slug }})
+    {{- end }}
+{{- end }}
+{{- end -}}
 {{- end -}}

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"container/list"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -96,6 +97,7 @@ type (
 
 	Package struct {
 		Descriptor
+		Dir                  string
 		Enums                []string
 		HasTemporalResources bool
 		Messages             []string
@@ -230,6 +232,7 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 				Descriptor: Descriptor{
 					Name: pkgName,
 				},
+				Dir:                path.Dir(f.Desc.Path()),
 				Enums:              []string{},
 				Messages:           []string{},
 				ReferencedMessages: refs[pkgName],
@@ -252,13 +255,19 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 
 		for rawmsg := messages.Front(); rawmsg != nil; rawmsg = rawmsg.Next() {
 			m := rawmsg.Value.(*protogen.Message)
+			msgParent := m.Desc.ParentFile()
+			msgFile := File{
+				Name: string(msgParent.Name()),
+				Path: msgParent.Path(),
+			}
+			msgPkg := string(msgParent.Package())
 			msg := Message{
 				Comments: parseComments(m.Comments),
 				Descriptor: Descriptor{
 					Name:     string(m.Desc.Name()),
 					FullName: string(m.Desc.FullName()),
-					File:     file,
-					Package:  pkgName,
+					File:     msgFile,
+					Package:  msgPkg,
 				},
 				Enums:    []string{},
 				Fields:   map[string]Field{},
@@ -266,7 +275,7 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 			}
 
 			for _, e := range m.Enums {
-				enum := parseEnum(file, pkgName, e)
+				enum := parseEnum(msgFile, msgPkg, e)
 				pkg.Enums = append(pkg.Enums, enum.FullName)
 				data.Enums[string(e.Desc.FullName())] = enum
 			}
@@ -277,8 +286,8 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 					Descriptor: Descriptor{
 						Name:     string(fl.Desc.Name()),
 						FullName: string(fl.Desc.FullName()),
-						File:     file,
-						Package:  pkgName,
+						File:     msgFile,
+						Package:  msgPkg,
 					},
 					GoName:   fl.GoName,
 					JSONName: fl.Desc.JSONName(),
