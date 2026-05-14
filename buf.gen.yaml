@@ -16,7 +16,7 @@ plugins:
     opt:
       - cli-categories=true
       - cli-enabled=true
-      - docs-out=./proto/README.md
+      - docs-out=./proto/
       - enable-codec=true
       # - enable-debug-logging=true
       - enable-patch-support=true

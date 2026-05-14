@@ -14,7 +14,7 @@ go = "1.23.6"
 "go:github.com/bergundy/protoc-gen-go-nexus-temporal/cmd/protoc-gen-go-nexus-temporal" = "v0.0.4"
 "go:github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus" = "v0.0.8"
 "go:github.com/mfridman/tparse" = "v0.17.0"
-goreleaser = "latest"
+goreleaser = "2.15.4"
 node = "latest"
 protoc = "latest"
 

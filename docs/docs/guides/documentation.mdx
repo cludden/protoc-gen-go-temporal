@@ -49,6 +49,37 @@ protoc \
 </TabItem>
 </Tabs>
 
+### Single-file vs. per-package output
+
+The value passed to `docs-out` determines the output layout:
+
+- **File path** (e.g. `proto/README.md`): a single file is generated containing documentation for every proto package, with cross-references resolved as in-file anchors.
+- **Directory path** (a path with a trailing separator, or pointing at an existing directory; e.g. `./docs/`): one `README.md` is generated per proto package, mirroring the proto source tree under the output directory. Cross-package references are rewritten as relative file links, and an index `README.md` listing all packages is written at the directory root.
+
+```
+docs/
+  README.md                          # index
+  example/v1/README.md               # one file per proto package
+  example/common/v1/README.md
+  google/protobuf/README.md          # well-known and other referenced packages
+```
+
+#### Customizing filenames
+
+In directory mode the per-package and root index filenames can be customized via the [`docs-filename`](/docs/configuration/plugin#docs-filename) and [`docs-index`](/docs/configuration/plugin#docs-index) options. Both default to `README.md`. Useful for site generators that expect specific names (e.g. Docusaurus `.mdx`, Hugo `_index.md`):
+
+```yaml title="buf.gen.yaml — Docusaurus example"
+plugins:
+  - plugin: go_temporal
+    out: gen
+    opt:
+      - docs-out=./docs/
+      - docs-filename=README.mdx
+      - docs-index=index.mdx
+```
+
+Filenames must be flat names — path separators are rejected.
+
 ## Template Options
 
 The plugin supports two documentation template options:
