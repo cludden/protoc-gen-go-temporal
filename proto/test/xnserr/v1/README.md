@@ -3,51 +3,21 @@
 <a name="test-xnserr-v1"></a>
 # test.xnserr.v1
 
+## Table of Contents
+- [test.xnserr.v1.Client](#test-xnserr-v1-client)
+  - [Workflows](#test-xnserr-v1-client-workflows)
+    - [test.xnserr.v1.Client.CallSleep](#test-xnserr-v1-client-callsleep-workflow)
+- [test.xnserr.v1.Server](#test-xnserr-v1-server)
+  - [Workflows](#test-xnserr-v1-server-workflows)
+    - [test.xnserr.v1.Server.Sleep](#test-xnserr-v1-server-sleep-workflow)
+- Messages
+  - [test.xnserr.v1.CallSleepRequest](#test-xnserr-v1-callsleeprequest)
+  - [test.xnserr.v1.Failure](#test-xnserr-v1-failure)
+  - [test.xnserr.v1.FailureInfo](#test-xnserr-v1-failureinfo)
+  - [test.xnserr.v1.SleepRequest](#test-xnserr-v1-sleeprequest)
+
 <a name="test-xnserr-v1-services"></a>
 ## Services
-
-<a name="test-xnserr-v1-server"></a>
-## test.xnserr.v1.Server
-
-<a name="test-xnserr-v1-server-workflows"></a>
-### Workflows
-
----
-<a name="test-xnserr-v1-server-sleep-workflow"></a>
-### test.xnserr.v1.Server.Sleep
-
-**Input:** [test.xnserr.v1.SleepRequest](#test-xnserr-v1-sleeprequest)
-
-<table>
-<tr>
-<th>Attribute</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>failure</td>
-<td><a href="#test-xnserr-v1-failure">test.xnserr.v1.Failure</a></td>
-<td><pre>
-json_name: failure
-go_name: Failure</pre></td>
-</tr><tr>
-<td>sleep</td>
-<td><a href="../../../google/protobuf/README.md#google-protobuf-duration">google.protobuf.Duration</a></td>
-<td><pre>
-json_name: sleep
-go_name: Sleep</pre></td>
-</tr>
-</table>
-
-**Defaults:**
-
-<table>
-<tr><th>Name</th><th>Value</th></tr>
-<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE</code></pre></td></tr>
-<tr><td>parent_close_policy</td><td><pre><code>PARENT_CLOSE_POLICY_REQUEST_CANCEL</code></pre></td></tr>
-<tr><td>xns.heartbeat_interval</td><td>10 seconds</td></tr>
-<tr><td>xns.heartbeat_timeout</td><td>30 seconds</td></tr>
-</table>     
 
 <a name="test-xnserr-v1-client"></a>
 ## test.xnserr.v1.Client
@@ -99,6 +69,49 @@ go_name: StartWorkflowOptions</pre></td>
 <table>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
+
+<a name="test-xnserr-v1-server"></a>
+## test.xnserr.v1.Server
+
+<a name="test-xnserr-v1-server-workflows"></a>
+### Workflows
+
+---
+<a name="test-xnserr-v1-server-sleep-workflow"></a>
+### test.xnserr.v1.Server.Sleep
+
+**Input:** [test.xnserr.v1.SleepRequest](#test-xnserr-v1-sleeprequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>failure</td>
+<td><a href="#test-xnserr-v1-failure">test.xnserr.v1.Failure</a></td>
+<td><pre>
+json_name: failure
+go_name: Failure</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="../../../google/protobuf/README.md#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE</code></pre></td></tr>
+<tr><td>parent_close_policy</td><td><pre><code>PARENT_CLOSE_POLICY_REQUEST_CANCEL</code></pre></td></tr>
+<tr><td>xns.heartbeat_interval</td><td>10 seconds</td></tr>
+<tr><td>xns.heartbeat_timeout</td><td>30 seconds</td></tr>
 </table>     
 
 <a name="test-xnserr-v1-messages"></a>

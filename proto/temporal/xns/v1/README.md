@@ -3,6 +3,12 @@
 <a name="temporal-xns-v1"></a>
 # temporal.xns.v1
 
+## Table of Contents
+- Messages
+  - [temporal.xns.v1.IDReusePolicy](#temporal-xns-v1-idreusepolicy)
+  - [temporal.xns.v1.RetryPolicy](#temporal-xns-v1-retrypolicy)
+  - [temporal.xns.v1.StartWorkflowOptions](#temporal-xns-v1-startworkflowoptions)
+
 <a name="temporal-xns-v1-messages"></a>
 ## Messages
 

@@ -3,6 +3,14 @@
 <a name="issue_133-v1"></a>
 # issue_133.v1
 
+## Table of Contents
+- [issue_133.v1.CreateUserWorkflowService](#issue_133-v1-createuserworkflowservice)
+  - [Activities](#issue_133-v1-createuserworkflowservice-activities)
+    - [CreateUserInAPIActivity](#createuserinapiactivity-activity)
+- Messages
+  - [issue_133.v1.CreateUserInAPIRequest](#issue_133-v1-createuserinapirequest)
+  - [issue_133.v1.CreateUserInAPIResponse](#issue_133-v1-createuserinapiresponse)
+
 <a name="issue_133-v1-services"></a>
 ## Services
 

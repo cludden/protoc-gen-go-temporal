@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,6 +66,7 @@ func renderDocs(p *protogen.Plugin, cfg *Config) error {
 			"docslink": func(fqdn, suffix, currentPkg string, d *docs.Data) string {
 				return docslinkFor(fqdn, suffix, currentPkg, d, perPkgFilename)
 			},
+			"mapkeys": sortedMapKeys,
 		}).
 		Funcs(sprig.FuncMap()).
 		Parse(string(raw))
@@ -276,6 +278,25 @@ func docslinkFor(fqdn, suffix, currentPkg string, data *docs.Data, perPkgFilenam
 		return "#" + anchor
 	}
 	return filepath.ToSlash(filepath.Join(rel, perPkgFilename)) + "#" + anchor
+}
+
+// sortedMapKeys returns the keys of any string-keyed map, sorted lexicographically.
+// It exists because sprig's "keys" only accepts map[string]interface{}, while the
+// docs templates iterate typed maps like map[string]docs.Package.
+func sortedMapKeys(m any) []string {
+	v := reflect.ValueOf(m)
+	if !v.IsValid() || v.Kind() != reflect.Map {
+		return nil
+	}
+	out := make([]string, 0, v.Len())
+	for _, k := range v.MapKeys() {
+		if k.Kind() != reflect.String {
+			return nil
+		}
+		out = append(out, k.String())
+	}
+	sort.Strings(out)
+	return out
 }
 
 func resolveDocsPackage(fqdn string, data *docs.Data) string {

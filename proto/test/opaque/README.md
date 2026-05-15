@@ -3,6 +3,39 @@
 <a name="test-opaque"></a>
 # test.opaque
 
+## Table of Contents
+- [test.opaque.Hybrid](#test-opaque-hybrid)
+  - [Workflows](#test-opaque-hybrid-workflows)
+    - [test.opaque.Hybrid.PutHybridExample](#test-opaque-hybrid-puthybridexample-workflow)
+  - [Signals](#test-opaque-hybrid-signals)
+    - [test.opaque.Hybrid.SignalHybrid](#test-opaque-hybrid-signalhybrid-signal)
+- [test.opaque.Opaque](#test-opaque-opaque)
+  - [Workflows](#test-opaque-opaque-workflows)
+    - [test.opaque.Opaque.PutOpaqueExample](#test-opaque-opaque-putopaqueexample-workflow)
+  - [Signals](#test-opaque-opaque-signals)
+    - [test.opaque.Opaque.SignalOpaque](#test-opaque-opaque-signalopaque-signal)
+- [test.opaque.Open](#test-opaque-open)
+  - [Workflows](#test-opaque-open-workflows)
+    - [test.opaque.Open.PutOpenExample](#test-opaque-open-putopenexample-workflow)
+  - [Signals](#test-opaque-open-signals)
+    - [test.opaque.Open.SignalOpen](#test-opaque-open-signalopen-signal)
+- [test.opaque.Optional](#test-opaque-optional)
+  - [Workflows](#test-opaque-optional-workflows)
+    - [test.opaque.Optional.PutOptionalExample](#test-opaque-optional-putoptionalexample-workflow)
+  - [Signals](#test-opaque-optional-signals)
+    - [test.opaque.Optional.SignalOptional](#test-opaque-optional-signaloptional-signal)
+- Messages
+  - [test.opaque.Address](#test-opaque-address)
+  - [test.opaque.HybridExample](#test-opaque-hybridexample)
+  - [test.opaque.HybridExample.ExtraEntry](#test-opaque-hybridexample-extraentry)
+  - [test.opaque.OpaqueExample](#test-opaque-opaqueexample)
+  - [test.opaque.OpaqueExample.ExtraEntry](#test-opaque-opaqueexample-extraentry)
+  - [test.opaque.OpenExample](#test-opaque-openexample)
+  - [test.opaque.OpenExample.ExtraEntry](#test-opaque-openexample-extraentry)
+  - [test.opaque.OptionalExample](#test-opaque-optionalexample)
+  - [test.opaque.OptionalExample.ExtraEntry](#test-opaque-optionalexample-extraentry)
+  - [test.opaque.Status](#test-opaque-status)
+
 <a name="test-opaque-services"></a>
 ## Services
 

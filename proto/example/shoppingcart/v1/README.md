@@ -3,6 +3,28 @@
 <a name="example-shoppingcart-v1"></a>
 # example.shoppingcart.v1
 
+## Table of Contents
+- [example.shoppingcart.v1.ShoppingCart](#example-shoppingcart-v1-shoppingcart)
+  - [Workflows](#example-shoppingcart-v1-shoppingcart-workflows)
+    - [example.shoppingcart.v1.ShoppingCart](#example-shoppingcart-v1-shoppingcart-workflow)
+  - [Queries](#example-shoppingcart-v1-shoppingcart-queries)
+    - [example.shoppingcart.v1.ShoppingCart.Describe](#example-shoppingcart-v1-shoppingcart-describe-query)
+  - [Signals](#example-shoppingcart-v1-shoppingcart-signals)
+    - [example.shoppingcart.v1.ShoppingCart.Checkout](#example-shoppingcart-v1-shoppingcart-checkout-signal)
+  - [Updates](#example-shoppingcart-v1-shoppingcart-updates)
+    - [example.shoppingcart.v1.ShoppingCart.UpdateCart](#example-shoppingcart-v1-shoppingcart-updatecart-update)
+- Messages
+  - [example.shoppingcart.v1.CartState](#example-shoppingcart-v1-cartstate)
+  - [example.shoppingcart.v1.CartState.ItemsEntry](#example-shoppingcart-v1-cartstate-itemsentry)
+  - [example.shoppingcart.v1.CheckoutInput](#example-shoppingcart-v1-checkoutinput)
+  - [example.shoppingcart.v1.DescribeInput](#example-shoppingcart-v1-describeinput)
+  - [example.shoppingcart.v1.DescribeOutput](#example-shoppingcart-v1-describeoutput)
+  - [example.shoppingcart.v1.ShoppingCartInput](#example-shoppingcart-v1-shoppingcartinput)
+  - [example.shoppingcart.v1.ShoppingCartOutput](#example-shoppingcart-v1-shoppingcartoutput)
+  - [example.shoppingcart.v1.UpdateCartAction](#example-shoppingcart-v1-updatecartaction)
+  - [example.shoppingcart.v1.UpdateCartInput](#example-shoppingcart-v1-updatecartinput)
+  - [example.shoppingcart.v1.UpdateCartOutput](#example-shoppingcart-v1-updatecartoutput)
+
 <a name="example-shoppingcart-v1-services"></a>
 ## Services
 

@@ -3,6 +3,28 @@
 <a name="test-acronym-v1"></a>
 # test.acronym.v1
 
+## Table of Contents
+- [test.acronym.v1.AWS](#test-acronym-v1-aws)
+  - [Workflows](#test-acronym-v1-aws-workflows)
+    - [test.acronym.v1.AWS.ManageAWS](#test-acronym-v1-aws-manageaws-workflow)
+    - [test.acronym.v1.AWS.ManageAWSResource](#test-acronym-v1-aws-manageawsresource-workflow)
+    - [test.acronym.v1.AWS.SomethingV1FooBar](#test-acronym-v1-aws-somethingv1foobar-workflow)
+    - [test.acronym.v1.AWS.SomethingV2FooBar](#test-acronym-v1-aws-somethingv2foobar-workflow)
+  - [Activities](#test-acronym-v1-aws-activities)
+    - [test.acronym.v1.AWS.ManageAWSResource](#test-acronym-v1-aws-manageawsresource-activity)
+    - [test.acronym.v1.AWS.ManageAWSResourceURN](#test-acronym-v1-aws-manageawsresourceurn-activity)
+- Messages
+  - [test.acronym.v1.ManageAWSRequest](#test-acronym-v1-manageawsrequest)
+  - [test.acronym.v1.ManageAWSResourceRequest](#test-acronym-v1-manageawsresourcerequest)
+  - [test.acronym.v1.ManageAWSResourceResponse](#test-acronym-v1-manageawsresourceresponse)
+  - [test.acronym.v1.ManageAWSResourceURNRequest](#test-acronym-v1-manageawsresourceurnrequest)
+  - [test.acronym.v1.ManageAWSResourceURNResponse](#test-acronym-v1-manageawsresourceurnresponse)
+  - [test.acronym.v1.ManageAWSResponse](#test-acronym-v1-manageawsresponse)
+  - [test.acronym.v1.SomethingV1FooBarRequest](#test-acronym-v1-somethingv1foobarrequest)
+  - [test.acronym.v1.SomethingV1FooBarResponse](#test-acronym-v1-somethingv1foobarresponse)
+  - [test.acronym.v1.SomethingV2FooBarRequest](#test-acronym-v1-somethingv2foobarrequest)
+  - [test.acronym.v1.SomethingV2FooBarResponse](#test-acronym-v1-somethingv2foobarresponse)
+
 <a name="test-acronym-v1-services"></a>
 ## Services
 

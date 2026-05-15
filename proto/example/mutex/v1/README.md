@@ -3,6 +3,24 @@
 <a name="example-mutex-v1"></a>
 # example.mutex.v1
 
+## Table of Contents
+- [example.mutex.v1.Example](#example-mutex-v1-example)
+  - [Workflows](#example-mutex-v1-example-workflows)
+    - [example.mutex.v1.Example.SampleWorkflowWithMutex](#example-mutex-v1-example-sampleworkflowwithmutex-workflow)
+    - [mutex.v1.Mutex](#mutex-v1-mutex-workflow)
+  - [Signals](#example-mutex-v1-example-signals)
+    - [mutex.v1.ReleaseLock](#mutex-v1-releaselock-signal)
+  - [Updates](#example-mutex-v1-example-updates)
+    - [mutex.v1.AcquireLock](#mutex-v1-acquirelock-update)
+  - [Activities](#example-mutex-v1-example-activities)
+    - [example.mutex.v1.Example.Mutex](#example-mutex-v1-example-mutex-activity)
+- Messages
+  - [example.mutex.v1.AcquireLockInput](#example-mutex-v1-acquirelockinput)
+  - [example.mutex.v1.AcquireLockOutput](#example-mutex-v1-acquirelockoutput)
+  - [example.mutex.v1.MutexInput](#example-mutex-v1-mutexinput)
+  - [example.mutex.v1.ReleaseLockInput](#example-mutex-v1-releaselockinput)
+  - [example.mutex.v1.SampleWorkflowWithMutexInput](#example-mutex-v1-sampleworkflowwithmutexinput)
+
 <a name="example-mutex-v1-services"></a>
 ## Services
 
@@ -11,6 +29,46 @@
 
 <a name="example-mutex-v1-example-workflows"></a>
 ### Workflows
+
+---
+<a name="example-mutex-v1-example-sampleworkflowwithmutex-workflow"></a>
+### example.mutex.v1.Example.SampleWorkflowWithMutex
+
+<pre>
+SampleWorkflowWithMutex is a sample workflow that demonstrates how to
+use the Mutex service.
+</pre>
+
+**Input:** [example.mutex.v1.SampleWorkflowWithMutexInput](#example-mutex-v1-sampleworkflowwithmutexinput)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>resource_id</td>
+<td>string</td>
+<td><pre>
+json_name: resourceId
+go_name: ResourceId</pre></td>
+</tr><tr>
+<td>sleep</td>
+<td><a href="../../../google/protobuf/README.md#google-protobuf-duration">google.protobuf.Duration</a></td>
+<td><pre>
+json_name: sleep
+go_name: Sleep</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>SampleWorkflow1WithMutex_${! uuid_v4() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>
 
 ---
 <a name="mutex-v1-mutex-workflow"></a>
@@ -62,46 +120,6 @@ go_name: ResourceId</pre></td>
 <table>
 <tr><th>Update</th></tr>
 <tr><td><a href="#example-mutex-v1-example-acquirelock-update">example.mutex.v1.Example.AcquireLock</a></td></tr>
-</table>
-
----
-<a name="example-mutex-v1-example-sampleworkflowwithmutex-workflow"></a>
-### example.mutex.v1.Example.SampleWorkflowWithMutex
-
-<pre>
-SampleWorkflowWithMutex is a sample workflow that demonstrates how to
-use the Mutex service.
-</pre>
-
-**Input:** [example.mutex.v1.SampleWorkflowWithMutexInput](#example-mutex-v1-sampleworkflowwithmutexinput)
-
-<table>
-<tr>
-<th>Attribute</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>resource_id</td>
-<td>string</td>
-<td><pre>
-json_name: resourceId
-go_name: ResourceId</pre></td>
-</tr><tr>
-<td>sleep</td>
-<td><a href="../../../google/protobuf/README.md#google-protobuf-duration">google.protobuf.Duration</a></td>
-<td><pre>
-json_name: sleep
-go_name: Sleep</pre></td>
-</tr>
-</table>
-
-**Defaults:**
-
-<table>
-<tr><th>Name</th><th>Value</th></tr>
-<tr><td>id</td><td><pre><code>SampleWorkflow1WithMutex_${! uuid_v4() }</code></pre></td></tr>
-<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
 </table>   
 
 <a name="example-mutex-v1-example-signals"></a>

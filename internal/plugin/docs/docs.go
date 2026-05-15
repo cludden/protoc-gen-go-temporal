@@ -6,6 +6,7 @@ import (
 	"container/list"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -569,7 +570,38 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 		data.Packages[pkgName] = pkg
 	}
 
+	normalizeOrdering(data)
+
 	return data, nil
+}
+
+// normalizeOrdering sorts every list rendered by docs templates so output is
+// stable and lexicographic. Service-scoped slices (workflows, queries,
+// signals, updates, activities) are sorted by the item's display Name (which
+// may differ from FullName when overridden by proto options); package-scoped
+// slices use FullName since services/messages/enums have no separate display
+// Name.
+func normalizeOrdering(data *Data) {
+	for fn, svc := range data.Services {
+		sortByDisplayName(svc.Workflows, func(s string) string { return data.Workflows[s].Name })
+		sortByDisplayName(svc.Queries, func(s string) string { return data.Queries[s].Name })
+		sortByDisplayName(svc.Signals, func(s string) string { return data.Signals[s].Name })
+		sortByDisplayName(svc.Updates, func(s string) string { return data.Updates[s].Name })
+		sortByDisplayName(svc.Activities, func(s string) string { return data.Activities[s].Name })
+		data.Services[fn] = svc
+	}
+	for name, pkg := range data.Packages {
+		sort.Strings(pkg.Services)
+		sort.Strings(pkg.Messages)
+		sort.Strings(pkg.Enums)
+		data.Packages[name] = pkg
+	}
+}
+
+func sortByDisplayName(s []string, displayOf func(string) string) {
+	sort.SliceStable(s, func(i, j int) bool {
+		return displayOf(s[i]) < displayOf(s[j])
+	})
 }
 
 func notEmpty(msg *protogen.Message) bool {

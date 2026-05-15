@@ -3,6 +3,14 @@
 <a name="test-issue_135-v1"></a>
 # test.issue_135.v1
 
+## Table of Contents
+- [test.issue_135.v1.FOOBar](#test-issue_135-v1-foobar)
+  - [Activities](#test-issue_135-v1-foobar-activities)
+    - [DoName](#doname-activity)
+- Messages
+  - [test.issue_135.v1.DoRequest](#test-issue_135-v1-dorequest)
+  - [test.issue_135.v1.DoResponse](#test-issue_135-v1-doresponse)
+
 <a name="test-issue_135-v1-services"></a>
 ## Services
 

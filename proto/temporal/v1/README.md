@@ -3,6 +3,10 @@
 <a name="temporal-v1"></a>
 # temporal.v1
 
+## Table of Contents
+- Messages
+  - [temporal.v1.RetryPolicy](#temporal-v1-retrypolicy)
+
 <a name="temporal-v1-messages"></a>
 ## Messages
 

@@ -73,6 +73,60 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 <a name="{{ $pkgName | slug }}"></a>
 # {{ $pkgName }}
 
+{{- if $currentPkg }}
+
+## Table of Contents
+{{- if gt (len $pkg.Services) 0 }}
+  {{- range $svcI, $svcName := $pkg.Services }}
+  {{- $svc := index $data.Services $svcName }}
+  {{- if $svc.HasTemporalResources }}
+- [{{ $svcName }}](#{{ $svcName | slug }})
+  {{- if gt (len $svc.Workflows) 0 }}
+  - [Workflows](#{{ $svcName | slug }}-workflows)
+    {{- range $wI, $wName := $svc.Workflows }}
+    {{- $w := index $data.Workflows $wName }}
+    - [{{ $w.Name }}](#{{ $w.Name | slug }}-workflow)
+    {{- end }}
+  {{- end }}
+  {{- if gt (len $svc.Queries) 0 }}
+  - [Queries](#{{ $svcName | slug }}-queries)
+    {{- range $qI, $qName := $svc.Queries }}
+    {{- $q := index $data.Queries $qName }}
+    - [{{ $q.Name }}](#{{ $q.Name | slug }}-query)
+    {{- end }}
+  {{- end }}
+  {{- if gt (len $svc.Signals) 0 }}
+  - [Signals](#{{ $svcName | slug }}-signals)
+    {{- range $sI, $sName := $svc.Signals }}
+    {{- $s := index $data.Signals $sName }}
+    - [{{ $s.Name }}](#{{ $s.Name | slug }}-signal)
+    {{- end }}
+  {{- end }}
+  {{- if gt (len $svc.Updates) 0 }}
+  - [Updates](#{{ $svcName | slug }}-updates)
+    {{- range $uI, $uName := $svc.Updates }}
+    {{- $u := index $data.Updates $uName }}
+    - [{{ $u.Name }}](#{{ $u.Name | slug }}-update)
+    {{- end }}
+  {{- end }}
+  {{- if gt (len $svc.Activities) 0 }}
+  - [Activities](#{{ $svcName | slug }}-activities)
+    {{- range $aI, $aName := $svc.Activities }}
+    {{- $a := index $data.Activities $aName }}
+    - [{{ $a.Name }}](#{{ $a.Name | slug }}-activity)
+    {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- if gt (len $pkg.ReferencedMessages) 0 }}
+- Messages
+  {{- range $msgI, $msgName := $pkg.ReferencedMessages }}
+  - [{{ $msgName }}](#{{ $msgName | slug }})
+  {{- end }}
+{{- end }}
+{{- end }}
+
 {{- if gt (len $pkg.Services) 0 }}
 
 <a name="{{ $pkgName | slug }}-services"></a>
@@ -215,7 +269,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 <table>
 <tr><th>Query</th></tr>
-{{- range $q, $opt := $w.Queries }}
+{{- range $q := (mapkeys $w.Queries) }}
 <tr><td><a href="{{ docslink $q "-query" $currentPkg $data }}">{{ $q }}</a></td></tr>
 {{- end }}
 </table>
@@ -227,7 +281,8 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 <table>
 <tr><th>Signal</th><th>Start</th></tr>
-{{- range $s, $opt := $w.Signals }}
+{{- range $s := (mapkeys $w.Signals) }}
+{{- $opt := index $w.Signals $s }}
 <tr><td><a href="{{ docslink $s "-signal" $currentPkg $data }}">{{ $s }}</a></td><td>{{ $opt.Start }}</td></tr>
 {{- end }}
 </table>
@@ -239,7 +294,7 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 <table>
 <tr><th>Update</th></tr>
-{{- range $u, $opt := $w.Updates }}
+{{- range $u := (mapkeys $w.Updates) }}
 <tr><td><a href="{{ docslink $u "-update" $currentPkg $data }}">{{ $u }}</a></td></tr>
 {{- end }}
 </table>
@@ -480,7 +535,8 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 
 
 # Table of Contents
-{{ range $pkgName, $pkg := $data.Packages -}}
+{{ range $pkgName := (mapkeys $data.Packages) -}}
+{{- $pkg := index $data.Packages $pkgName -}}
 {{- if $pkg.HasTemporalResources }}
 - [{{ $pkgName }}](#{{ $pkgName | slug }})
   - Services
@@ -534,7 +590,8 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
   {{- end }}
 {{- end }} 
 {{- end }}
-{{- range $pkgName, $pkg := $data.Packages }}
+{{- range $pkgName := (mapkeys $data.Packages) }}
+{{- $pkg := index $data.Packages $pkgName }}
 {{- if and (not $pkg.HasTemporalResources) (gt (len $pkg.ReferencedMessages) 0) }}
 - [{{ $pkgName }}](#{{ $pkgName | slug }})
   - Messages
@@ -545,13 +602,15 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 {{- end }}
 {{- end }}
 
-{{- range $pkgName, $pkg := $data.Packages -}}
+{{- range $pkgName := (mapkeys $data.Packages) -}}
+{{- $pkg := index $data.Packages $pkgName -}}
 {{ if $pkg.HasTemporalResources -}}
 {{ template "package" (dict "Data" $data "Package" $pkgName "CurrentPackage" "") }}
 {{- end }}
 {{- end -}}
 
-{{- range $pkgName, $pkg := $data.Packages -}}
+{{- range $pkgName := (mapkeys $data.Packages) -}}
+{{- $pkg := index $data.Packages $pkgName -}}
 {{- if and (not $pkg.HasTemporalResources) (gt (len $pkg.ReferencedMessages) 0) }}
 {{ template "package" (dict "Data" $data "Package" $pkgName "CurrentPackage" "") }}
 {{- end }}
@@ -561,7 +620,8 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
 {{- $data := .Data }}
 {{- $filename := .Filename }}
 # Documentation
-{{ range $pkgName, $pkg := $data.Packages -}}
+{{ range $pkgName := (mapkeys $data.Packages) -}}
+{{- $pkg := index $data.Packages $pkgName -}}
 {{- if $pkg.HasTemporalResources }}
 - [{{ $pkgName }}]({{ $pkg.Dir }}/{{ $filename }})
   - Services
@@ -614,7 +674,8 @@ go_tags: {{ $f.GoTags }}{{- end }}</pre>{{- end }}</td>
   {{- end }}
 {{- end }}
 {{- end }}
-{{- range $pkgName, $pkg := $data.Packages }}
+{{- range $pkgName := (mapkeys $data.Packages) }}
+{{- $pkg := index $data.Packages $pkgName }}
 {{- if and (not $pkg.HasTemporalResources) (gt (len $pkg.ReferencedMessages) 0) }}
 - [{{ $pkgName }}]({{ $pkg.Dir }}/{{ $filename }})
   - Messages

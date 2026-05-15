@@ -3,6 +3,10 @@
 <a name="temporal-api-enums-v1"></a>
 # temporal.api.enums.v1
 
+## Table of Contents
+- Messages
+  - [temporal.api.enums.v1.WorkflowIdConflictPolicy](#temporal-api-enums-v1-workflowidconflictpolicy)
+
 <a name="temporal-api-enums-v1-messages"></a>
 ## Messages
 

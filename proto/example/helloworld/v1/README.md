@@ -3,6 +3,17 @@
 <a name="example-helloworld-v1"></a>
 # example.helloworld.v1
 
+## Table of Contents
+- [example.helloworld.v1.Example](#example-helloworld-v1-example)
+  - [Workflows](#example-helloworld-v1-example-workflows)
+    - [example.v1.Hello](#example-v1-hello-workflow)
+  - [Signals](#example-helloworld-v1-example-signals)
+    - [example.helloworld.v1.Example.Goodbye](#example-helloworld-v1-example-goodbye-signal)
+- Messages
+  - [example.helloworld.v1.GoodbyeRequest](#example-helloworld-v1-goodbyerequest)
+  - [example.helloworld.v1.HelloRequest](#example-helloworld-v1-hellorequest)
+  - [example.helloworld.v1.HelloResponse](#example-helloworld-v1-helloresponse)
+
 <a name="example-helloworld-v1-services"></a>
 ## Services
 

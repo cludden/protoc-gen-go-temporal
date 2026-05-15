@@ -3,6 +3,17 @@
 <a name="google-protobuf"></a>
 # google.protobuf
 
+## Table of Contents
+- Messages
+  - [google.protobuf.Any](#google-protobuf-any)
+  - [google.protobuf.Duration](#google-protobuf-duration)
+  - [google.protobuf.ListValue](#google-protobuf-listvalue)
+  - [google.protobuf.NullValue](#google-protobuf-nullvalue)
+  - [google.protobuf.Struct](#google-protobuf-struct)
+  - [google.protobuf.Struct.FieldsEntry](#google-protobuf-struct-fieldsentry)
+  - [google.protobuf.Timestamp](#google-protobuf-timestamp)
+  - [google.protobuf.Value](#google-protobuf-value)
+
 <a name="google-protobuf-messages"></a>
 ## Messages
 
