@@ -1,9 +1,0 @@
-kind: Added
-body: |
-  Add `docs-filename` and `docs-index` options to customize the per-package
-  and root index filenames in directory mode. Both default to `README.md`,
-  preserving existing behavior. Filenames must be flat (no path separators).
-time: 2026-05-14T09:03:31-06:00
-custom:
-    Author: cludden
-    PullRequest: "147"
