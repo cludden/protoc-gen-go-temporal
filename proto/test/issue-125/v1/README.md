@@ -3,6 +3,21 @@
 <a name="issue_125-v1"></a>
 # issue_125.v1
 
+## Table of Contents
+- [issue_125.v1.Issue125Service](#issue_125-v1-issue125service)
+  - [Workflows](#issue_125-v1-issue125service-workflows)
+    - [issue_125.v1.Issue125Service.Foo](#issue_125-v1-issue125service-foo-workflow)
+  - [Updates](#issue_125-v1-issue125service-updates)
+    - [issue_125.v1.Issue125Service.Bar](#issue_125-v1-issue125service-bar-update)
+    - [issue_125.v1.Issue125Service.Baz](#issue_125-v1-issue125service-baz-update)
+- Messages
+  - [issue_125.v1.BarInput](#issue_125-v1-barinput)
+  - [issue_125.v1.BarOutput](#issue_125-v1-baroutput)
+  - [issue_125.v1.BazInput](#issue_125-v1-bazinput)
+  - [issue_125.v1.BazOutput](#issue_125-v1-bazoutput)
+  - [issue_125.v1.FooInput](#issue_125-v1-fooinput)
+  - [issue_125.v1.FooOutput](#issue_125-v1-foooutput)
+
 <a name="issue_125-v1-services"></a>
 ## Services
 

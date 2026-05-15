@@ -1,0 +1,11 @@
+kind: Changed
+body: |
+    Sort the default docs template's sections (workflows, queries, signals,
+    updates, activities, services, messages) alphabetically by display Name
+    instead of proto declaration order. In directory mode, each per-package
+    README now includes a local Table of Contents at the top with anchor
+    links to its services and messages.
+time: 2026-05-15T17:41:51.687062-06:00
+custom:
+    Author: cludden
+    PullRequest: "149"

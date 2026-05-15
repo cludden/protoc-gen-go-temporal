@@ -3,6 +3,16 @@
 <a name="test-editions"></a>
 # test.editions
 
+## Table of Contents
+- [test.editions.FooService](#test-editions-fooservice)
+  - [Workflows](#test-editions-fooservice-workflows)
+    - [test.editions.FooService.Foo](#test-editions-fooservice-foo-workflow)
+  - [Activities](#test-editions-fooservice-activities)
+    - [test.editions.FooService.Foo](#test-editions-fooservice-foo-activity)
+- Messages
+  - [test.editions.FooInput](#test-editions-fooinput)
+  - [test.editions.FooOutput](#test-editions-foooutput)
+
 <a name="test-editions-services"></a>
 ## Services
 

@@ -3,6 +3,14 @@
 <a name="example-schedule-v1"></a>
 # example.schedule.v1
 
+## Table of Contents
+- [example.schedule.v1.Example](#example-schedule-v1-example)
+  - [Workflows](#example-schedule-v1-example-workflows)
+    - [example.schedule.v1.Schedule](#example-schedule-v1-schedule-workflow)
+- Messages
+  - [example.schedule.v1.ScheduleInput](#example-schedule-v1-scheduleinput)
+  - [example.schedule.v1.ScheduleOutput](#example-schedule-v1-scheduleoutput)
+
 <a name="example-schedule-v1-services"></a>
 ## Services
 

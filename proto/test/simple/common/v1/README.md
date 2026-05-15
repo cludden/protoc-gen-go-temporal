@@ -3,6 +3,12 @@
 <a name="mycompany-simple-common-v1"></a>
 # mycompany.simple.common.v1
 
+## Table of Contents
+- Messages
+  - [mycompany.simple.common.v1.Example](#mycompany-simple-common-v1-example)
+  - [mycompany.simple.common.v1.PaginatedRequest](#mycompany-simple-common-v1-paginatedrequest)
+  - [mycompany.simple.common.v1.PaginatedResponse](#mycompany-simple-common-v1-paginatedresponse)
+
 <a name="mycompany-simple-common-v1-messages"></a>
 ## Messages
 

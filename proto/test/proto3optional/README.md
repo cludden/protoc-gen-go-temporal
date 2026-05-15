@@ -3,6 +3,16 @@
 <a name="test-proto3optional"></a>
 # test.proto3optional
 
+## Table of Contents
+- [test.proto3optional.FooService](#test-proto3optional-fooservice)
+  - [Workflows](#test-proto3optional-fooservice-workflows)
+    - [test.proto3optional.FooService.Foo](#test-proto3optional-fooservice-foo-workflow)
+  - [Activities](#test-proto3optional-fooservice-activities)
+    - [test.proto3optional.FooService.Foo](#test-proto3optional-fooservice-foo-activity)
+- Messages
+  - [test.proto3optional.FooInput](#test-proto3optional-fooinput)
+  - [test.proto3optional.FooOutput](#test-proto3optional-foooutput)
+
 <a name="test-proto3optional-services"></a>
 ## Services
 

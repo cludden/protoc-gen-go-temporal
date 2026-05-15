@@ -3,6 +3,16 @@
 <a name="example-searchattributes-v1"></a>
 # example.searchattributes.v1
 
+## Table of Contents
+- [example.searchattributes.v1.Example](#example-searchattributes-v1-example)
+  - [Workflows](#example-searchattributes-v1-example-workflows)
+    - [example.searchattributes.v1.Example.SearchAttributes](#example-searchattributes-v1-example-searchattributes-workflow)
+    - [example.searchattributes.v1.Example.TypedSearchAttributes](#example-searchattributes-v1-example-typedsearchattributes-workflow)
+- Messages
+  - [example.searchattributes.v1.SearchAttributesInput](#example-searchattributes-v1-searchattributesinput)
+  - [example.searchattributes.v1.TypedSearchAttributesInput](#example-searchattributes-v1-typedsearchattributesinput)
+  - [example.searchattributes.v1.TypedSearchAttributesOutput](#example-searchattributes-v1-typedsearchattributesoutput)
+
 <a name="example-searchattributes-v1-services"></a>
 ## Services
 

@@ -3,6 +3,20 @@
 <a name="test-option-v1"></a>
 # test.option.v1
 
+## Table of Contents
+- [test.option.v1.Test](#test-option-v1-test)
+  - [Workflows](#test-option-v1-test-workflows)
+    - [test.option.v1.Test.WorkflowWithInput](#test-option-v1-test-workflowwithinput-workflow)
+  - [Updates](#test-option-v1-test-updates)
+    - [test.option.v1.Test.UpdateWithInput](#test-option-v1-test-updatewithinput-update)
+  - [Activities](#test-option-v1-test-activities)
+    - [test.option.v1.Test.ActivityWithInput](#test-option-v1-test-activitywithinput-activity)
+- Messages
+  - [test.option.v1.ActivityWithInputRequest](#test-option-v1-activitywithinputrequest)
+  - [test.option.v1.ActivityWithInputResponse](#test-option-v1-activitywithinputresponse)
+  - [test.option.v1.UpdateWithInputRequest](#test-option-v1-updatewithinputrequest)
+  - [test.option.v1.WorkflowWithInputRequest](#test-option-v1-workflowwithinputrequest)
+
 <a name="test-option-v1-services"></a>
 ## Services
 

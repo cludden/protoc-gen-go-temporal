@@ -3,62 +3,34 @@
 <a name="example-xns-v1"></a>
 # example.xns.v1
 
+## Table of Contents
+- [example.xns.v1.Example](#example-xns-v1-example)
+  - [Workflows](#example-xns-v1-example-workflows)
+    - [example.xns.v1.Example.CreateFoo](#example-xns-v1-example-createfoo-workflow)
+  - [Queries](#example-xns-v1-example-queries)
+    - [example.xns.v1.Example.GetFooProgress](#example-xns-v1-example-getfooprogress-query)
+  - [Signals](#example-xns-v1-example-signals)
+    - [example.xns.v1.Example.SetFooProgress](#example-xns-v1-example-setfooprogress-signal)
+  - [Updates](#example-xns-v1-example-updates)
+    - [example.xns.v1.Example.UpdateFooProgress](#example-xns-v1-example-updatefooprogress-update)
+  - [Activities](#example-xns-v1-example-activities)
+    - [example.xns.v1.Example.Notify](#example-xns-v1-example-notify-activity)
+- [example.xns.v1.Xns](#example-xns-v1-xns)
+  - [Workflows](#example-xns-v1-xns-workflows)
+    - [example.xns.v1.Xns.ProvisionFoo](#example-xns-v1-xns-provisionfoo-workflow)
+- Messages
+  - [example.xns.v1.CreateFooRequest](#example-xns-v1-createfoorequest)
+  - [example.xns.v1.CreateFooResponse](#example-xns-v1-createfooresponse)
+  - [example.xns.v1.Foo](#example-xns-v1-foo)
+  - [example.xns.v1.Foo.Status](#example-xns-v1-foo-status)
+  - [example.xns.v1.GetFooProgressResponse](#example-xns-v1-getfooprogressresponse)
+  - [example.xns.v1.NotifyRequest](#example-xns-v1-notifyrequest)
+  - [example.xns.v1.ProvisionFooRequest](#example-xns-v1-provisionfoorequest)
+  - [example.xns.v1.ProvisionFooResponse](#example-xns-v1-provisionfooresponse)
+  - [example.xns.v1.SetFooProgressRequest](#example-xns-v1-setfooprogressrequest)
+
 <a name="example-xns-v1-services"></a>
 ## Services
-
-<a name="example-xns-v1-xns"></a>
-## example.xns.v1.Xns
-
-<a name="example-xns-v1-xns-workflows"></a>
-### Workflows
-
----
-<a name="example-xns-v1-xns-provisionfoo-workflow"></a>
-### example.xns.v1.Xns.ProvisionFoo
-
-**Input:** [example.xns.v1.ProvisionFooRequest](#example-xns-v1-provisionfoorequest)
-
-<table>
-<tr>
-<th>Attribute</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>name</td>
-<td>string</td>
-<td><pre>
-unique foo name<br>
-
-json_name: name
-go_name: Name</pre></td>
-</tr>
-</table>
-
-**Output:** [example.xns.v1.ProvisionFooResponse](#example-xns-v1-provisionfooresponse)
-
-<table>
-<tr>
-<th>Attribute</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>foo</td>
-<td><a href="#example-xns-v1-foo">example.xns.v1.Foo</a></td>
-<td><pre>
-json_name: foo
-go_name: Foo</pre></td>
-</tr>
-</table>
-
-**Defaults:**
-
-<table>
-<tr><th>Name</th><th>Value</th></tr>
-<tr><td>id</td><td><pre><code>provision-foo/${! name.slug() }</code></pre></td></tr>
-<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
-</table>     
 
 <a name="example-xns-v1-example"></a>
 ## example.xns.v1.Example
@@ -301,6 +273,60 @@ go_name: Message</pre></td>
 <tr><td>retry_policy.max_attempts</td><td>3</td></tr>
 <tr><td>start_to_close_timeout</td><td>30 seconds</td></tr>
 </table>   
+
+<a name="example-xns-v1-xns"></a>
+## example.xns.v1.Xns
+
+<a name="example-xns-v1-xns-workflows"></a>
+### Workflows
+
+---
+<a name="example-xns-v1-xns-provisionfoo-workflow"></a>
+### example.xns.v1.Xns.ProvisionFoo
+
+**Input:** [example.xns.v1.ProvisionFooRequest](#example-xns-v1-provisionfoorequest)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>name</td>
+<td>string</td>
+<td><pre>
+unique foo name<br>
+
+json_name: name
+go_name: Name</pre></td>
+</tr>
+</table>
+
+**Output:** [example.xns.v1.ProvisionFooResponse](#example-xns-v1-provisionfooresponse)
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>foo</td>
+<td><a href="#example-xns-v1-foo">example.xns.v1.Foo</a></td>
+<td><pre>
+json_name: foo
+go_name: Foo</pre></td>
+</tr>
+</table>
+
+**Defaults:**
+
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>id</td><td><pre><code>provision-foo/${! name.slug() }</code></pre></td></tr>
+<tr><td>id_reuse_policy</td><td><pre><code>WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED</code></pre></td></tr>
+</table>     
 
 <a name="example-xns-v1-messages"></a>
 ## Messages

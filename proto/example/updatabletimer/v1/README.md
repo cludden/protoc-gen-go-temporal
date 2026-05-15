@@ -3,6 +3,19 @@
 <a name="example-updatabletimer-v1"></a>
 # example.updatabletimer.v1
 
+## Table of Contents
+- [example.updatabletimer.v1.Example](#example-updatabletimer-v1-example)
+  - [Workflows](#example-updatabletimer-v1-example-workflows)
+    - [UpdatableTimer](#updatabletimer-workflow)
+  - [Queries](#example-updatabletimer-v1-example-queries)
+    - [example.updatabletimer.v1.Example.GetWakeUpTime](#example-updatabletimer-v1-example-getwakeuptime-query)
+  - [Signals](#example-updatabletimer-v1-example-signals)
+    - [example.updatabletimer.v1.Example.UpdateWakeUpTime](#example-updatabletimer-v1-example-updatewakeuptime-signal)
+- Messages
+  - [example.updatabletimer.v1.GetWakeUpTimeOutput](#example-updatabletimer-v1-getwakeuptimeoutput)
+  - [example.updatabletimer.v1.UpdatableTimerInput](#example-updatabletimer-v1-updatabletimerinput)
+  - [example.updatabletimer.v1.UpdateWakeUpTimeInput](#example-updatabletimer-v1-updatewakeuptimeinput)
+
 <a name="example-updatabletimer-v1-services"></a>
 ## Services
 
