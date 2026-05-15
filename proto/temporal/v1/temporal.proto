@@ -102,6 +102,21 @@ enum IDReusePolicy {
   WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
 }
 
+message NexusOperationOptions {
+  // boolean flag to disable nexus operation generation for parent
+  bool disabled = 1;
+
+  // fully-qualified nexus operation name
+  string name = 2;
+}
+
+message NexusServiceOptions {
+  bool enabled = 1;
+
+  // fully-qualified nexus operation name
+  string name = 2;
+}
+
 //Defines how child workflows will react to their parent completing
 enum ParentClosePolicy {
   PARENT_CLOSE_POLICY_UNSPECIFIED = 0;
@@ -177,6 +192,9 @@ message ServiceOptions {
 
   // Default namespace for child workflows, activities
   string namespace = 2 [deprecated = true];
+
+  // Nexus service options
+  NexusServiceOptions nexus = 4;
 
   // Default task queue for all workflows, activities
   string task_queue = 1;
@@ -272,6 +290,9 @@ message WorkflowOptions {
 
   // Specifies default namespace for child workflows
   string namespace = 7 [deprecated = true];
+
+  // Nexus operation options
+  NexusOperationOptions nexus = 24;
 
   // Specifies a default parent close policy for child workflows
   ParentClosePolicy parent_close_policy = 8;

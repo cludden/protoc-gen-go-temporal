@@ -1,0 +1,14 @@
+kind: Added
+body: |
+  Add a native Nexus implementation. The plugin now generates Nexus
+  services, operations, and typed clients directly — no external
+  `protoc-gen-go-nexus` plugin required. Enable via the new
+  `temporal.v1.service.nexus` and `temporal.v1.workflow.nexus` options.
+  The previously-used official protobuf support for Nexus
+  (`bergundy/protoc-gen-go-nexus`) is being replaced by nexus-rpc-gen 
+  and is no longer actively maintained, motivating this move to native 
+  generation.
+time: 2026-05-14T21:00:00-06:00
+custom:
+    Author: cludden
+    PullRequest: "148"

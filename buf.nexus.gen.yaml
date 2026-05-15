@@ -12,16 +12,6 @@ plugins:
     out: gen
     opt:
       - paths=source_relative
-  - local: protoc-gen-go-nexus
-    out: gen
-    opt:
-      - exclude-service-tags=disabled
-      - paths=source_relative
-  - local: protoc-gen-go-nexus-temporal
-    out: gen
-    opt:
-      - exclude-service-tags=disabled
-      - paths=source_relative
   - local: dist/protoc-gen-go_temporal
     out: gen
     opt:

@@ -30,7 +30,6 @@ modules:
   - path: test/xnsheartbeat/proto
 deps:
   - buf.build/alta/protopatch
-  - buf.build/bergundy/nexus
   - buf.build/cludden/protoc-gen-go-temporal
   - buf.build/temporalio/api
 lint:

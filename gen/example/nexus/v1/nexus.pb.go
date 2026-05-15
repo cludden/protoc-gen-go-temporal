@@ -7,7 +7,6 @@
 package nexusv1
 
 import (
-	_ "github.com/bergundy/nexus-proto-annotations/go/nexus/v1"
 	_ "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -282,7 +281,7 @@ var File_example_nexus_v1_nexus_proto protoreflect.FileDescriptor
 
 const file_example_nexus_v1_nexus_proto_rawDesc = "" +
 	"\n" +
-	"\x1cexample/nexus/v1/nexus.proto\x12\x10example.nexus.v1\x1a\x16nexus/v1/options.proto\x1a\x1atemporal/v1/temporal.proto\"W\n" +
+	"\x1cexample/nexus/v1/nexus.proto\x12\x10example.nexus.v1\x1a\x1atemporal/v1/temporal.proto\"W\n" +
 	"\tEchoInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x126\n" +
 	"\blanguage\x18\x02 \x01(\x0e2\x1a.example.nexus.v1.LanguageR\blanguage\"&\n" +
@@ -301,15 +300,14 @@ const file_example_nexus_v1_nexus_proto_rawDesc = "" +
 	"\x10LANGUAGE_SPANISH\x10\x02\x12\x13\n" +
 	"\x0fLANGUAGE_FRENCH\x10\x03\x12\x13\n" +
 	"\x0fLANGUAGE_GERMAN\x10\x04\x12\x14\n" +
-	"\x10LANGUAGE_TURKISH\x10\x052\xdf\x01\n" +
+	"\x10LANGUAGE_TURKISH\x10\x052\x85\x02\n" +
 	"\x0fGreetingService\x12\xaa\x01\n" +
-	"\x05Hello\x12\x1c.example.nexus.v1.HelloInput\x1a\x1d.example.nexus.v1.HelloOutput\"d\x8a\xc4\x03X*Vexample.nexus.v1.Hello/${! language.or(throw(\"language required\")) }/${! name.slug() }\x92\xc4\x03\x04\"\x02\b\x05\x1a\x1f\x8a\xc4\x03\r\n" +
-	"\vgreeting-v1\x92\xc4\x03\n" +
-	"\x12\bgreeting2\xb4\x01\n" +
+	"\x05Hello\x12\x1c.example.nexus.v1.HelloInput\x1a\x1d.example.nexus.v1.HelloOutput\"d\x8a\xc4\x03X*Vexample.nexus.v1.Hello/${! language.or(throw(\"language required\")) }/${! name.slug() }\x92\xc4\x03\x04\"\x02\b\x05\x1aE\x8a\xc4\x033\n" +
+	"\vgreeting-v1\"$\b\x01\x12 example.nexus.v1.GreetingService\x92\xc4\x03\n" +
+	"\x12\bgreeting2\xa6\x01\n" +
 	"\vEchoService\x12~\n" +
-	"\x04Echo\x12\x1b.example.nexus.v1.EchoInput\x1a\x1c.example.nexus.v1.EchoOutput\";\x8a\xc4\x037*5example.nexus.v1.Echo/${ language }/${! name.slug() }\x1a%\x8a\xc4\x03\t\n" +
-	"\aecho-v1\x92\xc4\x03\x06\x12\x04echoʂ\x04\n" +
-	"\x12\bdisabledB\xcc\x01\n" +
+	"\x04Echo\x12\x1b.example.nexus.v1.EchoInput\x1a\x1c.example.nexus.v1.EchoOutput\";\x8a\xc4\x037*5example.nexus.v1.Echo/${ language }/${! name.slug() }\x1a\x17\x8a\xc4\x03\t\n" +
+	"\aecho-v1\x92\xc4\x03\x06\x12\x04echoB\xcc\x01\n" +
 	"\x14com.example.nexus.v1B\n" +
 	"NexusProtoP\x01ZFgithub.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1;nexusv1\xa2\x02\x03ENX\xaa\x02\x10Example.Nexus.V1\xca\x02\x10Example\\Nexus\\V1\xe2\x02\x1cExample\\Nexus\\V1\\GPBMetadata\xea\x02\x12Example::Nexus::V1b\x06proto3"
 

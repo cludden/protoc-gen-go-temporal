@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"fmt"
-	"path"
 	"slices"
 	"strings"
 
@@ -19,28 +17,29 @@ func (m *Manifest) renderNexus(f *j.File, file *protogen.File, svc *protogen.Ser
 		return false
 	}
 	m.nexusGenHandlerImpl(f, file, svc)
-	m.nexusGenRegisterService(f, file, svc)
 	return true
 }
 
-func (p *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *protogen.Service) {
-	handlerImpl := p.Names().nexusHandler(svc)
+func (m *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *protogen.Service) {
+	handlerImpl := m.Names().nexusHandler(svc)
 
 	f.Commentf("Nexus handler for %s", svc.Desc.FullName())
+	f.Comment("")
+	f.Comment("Deprecated: Use native nexus implementation instead")
 	f.Type().Id(handlerImpl).Struct()
 
-	for _, workflow := range p.workflowsOrdered {
-		if p.methods[workflow].Desc.Parent() != p.Service.Desc {
+	for _, workflow := range m.workflowsOrdered {
+		if m.methods[workflow].Desc.Parent() != m.Service.Desc {
 			continue
 		}
-		method := p.methods[workflow]
-		if !p.nexusGetShouldIncludeOperation(method) {
+		method := m.methods[workflow]
+		if !m.nexusGetShouldIncludeOperation(method) {
 			continue
 		}
-		input, hasInput, output, _ := p.nexusGetMethodIO(method)
+		input, hasInput, output, _ := m.nexusGetMethodIO(method)
 
 		operation := method.GoName
-		commentWithDefaultf(f, methodSet(method), "Nexus operation for %s workflow", p.fqnForWorkflow(workflow))
+		commentWithDefaultf(f, methodSet(method), "Nexus operation for %s workflow", m.fqnForWorkflow(workflow))
 		f.Func().
 			ParamsFunc(func(g *j.Group) {
 				g.Id("h").Op("*").Id(handlerImpl)
@@ -77,7 +76,7 @@ func (p *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *prot
 										g.Error()
 									}).
 									BlockFunc(func(g *j.Group) {
-										g.List(j.Id("o"), j.Err()).Op(":=").Qual(string(file.GoImportPath), p.toCamel("New%sOptions", workflow)).Call().Dot("Build").CallFunc(func(g *j.Group) {
+										g.List(j.Id("o"), j.Err()).Op(":=").Qual(string(file.GoImportPath), m.toCamel("New%sOptions", workflow)).Call().Dot("Build").CallFunc(func(g *j.Group) {
 											if hasInput {
 												g.Id("input").Dot("ProtoReflect").Call()
 											} else {
@@ -101,7 +100,7 @@ func (p *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *prot
 												g.Id("ctx")
 												g.Id("opts")
 												g.Id("o")
-												g.Qual(string(file.GoImportPath), p.Names().workflowName(workflow))
+												g.Qual(string(file.GoImportPath), m.Names().workflowName(workflow))
 												if hasInput {
 													g.Id("input")
 												}
@@ -113,31 +112,6 @@ func (p *Manifest) nexusGenHandlerImpl(f *j.File, file *protogen.File, svc *prot
 				})
 			})
 	}
-}
-
-func (p *Manifest) nexusGenRegisterService(f *j.File, file *protogen.File, svc *protogen.Service) {
-	registerService := p.Names().nexusRegisterService(svc)
-	handlerImpl := p.Names().nexusHandler(svc)
-	nexusGoPackageName := fmt.Sprintf("%snexus", file.GoPackageName)
-	nexusGoImportPath := path.Join(string(file.GoImportPath), nexusGoPackageName)
-
-	f.Commentf("%s initializes a new %s nexus service and registers it with the provided registry", registerService, svc.GoName)
-	f.Func().
-		Id(registerService).
-		ParamsFunc(func(g *j.Group) {
-			g.Id("r").Qual(workerPkg, "NexusServiceRegistry")
-		}).
-		Error().
-		BlockFunc(func(g *j.Group) {
-			g.List(j.Id("svc"), j.Err()).Op(":=").
-				Qual(nexusGoImportPath, p.toCamel("New%sNexusService", svc.GoName)).
-				Call(j.Op("&").Id(handlerImpl).Values())
-			g.If(j.Err().Op("!=").Nil()).Block(
-				j.Return(j.Err()),
-			)
-			g.Id("r").Dot("RegisterNexusService").Call(j.Id("svc"))
-			g.Return(j.Nil())
-		})
 }
 
 func (p *Manifest) nexusGetMethodIO(m *protogen.Method) (input *j.Statement, hasInput bool, output *j.Statement, hasOutput bool) {
@@ -175,16 +149,16 @@ func (p *Manifest) nexusGetShouldIncludeOperation(m *protogen.Method) bool {
 	})
 }
 
-func (p *Manifest) nexusGetShouldIncludeService(svc *protogen.Service) bool {
-	tags := p.nexusGetServiceOptions(svc).GetTags()
-	if len(p.includeServiceTags) > 0 && !slices.ContainsFunc(tags, func(t string) bool {
-		_, ok := p.includeServiceTags[t]
+func (m *Manifest) nexusGetShouldIncludeService(svc *protogen.Service) bool {
+	tags := m.nexusGetServiceOptions(svc).GetTags()
+	if len(m.includeServiceTags) > 0 && !slices.ContainsFunc(tags, func(t string) bool {
+		_, ok := m.includeServiceTags[t]
 		return ok
 	}) {
 		return false
 	}
 	return !slices.ContainsFunc(tags, func(t string) bool {
-		_, ok := p.excludeServiceTags[t]
+		_, ok := m.excludeServiceTags[t]
 		return ok
 	})
 }

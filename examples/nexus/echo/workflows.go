@@ -2,14 +2,14 @@ package echo
 
 import (
 	nexusv1 "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1"
-	"github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1nexustemporal"
+	nexusv1temporal "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
 type (
 	workflows struct {
-		greeting *nexusv1nexustemporal.GreetingServiceNexusClient
+		greeting nexusv1temporal.GreetingServiceNexusClient
 	}
 
 	echoWorkflow struct {
@@ -18,7 +18,7 @@ type (
 	}
 )
 
-func Register(r worker.WorkflowRegistry, greeting *nexusv1nexustemporal.GreetingServiceNexusClient) error {
+func Register(r worker.WorkflowRegistry, greeting nexusv1temporal.GreetingServiceNexusClient) error {
 	w := &workflows{greeting: greeting}
 	nexusv1.RegisterEchoServiceWorkflows(r, w)
 	return nil
@@ -32,7 +32,7 @@ func (w *echoWorkflow) Execute(ctx workflow.Context) (*nexusv1.EchoOutput, error
 	hello, err := w.greeting.Hello(ctx, &nexusv1.HelloInput{
 		Name:     w.Req.GetName(),
 		Language: w.Req.GetLanguage(),
-	}, workflow.NexusOperationOptions{})
+	})
 	if err != nil {
 		return nil, err
 	}

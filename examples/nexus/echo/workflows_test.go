@@ -6,7 +6,7 @@ import (
 
 	"github.com/cludden/protoc-gen-go-temporal/examples/nexus/greeting"
 	nexusv1 "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1"
-	"github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1nexustemporal"
+	nexusv1temporal "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1temporal"
 	"github.com/cludden/protoc-gen-go-temporal/internal/testutil"
 	temporalnexus "github.com/nexus-rpc/sdk-go/nexus"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,7 @@ func TestE2E(t *testing.T) {
 	t.Cleanup(greetingW.Stop)
 
 	echoW := worker.New(c, nexusv1.EchoServiceTaskQueue, worker.Options{})
-	require.NoError(t, Register(echoW, nexusv1nexustemporal.NewGreetingServiceNexusClient("greeting")))
+	require.NoError(t, Register(echoW, nexusv1temporal.NewGreetingServiceNexusClient("greeting")))
 	require.NoError(t, echoW.Start())
 	t.Cleanup(echoW.Stop)
 
