@@ -15,7 +15,6 @@ require (
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nexus-rpc/sdk-go v0.4.0
-	github.com/nexus-rpc/sdk-go/contrib/nexusproto v0.1.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.2

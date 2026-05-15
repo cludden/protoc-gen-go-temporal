@@ -16,7 +16,7 @@ import (
 func NewIntegrationEnv(t *testing.T, opts *testsuite.DevServerOptions) client.Client {
 	t.Helper()
 	var existingPath string
-	if opts != nil && opts.ExistingPath == "" {
+	if opts == nil || opts.ExistingPath == "" {
 		existingPath = which.Which("temporal")
 		if existingPath == "" {
 			t.Skip("temporal CLI not found in PATH, skipping integration tests")

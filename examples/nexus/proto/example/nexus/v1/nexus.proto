@@ -2,12 +2,17 @@ syntax = "proto3";
 
 package example.nexus.v1;
 
-import "nexus/v1/options.proto";
 import "temporal/v1/temporal.proto";
 
 service GreetingService {
   option (temporal.v1.cli) = {name: "greeting"};
-  option (temporal.v1.service) = {task_queue: "greeting-v1"};
+  option (temporal.v1.service) = {
+    task_queue: "greeting-v1"
+    nexus: {
+      enabled: true
+      name: "example.nexus.v1.GreetingService"
+    }
+  };
 
   // generates a friendly greeting based on the input name and language
   rpc Hello(HelloInput) returns (HelloOutput) {
@@ -19,7 +24,6 @@ service GreetingService {
 }
 
 service EchoService {
-  option (.nexus.v1.service).tags = "disabled";
   option (temporal.v1.cli) = {name: "echo"};
   option (temporal.v1.service) = {task_queue: "echo-v1"};
 

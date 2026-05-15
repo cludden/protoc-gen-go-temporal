@@ -9,7 +9,7 @@ import (
 	"github.com/cludden/protoc-gen-go-temporal/examples/nexus/echo"
 	"github.com/cludden/protoc-gen-go-temporal/examples/nexus/greeting"
 	nexusv1 "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1"
-	"github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1nexustemporal"
+	nexusv1temporal "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1temporal"
 	"github.com/urfave/cli/v3"
 	"go.temporal.io/api/nexus/v1"
 	"go.temporal.io/api/operatorservice/v1"
@@ -40,7 +40,7 @@ func main() {
 			WithWorker(func(ctx context.Context, cmd *cli.Command, c client.Client) (worker.Worker, error) {
 				w := worker.New(c, nexusv1.EchoServiceTaskQueue, worker.Options{})
 				endpoint := cmd.String("endpoint")
-				greeting := nexusv1nexustemporal.NewGreetingServiceNexusClient(endpoint)
+				greeting := nexusv1temporal.NewGreetingServiceNexusClient(endpoint)
 				if err := echo.Register(w, greeting); err != nil {
 					return nil, err
 				}

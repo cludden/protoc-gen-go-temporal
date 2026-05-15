@@ -30,6 +30,12 @@ var (
 		Open:      "{",
 		Separator: ",",
 	}
+
+	typeParams = j.Options{
+		Open:      "[",
+		Close:     "]",
+		Separator: ",",
+	}
 )
 
 type Config struct {
@@ -96,10 +102,10 @@ func New(commit, version string) *Plugin {
 	flags.StringVar(&cfg.IgnoreAcronyms, "ignore-acronyms", "", "semicolon-delimited string of acronyms to ignore when converting generated output to camel case")
 	flags.StringArrayVarP(&cfg.ModuleMap, "module-map", "M", []string{}, "[EXPERIMENTAL] list of <proto_file>=<go_import_path> (e.g. -Mgoogle/protobuf/timestamp.proto=google.golang.org/protobuf/types/known/timestamppb)")
 	flags.BoolVar(&cfg.NexusEnabled, "nexus", false, "enable nexus handler generation")
-	flags.StringVar(&cfg.NexusExcludeOperationTags, "nexus-exclude-operation-tags", "", "semicolon-delimited list of operation tags to exclude from nexus generation")
-	flags.StringVar(&cfg.NexusIncludeOperationTags, "nexus-include-operation-tags", "", "semicolon-delimited list of operation tags to include in nexus generation")
-	flags.StringVar(&cfg.NexusExcludeServiceTags, "nexus-exclude-service-tags", "", "semicolon-delimited list of service tags to exclude from nexus generation")
-	flags.StringVar(&cfg.NexusIncludeServiceTags, "nexus-include-service-tags", "", "semicolon-delimited list of service tags to include in nexus generation")
+	flags.StringVar(&cfg.NexusExcludeOperationTags, "nexus-exclude-operation-tags", "", "DEPRECATED: semicolon-delimited list of operation tags to exclude from nexus generation")
+	flags.StringVar(&cfg.NexusIncludeOperationTags, "nexus-include-operation-tags", "", "DEPRECATED: semicolon-delimited list of operation tags to include in nexus generation")
+	flags.StringVar(&cfg.NexusExcludeServiceTags, "nexus-exclude-service-tags", "", "DEPRECATED: semicolon-delimited list of service tags to exclude from nexus generation")
+	flags.StringVar(&cfg.NexusIncludeServiceTags, "nexus-include-service-tags", "", "DEPRECATED: semicolon-delimited list of service tags to include in nexus generation")
 	// patches is a semicolon-delimited string of
 	flags.StringVar(&cfg.Patches, "patches", "", "semicolon-delimited string of <PATCH_VERSION>[_<MODE>] (e.g. --patches=64_MARKER;65_REMOVED)")
 	flags.BoolVar(&cfg.WorkflowUpdateEnabled, "workflow-update-enabled", true, "enable experimental workflow update (DEPRECATED)")

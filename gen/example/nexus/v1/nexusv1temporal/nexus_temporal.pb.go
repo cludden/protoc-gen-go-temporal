@@ -10,13 +10,18 @@ package nexusv1temporal
 import (
 	"context"
 	v1 "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1"
-	nexusv1nexus "github.com/cludden/protoc-gen-go-temporal/gen/example/nexus/v1/nexusv1nexus"
+	errs "github.com/cludden/protoc-gen-go-temporal/pkg/errs"
 	nexus "github.com/nexus-rpc/sdk-go/nexus"
 	temporalnexus "go.temporal.io/sdk/temporalnexus"
 	worker "go.temporal.io/sdk/worker"
+	workflow "go.temporal.io/sdk/workflow"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	"time"
 )
 
 // Nexus handler for example.nexus.v1.GreetingService
+//
+// Deprecated: Use native nexus implementation instead
 type GreetingServiceNexusHandler struct{}
 
 // generates a friendly greeting based on the input name and language
@@ -33,12 +38,167 @@ func (h *GreetingServiceNexusHandler) Hello(name string) nexus.Operation[*v1.Hel
 	})
 }
 
-// RegisterGreetingServiceNexusService initializes a new GreetingService nexus service and registers it with the provided registry
+// GreetingServiceServiceName defines the fully-qualified GreetingService nexus service name
+const GreetingServiceServiceName = "example.nexus.v1.GreetingService"
+
+// RegisterGreetingServiceOperations registers all example.nexus.v1.GreetingService nexus operations with the given service
+func RegisterGreetingServiceOperations(svc *nexus.Service) error {
+	return svc.Register(
+		HelloWorkflowOperation,
+	)
+}
+
+// RegisterGreetingServiceNexusService registers a example.nexus.v1.GreetingService nexus service with a given worker
 func RegisterGreetingServiceNexusService(r worker.NexusServiceRegistry) error {
-	svc, err := nexusv1nexus.NewGreetingServiceNexusService(&GreetingServiceNexusHandler{})
-	if err != nil {
+	svc := nexus.NewService(GreetingServiceServiceName)
+	if err := RegisterGreetingServiceOperations(svc); err != nil {
 		return err
 	}
 	r.RegisterNexusService(svc)
 	return nil
+}
+
+// HelloWorkflowOperationName defines the fully-qualified name for a example.nexus.v1.GreetingService.Hello nexus workflow operation
+const HelloWorkflowOperationName = "Hello"
+
+// HelloWorkflowOperation defines a(n) example.nexus.v1.GreetingService.Hello nexus workflow operation
+var HelloWorkflowOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(
+	temporalnexus.WorkflowRunOperationOptions[*v1.HelloInput, *v1.HelloOutput]{
+		Name: HelloWorkflowOperationName,
+		Handler: func(ctx context.Context, input *v1.HelloInput, opts nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[*v1.HelloOutput], error) {
+			o, err := v1.NewHelloOptions().Build(input.ProtoReflect())
+			if err != nil {
+				return nil, nexus.HandlerErrorf(nexus.HandlerErrorTypeBadRequest, "failed to build workflow options: %w", err)
+			}
+			return temporalnexus.ExecuteUntypedWorkflow[*v1.HelloOutput](ctx, opts, o, v1.HelloWorkflowName, input)
+		},
+	},
+)
+
+// HelloWorkflowOperationFuture describes a handle to an asynchronous example.nexus.v1.GreetingService.Hello nexus workflow operation
+type HelloWorkflowOperationFuture interface {
+	// Future returns the underlying NexusOperationFuture
+	Future() workflow.NexusOperationFuture
+	// Get blocks until the nexus operation is complete, returning the result or error
+	Get(ctx workflow.Context) (*v1.HelloOutput, error)
+}
+
+// helloWorkflowOperationFuture provides an internal HelloWorkflowOperationFuture implementation
+type helloWorkflowOperationFuture struct {
+	f workflow.NexusOperationFuture
+}
+
+// Future returns the underlying NexusOperationFuture
+func (f *helloWorkflowOperationFuture) Future() workflow.NexusOperationFuture {
+	return f.f
+}
+
+// Get blocks until the nexus operation is complete, returning the result or error
+func (f *helloWorkflowOperationFuture) Get(ctx workflow.Context) (*v1.HelloOutput, error) {
+	var out v1.HelloOutput
+	return &out, f.f.Get(ctx, &out)
+}
+
+// HelloWorkflowOperationOptions provides methods for configuration a(n) example.nexus.v1.GreetingService.Hello nexus workflow operation
+type HelloWorkflowOperationOptions struct {
+	opts                   *workflow.NexusOperationOptions
+	scheduleToCloseTimeout *durationpb.Duration
+}
+
+// NewHelloWorkflowOperationOptions initializes a new HelloWorkflowOperationOptions value
+func NewHelloWorkflowOperationOptions() *HelloWorkflowOperationOptions {
+	return &HelloWorkflowOperationOptions{}
+}
+
+// Build converts a(n) HelloWorkflowOperationOptions value into a workflow.NexusOperationOptions value
+func (o *HelloWorkflowOperationOptions) Build(ctx workflow.Context) (workflow.NexusOperationOptions, error) {
+	var opts workflow.NexusOperationOptions
+	if o == nil {
+		return opts, nil
+	}
+
+	if v := o.opts; v != nil {
+		opts = *o.opts
+	}
+
+	if v := o.scheduleToCloseTimeout; v.IsValid() {
+		opts.ScheduleToCloseTimeout = v.AsDuration()
+	}
+
+	return opts, nil
+}
+
+// WithOptions overrides the initial NexusOperationOptions to which defaults and overrides are then applied
+func (o *HelloWorkflowOperationOptions) WithOptions(opts workflow.NexusOperationOptions) *HelloWorkflowOperationOptions {
+	o.opts = &opts
+	return o
+}
+
+// WithScheduleToCloseTimeout overrides the default ScheduleToCloseTimeout
+func (o *HelloWorkflowOperationOptions) WithScheduleToCloseTimeout(d time.Duration) *HelloWorkflowOperationOptions {
+	o.scheduleToCloseTimeout = durationpb.New(d)
+	return o
+}
+
+// GreetingServiceNexusClient describes a(n) example.nexus.v1.GreetingService nexus client
+type GreetingServiceNexusClient interface {
+	// generates a friendly greeting based on the input name and language
+	Hello(ctx workflow.Context, input *v1.HelloInput, options ...*HelloWorkflowOperationOptions) (*v1.HelloOutput, error)
+	// generates a friendly greeting based on the input name and language
+	HelloAsync(ctx workflow.Context, input *v1.HelloInput, options ...*HelloWorkflowOperationOptions) HelloWorkflowOperationFuture
+}
+
+// greetingServiceNexusClient provides an internal GreetingServiceNexusClient implementation
+type greetingServiceNexusClient struct {
+	client workflow.NexusClient
+}
+
+// NewGreetingServiceNexusClient initializes a new example.nexus.v1.GreetingService nexus client
+func NewGreetingServiceNexusClient(endpoint string) GreetingServiceNexusClient {
+	return &greetingServiceNexusClient{
+		client: workflow.NewNexusClient(endpoint, GreetingServiceServiceName),
+	}
+}
+
+// generates a friendly greeting based on the input name and language
+func (c *greetingServiceNexusClient) Hello(ctx workflow.Context, input *v1.HelloInput, options ...*HelloWorkflowOperationOptions) (*v1.HelloOutput, error) {
+	return c.HelloAsync(ctx, input, options...).Get(ctx)
+}
+
+// generates a friendly greeting based on the input name and language
+func (c *greetingServiceNexusClient) HelloAsync(ctx workflow.Context, input *v1.HelloInput, options ...*HelloWorkflowOperationOptions) HelloWorkflowOperationFuture {
+	var o *HelloWorkflowOperationOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	}
+
+	opts, err := o.Build(ctx)
+	if err != nil {
+		return &helloWorkflowOperationFuture{
+			f: errs.NewNexusOperationFutureError(err),
+		}
+	}
+
+	return &helloWorkflowOperationFuture{
+		f: c.client.ExecuteOperation(ctx, HelloWorkflowOperationName, input, opts),
+	}
+}
+
+// Nexus handler for example.nexus.v1.EchoService
+//
+// Deprecated: Use native nexus implementation instead
+type EchoServiceNexusHandler struct{}
+
+// echoes back the input string
+func (h *EchoServiceNexusHandler) Echo(name string) nexus.Operation[*v1.EchoInput, *v1.EchoOutput] {
+	return temporalnexus.MustNewWorkflowRunOperationWithOptions(temporalnexus.WorkflowRunOperationOptions[*v1.EchoInput, *v1.EchoOutput]{
+		Handler: func(ctx context.Context, input *v1.EchoInput, opts nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[*v1.EchoOutput], error) {
+			o, err := v1.NewEchoOptions().Build(input.ProtoReflect())
+			if err != nil {
+				return nil, nexus.HandlerErrorf(nexus.HandlerErrorTypeBadRequest, "failed to build workflow options: %w", err)
+			}
+			return temporalnexus.ExecuteUntypedWorkflow[*v1.EchoOutput](ctx, opts, o, v1.EchoWorkflowName, input)
+		},
+		Name: name,
+	})
 }

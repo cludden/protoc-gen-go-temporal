@@ -4,18 +4,20 @@ import TabItem from '@theme/TabItem';
 
 # Nexus
 
-[Nexus](https://docs.temporal.io/nexus) is a Temporal platform feature that enables reliable connectivity between Temporal Applications, promoting modular microservice architectures. This plugin generates [protoc-gen-go-nexus compatible](https://github.com/bergundy/protoc-gen-go-nexus) Nexus service handlers to simplify nexus setup.
+[Nexus](https://docs.temporal.io/nexus) is a Temporal platform feature that enables reliable connectivity between Temporal Applications, promoting modular microservice architectures. This plugin natively generates Nexus services, operations, and typed clients — no external `protoc-gen-go-nexus` plugins required.
 
 ## Overview
 
-Nexus allows services to expose operations as well-defined service contracts that other services can reliably invoke. The plugin generates:
+Nexus allows services to expose operations as well-defined service contracts that other services can reliably invoke. For each service with `nexus.enabled = true`, the plugin generates:
 
-- **Nexus Service Handlers**: Server-side components that expose workflows as Nexus operations
-- **Registration Functions**: Helpers for registering Nexus services with workers
+- **Nexus Service & Operations** — workflow-run operations registered against a `*nexus.Service`, exposing each enabled workflow as a Nexus operation.
+- **Registration helpers** — `Register<Service>NexusService(worker)` to wire the service onto a worker, and `Register<Service>Operations(svc)` for advanced cases that compose multiple services.
+- **Typed clients** — a `<Service>NexusClient` interface with sync (`Op`) and async (`OpAsync`) variants per operation.
+- **Per-operation options builders** — `New<Op>WorkflowOperationOptions().With...()` for fluent timeout and option configuration.
 
 ## Schema Definition
 
-There is no additional configuration required for Nexus services.
+Enable Nexus generation for a service by setting `nexus.enabled = true`. Currently only workflow operations are supported.
 
 <Tabs>
 <TabItem value="nexus-schema" label="Schema">
@@ -24,11 +26,16 @@ syntax = "proto3";
 
 package example.nexus.v1;
 
-import "nexus/v1/options.proto";
 import "temporal/v1/temporal.proto";
 
 service GreetingService {
-  option (temporal.v1.service) = {task_queue: "greeting-v1"};
+  option (temporal.v1.service) = {
+    task_queue: "greeting-v1"
+    nexus: {
+      enabled: true
+      name: "example.nexus.v1.GreetingService"
+    }
+  };
 
   // generates a friendly greeting based on the input name and language
   rpc Hello(HelloInput) returns (HelloOutput) {
@@ -54,16 +61,16 @@ enum Language {
   LANGUAGE_FRENCH = 3;
 }
 ```
+
+`nexus.name` is optional and defaults to the fully-qualified proto service name.
 </TabItem>
 <TabItem value="nexus-implementation" label="Go">
 ```go title="greeting.go"
 package greeting
 
 import (
-  "context"
-
   nexusv1 "path/to/gen/example/nexus/v1"
-  "path/to/gen/example/nexus/v1/nexusv1temporal"
+  nexusv1temporal "path/to/gen/example/nexus/v1/nexusv1temporal"
   "go.temporal.io/sdk/worker"
   "go.temporal.io/sdk/workflow"
 )
@@ -77,7 +84,7 @@ type (
   }
 )
 
-// Register registers workflows and nexus service with worker
+// Register registers workflows and the Nexus service with a worker
 func Register(r worker.Registry) error {
   nexusv1.RegisterGreetingServiceWorkflows(r, &workflows{})
   return nexusv1temporal.RegisterGreetingServiceNexusService(r)
@@ -103,95 +110,110 @@ func (w *helloWorkflow) Execute(ctx workflow.Context) (*nexusv1.HelloOutput, err
 </TabItem>
 </Tabs>
 
-## Service Configuration
+## Service & Operation Options
 
-Services can be configured to control which operations are exposed via Nexus using tags.
+### Service-level (`temporal.v1.service.nexus`)
 
-### Service Tags
+- `enabled` (bool) — turn on Nexus generation for the service.
+- `name` (string, optional) — override the fully-qualified Nexus service name. Defaults to the proto service full name.
 
-Use the `nexus.v1.service` option to configure service-level behavior:
+### Workflow-level (`temporal.v1.workflow.nexus`)
 
-```protobuf title="example.proto"
-service EchoService {
-  option (.nexus.v1.service).tags = "disabled";
-  option (temporal.v1.service) = {task_queue: "echo-v1"};
-
-  rpc Echo(EchoInput) returns (EchoOutput) {
-    option (temporal.v1.workflow) = {};
-  }
-}
-```
-
-Services tagged with `disabled` will not generate Nexus handlers, allowing you to selectively expose services.
-
-### Operation Tags
-
-Individual operations can also be controlled using the `nexus.v1.operation` option:
+- `disabled` (bool) — opt this workflow out of Nexus generation even when the service has Nexus enabled.
+- `name` (string, optional) — override the Nexus operation name. Defaults to the RPC method name.
 
 ```protobuf title="example.proto"
-service MyService {
-  rpc PublicOperation(Input) returns (Output) {
-    option (temporal.v1.workflow) = {};
-    option (nexus.v1.operation).tags = "public";
+service GreetingService {
+  option (temporal.v1.service) = {
+    task_queue: "greeting-v1"
+    nexus: {
+      enabled: true
+    }
+  };
+
+  // exposed as the "Hello" Nexus operation
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'example.nexus.v1.Hello/${! name.slug() }'
+    };
   }
 
-  rpc InternalOperation(Input) returns (Output) {
-    option (temporal.v1.workflow) = {};
-    option (nexus.v1.operation).tags = "internal";
+  // expose under a custom Nexus operation name
+  rpc Goodbye(GoodbyeInput) returns (GoodbyeOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'example.nexus.v1.Goodbye/${! name.slug() }'
+      nexus: { name: "Farewell" }
+    };
+  }
+
+  // skip Nexus generation for this workflow
+  rpc Internal(InternalInput) returns (InternalOutput) {
+    option (temporal.v1.workflow) = {
+      id: 'example.nexus.v1.Internal/${! name.slug() }'
+      nexus: { disabled: true }
+    };
   }
 }
 ```
 
 ## Generated Code
 
-The plugin generates several components for Nexus integration:
+The plugin emits the following surface into a `<package>v1temporal` Go package alongside the base generated types.
 
-### Service Handler
-
-A Nexus service handler that exposes workflow operations:
+### Service constants & registration
 
 ```go
-// Nexus handler for example.nexus.v1.GreetingService
-type GreetingServiceNexusHandler struct{}
+const GreetingServiceServiceName = "example.nexus.v1.GreetingService"
 
-// Hello operation that executes the Hello workflow
-func (h *GreetingServiceNexusHandler) Hello(name string) nexus.Operation[*HelloInput, *HelloOutput] {
-  return temporalnexus.MustNewWorkflowRunOperationWithOptions(
-    temporalnexus.WorkflowRunOperationOptions[*HelloInput, *HelloOutput]{
-      Name: name,
-      Handler: func(ctx context.Context, input *HelloInput, opts nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[*HelloOutput], error) {
-        // Builds workflow options and executes workflow
-        o, err := NewHelloOptions().Build(input.ProtoReflect())
-        if err != nil {
-          return nil, err
-        }
-        return temporalnexus.ExecuteUntypedWorkflow[*HelloOutput](ctx, opts, o, HelloWorkflowName, input)
-      },
-    })
-}
+// RegisterGreetingServiceOperations registers all GreetingService Nexus operations on a service
+func RegisterGreetingServiceOperations(svc *nexus.Service) error
+
+// RegisterGreetingServiceNexusService creates the Nexus service, registers its operations, and attaches it to a worker
+func RegisterGreetingServiceNexusService(r worker.NexusServiceRegistry) error
 ```
 
-### Registration Function
-
-A helper function to register the Nexus service with a worker:
+### Operation definitions (per workflow)
 
 ```go
-// RegisterGreetingServiceNexusService initializes and registers the Nexus service
-func RegisterGreetingServiceNexusService(r worker.NexusServiceRegistry) error {
-  svc, err := nexusv1nexus.NewGreetingServiceNexusService(&GreetingServiceNexusHandler{})
-  if err != nil {
-    return err
-  }
-  r.RegisterNexusService(svc)
-  return nil
+const HelloWorkflowOperationName = "Hello"
+
+// HelloWorkflowOperation is the Nexus workflow-run operation backing GreetingService.Hello
+var HelloWorkflowOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(/* ... */)
+```
+
+### Options builder (per workflow)
+
+```go
+type HelloWorkflowOperationOptions struct { /* ... */ }
+
+func NewHelloWorkflowOperationOptions() *HelloWorkflowOperationOptions
+func (o *HelloWorkflowOperationOptions) WithOptions(opts workflow.NexusOperationOptions) *HelloWorkflowOperationOptions
+func (o *HelloWorkflowOperationOptions) WithScheduleToCloseTimeout(d time.Duration) *HelloWorkflowOperationOptions
+func (o *HelloWorkflowOperationOptions) Build(ctx workflow.Context) (workflow.NexusOperationOptions, error)
+```
+
+### Client interface, future & constructor
+
+```go
+type GreetingServiceNexusClient interface {
+  // generates a friendly greeting based on the input name and language
+  Hello(ctx workflow.Context, input *HelloInput, options ...*HelloWorkflowOperationOptions) (*HelloOutput, error)
+  HelloAsync(ctx workflow.Context, input *HelloInput, options ...*HelloWorkflowOperationOptions) HelloWorkflowOperationFuture
 }
+
+type HelloWorkflowOperationFuture interface {
+  Future() workflow.NexusOperationFuture
+  Get(ctx workflow.Context) (*HelloOutput, error)
+}
+
+func NewGreetingServiceNexusClient(endpoint string) GreetingServiceNexusClient
 ```
 
 ## Usage Examples
 
 ### Exposing a Service
 
-Register workflows and Nexus service with a worker:
+Register workflows and the Nexus service with a worker:
 
 <Tabs>
 <TabItem value="service-provider" label="Service Provider">
@@ -202,7 +224,7 @@ import (
   "log"
 
   nexusv1 "path/to/gen/example/nexus/v1"
-  "path/to/gen/example/nexus/v1/nexusv1temporal"
+  nexusv1temporal "path/to/gen/example/nexus/v1/nexusv1temporal"
   "go.temporal.io/sdk/client"
   "go.temporal.io/sdk/worker"
 )
@@ -236,12 +258,12 @@ package consumer
 
 import (
   nexusv1 "path/to/gen/example/nexus/v1"
-  "path/to/gen/example/nexus/v1/nexusv1nexustemporal"
+  nexusv1temporal "path/to/gen/example/nexus/v1/nexusv1temporal"
   "go.temporal.io/sdk/workflow"
 )
 
 type EchoWorkflow struct {
-  greeting *nexusv1nexustemporal.GreetingServiceNexusClient
+  greeting nexusv1temporal.GreetingServiceNexusClient
   *nexusv1.EchoWorkflowInput
 }
 
@@ -250,7 +272,7 @@ func (w *EchoWorkflow) Execute(ctx workflow.Context) (*nexusv1.EchoOutput, error
   hello, err := w.greeting.Hello(ctx, &nexusv1.HelloInput{
     Name:     w.Req.GetName(),
     Language: w.Req.GetLanguage(),
-  }, workflow.NexusOperationOptions{})
+  })
   if err != nil {
     return nil, err
   }
@@ -265,14 +287,12 @@ func (w *EchoWorkflow) Execute(ctx workflow.Context) (*nexusv1.EchoOutput, error
 
 ### Creating Nexus Clients
 
-Generate and initialize Nexus clients in your workflow constructors using [protoc-gen-go-nexus-temporal](https://github.com/bergundy/protoc-gen-go-nexus-temporal):
+Construct a typed client with `New<Service>NexusClient(endpoint)` and inject it into the consumer's workflow registration:
 
 ```go title="workflows.go"
 func Register(r worker.WorkflowRegistry, endpoint string) error {
-  // Create Nexus client for the greeting service
-  greetingClient := nexusv1nexustemporal.NewGreetingServiceNexusClient(endpoint)
-  
-  w := &workflows{greeting: greetingClient}
+  greeting := nexusv1temporal.NewGreetingServiceNexusClient(endpoint)
+  w := &workflows{greeting: greeting}
   nexusv1.RegisterEchoServiceWorkflows(r, w)
   return nil
 }
@@ -280,26 +300,27 @@ func Register(r worker.WorkflowRegistry, endpoint string) error {
 
 ### Asynchronous Operations
 
-Use async methods for fire-and-forget or concurrent operations:
+Use the `*Async` variants for fire-and-forget or concurrent operations. The options builder is variadic — pass nothing to use defaults, or build one with `New<Op>WorkflowOperationOptions()`:
 
 ```go title="async_example.go"
 func (w *MyWorkflow) Execute(ctx workflow.Context) error {
   // Start multiple operations concurrently
   future1 := w.greeting.HelloAsync(ctx, &nexusv1.HelloInput{
     Name: "Alice", Language: nexusv1.Language_LANGUAGE_ENGLISH,
-  }, workflow.NexusOperationOptions{})
-  
+  })
+
   future2 := w.greeting.HelloAsync(ctx, &nexusv1.HelloInput{
     Name: "Bob", Language: nexusv1.Language_LANGUAGE_SPANISH,
-  }, workflow.NexusOperationOptions{})
+  }, nexusv1temporal.NewHelloWorkflowOperationOptions().
+    WithScheduleToCloseTimeout(30*time.Second))
 
   // Wait for both operations to complete
-  result1, err := future1.GetTyped(ctx)
+  result1, err := future1.Get(ctx)
   if err != nil {
     return err
   }
-  
-  result2, err := future2.GetTyped(ctx)
+
+  result2, err := future2.Get(ctx)
   if err != nil {
     return err
   }
@@ -309,38 +330,27 @@ func (w *MyWorkflow) Execute(ctx workflow.Context) error {
 }
 ```
 
+If options validation fails, the error is deferred to `.Get(ctx)` rather than panicking — the async constructor always returns a usable future.
+
 ## Configuration
 
 ### Plugin Configuration
 
-Configure Nexus code generation in your `buf.gen.yaml`:
+Native Nexus generation requires **no plugin flags**. Generation is driven entirely by the `temporal.v1.service.nexus.enabled` proto option, so a minimal `buf.gen.yaml` is sufficient:
 
 ```yaml title="buf.gen.yaml"
 plugins:
   - plugin: buf.build/cludden/protoc-gen-go-temporal
     out: gen
-    opt:
-      - nexus=true
-      - nexus-service-include-tags=public,external
-      - nexus-service-exclude-tags=internal
-      - nexus-operation-include-tags=public
-      - nexus-operation-exclude-tags=internal
 ```
-
-Available options:
-- `nexus=true`: Enable Nexus code generation
-- `nexus-service-include-tags`: Only generate handlers for services with these tags
-- `nexus-service-exclude-tags`: Skip services with these tags
-- `nexus-operation-include-tags`: Only generate operations with these tags  
-- `nexus-operation-exclude-tags`: Skip operations with these tags
 
 ### Nexus Endpoint Registration
 
 Register Nexus endpoints to make services discoverable:
 
 ```go title="register_endpoint.go"
-func registerEndpoint(ctx context.Context, client client.Client, endpointName string) error {
-  _, err := client.OperatorService().CreateNexusEndpoint(ctx, &operatorservice.CreateNexusEndpointRequest{
+func registerEndpoint(ctx context.Context, c client.Client, endpointName string) error {
+  _, err := c.OperatorService().CreateNexusEndpoint(ctx, &operatorservice.CreateNexusEndpointRequest{
     Spec: &nexus.EndpointSpec{
       Name: endpointName,
       Target: &nexus.EndpointTarget{
@@ -356,3 +366,17 @@ func registerEndpoint(ctx context.Context, client client.Client, endpointName st
   return err
 }
 ```
+
+## Migrating from the legacy Nexus integration
+
+Versions prior to the native integration relied on the external `protoc-gen-go-nexus` and `protoc-gen-go-nexus-temporal` plugins from `github.com/bergundy/*`. The following changes are required when upgrading:
+
+1. **Remove the external plugins.** Drop `protoc-gen-go-nexus` and `protoc-gen-go-nexus-temporal` entries from your `buf.gen.yaml`. The corresponding Go module dependencies are no longer needed.
+2. **Update import paths.**
+   - `path/to/gen/.../nexusv1nexus` — removed. The handler is now generated inside `nexusv1temporal`; no replacement import is needed.
+   - `path/to/gen/.../nexusv1nexustemporal` → `path/to/gen/.../nexusv1temporal`.
+3. **Client type is now an interface.** Replace `*<Service>NexusClient` (pointer to struct) with `<Service>NexusClient` (interface) in field declarations and constructor return types.
+4. **Operation options moved to a variadic builder.** Replace the trailing `workflow.NexusOperationOptions{}` positional argument with the variadic `...*<Op>WorkflowOperationOptions`. Omit for defaults, or pass `New<Op>WorkflowOperationOptions().With...()`.
+5. **Future API renamed.** Replace `.GetTyped(ctx)` with `.Get(ctx)`.
+6. **Delete user-defined handlers.** Any hand-written `<Service>NexusHandler` struct should be removed — handlers are now fully generated. A deprecated `<Service>NexusHandler` type is still emitted as a shim for backward compatibility but should not be referenced in new code.
+7. **Drop the legacy plugin flags.** The following flags are retained only for the deprecated handler path and have no effect on native generation: `nexus`, `nexus-include-service-tags`, `nexus-exclude-service-tags`, `nexus-include-operation-tags`, `nexus-exclude-operation-tags`. Remove them from `buf.gen.yaml`.

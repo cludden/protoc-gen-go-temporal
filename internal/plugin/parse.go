@@ -30,7 +30,9 @@ const (
 	converterPkg     = "go.temporal.io/sdk/converter"
 	convertPkg       = "github.com/cludden/protoc-gen-go-temporal/pkg/convert"
 	durationpbPkg    = "google.golang.org/protobuf/types/known/durationpb"
+	emptypbPkg       = "google.golang.org/protobuf/types/known/emptypb"
 	enumsPkg         = "go.temporal.io/api/enums/v1"
+	errsPkg          = "github.com/cludden/protoc-gen-go-temporal/pkg/errs"
 	expressionPkg    = "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpersPkg       = "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
 	homedirPkg       = "github.com/mitchellh/go-homedir"
@@ -679,6 +681,7 @@ func (m *Manifest) render() error {
 
 				if m.cfg.NexusEnabled {
 					hasTemporal = cmp.Or(m.renderNexus(temporalF, file, service), hasTemporal)
+					hasTemporal = cmp.Or(m.renderNexusV2(temporalF), hasTemporal)
 				}
 			}
 

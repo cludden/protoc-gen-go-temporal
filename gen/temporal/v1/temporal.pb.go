@@ -245,7 +245,7 @@ func (x Patch_Version) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Patch_Version.Descriptor instead.
 func (Patch_Version) EnumDescriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6, 0}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8, 0}
 }
 
 // enumerates all supported patch configurations
@@ -302,7 +302,7 @@ func (x Patch_Mode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Patch_Mode.Descriptor instead.
 func (Patch_Mode) EnumDescriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6, 1}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8, 1}
 }
 
 // ActivityOptions identifies an rpc method as a Temporal activity definition, and describes
@@ -701,6 +701,113 @@ func (x *FieldOptions) GetCli() *CLIFlagOptions {
 	return nil
 }
 
+type NexusOperationOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// boolean flag to disable nexus operation generation for parent
+	Disabled bool `protobuf:"varint,1,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// fully-qualified nexus operation name
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NexusOperationOptions) Reset() {
+	*x = NexusOperationOptions{}
+	mi := &file_temporal_v1_temporal_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NexusOperationOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NexusOperationOptions) ProtoMessage() {}
+
+func (x *NexusOperationOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_v1_temporal_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NexusOperationOptions.ProtoReflect.Descriptor instead.
+func (*NexusOperationOptions) Descriptor() ([]byte, []int) {
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *NexusOperationOptions) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *NexusOperationOptions) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type NexusServiceOptions struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// fully-qualified nexus operation name
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NexusServiceOptions) Reset() {
+	*x = NexusServiceOptions{}
+	mi := &file_temporal_v1_temporal_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NexusServiceOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NexusServiceOptions) ProtoMessage() {}
+
+func (x *NexusServiceOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_v1_temporal_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NexusServiceOptions.ProtoReflect.Descriptor instead.
+func (*NexusServiceOptions) Descriptor() ([]byte, []int) {
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *NexusServiceOptions) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *NexusServiceOptions) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 // Patch describes how a nondeterministic fix/feature introduced to generated
 // code is implemented. By default, all patches are introduced in PVM_ENABLED
 // mode. Once rollout of updated code has been completed and old workflows have
@@ -717,7 +824,7 @@ type Patch struct {
 
 func (x *Patch) Reset() {
 	*x = Patch{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[6]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -729,7 +836,7 @@ func (x *Patch) String() string {
 func (*Patch) ProtoMessage() {}
 
 func (x *Patch) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[6]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +849,7 @@ func (x *Patch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Patch.ProtoReflect.Descriptor instead.
 func (*Patch) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{6}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Patch) GetVersion() Patch_Version {
@@ -777,7 +884,7 @@ type QueryOptions struct {
 
 func (x *QueryOptions) Reset() {
 	*x = QueryOptions{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[7]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -789,7 +896,7 @@ func (x *QueryOptions) String() string {
 func (*QueryOptions) ProtoMessage() {}
 
 func (x *QueryOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[7]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -802,7 +909,7 @@ func (x *QueryOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryOptions.ProtoReflect.Descriptor instead.
 func (*QueryOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{7}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *QueryOptions) GetCli() *CLICommandOptions {
@@ -847,7 +954,7 @@ type RetryPolicy struct {
 
 func (x *RetryPolicy) Reset() {
 	*x = RetryPolicy{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[8]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -859,7 +966,7 @@ func (x *RetryPolicy) String() string {
 func (*RetryPolicy) ProtoMessage() {}
 
 func (x *RetryPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[8]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -872,7 +979,7 @@ func (x *RetryPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryPolicy.ProtoReflect.Descriptor instead.
 func (*RetryPolicy) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{8}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RetryPolicy) GetInitialInterval() *durationpb.Duration {
@@ -920,6 +1027,8 @@ type ServiceOptions struct {
 	//
 	// Deprecated: Marked as deprecated in temporal/v1/temporal.proto.
 	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Nexus service options
+	Nexus *NexusServiceOptions `protobuf:"bytes,4,opt,name=nexus,proto3" json:"nexus,omitempty"`
 	// Default task queue for all workflows, activities
 	TaskQueue     string `protobuf:"bytes,1,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -928,7 +1037,7 @@ type ServiceOptions struct {
 
 func (x *ServiceOptions) Reset() {
 	*x = ServiceOptions{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[9]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -940,7 +1049,7 @@ func (x *ServiceOptions) String() string {
 func (*ServiceOptions) ProtoMessage() {}
 
 func (x *ServiceOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[9]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -953,7 +1062,7 @@ func (x *ServiceOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceOptions.ProtoReflect.Descriptor instead.
 func (*ServiceOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{9}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ServiceOptions) GetPatches() []*Patch {
@@ -969,6 +1078,13 @@ func (x *ServiceOptions) GetNamespace() string {
 		return x.Namespace
 	}
 	return ""
+}
+
+func (x *ServiceOptions) GetNexus() *NexusServiceOptions {
+	if x != nil {
+		return x.Nexus
+	}
+	return nil
 }
 
 func (x *ServiceOptions) GetTaskQueue() string {
@@ -996,7 +1112,7 @@ type SignalOptions struct {
 
 func (x *SignalOptions) Reset() {
 	*x = SignalOptions{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[10]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1008,7 +1124,7 @@ func (x *SignalOptions) String() string {
 func (*SignalOptions) ProtoMessage() {}
 
 func (x *SignalOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[10]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1021,7 +1137,7 @@ func (x *SignalOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignalOptions.ProtoReflect.Descriptor instead.
 func (*SignalOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{10}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SignalOptions) GetCli() *CLICommandOptions {
@@ -1078,7 +1194,7 @@ type UpdateOptions struct {
 
 func (x *UpdateOptions) Reset() {
 	*x = UpdateOptions{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[11]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1090,7 +1206,7 @@ func (x *UpdateOptions) String() string {
 func (*UpdateOptions) ProtoMessage() {}
 
 func (x *UpdateOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[11]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1103,7 +1219,7 @@ func (x *UpdateOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOptions.ProtoReflect.Descriptor instead.
 func (*UpdateOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{11}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UpdateOptions) GetCli() *CLICommandOptions {
@@ -1194,6 +1310,8 @@ type WorkflowOptions struct {
 	//
 	// Deprecated: Marked as deprecated in temporal/v1/temporal.proto.
 	Namespace string `protobuf:"bytes,7,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Nexus operation options
+	Nexus *NexusOperationOptions `protobuf:"bytes,24,opt,name=nexus,proto3" json:"nexus,omitempty"`
 	// Specifies a default parent close policy for child workflows
 	ParentClosePolicy ParentClosePolicy `protobuf:"varint,8,opt,name=parent_close_policy,json=parentClosePolicy,proto3,enum=temporal.v1.ParentClosePolicy" json:"parent_close_policy,omitempty"`
 	// Configure patches, by default, patches are introduced in enabled mode
@@ -1237,7 +1355,7 @@ type WorkflowOptions struct {
 
 func (x *WorkflowOptions) Reset() {
 	*x = WorkflowOptions{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[12]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1249,7 +1367,7 @@ func (x *WorkflowOptions) String() string {
 func (*WorkflowOptions) ProtoMessage() {}
 
 func (x *WorkflowOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[12]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1262,7 +1380,7 @@ func (x *WorkflowOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{12}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *WorkflowOptions) GetCli() *CLICommandOptions {
@@ -1341,6 +1459,13 @@ func (x *WorkflowOptions) GetNamespace() string {
 		return x.Namespace
 	}
 	return ""
+}
+
+func (x *WorkflowOptions) GetNexus() *NexusOperationOptions {
+	if x != nil {
+		return x.Nexus
+	}
+	return nil
 }
 
 func (x *WorkflowOptions) GetParentClosePolicy() ParentClosePolicy {
@@ -1454,7 +1579,7 @@ type XNSActivityOptions struct {
 
 func (x *XNSActivityOptions) Reset() {
 	*x = XNSActivityOptions{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[13]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1466,7 +1591,7 @@ func (x *XNSActivityOptions) String() string {
 func (*XNSActivityOptions) ProtoMessage() {}
 
 func (x *XNSActivityOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[13]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1479,7 +1604,7 @@ func (x *XNSActivityOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use XNSActivityOptions.ProtoReflect.Descriptor instead.
 func (*XNSActivityOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{13}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *XNSActivityOptions) GetName() string {
@@ -1558,7 +1683,7 @@ type WorkflowOptions_Query struct {
 
 func (x *WorkflowOptions_Query) Reset() {
 	*x = WorkflowOptions_Query{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[14]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1570,7 +1695,7 @@ func (x *WorkflowOptions_Query) String() string {
 func (*WorkflowOptions_Query) ProtoMessage() {}
 
 func (x *WorkflowOptions_Query) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[14]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1583,7 +1708,7 @@ func (x *WorkflowOptions_Query) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions_Query.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions_Query) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{12, 0}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{14, 0}
 }
 
 func (x *WorkflowOptions_Query) GetRef() string {
@@ -1616,7 +1741,7 @@ type WorkflowOptions_Signal struct {
 
 func (x *WorkflowOptions_Signal) Reset() {
 	*x = WorkflowOptions_Signal{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[15]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1628,7 +1753,7 @@ func (x *WorkflowOptions_Signal) String() string {
 func (*WorkflowOptions_Signal) ProtoMessage() {}
 
 func (x *WorkflowOptions_Signal) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[15]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1641,7 +1766,7 @@ func (x *WorkflowOptions_Signal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions_Signal.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions_Signal) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{12, 1}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{14, 1}
 }
 
 func (x *WorkflowOptions_Signal) GetCli() *CLICommandOptions {
@@ -1692,7 +1817,7 @@ type WorkflowOptions_Update struct {
 
 func (x *WorkflowOptions_Update) Reset() {
 	*x = WorkflowOptions_Update{}
-	mi := &file_temporal_v1_temporal_proto_msgTypes[16]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1704,7 +1829,7 @@ func (x *WorkflowOptions_Update) String() string {
 func (*WorkflowOptions_Update) ProtoMessage() {}
 
 func (x *WorkflowOptions_Update) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_v1_temporal_proto_msgTypes[16]
+	mi := &file_temporal_v1_temporal_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1717,7 +1842,7 @@ func (x *WorkflowOptions_Update) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowOptions_Update.ProtoReflect.Descriptor instead.
 func (*WorkflowOptions_Update) Descriptor() ([]byte, []int) {
-	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{12, 2}
+	return file_temporal_v1_temporal_proto_rawDescGZIP(), []int{14, 2}
 }
 
 func (x *WorkflowOptions_Update) GetCli() *CLICommandOptions {
@@ -1902,7 +2027,13 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x0eCommandOptions\x12\x16\n" +
 	"\x06ignore\x18\x01 \x01(\bR\x06ignore\"=\n" +
 	"\fFieldOptions\x12-\n" +
-	"\x03cli\x18\x01 \x01(\v2\x1b.temporal.v1.CLIFlagOptionsR\x03cli\"\xe0\x01\n" +
+	"\x03cli\x18\x01 \x01(\v2\x1b.temporal.v1.CLIFlagOptionsR\x03cli\"G\n" +
+	"\x15NexusOperationOptions\x12\x1a\n" +
+	"\bdisabled\x18\x01 \x01(\bR\bdisabled\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"C\n" +
+	"\x13NexusServiceOptions\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xe0\x01\n" +
 	"\x05Patch\x124\n" +
 	"\aversion\x18\x01 \x01(\x0e2\x1a.temporal.v1.Patch.VersionR\aversion\x12+\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x17.temporal.v1.Patch.ModeR\x04mode\"(\n" +
@@ -1925,10 +2056,11 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x13backoff_coefficient\x18\x02 \x01(\x01R\x12backoffCoefficient\x12<\n" +
 	"\fmax_interval\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\vmaxInterval\x12!\n" +
 	"\fmax_attempts\x18\x04 \x01(\x05R\vmaxAttempts\x129\n" +
-	"\x19non_retryable_error_types\x18\x05 \x03(\tR\x16nonRetryableErrorTypes\"\x7f\n" +
+	"\x19non_retryable_error_types\x18\x05 \x03(\tR\x16nonRetryableErrorTypes\"\xb7\x01\n" +
 	"\x0eServiceOptions\x12,\n" +
 	"\apatches\x18\x03 \x03(\v2\x12.temporal.v1.PatchR\apatches\x12 \n" +
-	"\tnamespace\x18\x02 \x01(\tB\x02\x18\x01R\tnamespace\x12\x1d\n" +
+	"\tnamespace\x18\x02 \x01(\tB\x02\x18\x01R\tnamespace\x126\n" +
+	"\x05nexus\x18\x04 \x01(\v2 .temporal.v1.NexusServiceOptionsR\x05nexus\x12\x1d\n" +
 	"\n" +
 	"task_queue\x18\x01 \x01(\tR\ttaskQueue\"\xb6\x01\n" +
 	"\rSignalOptions\x120\n" +
@@ -1945,7 +2077,7 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x0ewait_for_stage\x18\a \x01(\x0e2\x17.temporal.v1.WaitPolicyR\fwaitForStage\x12<\n" +
 	"\vwait_policy\x18\x03 \x01(\x0e2\x17.temporal.v1.WaitPolicyB\x02\x18\x01R\n" +
 	"waitPolicy\x121\n" +
-	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\x99\x0e\n" +
+	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\xd3\x0e\n" +
 	"\x0fWorkflowOptions\x120\n" +
 	"\x03cli\x18\x13 \x01(\v2\x1e.temporal.v1.CLICommandOptionsR\x03cli\x12\x12\n" +
 	"\x04name\x18\x0e \x01(\tR\x04name\x12\x18\n" +
@@ -1957,7 +2089,8 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x11execution_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x10executionTimeout\x12\x0e\n" +
 	"\x02id\x18\x05 \x01(\tR\x02id\x12B\n" +
 	"\x0fid_reuse_policy\x18\x06 \x01(\x0e2\x1a.temporal.v1.IDReusePolicyR\ridReusePolicy\x12 \n" +
-	"\tnamespace\x18\a \x01(\tB\x02\x18\x01R\tnamespace\x12N\n" +
+	"\tnamespace\x18\a \x01(\tB\x02\x18\x01R\tnamespace\x128\n" +
+	"\x05nexus\x18\x18 \x01(\v2\".temporal.v1.NexusOperationOptionsR\x05nexus\x12N\n" +
 	"\x13parent_close_policy\x18\b \x01(\x0e2\x1e.temporal.v1.ParentClosePolicyR\x11parentClosePolicy\x12,\n" +
 	"\apatches\x18\x12 \x03(\v2\x12.temporal.v1.PatchR\apatches\x12;\n" +
 	"\fretry_policy\x18\t \x01(\v2\x18.temporal.v1.RetryPolicyR\vretryPolicy\x12:\n" +
@@ -2041,7 +2174,7 @@ func file_temporal_v1_temporal_proto_rawDescGZIP() []byte {
 }
 
 var file_temporal_v1_temporal_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_temporal_v1_temporal_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_temporal_v1_temporal_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_temporal_v1_temporal_proto_goTypes = []any{
 	(IDReusePolicy)(0),                  // 0: temporal.v1.IDReusePolicy
 	(ParentClosePolicy)(0),              // 1: temporal.v1.ParentClosePolicy
@@ -2054,97 +2187,101 @@ var file_temporal_v1_temporal_proto_goTypes = []any{
 	(*CLIFlagOptions)(nil),              // 8: temporal.v1.CLIFlagOptions
 	(*CommandOptions)(nil),              // 9: temporal.v1.CommandOptions
 	(*FieldOptions)(nil),                // 10: temporal.v1.FieldOptions
-	(*Patch)(nil),                       // 11: temporal.v1.Patch
-	(*QueryOptions)(nil),                // 12: temporal.v1.QueryOptions
-	(*RetryPolicy)(nil),                 // 13: temporal.v1.RetryPolicy
-	(*ServiceOptions)(nil),              // 14: temporal.v1.ServiceOptions
-	(*SignalOptions)(nil),               // 15: temporal.v1.SignalOptions
-	(*UpdateOptions)(nil),               // 16: temporal.v1.UpdateOptions
-	(*WorkflowOptions)(nil),             // 17: temporal.v1.WorkflowOptions
-	(*XNSActivityOptions)(nil),          // 18: temporal.v1.XNSActivityOptions
-	(*WorkflowOptions_Query)(nil),       // 19: temporal.v1.WorkflowOptions.Query
-	(*WorkflowOptions_Signal)(nil),      // 20: temporal.v1.WorkflowOptions.Signal
-	(*WorkflowOptions_Update)(nil),      // 21: temporal.v1.WorkflowOptions.Update
-	(*durationpb.Duration)(nil),         // 22: google.protobuf.Duration
-	(v1.VersioningBehavior)(0),          // 23: temporal.api.enums.v1.VersioningBehavior
-	(v1.WorkflowIdConflictPolicy)(0),    // 24: temporal.api.enums.v1.WorkflowIdConflictPolicy
-	(*descriptorpb.ServiceOptions)(nil), // 25: google.protobuf.ServiceOptions
-	(*descriptorpb.MethodOptions)(nil),  // 26: google.protobuf.MethodOptions
-	(*descriptorpb.FieldOptions)(nil),   // 27: google.protobuf.FieldOptions
+	(*NexusOperationOptions)(nil),       // 11: temporal.v1.NexusOperationOptions
+	(*NexusServiceOptions)(nil),         // 12: temporal.v1.NexusServiceOptions
+	(*Patch)(nil),                       // 13: temporal.v1.Patch
+	(*QueryOptions)(nil),                // 14: temporal.v1.QueryOptions
+	(*RetryPolicy)(nil),                 // 15: temporal.v1.RetryPolicy
+	(*ServiceOptions)(nil),              // 16: temporal.v1.ServiceOptions
+	(*SignalOptions)(nil),               // 17: temporal.v1.SignalOptions
+	(*UpdateOptions)(nil),               // 18: temporal.v1.UpdateOptions
+	(*WorkflowOptions)(nil),             // 19: temporal.v1.WorkflowOptions
+	(*XNSActivityOptions)(nil),          // 20: temporal.v1.XNSActivityOptions
+	(*WorkflowOptions_Query)(nil),       // 21: temporal.v1.WorkflowOptions.Query
+	(*WorkflowOptions_Signal)(nil),      // 22: temporal.v1.WorkflowOptions.Signal
+	(*WorkflowOptions_Update)(nil),      // 23: temporal.v1.WorkflowOptions.Update
+	(*durationpb.Duration)(nil),         // 24: google.protobuf.Duration
+	(v1.VersioningBehavior)(0),          // 25: temporal.api.enums.v1.VersioningBehavior
+	(v1.WorkflowIdConflictPolicy)(0),    // 26: temporal.api.enums.v1.WorkflowIdConflictPolicy
+	(*descriptorpb.ServiceOptions)(nil), // 27: google.protobuf.ServiceOptions
+	(*descriptorpb.MethodOptions)(nil),  // 28: google.protobuf.MethodOptions
+	(*descriptorpb.FieldOptions)(nil),   // 29: google.protobuf.FieldOptions
 }
 var file_temporal_v1_temporal_proto_depIdxs = []int32{
-	22, // 0: temporal.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
-	22, // 1: temporal.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
-	22, // 2: temporal.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
-	22, // 3: temporal.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
-	13, // 4: temporal.v1.ActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	24, // 0: temporal.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
+	24, // 1: temporal.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	24, // 2: temporal.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
+	24, // 3: temporal.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
+	15, // 4: temporal.v1.ActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
 	8,  // 5: temporal.v1.FieldOptions.cli:type_name -> temporal.v1.CLIFlagOptions
 	3,  // 6: temporal.v1.Patch.version:type_name -> temporal.v1.Patch.Version
 	4,  // 7: temporal.v1.Patch.mode:type_name -> temporal.v1.Patch.Mode
 	7,  // 8: temporal.v1.QueryOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	18, // 9: temporal.v1.QueryOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	11, // 10: temporal.v1.QueryOptions.patches:type_name -> temporal.v1.Patch
-	22, // 11: temporal.v1.RetryPolicy.initial_interval:type_name -> google.protobuf.Duration
-	22, // 12: temporal.v1.RetryPolicy.max_interval:type_name -> google.protobuf.Duration
-	11, // 13: temporal.v1.ServiceOptions.patches:type_name -> temporal.v1.Patch
-	7,  // 14: temporal.v1.SignalOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	18, // 15: temporal.v1.SignalOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	11, // 16: temporal.v1.SignalOptions.patches:type_name -> temporal.v1.Patch
-	7,  // 17: temporal.v1.UpdateOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	11, // 18: temporal.v1.UpdateOptions.patches:type_name -> temporal.v1.Patch
-	2,  // 19: temporal.v1.UpdateOptions.wait_for_stage:type_name -> temporal.v1.WaitPolicy
-	2,  // 20: temporal.v1.UpdateOptions.wait_policy:type_name -> temporal.v1.WaitPolicy
-	18, // 21: temporal.v1.UpdateOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	7,  // 22: temporal.v1.WorkflowOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	19, // 23: temporal.v1.WorkflowOptions.query:type_name -> temporal.v1.WorkflowOptions.Query
-	20, // 24: temporal.v1.WorkflowOptions.signal:type_name -> temporal.v1.WorkflowOptions.Signal
-	21, // 25: temporal.v1.WorkflowOptions.update:type_name -> temporal.v1.WorkflowOptions.Update
-	22, // 26: temporal.v1.WorkflowOptions.execution_timeout:type_name -> google.protobuf.Duration
-	0,  // 27: temporal.v1.WorkflowOptions.id_reuse_policy:type_name -> temporal.v1.IDReusePolicy
-	1,  // 28: temporal.v1.WorkflowOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	11, // 29: temporal.v1.WorkflowOptions.patches:type_name -> temporal.v1.Patch
-	13, // 30: temporal.v1.WorkflowOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	22, // 31: temporal.v1.WorkflowOptions.run_timeout:type_name -> google.protobuf.Duration
-	22, // 32: temporal.v1.WorkflowOptions.task_timeout:type_name -> google.protobuf.Duration
-	23, // 33: temporal.v1.WorkflowOptions.versioning_behavior:type_name -> temporal.api.enums.v1.VersioningBehavior
-	24, // 34: temporal.v1.WorkflowOptions.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
-	18, // 35: temporal.v1.WorkflowOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	22, // 36: temporal.v1.XNSActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
-	22, // 37: temporal.v1.XNSActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
-	22, // 38: temporal.v1.XNSActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
-	22, // 39: temporal.v1.XNSActivityOptions.heartbeat_interval:type_name -> google.protobuf.Duration
-	22, // 40: temporal.v1.XNSActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
-	13, // 41: temporal.v1.XNSActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	1,  // 42: temporal.v1.XNSActivityOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	18, // 43: temporal.v1.WorkflowOptions.Query.xns:type_name -> temporal.v1.XNSActivityOptions
-	7,  // 44: temporal.v1.WorkflowOptions.Signal.cli:type_name -> temporal.v1.CLICommandOptions
-	18, // 45: temporal.v1.WorkflowOptions.Signal.xns:type_name -> temporal.v1.XNSActivityOptions
-	7,  // 46: temporal.v1.WorkflowOptions.Update.cli:type_name -> temporal.v1.CLICommandOptions
-	24, // 47: temporal.v1.WorkflowOptions.Update.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
-	18, // 48: temporal.v1.WorkflowOptions.Update.xns:type_name -> temporal.v1.XNSActivityOptions
-	25, // 49: temporal.v1.service:extendee -> google.protobuf.ServiceOptions
-	25, // 50: temporal.v1.cli:extendee -> google.protobuf.ServiceOptions
-	26, // 51: temporal.v1.activity:extendee -> google.protobuf.MethodOptions
-	26, // 52: temporal.v1.command:extendee -> google.protobuf.MethodOptions
-	26, // 53: temporal.v1.query:extendee -> google.protobuf.MethodOptions
-	26, // 54: temporal.v1.signal:extendee -> google.protobuf.MethodOptions
-	26, // 55: temporal.v1.update:extendee -> google.protobuf.MethodOptions
-	26, // 56: temporal.v1.workflow:extendee -> google.protobuf.MethodOptions
-	27, // 57: temporal.v1.field:extendee -> google.protobuf.FieldOptions
-	14, // 58: temporal.v1.service:type_name -> temporal.v1.ServiceOptions
-	6,  // 59: temporal.v1.cli:type_name -> temporal.v1.CLIOptions
-	5,  // 60: temporal.v1.activity:type_name -> temporal.v1.ActivityOptions
-	9,  // 61: temporal.v1.command:type_name -> temporal.v1.CommandOptions
-	12, // 62: temporal.v1.query:type_name -> temporal.v1.QueryOptions
-	15, // 63: temporal.v1.signal:type_name -> temporal.v1.SignalOptions
-	16, // 64: temporal.v1.update:type_name -> temporal.v1.UpdateOptions
-	17, // 65: temporal.v1.workflow:type_name -> temporal.v1.WorkflowOptions
-	10, // 66: temporal.v1.field:type_name -> temporal.v1.FieldOptions
-	67, // [67:67] is the sub-list for method output_type
-	67, // [67:67] is the sub-list for method input_type
-	58, // [58:67] is the sub-list for extension type_name
-	49, // [49:58] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	20, // 9: temporal.v1.QueryOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	13, // 10: temporal.v1.QueryOptions.patches:type_name -> temporal.v1.Patch
+	24, // 11: temporal.v1.RetryPolicy.initial_interval:type_name -> google.protobuf.Duration
+	24, // 12: temporal.v1.RetryPolicy.max_interval:type_name -> google.protobuf.Duration
+	13, // 13: temporal.v1.ServiceOptions.patches:type_name -> temporal.v1.Patch
+	12, // 14: temporal.v1.ServiceOptions.nexus:type_name -> temporal.v1.NexusServiceOptions
+	7,  // 15: temporal.v1.SignalOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	20, // 16: temporal.v1.SignalOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	13, // 17: temporal.v1.SignalOptions.patches:type_name -> temporal.v1.Patch
+	7,  // 18: temporal.v1.UpdateOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	13, // 19: temporal.v1.UpdateOptions.patches:type_name -> temporal.v1.Patch
+	2,  // 20: temporal.v1.UpdateOptions.wait_for_stage:type_name -> temporal.v1.WaitPolicy
+	2,  // 21: temporal.v1.UpdateOptions.wait_policy:type_name -> temporal.v1.WaitPolicy
+	20, // 22: temporal.v1.UpdateOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	7,  // 23: temporal.v1.WorkflowOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	21, // 24: temporal.v1.WorkflowOptions.query:type_name -> temporal.v1.WorkflowOptions.Query
+	22, // 25: temporal.v1.WorkflowOptions.signal:type_name -> temporal.v1.WorkflowOptions.Signal
+	23, // 26: temporal.v1.WorkflowOptions.update:type_name -> temporal.v1.WorkflowOptions.Update
+	24, // 27: temporal.v1.WorkflowOptions.execution_timeout:type_name -> google.protobuf.Duration
+	0,  // 28: temporal.v1.WorkflowOptions.id_reuse_policy:type_name -> temporal.v1.IDReusePolicy
+	11, // 29: temporal.v1.WorkflowOptions.nexus:type_name -> temporal.v1.NexusOperationOptions
+	1,  // 30: temporal.v1.WorkflowOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
+	13, // 31: temporal.v1.WorkflowOptions.patches:type_name -> temporal.v1.Patch
+	15, // 32: temporal.v1.WorkflowOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	24, // 33: temporal.v1.WorkflowOptions.run_timeout:type_name -> google.protobuf.Duration
+	24, // 34: temporal.v1.WorkflowOptions.task_timeout:type_name -> google.protobuf.Duration
+	25, // 35: temporal.v1.WorkflowOptions.versioning_behavior:type_name -> temporal.api.enums.v1.VersioningBehavior
+	26, // 36: temporal.v1.WorkflowOptions.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
+	20, // 37: temporal.v1.WorkflowOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	24, // 38: temporal.v1.XNSActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
+	24, // 39: temporal.v1.XNSActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	24, // 40: temporal.v1.XNSActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
+	24, // 41: temporal.v1.XNSActivityOptions.heartbeat_interval:type_name -> google.protobuf.Duration
+	24, // 42: temporal.v1.XNSActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
+	15, // 43: temporal.v1.XNSActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	1,  // 44: temporal.v1.XNSActivityOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
+	20, // 45: temporal.v1.WorkflowOptions.Query.xns:type_name -> temporal.v1.XNSActivityOptions
+	7,  // 46: temporal.v1.WorkflowOptions.Signal.cli:type_name -> temporal.v1.CLICommandOptions
+	20, // 47: temporal.v1.WorkflowOptions.Signal.xns:type_name -> temporal.v1.XNSActivityOptions
+	7,  // 48: temporal.v1.WorkflowOptions.Update.cli:type_name -> temporal.v1.CLICommandOptions
+	26, // 49: temporal.v1.WorkflowOptions.Update.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
+	20, // 50: temporal.v1.WorkflowOptions.Update.xns:type_name -> temporal.v1.XNSActivityOptions
+	27, // 51: temporal.v1.service:extendee -> google.protobuf.ServiceOptions
+	27, // 52: temporal.v1.cli:extendee -> google.protobuf.ServiceOptions
+	28, // 53: temporal.v1.activity:extendee -> google.protobuf.MethodOptions
+	28, // 54: temporal.v1.command:extendee -> google.protobuf.MethodOptions
+	28, // 55: temporal.v1.query:extendee -> google.protobuf.MethodOptions
+	28, // 56: temporal.v1.signal:extendee -> google.protobuf.MethodOptions
+	28, // 57: temporal.v1.update:extendee -> google.protobuf.MethodOptions
+	28, // 58: temporal.v1.workflow:extendee -> google.protobuf.MethodOptions
+	29, // 59: temporal.v1.field:extendee -> google.protobuf.FieldOptions
+	16, // 60: temporal.v1.service:type_name -> temporal.v1.ServiceOptions
+	6,  // 61: temporal.v1.cli:type_name -> temporal.v1.CLIOptions
+	5,  // 62: temporal.v1.activity:type_name -> temporal.v1.ActivityOptions
+	9,  // 63: temporal.v1.command:type_name -> temporal.v1.CommandOptions
+	14, // 64: temporal.v1.query:type_name -> temporal.v1.QueryOptions
+	17, // 65: temporal.v1.signal:type_name -> temporal.v1.SignalOptions
+	18, // 66: temporal.v1.update:type_name -> temporal.v1.UpdateOptions
+	19, // 67: temporal.v1.workflow:type_name -> temporal.v1.WorkflowOptions
+	10, // 68: temporal.v1.field:type_name -> temporal.v1.FieldOptions
+	69, // [69:69] is the sub-list for method output_type
+	69, // [69:69] is the sub-list for method input_type
+	60, // [60:69] is the sub-list for extension type_name
+	51, // [51:60] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_temporal_v1_temporal_proto_init() }
@@ -2152,14 +2289,14 @@ func file_temporal_v1_temporal_proto_init() {
 	if File_temporal_v1_temporal_proto != nil {
 		return
 	}
-	file_temporal_v1_temporal_proto_msgTypes[16].OneofWrappers = []any{}
+	file_temporal_v1_temporal_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_v1_temporal_proto_rawDesc), len(file_temporal_v1_temporal_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 9,
 			NumServices:   0,
 		},
