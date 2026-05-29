@@ -136,6 +136,7 @@ type CreateUserInAPIActivityActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -149,6 +150,9 @@ func (o *CreateUserInAPIActivityActivityOptions) Build(ctx workflow.Context) (wo
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -216,6 +220,12 @@ func (o *CreateUserInAPIActivityActivityOptions) WithScheduleToStartTimeout(d ti
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *CreateUserInAPIActivityActivityOptions) WithStartToCloseTimeout(d time.Duration) *CreateUserInAPIActivityActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *CreateUserInAPIActivityActivityOptions) WithPriority(p temporal.Priority) *CreateUserInAPIActivityActivityOptions {
+	o.priority = &p
 	return o
 }
 

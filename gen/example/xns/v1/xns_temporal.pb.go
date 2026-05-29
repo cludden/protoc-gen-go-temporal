@@ -202,6 +202,7 @@ type ProvisionFooOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -241,6 +242,9 @@ func (o *ProvisionFooOptions) Build(req protoreflect.Message) (client.StartWorkf
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -1361,6 +1365,7 @@ type CreateFooOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1402,6 +1407,9 @@ func (o *CreateFooOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -2236,6 +2244,7 @@ type NotifyActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -2249,6 +2258,9 @@ func (o *NotifyActivityOptions) Build(ctx workflow.Context) (workflow.Context, e
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2316,6 +2328,12 @@ func (o *NotifyActivityOptions) WithScheduleToStartTimeout(d time.Duration) *Not
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *NotifyActivityOptions) WithStartToCloseTimeout(d time.Duration) *NotifyActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *NotifyActivityOptions) WithPriority(p temporal.Priority) *NotifyActivityOptions {
+	o.priority = &p
 	return o
 }
 

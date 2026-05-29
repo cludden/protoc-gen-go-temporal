@@ -133,6 +133,7 @@ type DoActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -146,6 +147,9 @@ func (o *DoActivityOptions) Build(ctx workflow.Context) (workflow.Context, error
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -209,6 +213,12 @@ func (o *DoActivityOptions) WithScheduleToStartTimeout(d time.Duration) *DoActiv
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *DoActivityOptions) WithStartToCloseTimeout(d time.Duration) *DoActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *DoActivityOptions) WithPriority(p temporal.Priority) *DoActivityOptions {
+	o.priority = &p
 	return o
 }
 

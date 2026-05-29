@@ -445,6 +445,7 @@ type MutexOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -491,6 +492,9 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -681,6 +685,7 @@ type SampleWorkflowWithMutexOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -720,6 +725,9 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -1826,6 +1834,7 @@ type MutexActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -1839,6 +1848,9 @@ func (o *MutexActivityOptions) Build(ctx workflow.Context) (workflow.Context, er
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1904,6 +1916,12 @@ func (o *MutexActivityOptions) WithScheduleToStartTimeout(d time.Duration) *Mute
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *MutexActivityOptions) WithStartToCloseTimeout(d time.Duration) *MutexActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *MutexActivityOptions) WithPriority(p temporal.Priority) *MutexActivityOptions {
+	o.priority = &p
 	return o
 }
 

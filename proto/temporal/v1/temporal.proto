@@ -52,6 +52,10 @@ message ActivityOptions {
   // (activity can be failed, completed, cancel accepted)
   bool wait_for_cancellation = 8;
 
+  // Specifies distribution of work within a task queue
+  // using Task Queue Priority and Task Queue Fairness
+  Priority priority = 9;
+
   // Specifies how to retry an Activity if an error occurs
   RetryPolicy retry_policy = 6;
 }
@@ -173,6 +177,14 @@ message QueryOptions {
 
   // Configure patches, by default, patches are introduced in enabled mode
   repeated Patch patches = 3;
+}
+
+// Priority specifies distribution of work within a task queue
+// for activity and workflows
+message Priority {
+  int32 priority_key = 1;
+  string fairness_key = 2;
+  double fairness_weight = 3;
 }
 
 // RetryPolicy describes configuration for activity or child workflow retries
@@ -342,6 +354,10 @@ message WorkflowOptions {
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 16;
+
+  // Specifies distribution of work within a task queue
+  // using Task Queue Priority and Task Queue Fairness
+  Priority priority = 25;
 
   // Query identifies a query supported by the worklow
   message Query {

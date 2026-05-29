@@ -376,6 +376,7 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 			g.Id("heartbeatTimeout").Op("*").Qual("time", "Duration")
 			g.Id("scheduleToStartTimeout").Op("*").Qual("time", "Duration")
 			g.Id("taskQueue").Op("*").String()
+			g.Id("priority").Op("*").Qual(temporalPkg, "Priority")
 			g.Id("waitForCancellation").Op("*").Bool()
 		}
 	})
@@ -415,6 +416,29 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 				if d := opts.GetHeartbeatTimeout().AsDuration(); d > 0 {
 					heartbeatTimeout.Else().If(j.Id("opts").Dot("HeartbeatTimeout").Op("==").Lit(0)).Block(
 						j.Id("opts").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
+					)
+				}
+			}
+
+			// set Priority
+			if !local {
+				priority := g.If(j.Id("v").Op(":=").Id("o").Dot("priority"), j.Id("v").Op("!=").Nil()).
+					Block(
+						j.Id("opts").Dot("Priority").Op("=").Op("*").Id("v"),
+					)
+				if policy := opts.GetPriority(); policy != nil {
+					priority.Else().Block(
+						j.Id("opts").Dot("Priority").Op("=").Qual(temporalPkg, "Priority").ValuesFunc(func(g *j.Group) {
+							if n := policy.GetPriorityKey(); n != 0 {
+								g.Id("PriorityKey").Op(":").Id(strconv.FormatInt(int64(n), 10))
+							}
+							if n := policy.GetFairnessKey(); n != "" {
+								g.Id("FairnessKey").Op(":").Lit(n)
+							}
+							if n := policy.GetFairnessWeight(); n != 0 {
+								g.Id("FairnessWeight").Op(":").Id(strconv.FormatFloat(n, 'f', -1, 64))
+							}
+						}),
 					)
 				}
 			}
@@ -648,6 +672,21 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 			j.Id("o").Dot("startToCloseTimeout").Op("=").Op("&").Id("d"),
 			j.Return(j.Id("o")),
 		)
+
+	if !local {
+		f.Comment("WithPriority sets the Priority value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithPriority").
+			Params(
+				j.Id("p").Qual(temporalPkg, "Priority"),
+			).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("priority").Op("=").Op("&").Id("p"),
+				j.Return(j.Id("o")),
+			)
+	}
 
 	if !local {
 		f.Comment("WithTaskQueue sets the TaskQueue value")

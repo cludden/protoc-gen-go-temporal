@@ -362,6 +362,7 @@ type ManageAWSOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -401,6 +402,9 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -563,6 +567,7 @@ type ManageAWSResourceOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -602,6 +607,9 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -764,6 +772,7 @@ type SomethingV1FooBarOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -803,6 +812,9 @@ func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -965,6 +977,7 @@ type SomethingV2FooBarOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1004,6 +1017,9 @@ func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.Start
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -2493,6 +2509,7 @@ type ManageAWSResourceActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -2506,6 +2523,9 @@ func (o *ManageAWSResourceActivityOptions) Build(ctx workflow.Context) (workflow
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2571,6 +2591,12 @@ func (o *ManageAWSResourceActivityOptions) WithScheduleToStartTimeout(d time.Dur
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *ManageAWSResourceActivityOptions) WithStartToCloseTimeout(d time.Duration) *ManageAWSResourceActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSResourceActivityOptions) WithPriority(p temporal.Priority) *ManageAWSResourceActivityOptions {
+	o.priority = &p
 	return o
 }
 
@@ -2753,6 +2779,7 @@ type ManageAWSResourceURNActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -2766,6 +2793,9 @@ func (o *ManageAWSResourceURNActivityOptions) Build(ctx workflow.Context) (workf
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2831,6 +2861,12 @@ func (o *ManageAWSResourceURNActivityOptions) WithScheduleToStartTimeout(d time.
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *ManageAWSResourceURNActivityOptions) WithStartToCloseTimeout(d time.Duration) *ManageAWSResourceURNActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSResourceURNActivityOptions) WithPriority(p temporal.Priority) *ManageAWSResourceURNActivityOptions {
+	o.priority = &p
 	return o
 }
 

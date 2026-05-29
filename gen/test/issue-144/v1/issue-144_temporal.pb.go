@@ -138,6 +138,7 @@ type ExplicitZeroScheduleTimeoutActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -151,6 +152,9 @@ func (o *ExplicitZeroScheduleTimeoutActivityOptions) Build(ctx workflow.Context)
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -216,6 +220,12 @@ func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithScheduleToStartTimeout(
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithStartToCloseTimeout(d time.Duration) *ExplicitZeroScheduleTimeoutActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithPriority(p temporal.Priority) *ExplicitZeroScheduleTimeoutActivityOptions {
+	o.priority = &p
 	return o
 }
 
@@ -398,6 +408,7 @@ type UnsetScheduleTimeoutActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -411,6 +422,9 @@ func (o *UnsetScheduleTimeoutActivityOptions) Build(ctx workflow.Context) (workf
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -474,6 +488,12 @@ func (o *UnsetScheduleTimeoutActivityOptions) WithScheduleToStartTimeout(d time.
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *UnsetScheduleTimeoutActivityOptions) WithStartToCloseTimeout(d time.Duration) *UnsetScheduleTimeoutActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *UnsetScheduleTimeoutActivityOptions) WithPriority(p temporal.Priority) *UnsetScheduleTimeoutActivityOptions {
+	o.priority = &p
 	return o
 }
 

@@ -383,15 +383,15 @@ const file_example_v1_example_proto_rawDesc = "" +
 	"\rNotifyRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"3\n" +
 	"\x15SetFooProgressRequest\x12\x1a\n" +
-	"\bprogress\x18\x01 \x01(\x02R\bprogress2\xca\x04\n" +
-	"\aExample\x12\xae\x01\n" +
-	"\tCreateFoo\x12\x1c.example.v1.CreateFooRequest\x1a\x1d.example.v1.CreateFooResponse\"d\x8a\xc4\x03`\n" +
+	"\bprogress\x18\x01 \x01(\x02R\bprogress2\xef\x04\n" +
+	"\aExample\x12\xc1\x01\n" +
+	"\tCreateFoo\x12\x1c.example.v1.CreateFooRequest\x1a\x1d.example.v1.CreateFooResponse\"w\x8a\xc4\x03s\n" +
 	"\x10\n" +
 	"\x0eGetFooProgress\x12\x12\n" +
 	"\x0eSetFooProgress\x10\x01\x1a\x13\n" +
-	"\x11UpdateFooProgress\"\x03\b\x90\x1c*\x1ccreate-foo/${! name.slug() }0\x01\x12R\n" +
-	"\x0eGetFooProgress\x12\x16.google.protobuf.Empty\x1a\".example.v1.GetFooProgressResponse\"\x04\x9a\xc4\x03\x00\x12I\n" +
-	"\x06Notify\x12\x19.example.v1.NotifyRequest\x1a\x16.google.protobuf.Empty\"\f\x92\xc4\x03\b\"\x02\b\x1e2\x02 \x03\x12Q\n" +
+	"\x11UpdateFooProgress\"\x03\b\x90\x1c*\x1ccreate-foo/${! name.slug() }0\x01\xca\x01\x10\b\x05\x12\x03key\x19\x1f\x85\xebQ\xb8\x1e\t@\x12R\n" +
+	"\x0eGetFooProgress\x12\x16.google.protobuf.Empty\x1a\".example.v1.GetFooProgressResponse\"\x04\x9a\xc4\x03\x00\x12[\n" +
+	"\x06Notify\x12\x19.example.v1.NotifyRequest\x1a\x16.google.protobuf.Empty\"\x1e\x92\xc4\x03\x1a\"\x02\b\x1e2\x02 \x03J\x10\b\x05\x12\x03key\x19\x1f\x85\xebQ\xb8\x1e\t@\x12Q\n" +
 	"\x0eSetFooProgress\x12!.example.v1.SetFooProgressRequest\x1a\x16.google.protobuf.Empty\"\x04\xa2\xc4\x03\x00\x12\x89\x01\n" +
 	"\x11UpdateFooProgress\x12!.example.v1.SetFooProgressRequest\x1a\".example.v1.GetFooProgressResponse\"-\xaa\xc4\x03)\n" +
 	"'update-progress/${! progress.string() }\x1a\x10\x8a\xc4\x03\f\n" +

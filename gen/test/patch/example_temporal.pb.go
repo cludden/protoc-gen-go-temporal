@@ -196,6 +196,7 @@ type FooOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -229,6 +230,9 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	}
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -790,6 +794,7 @@ type FooActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
 	waitForCancellation    *bool
 }
 
@@ -803,6 +808,9 @@ func (o *FooActivityOptions) Build(ctx workflow.Context) (workflow.Context, erro
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -868,6 +876,12 @@ func (o *FooActivityOptions) WithScheduleToStartTimeout(d time.Duration) *FooAct
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *FooActivityOptions) WithStartToCloseTimeout(d time.Duration) *FooActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *FooActivityOptions) WithPriority(p temporal.Priority) *FooActivityOptions {
+	o.priority = &p
 	return o
 }
 

@@ -33,6 +33,17 @@
   - Messages
     - [issue_144.v1.Input](test/issue-144/v1/README.md#issue_144-v1-input)
     - [issue_144.v1.Output](test/issue-144/v1/README.md#issue_144-v1-output)
+- [issue_150.v1](test/issue-150/v1/README.md)
+  - Services
+    - [issue_150.v1.Issue150Service](test/issue-150/v1/README.md#issue_150-v1-issue150service)
+      - [Workflows](test/issue-150/v1/README.md#issue_150-v1-issue150service-workflows)
+        - [issue_150.v1.Issue150Service.ExplicitPriority](test/issue-150/v1/README.md#issue_150-v1-issue150service-explicitpriority-workflow)
+      - [Activities](test/issue-150/v1/README.md#issue_150-v1-issue150service-activities)
+        - [issue_150.v1.Issue150Service.ExplicitPriority](test/issue-150/v1/README.md#issue_150-v1-issue150service-explicitpriority-activity)
+        - [issue_150.v1.Issue150Service.UnsetPriority](test/issue-150/v1/README.md#issue_150-v1-issue150service-unsetpriority-activity)
+  - Messages
+    - [issue_150.v1.Input](test/issue-150/v1/README.md#issue_150-v1-input)
+    - [issue_150.v1.Output](test/issue-150/v1/README.md#issue_150-v1-output)
 - [mycompany.simple](test/simple/v1/README.md)
   - Services
     - [mycompany.simple.Deprecated](test/simple/v1/README.md#mycompany-simple-deprecated)
