@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package issue_150.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Issue150Service {
+  rpc ExplicitPriority(Input) returns (Output) {
+    option (temporal.v1.workflow) = {
+      priority: {priority_key: 2}
+    };
+    option (temporal.v1.activity) = {
+      priority: {priority_key: 4}
+    };
+  }
+
+  rpc UnsetPriority(Input) returns (Output) {
+    option (temporal.v1.activity) = {};
+  }
+}
+
+message Input {}
+
+message Output {}

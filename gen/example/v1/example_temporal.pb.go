@@ -390,8 +390,6 @@ func (o *CreateFooOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
-	} else {
-		opts.Priority = temporal.Priority{PriorityKey: 5, FairnessKey: "key", FairnessWeight: 3.14}
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
@@ -1243,8 +1241,6 @@ func (o *NotifyActivityOptions) Build(ctx workflow.Context) (workflow.Context, e
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
-	} else {
-		opts.Priority = temporal.Priority{PriorityKey: 5, FairnessKey: "key", FairnessWeight: 3.14}
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v

@@ -436,7 +436,7 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 								g.Id("FairnessKey").Op(":").Lit(n)
 							}
 							if n := policy.GetFairnessWeight(); n != 0 {
-								g.Id("FairnessWeight").Op(":").Id(strconv.FormatFloat(n, 'f', -1, 64))
+								g.Id("FairnessWeight").Op(":").Id(strconv.FormatFloat(float64(n), 'f', -1, 32))
 							}
 						}),
 					)
