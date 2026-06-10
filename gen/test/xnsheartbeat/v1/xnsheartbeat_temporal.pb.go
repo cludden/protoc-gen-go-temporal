@@ -360,6 +360,7 @@ type TestWorkflowOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -367,7 +368,6 @@ type TestWorkflowOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
-	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -838,6 +838,7 @@ type TestWorkflowChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1957,6 +1958,7 @@ type CallTestWorkflowOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -1964,7 +1966,6 @@ type CallTestWorkflowOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
-	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -2264,6 +2265,7 @@ type CallTestWorkflowChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any

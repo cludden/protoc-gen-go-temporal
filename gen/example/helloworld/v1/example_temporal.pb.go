@@ -202,6 +202,7 @@ type HelloOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -209,7 +210,6 @@ type HelloOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
-	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -541,6 +541,7 @@ type HelloChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any

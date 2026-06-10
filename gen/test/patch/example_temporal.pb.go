@@ -189,6 +189,7 @@ type FooOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -196,7 +197,6 @@ type FooOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
-	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -508,6 +508,7 @@ type FooChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any

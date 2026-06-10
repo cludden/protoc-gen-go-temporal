@@ -254,6 +254,7 @@ type SearchAttributesOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -261,7 +262,6 @@ type SearchAttributesOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
-	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -469,6 +469,7 @@ type TypedSearchAttributesOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -476,7 +477,6 @@ type TypedSearchAttributesOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
-	priority                 *temporal.Priority
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -830,6 +830,7 @@ type SearchAttributesChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1151,6 +1152,7 @@ type TypedSearchAttributesChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any

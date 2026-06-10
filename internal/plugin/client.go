@@ -2275,6 +2275,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 		g.Id("executionTimeout").Op("*").Qual("time", "Duration")
 		g.Id("id").Op("*").String()
 		g.Id("idReusePolicy").Qual(enumsPkg, "WorkflowIdReusePolicy")
+		g.Id("priority").Op("*").Qual(temporalPkg, "Priority")
 		g.Id("retryPolicy").Op("*").Qual(temporalPkg, "RetryPolicy")
 		g.Id("runTimeout").Op("*").Qual("time", "Duration")
 		g.Id("searchAttributes").Map(j.String()).Any()
@@ -2287,7 +2288,6 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			g.Id("waitForCancellation").Op("*").Bool()
 		} else {
 			g.Id("enableEagerStart").Op("*").Bool()
-			g.Id("priority").Op("*").Qual(temporalPkg, "Priority")
 			g.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		}
 	})
