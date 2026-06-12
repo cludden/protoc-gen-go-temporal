@@ -2671,26 +2671,24 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			}
 
 			// set PriorityKey
-			if !child {
-				priority := g.If(j.Id("v").Op(":=").Id("o").Dot("priority"), j.Id("v").Op("!=").Nil()).
-					Block(
-						j.Id("opts").Dot("Priority").Op("=").Op("*").Id("v"),
-					)
-				if policy := opts.GetPriority(); policy != nil {
-					priority.Else().Block(
-						j.Id("opts").Dot("Priority").Op("=").Qual(temporalPkg, "Priority").ValuesFunc(func(g *j.Group) {
-							if n := policy.GetPriorityKey(); n != 0 {
-								g.Id("PriorityKey").Op(":").Id(strconv.FormatInt(int64(n), 10))
-							}
-							if n := policy.GetFairnessKey(); n != "" {
-								g.Id("FairnessKey").Op(":").Lit(n)
-							}
-							if n := policy.GetFairnessWeight(); n != 0 {
-								g.Id("FairnessWeight").Op(":").Id(strconv.FormatFloat(float64(n), 'f', -1, 32))
-							}
-						}),
-					)
-				}
+			priorityKey := g.If(j.Id("v").Op(":=").Id("o").Dot("priority"), j.Id("v").Op("!=").Nil()).
+				Block(
+					j.Id("opts").Dot("Priority").Op("=").Op("*").Id("v"),
+				)
+			if priority := opts.GetPriority(); priority != nil {
+				priorityKey.Else().Block(
+					j.Id("opts").Dot("Priority").Op("=").Qual(temporalPkg, "Priority").ValuesFunc(func(g *j.Group) {
+						if n := priority.GetPriorityKey(); n != 0 {
+							g.Id("PriorityKey").Op(":").Id(strconv.FormatInt(int64(n), 10))
+						}
+						if n := priority.GetFairnessKey(); n != "" {
+							g.Id("FairnessKey").Op(":").Lit(n)
+						}
+						if n := priority.GetFairnessWeight(); n != 0 {
+							g.Id("FairnessWeight").Op(":").Id(strconv.FormatFloat(float64(n), 'f', -1, 32))
+						}
+					}),
+				)
 			}
 
 			// set EnableEagerStart

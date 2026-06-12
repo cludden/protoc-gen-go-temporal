@@ -930,6 +930,9 @@ func (o *SearchAttributesChildOptions) Build(ctx workflow.Context, req protorefl
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1237,6 +1240,9 @@ func (o *TypedSearchAttributesChildOptions) Build(ctx workflow.Context, req prot
 			return opts, fmt.Errorf("error marshaling \"TypedSearchAttributes\" typed search attribute mapping: %v", err)
 		}
 		opts.TypedSearchAttributes = tsa
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v

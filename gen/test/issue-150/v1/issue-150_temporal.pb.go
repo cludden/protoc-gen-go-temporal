@@ -548,6 +548,11 @@ func (o *ExplicitPriorityChildOptions) Build(ctx workflow.Context, req protorefl
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	} else {
+		opts.Priority = temporal.Priority{PriorityKey: 2}
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
