@@ -5,9 +5,15 @@ package issue_150.v1;
 import "temporal/v1/temporal.proto";
 
 service Issue150Service {
+  option (temporal.v1.service) = {task_queue: "issue-150-v1"};
+
   rpc ExplicitPriority(Input) returns (Output) {
     option (temporal.v1.workflow) = {
-      priority: {priority_key: 2}
+      priority: {
+        priority_key: 2
+        fairness_key: "default"
+        fairness_weight: 1
+      }
     };
     option (temporal.v1.activity) = {
       priority: {priority_key: 4}

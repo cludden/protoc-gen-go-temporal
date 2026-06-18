@@ -391,6 +391,9 @@ type ShoppingCartOptions struct {
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
 	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -441,6 +444,15 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -483,6 +495,30 @@ func (o *ShoppingCartOptions) WithID(id string) *ShoppingCartOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *ShoppingCartOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ShoppingCartOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ShoppingCartOptions) WithPriority(priority temporal.Priority) *ShoppingCartOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ShoppingCartOptions) WithPriorityKey(priorityKey int) *ShoppingCartOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ShoppingCartOptions) WithFairnessKey(fairnessKey string) *ShoppingCartOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ShoppingCartOptions) WithFairnessWeight(fairnessWeight float32) *ShoppingCartOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -900,6 +936,9 @@ type ShoppingCartChildOptions struct {
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
 	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -964,6 +1003,15 @@ func (o *ShoppingCartChildOptions) Build(ctx workflow.Context, req protoreflect.
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1015,6 +1063,30 @@ func (o *ShoppingCartChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdRe
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *ShoppingCartChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ShoppingCartChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ShoppingCartChildOptions) WithPriority(priority temporal.Priority) *ShoppingCartChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ShoppingCartChildOptions) WithPriorityKey(priorityKey int) *ShoppingCartChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ShoppingCartChildOptions) WithFairnessKey(fairnessKey string) *ShoppingCartChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ShoppingCartChildOptions) WithFairnessWeight(fairnessWeight float32) *ShoppingCartChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

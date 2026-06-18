@@ -96,7 +96,6 @@ func (s *XnsErrSuite) SetupSuite() {
 				Level: slog.LevelDebug,
 			}))),
 		},
-		EnableUI:     true,
 		ExistingPath: existingPath,
 		LogLevel:     "error",
 	})
@@ -398,7 +397,6 @@ func TestClientStopped(t *testing.T) {
 				Level: slog.LevelDebug,
 			}))),
 		},
-		EnableUI: true,
 		LogLevel: "error",
 	})
 	require.NoError(err)

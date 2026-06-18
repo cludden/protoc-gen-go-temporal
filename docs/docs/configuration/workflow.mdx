@@ -234,6 +234,28 @@ service Example {
 }
 ```
 
+### priority
+
+[temporal.api.common.v1.Priority](https://buf.build/temporalio/api/docs/master:temporal.api.common.v1#temporal.api.common.v1.Priority)
+
+Controls how this workflow is dispatched within its task queue using [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness), applied both when **starting** the workflow and when running it as a **child** workflow. A smaller `priority_key` (a positive integer) runs sooner; when unset it defaults to the middle of the server's range. `fairness_key` and `fairness_weight` balance dispatch throughput across a set of keys (e.g. tenants).
+
+This schema value is the default. It can be overridden at runtime via the [`WithPriority`](/docs/guides/workflows#withpriority) helper (which replaces the whole `Priority`) or the individual field helpers [`WithPriorityKey`](/docs/guides/workflows#withprioritykey), [`WithFairnessKey`](/docs/guides/workflows#withfairnesskey), and [`WithFairnessWeight`](/docs/guides/workflows#withfairnessweight). Runtime values take precedence over this schema default. Among runtime helpers, the individual field setters win over `WithPriority`, which in turn wins over a `Priority` supplied via `WithStartWorkflowOptions` / `WithChildWorkflowOptions`. Unlike `WithPriority`, the individual setters override only their own field, leaving the others to fall back to the base options or this schema default.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.workflow) = {
+      priority: {
+        priority_key: 2
+        fairness_key: "high"
+        fairness_weight: 9.0
+      }
+    };
+  }
+}
+```
+
 ### query
 
 [temporal.v1.WorkflowOptions.Query](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.WorkflowOptions.Query)

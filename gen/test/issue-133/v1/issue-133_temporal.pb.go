@@ -137,6 +137,9 @@ type CreateUserInAPIActivityActivityOptions struct {
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
 	priority               *temporal.Priority
+	priorityKey            *int
+	fairnessKey            *string
+	fairnessWeight         *float32
 	waitForCancellation    *bool
 }
 
@@ -153,6 +156,15 @@ func (o *CreateUserInAPIActivityActivityOptions) Build(ctx workflow.Context) (wo
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -226,6 +238,24 @@ func (o *CreateUserInAPIActivityActivityOptions) WithStartToCloseTimeout(d time.
 // WithPriority sets the Priority value
 func (o *CreateUserInAPIActivityActivityOptions) WithPriority(p temporal.Priority) *CreateUserInAPIActivityActivityOptions {
 	o.priority = &p
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *CreateUserInAPIActivityActivityOptions) WithPriorityKey(priorityKey int) *CreateUserInAPIActivityActivityOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *CreateUserInAPIActivityActivityOptions) WithFairnessKey(fairnessKey string) *CreateUserInAPIActivityActivityOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *CreateUserInAPIActivityActivityOptions) WithFairnessWeight(fairnessWeight float32) *CreateUserInAPIActivityActivityOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

@@ -4,15 +4,14 @@ import (
 	"testing"
 
 	issue_135v1 "github.com/cludden/protoc-gen-go-temporal/gen/test/issue-135/v1"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
-	"go.temporal.io/sdk/testsuite"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestIssue135(t *testing.T) {
-	var s testsuite.WorkflowTestSuite
-	env := s.NewTestActivityEnvironment()
+	env := testutil.NewActivityTestEnvironment(t)
 	issue_135v1.RegisterFOOBarActivities(env, &Activities{})
 	result, err := env.ExecuteActivity(issue_135v1.DoActivityName, &issue_135v1.DoRequest{})
 	require.NoError(t, err)

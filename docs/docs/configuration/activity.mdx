@@ -62,6 +62,24 @@ service Example {
 }
 ```
 
+### priority
+
+[temporal.api.common.v1.Priority](https://buf.build/temporalio/api/docs/master:temporal.api.common.v1#temporal.api.common.v1.Priority)
+
+Controls how this activity is dispatched within its task queue using [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness). A smaller `priority_key` (a positive integer) runs sooner; when unset it defaults to the middle of the server's range. `fairness_key` and `fairness_weight` balance dispatch throughput across a set of keys (e.g. tenants). Applies to **non-local activities only**.
+
+This schema value is the default. It can be overridden at runtime via the [`WithPriority`](/docs/guides/activities#withpriority) helper (which replaces the whole `Priority`) or the individual field helpers [`WithPriorityKey`](/docs/guides/activities#withprioritykey), [`WithFairnessKey`](/docs/guides/activities#withfairnesskey), and [`WithFairnessWeight`](/docs/guides/activities#withfairnessweight). Runtime values take precedence over this schema default. Among runtime helpers, the individual field setters win over `WithPriority`, which in turn wins over a `Priority` supplied via `WithActivityOptions`. Unlike `WithPriority`, the individual setters override only their own field, leaving the others to fall back to the base options or this schema default.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      priority: { priority_key: 2 }
+    };
+  }
+}
+```
+
 ### retry_policy
 
 [temporal.v1.RetryPolicy](https://buf.build/cludden/protoc-gen-go-temporal/docs/main:temporal.v1#temporal.v1.RetryPolicy)
@@ -132,22 +150,6 @@ service Example {
 }
 ```
 
-### wait_for_cancellation
-
-`bool`
-
-Whether to wait for canceled activity to be completed (activity can be failed, completed, cancel accepted). If `true` the Activity Execution will finish executing should there be a [Cancellation](https://docs.temporal.io/dev-guide/go#cancellation) request. Defaults to `false`.
-
-```protobuf
-service Example {
-  rpc Hello(HelloInput) returns (HelloOutput) {
-    option (temporal.v1.activity) = {
-      wait_for_cancellation: false
-    };
-  }
-}
-```
-
 ### task_queue
 
 `string`
@@ -159,6 +161,22 @@ service Example {
   rpc Hello(HelloInput) returns (HelloOutput) {
     option (temporal.v1.activity) = {
       task_queue: "example-v2"
+    };
+  }
+}
+```
+
+### wait_for_cancellation
+
+`bool`
+
+Whether to wait for canceled activity to be completed (activity can be failed, completed, cancel accepted). If `true` the Activity Execution will finish executing should there be a [Cancellation](https://docs.temporal.io/dev-guide/go#cancellation) request. Defaults to `false`.
+
+```protobuf
+service Example {
+  rpc Hello(HelloInput) returns (HelloOutput) {
+    option (temporal.v1.activity) = {
+      wait_for_cancellation: false
     };
   }
 }

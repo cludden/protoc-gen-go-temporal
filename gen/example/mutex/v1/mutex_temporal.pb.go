@@ -439,6 +439,9 @@ type MutexOptions struct {
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
 	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -496,6 +499,15 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -538,6 +550,30 @@ func (o *MutexOptions) WithID(id string) *MutexOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *MutexOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *MutexOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *MutexOptions) WithPriority(priority temporal.Priority) *MutexOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexOptions) WithPriorityKey(priorityKey int) *MutexOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexOptions) WithFairnessKey(fairnessKey string) *MutexOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexOptions) WithFairnessWeight(fairnessWeight float32) *MutexOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -679,6 +715,9 @@ type SampleWorkflowWithMutexOptions struct {
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
 	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -729,6 +768,15 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -771,6 +819,30 @@ func (o *SampleWorkflowWithMutexOptions) WithID(id string) *SampleWorkflowWithMu
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *SampleWorkflowWithMutexOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *SampleWorkflowWithMutexOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *SampleWorkflowWithMutexOptions) WithPriority(priority temporal.Priority) *SampleWorkflowWithMutexOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SampleWorkflowWithMutexOptions) WithPriorityKey(priorityKey int) *SampleWorkflowWithMutexOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SampleWorkflowWithMutexOptions) WithFairnessKey(fairnessKey string) *SampleWorkflowWithMutexOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *SampleWorkflowWithMutexOptions) WithFairnessWeight(fairnessWeight float32) *SampleWorkflowWithMutexOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -1166,6 +1238,9 @@ type MutexChildOptions struct {
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
 	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1237,6 +1312,15 @@ func (o *MutexChildOptions) Build(ctx workflow.Context, req protoreflect.Message
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1288,6 +1372,30 @@ func (o *MutexChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePoli
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *MutexChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *MutexChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *MutexChildOptions) WithPriority(priority temporal.Priority) *MutexChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexChildOptions) WithPriorityKey(priorityKey int) *MutexChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexChildOptions) WithFairnessKey(fairnessKey string) *MutexChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexChildOptions) WithFairnessWeight(fairnessWeight float32) *MutexChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -1473,6 +1581,9 @@ type SampleWorkflowWithMutexChildOptions struct {
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
 	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1537,6 +1648,15 @@ func (o *SampleWorkflowWithMutexChildOptions) Build(ctx workflow.Context, req pr
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1588,6 +1708,30 @@ func (o *SampleWorkflowWithMutexChildOptions) WithIDReusePolicy(policy enumsv1.W
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *SampleWorkflowWithMutexChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *SampleWorkflowWithMutexChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *SampleWorkflowWithMutexChildOptions) WithPriority(priority temporal.Priority) *SampleWorkflowWithMutexChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SampleWorkflowWithMutexChildOptions) WithPriorityKey(priorityKey int) *SampleWorkflowWithMutexChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SampleWorkflowWithMutexChildOptions) WithFairnessKey(fairnessKey string) *SampleWorkflowWithMutexChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *SampleWorkflowWithMutexChildOptions) WithFairnessWeight(fairnessWeight float32) *SampleWorkflowWithMutexChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -1843,6 +1987,9 @@ type MutexActivityOptions struct {
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
 	priority               *temporal.Priority
+	priorityKey            *int
+	fairnessKey            *string
+	fairnessWeight         *float32
 	waitForCancellation    *bool
 }
 
@@ -1859,6 +2006,15 @@ func (o *MutexActivityOptions) Build(ctx workflow.Context) (workflow.Context, er
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -1930,6 +2086,24 @@ func (o *MutexActivityOptions) WithStartToCloseTimeout(d time.Duration) *MutexAc
 // WithPriority sets the Priority value
 func (o *MutexActivityOptions) WithPriority(p temporal.Priority) *MutexActivityOptions {
 	o.priority = &p
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexActivityOptions) WithPriorityKey(priorityKey int) *MutexActivityOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexActivityOptions) WithFairnessKey(fairnessKey string) *MutexActivityOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *MutexActivityOptions) WithFairnessWeight(fairnessWeight float32) *MutexActivityOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

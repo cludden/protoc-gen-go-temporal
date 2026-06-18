@@ -578,6 +578,45 @@ service Example {
 </TabItem>
 </Tabs>
 
+### Priority
+
+Set the child workflow [`Priority`](https://buf.build/temporalio/api/docs/master:temporal.api.common.v1#temporal.api.common.v1.Priority) — controlling how it is dispatched within its task queue using [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness) — via the schema [`priority`](/docs/configuration/workflow#priority) option or at runtime through the `WithPriority` helper (which replaces the whole `Priority`) or the individual field helpers `WithPriorityKey`, `WithFairnessKey`, and `WithFairnessWeight`.
+
+Runtime values take precedence over schema defaults. Among runtime helpers, the individual field setters win over `WithPriority`, which in turn wins over a `Priority` supplied via `WithChildWorkflowOptions`. Unlike `WithPriority`, the individual setters override only their own field, leaving the others to fall back to the base options or the schema default.
+
+```go title="child_priority.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    childResult, err := examplev1.CreateFooChild(ctx, &examplev1.CreateFooRequest{
+        Name: "prioritized-child",
+    }, examplev1.NewCreateFooChildOptions().
+        // replace the whole Priority
+        WithPriority(temporal.Priority{PriorityKey: 1}),
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    return &examplev1.ParentResponse{ChildResult: childResult}, nil
+}
+```
+
+```go title="child_priority_fields.go"
+func (w *ParentWorkflow) Execute(ctx workflow.Context) (*examplev1.ParentResponse, error) {
+    // override only priority_key; fairness_key / fairness_weight fall back to the
+    // base options or schema default
+    childResult, err := examplev1.CreateFooChild(ctx, &examplev1.CreateFooRequest{
+        Name: "prioritized-child",
+    }, examplev1.NewCreateFooChildOptions().
+        WithPriorityKey(1),
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    return &examplev1.ParentResponse{ChildResult: childResult}, nil
+}
+```
+
 ## Parent Close Policies
 
 Configure how child workflows behave when the parent workflow closes.

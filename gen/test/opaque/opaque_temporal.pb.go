@@ -237,6 +237,9 @@ type PutOpaqueExampleOptions struct {
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
 	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -281,6 +284,15 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -323,6 +335,30 @@ func (o *PutOpaqueExampleOptions) WithID(id string) *PutOpaqueExampleOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *PutOpaqueExampleOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *PutOpaqueExampleOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *PutOpaqueExampleOptions) WithPriority(priority temporal.Priority) *PutOpaqueExampleOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *PutOpaqueExampleOptions) WithPriorityKey(priorityKey int) *PutOpaqueExampleOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *PutOpaqueExampleOptions) WithFairnessKey(fairnessKey string) *PutOpaqueExampleOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *PutOpaqueExampleOptions) WithFairnessWeight(fairnessWeight float32) *PutOpaqueExampleOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -568,6 +604,9 @@ type PutOpaqueExampleChildOptions struct {
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
 	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -609,6 +648,15 @@ func (o *PutOpaqueExampleChildOptions) Build(ctx workflow.Context, req protorefl
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -661,6 +709,30 @@ func (o *PutOpaqueExampleChildOptions) WithIDReusePolicy(policy enumsv1.Workflow
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *PutOpaqueExampleChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *PutOpaqueExampleChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *PutOpaqueExampleChildOptions) WithPriority(priority temporal.Priority) *PutOpaqueExampleChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *PutOpaqueExampleChildOptions) WithPriorityKey(priorityKey int) *PutOpaqueExampleChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *PutOpaqueExampleChildOptions) WithFairnessKey(fairnessKey string) *PutOpaqueExampleChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *PutOpaqueExampleChildOptions) WithFairnessWeight(fairnessWeight float32) *PutOpaqueExampleChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

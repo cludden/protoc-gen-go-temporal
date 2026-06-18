@@ -139,6 +139,9 @@ type ExplicitZeroScheduleTimeoutActivityOptions struct {
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
 	priority               *temporal.Priority
+	priorityKey            *int
+	fairnessKey            *string
+	fairnessWeight         *float32
 	waitForCancellation    *bool
 }
 
@@ -155,6 +158,15 @@ func (o *ExplicitZeroScheduleTimeoutActivityOptions) Build(ctx workflow.Context)
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -226,6 +238,24 @@ func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithStartToCloseTimeout(d t
 // WithPriority sets the Priority value
 func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithPriority(p temporal.Priority) *ExplicitZeroScheduleTimeoutActivityOptions {
 	o.priority = &p
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithPriorityKey(priorityKey int) *ExplicitZeroScheduleTimeoutActivityOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithFairnessKey(fairnessKey string) *ExplicitZeroScheduleTimeoutActivityOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ExplicitZeroScheduleTimeoutActivityOptions) WithFairnessWeight(fairnessWeight float32) *ExplicitZeroScheduleTimeoutActivityOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -409,6 +439,9 @@ type UnsetScheduleTimeoutActivityOptions struct {
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
 	priority               *temporal.Priority
+	priorityKey            *int
+	fairnessKey            *string
+	fairnessWeight         *float32
 	waitForCancellation    *bool
 }
 
@@ -425,6 +458,15 @@ func (o *UnsetScheduleTimeoutActivityOptions) Build(ctx workflow.Context) (workf
 	}
 	if v := o.priority; v != nil {
 		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -494,6 +536,24 @@ func (o *UnsetScheduleTimeoutActivityOptions) WithStartToCloseTimeout(d time.Dur
 // WithPriority sets the Priority value
 func (o *UnsetScheduleTimeoutActivityOptions) WithPriority(p temporal.Priority) *UnsetScheduleTimeoutActivityOptions {
 	o.priority = &p
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *UnsetScheduleTimeoutActivityOptions) WithPriorityKey(priorityKey int) *UnsetScheduleTimeoutActivityOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *UnsetScheduleTimeoutActivityOptions) WithFairnessKey(fairnessKey string) *UnsetScheduleTimeoutActivityOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *UnsetScheduleTimeoutActivityOptions) WithFairnessWeight(fairnessWeight float32) *UnsetScheduleTimeoutActivityOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

@@ -100,10 +100,11 @@ const file_test_issue_150_v1_issue_150_proto_rawDesc = "" +
 	"\n" +
 	"!test/issue-150/v1/issue-150.proto\x12\fissue_150.v1\x1a\x1atemporal/v1/temporal.proto\"\a\n" +
 	"\x05Input\"\b\n" +
-	"\x06Output2\xa5\x01\n" +
-	"\x0fIssue150Service\x12P\n" +
-	"\x10ExplicitPriority\x12\x13.issue_150.v1.Input\x1a\x14.issue_150.v1.Output\"\x11\x8a\xc4\x03\x05\xca\x01\x02\b\x02\x92\xc4\x03\x04J\x02\b\x04\x12@\n" +
-	"\rUnsetPriority\x12\x13.issue_150.v1.Input\x1a\x14.issue_150.v1.Output\"\x04\x92\xc4\x03\x00B\xbb\x01\n" +
+	"\x06Output2\xc7\x01\n" +
+	"\x0fIssue150Service\x12^\n" +
+	"\x10ExplicitPriority\x12\x13.issue_150.v1.Input\x1a\x14.issue_150.v1.Output\"\x1f\x8a\xc4\x03\x13\xca\x01\x10\b\x02\x12\adefault\x1d\x00\x00\x80?\x92\xc4\x03\x04J\x02\b\x04\x12@\n" +
+	"\rUnsetPriority\x12\x13.issue_150.v1.Input\x1a\x14.issue_150.v1.Output\"\x04\x92\xc4\x03\x00\x1a\x12\x8a\xc4\x03\x0e\n" +
+	"\fissue-150-v1B\xbb\x01\n" +
 	"\x10com.issue_150.v1B\rIssue150ProtoP\x01ZKgithub.com/cludden/protoc-gen-go-temporal/gen/test/issue-150/v1;issue_150v1\xa2\x02\x03IXX\xaa\x02\vIssue150.V1\xca\x02\vIssue150\\V1\xe2\x02\x17Issue150\\V1\\GPBMetadata\xea\x02\fIssue150::V1b\x06proto3"
 
 var (

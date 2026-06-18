@@ -318,6 +318,9 @@ type FooOptions struct {
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
 	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -368,6 +371,15 @@ func (o *FooOptions) Build(req protoreflect.Message) (client.StartWorkflowOption
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -410,6 +422,30 @@ func (o *FooOptions) WithID(id string) *FooOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *FooOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *FooOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *FooOptions) WithPriority(priority temporal.Priority) *FooOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *FooOptions) WithPriorityKey(priorityKey int) *FooOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *FooOptions) WithFairnessKey(fairnessKey string) *FooOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *FooOptions) WithFairnessWeight(fairnessWeight float32) *FooOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -939,6 +975,9 @@ type FooChildOptions struct {
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
 	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1003,6 +1042,15 @@ func (o *FooChildOptions) Build(ctx workflow.Context, req protoreflect.Message) 
 	if v := o.priority; v != nil {
 		opts.Priority = *v
 	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1054,6 +1102,30 @@ func (o *FooChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *FooChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *FooChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *FooChildOptions) WithPriority(priority temporal.Priority) *FooChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *FooChildOptions) WithPriorityKey(priorityKey int) *FooChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *FooChildOptions) WithFairnessKey(fairnessKey string) *FooChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *FooChildOptions) WithFairnessWeight(fairnessWeight float32) *FooChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
