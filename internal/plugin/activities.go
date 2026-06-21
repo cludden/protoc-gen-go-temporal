@@ -8,7 +8,9 @@ import (
 
 	j "github.com/dave/jennifer/jen"
 	"github.com/hako/durafmt"
+	commonpb "go.temporal.io/api/common/v1"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -376,6 +378,10 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 			g.Id("heartbeatTimeout").Op("*").Qual("time", "Duration")
 			g.Id("scheduleToStartTimeout").Op("*").Qual("time", "Duration")
 			g.Id("taskQueue").Op("*").String()
+			g.Id("priority").Op("*").Qual(temporalPkg, "Priority")
+			g.Id("priorityKey").Op("*").Int()
+			g.Id("fairnessKey").Op("*").String()
+			g.Id("fairnessWeight").Op("*").Float32()
 			g.Id("waitForCancellation").Op("*").Bool()
 		}
 	})
@@ -417,6 +423,50 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 						j.Id("opts").Dot("HeartbeatTimeout").Op("=").Id(strconv.FormatInt(d.Nanoseconds(), 10)).Comment(durafmt.Parse(d).String()),
 					)
 				}
+			}
+
+			// set Priority
+			if !local {
+				priority := g.If(j.Id("v").Op(":=").Id("o").Dot("priority"), j.Id("v").Op("!=").Nil()).
+					Block(
+						j.Id("opts").Dot("Priority").Op("=").Op("*").Id("v"),
+					)
+				if p := opts.GetPriority(); p != nil && !proto.Equal(p, &commonpb.Priority{}) {
+					priority.Else().BlockFunc(func(g *j.Group) {
+						if v := p.GetPriorityKey(); v != 0 {
+							g.IfFunc(func(g *j.Group) {
+								g.Id("opts").Dot("Priority").Dot("PriorityKey").Op("==").Lit(0)
+							}).BlockFunc(func(g *j.Group) {
+								g.Id("opts").Dot("Priority").Dot("PriorityKey").Op("=").Lit(int(v))
+							})
+						}
+						if v := p.GetFairnessKey(); v != "" {
+							g.IfFunc(func(g *j.Group) {
+								g.Id("opts").Dot("Priority").Dot("FairnessKey").Op("==").Lit("")
+							}).BlockFunc(func(g *j.Group) {
+								g.Id("opts").Dot("Priority").Dot("FairnessKey").Op("=").Lit(v)
+							})
+						}
+						if v := p.GetFairnessWeight(); v != 0 {
+							g.IfFunc(func(g *j.Group) {
+								g.Id("opts").Dot("Priority").Dot("FairnessWeight").Op("==").Lit(0)
+							}).BlockFunc(func(g *j.Group) {
+								g.Id("opts").Dot("Priority").Dot("FairnessWeight").Op("=").Lit(float32(v))
+							})
+						}
+					})
+				}
+
+				// set individual Priority field overrides (highest precedence)
+				g.If(j.Id("v").Op(":=").Id("o").Dot("priorityKey"), j.Id("v").Op("!=").Nil()).Block(
+					j.Id("opts").Dot("Priority").Dot("PriorityKey").Op("=").Op("*").Id("v"),
+				)
+				g.If(j.Id("v").Op(":=").Id("o").Dot("fairnessKey"), j.Id("v").Op("!=").Nil()).Block(
+					j.Id("opts").Dot("Priority").Dot("FairnessKey").Op("=").Op("*").Id("v"),
+				)
+				g.If(j.Id("v").Op(":=").Id("o").Dot("fairnessWeight"), j.Id("v").Op("!=").Nil()).Block(
+					j.Id("opts").Dot("Priority").Dot("FairnessWeight").Op("=").Op("*").Id("v"),
+				)
 			}
 
 			// set RetryPolicy
@@ -648,6 +698,60 @@ func (m *Manifest) genActivityOptions(f *j.File, activity protoreflect.FullName,
 			j.Id("o").Dot("startToCloseTimeout").Op("=").Op("&").Id("d"),
 			j.Return(j.Id("o")),
 		)
+
+	if !local {
+		f.Comment("WithPriority sets the Priority value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithPriority").
+			Params(
+				j.Id("p").Qual(temporalPkg, "Priority"),
+			).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("priority").Op("=").Op("&").Id("p"),
+				j.Return(j.Id("o")),
+			)
+
+		f.Comment("WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithPriorityKey").
+			Params(
+				j.Id("priorityKey").Int(),
+			).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("priorityKey").Op("=").Op("&").Id("priorityKey"),
+				j.Return(j.Id("o")),
+			)
+
+		f.Comment("WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithFairnessKey").
+			Params(
+				j.Id("fairnessKey").String(),
+			).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("fairnessKey").Op("=").Op("&").Id("fairnessKey"),
+				j.Return(j.Id("o")),
+			)
+
+		f.Comment("WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithFairnessWeight").
+			Params(
+				j.Id("fairnessWeight").Float32(),
+			).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("fairnessWeight").Op("=").Op("&").Id("fairnessWeight"),
+				j.Return(j.Id("o")),
+			)
+	}
 
 	if !local {
 		f.Comment("WithTaskQueue sets the TaskQueue value")

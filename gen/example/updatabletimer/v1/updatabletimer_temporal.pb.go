@@ -222,6 +222,10 @@ type UpdatableTimerOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -269,6 +273,18 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -311,6 +327,30 @@ func (o *UpdatableTimerOptions) WithID(id string) *UpdatableTimerOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *UpdatableTimerOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *UpdatableTimerOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *UpdatableTimerOptions) WithPriority(priority temporal.Priority) *UpdatableTimerOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *UpdatableTimerOptions) WithPriorityKey(priorityKey int) *UpdatableTimerOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *UpdatableTimerOptions) WithFairnessKey(fairnessKey string) *UpdatableTimerOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *UpdatableTimerOptions) WithFairnessWeight(fairnessWeight float32) *UpdatableTimerOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -567,6 +607,10 @@ type UpdatableTimerChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -628,6 +672,18 @@ func (o *UpdatableTimerChildOptions) Build(ctx workflow.Context, req protoreflec
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -679,6 +735,30 @@ func (o *UpdatableTimerChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowId
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *UpdatableTimerChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *UpdatableTimerChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *UpdatableTimerChildOptions) WithPriority(priority temporal.Priority) *UpdatableTimerChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *UpdatableTimerChildOptions) WithPriorityKey(priorityKey int) *UpdatableTimerChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *UpdatableTimerChildOptions) WithFairnessKey(fairnessKey string) *UpdatableTimerChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *UpdatableTimerChildOptions) WithFairnessWeight(fairnessWeight float32) *UpdatableTimerChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

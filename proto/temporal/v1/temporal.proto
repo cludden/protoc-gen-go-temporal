@@ -4,6 +4,7 @@ package temporal.v1;
 
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
+import "temporal/api/common/v1/message.proto";
 import "temporal/api/enums/v1/workflow.proto";
 
 option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1";
@@ -51,6 +52,10 @@ message ActivityOptions {
   // WaitForCancellation - Whether to wait for canceled activity to be completed
   // (activity can be failed, completed, cancel accepted)
   bool wait_for_cancellation = 8;
+
+  // Specifies distribution of work within a task queue
+  // using Task Queue Priority and Task Queue Fairness
+  temporal.api.common.v1.Priority priority = 9;
 
   // Specifies how to retry an Activity if an error occurs
   RetryPolicy retry_policy = 6;
@@ -342,6 +347,10 @@ message WorkflowOptions {
 
   // XNS can be used to configure default activity options for xns workflow executions
   XNSActivityOptions xns = 16;
+
+  // Specifies distribution of work within a task queue
+  // using Task Queue Priority and Task Queue Fairness
+  temporal.api.common.v1.Priority priority = 25;
 
   // Query identifies a query supported by the worklow
   message Query {

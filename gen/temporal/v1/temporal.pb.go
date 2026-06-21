@@ -7,7 +7,8 @@
 package temporalv1
 
 import (
-	v1 "go.temporal.io/api/enums/v1"
+	v1 "go.temporal.io/api/common/v1"
+	v11 "go.temporal.io/api/enums/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
@@ -325,6 +326,9 @@ type ActivityOptions struct {
 	// WaitForCancellation - Whether to wait for canceled activity to be completed
 	// (activity can be failed, completed, cancel accepted)
 	WaitForCancellation bool `protobuf:"varint,8,opt,name=wait_for_cancellation,json=waitForCancellation,proto3" json:"wait_for_cancellation,omitempty"`
+	// Specifies distribution of work within a task queue
+	// using Task Queue Priority and Task Queue Fairness
+	Priority *v1.Priority `protobuf:"bytes,9,opt,name=priority,proto3" json:"priority,omitempty"`
 	// Specifies how to retry an Activity if an error occurs
 	RetryPolicy   *RetryPolicy `protobuf:"bytes,6,opt,name=retry_policy,json=retryPolicy,proto3" json:"retry_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -408,6 +412,13 @@ func (x *ActivityOptions) GetWaitForCancellation() bool {
 		return x.WaitForCancellation
 	}
 	return false
+}
+
+func (x *ActivityOptions) GetPriority() *v1.Priority {
+	if x != nil {
+		return x.Priority
+	}
+	return nil
 }
 
 func (x *ActivityOptions) GetRetryPolicy() *RetryPolicy {
@@ -1341,14 +1352,17 @@ type WorkflowOptions struct {
 	// keyword_list.tags = ["foo", "bar"]
 	TypedSearchAttributes string `protobuf:"bytes,22,opt,name=typed_search_attributes,json=typedSearchAttributes,proto3" json:"typed_search_attributes,omitempty"`
 	// Provides a Versioning Behavior to workflows of this type.
-	VersioningBehavior v1.VersioningBehavior `protobuf:"varint,21,opt,name=versioning_behavior,json=versioningBehavior,proto3,enum=temporal.api.enums.v1.VersioningBehavior" json:"versioning_behavior,omitempty"`
+	VersioningBehavior v11.VersioningBehavior `protobuf:"varint,21,opt,name=versioning_behavior,json=versioningBehavior,proto3,enum=temporal.api.enums.v1.VersioningBehavior" json:"versioning_behavior,omitempty"`
 	// WaitForCancellation specifies whether to wait for canceled child workflow to be ended
 	// (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
 	WaitForCancellation bool `protobuf:"varint,13,opt,name=wait_for_cancellation,json=waitForCancellation,proto3" json:"wait_for_cancellation,omitempty"`
 	// Default workflow id conflict policy for start workflow with options
-	WorkflowIdConflictPolicy v1.WorkflowIdConflictPolicy `protobuf:"varint,20,opt,name=workflow_id_conflict_policy,json=workflowIdConflictPolicy,proto3,enum=temporal.api.enums.v1.WorkflowIdConflictPolicy" json:"workflow_id_conflict_policy,omitempty"`
+	WorkflowIdConflictPolicy v11.WorkflowIdConflictPolicy `protobuf:"varint,20,opt,name=workflow_id_conflict_policy,json=workflowIdConflictPolicy,proto3,enum=temporal.api.enums.v1.WorkflowIdConflictPolicy" json:"workflow_id_conflict_policy,omitempty"`
 	// XNS can be used to configure default activity options for xns workflow executions
-	Xns           *XNSActivityOptions `protobuf:"bytes,16,opt,name=xns,proto3" json:"xns,omitempty"`
+	Xns *XNSActivityOptions `protobuf:"bytes,16,opt,name=xns,proto3" json:"xns,omitempty"`
+	// Specifies distribution of work within a task queue
+	// using Task Queue Priority and Task Queue Fairness
+	Priority      *v1.Priority `protobuf:"bytes,25,opt,name=priority,proto3" json:"priority,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1524,11 +1538,11 @@ func (x *WorkflowOptions) GetTypedSearchAttributes() string {
 	return ""
 }
 
-func (x *WorkflowOptions) GetVersioningBehavior() v1.VersioningBehavior {
+func (x *WorkflowOptions) GetVersioningBehavior() v11.VersioningBehavior {
 	if x != nil {
 		return x.VersioningBehavior
 	}
-	return v1.VersioningBehavior(0)
+	return v11.VersioningBehavior(0)
 }
 
 func (x *WorkflowOptions) GetWaitForCancellation() bool {
@@ -1538,16 +1552,23 @@ func (x *WorkflowOptions) GetWaitForCancellation() bool {
 	return false
 }
 
-func (x *WorkflowOptions) GetWorkflowIdConflictPolicy() v1.WorkflowIdConflictPolicy {
+func (x *WorkflowOptions) GetWorkflowIdConflictPolicy() v11.WorkflowIdConflictPolicy {
 	if x != nil {
 		return x.WorkflowIdConflictPolicy
 	}
-	return v1.WorkflowIdConflictPolicy(0)
+	return v11.WorkflowIdConflictPolicy(0)
 }
 
 func (x *WorkflowOptions) GetXns() *XNSActivityOptions {
 	if x != nil {
 		return x.Xns
+	}
+	return nil
+}
+
+func (x *WorkflowOptions) GetPriority() *v1.Priority {
+	if x != nil {
+		return x.Priority
 	}
 	return nil
 }
@@ -1808,7 +1829,7 @@ type WorkflowOptions_Update struct {
 	// Include convenience method for update with start and validation
 	Validate *bool `protobuf:"varint,6,opt,name=validate,proto3,oneof" json:"validate,omitempty"`
 	// Default workflow id conflict policy for update with start
-	WorkflowIdConflictPolicy v1.WorkflowIdConflictPolicy `protobuf:"varint,5,opt,name=workflow_id_conflict_policy,json=workflowIdConflictPolicy,proto3,enum=temporal.api.enums.v1.WorkflowIdConflictPolicy" json:"workflow_id_conflict_policy,omitempty"`
+	WorkflowIdConflictPolicy v11.WorkflowIdConflictPolicy `protobuf:"varint,5,opt,name=workflow_id_conflict_policy,json=workflowIdConflictPolicy,proto3,enum=temporal.api.enums.v1.WorkflowIdConflictPolicy" json:"workflow_id_conflict_policy,omitempty"`
 	// XNS can be used to configure default activity options for xns workflow executions
 	Xns           *XNSActivityOptions `protobuf:"bytes,2,opt,name=xns,proto3" json:"xns,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1873,11 +1894,11 @@ func (x *WorkflowOptions_Update) GetValidate() bool {
 	return false
 }
 
-func (x *WorkflowOptions_Update) GetWorkflowIdConflictPolicy() v1.WorkflowIdConflictPolicy {
+func (x *WorkflowOptions_Update) GetWorkflowIdConflictPolicy() v11.WorkflowIdConflictPolicy {
 	if x != nil {
 		return x.WorkflowIdConflictPolicy
 	}
-	return v1.WorkflowIdConflictPolicy(0)
+	return v11.WorkflowIdConflictPolicy(0)
 }
 
 func (x *WorkflowOptions_Update) GetXns() *XNSActivityOptions {
@@ -1998,7 +2019,7 @@ var File_temporal_v1_temporal_proto protoreflect.FileDescriptor
 
 const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\n" +
-	"\x1atemporal/v1/temporal.proto\x12\vtemporal.v1\x1a google/protobuf/descriptor.proto\x1a\x1egoogle/protobuf/duration.proto\x1a$temporal/api/enums/v1/workflow.proto\"\xf9\x03\n" +
+	"\x1atemporal/v1/temporal.proto\x12\vtemporal.v1\x1a google/protobuf/descriptor.proto\x1a\x1egoogle/protobuf/duration.proto\x1a$temporal/api/common/v1/message.proto\x1a$temporal/api/enums/v1/workflow.proto\"\xb7\x04\n" +
 	"\x0fActivityOptions\x12\x12\n" +
 	"\x04name\x18\a \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
@@ -2007,7 +2028,8 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x19schedule_to_start_timeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x16scheduleToStartTimeout\x12N\n" +
 	"\x16start_to_close_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x13startToCloseTimeout\x12F\n" +
 	"\x11heartbeat_timeout\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\x10heartbeatTimeout\x122\n" +
-	"\x15wait_for_cancellation\x18\b \x01(\bR\x13waitForCancellation\x12;\n" +
+	"\x15wait_for_cancellation\x18\b \x01(\bR\x13waitForCancellation\x12<\n" +
+	"\bpriority\x18\t \x01(\v2 .temporal.api.common.v1.PriorityR\bpriority\x12;\n" +
 	"\fretry_policy\x18\x06 \x01(\v2\x18.temporal.v1.RetryPolicyR\vretryPolicy\"h\n" +
 	"\n" +
 	"CLIOptions\x12\x16\n" +
@@ -2077,7 +2099,7 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x0ewait_for_stage\x18\a \x01(\x0e2\x17.temporal.v1.WaitPolicyR\fwaitForStage\x12<\n" +
 	"\vwait_policy\x18\x03 \x01(\x0e2\x17.temporal.v1.WaitPolicyB\x02\x18\x01R\n" +
 	"waitPolicy\x121\n" +
-	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\xd3\x0e\n" +
+	"\x03xns\x18\x05 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\"\x91\x0f\n" +
 	"\x0fWorkflowOptions\x120\n" +
 	"\x03cli\x18\x13 \x01(\v2\x1e.temporal.v1.CLICommandOptionsR\x03cli\x12\x12\n" +
 	"\x04name\x18\x0e \x01(\tR\x04name\x12\x18\n" +
@@ -2105,7 +2127,8 @@ const file_temporal_v1_temporal_proto_rawDesc = "" +
 	"\x13versioning_behavior\x18\x15 \x01(\x0e2).temporal.api.enums.v1.VersioningBehaviorR\x12versioningBehavior\x122\n" +
 	"\x15wait_for_cancellation\x18\r \x01(\bR\x13waitForCancellation\x12n\n" +
 	"\x1bworkflow_id_conflict_policy\x18\x14 \x01(\x0e2/.temporal.api.enums.v1.WorkflowIdConflictPolicyR\x18workflowIdConflictPolicy\x121\n" +
-	"\x03xns\x18\x10 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\x1aL\n" +
+	"\x03xns\x18\x10 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\x12<\n" +
+	"\bpriority\x18\x19 \x01(\v2 .temporal.api.common.v1.PriorityR\bpriority\x1aL\n" +
 	"\x05Query\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x121\n" +
 	"\x03xns\x18\x02 \x01(\v2\x1f.temporal.v1.XNSActivityOptionsR\x03xns\x1a\x95\x01\n" +
@@ -2201,87 +2224,90 @@ var file_temporal_v1_temporal_proto_goTypes = []any{
 	(*WorkflowOptions_Signal)(nil),      // 22: temporal.v1.WorkflowOptions.Signal
 	(*WorkflowOptions_Update)(nil),      // 23: temporal.v1.WorkflowOptions.Update
 	(*durationpb.Duration)(nil),         // 24: google.protobuf.Duration
-	(v1.VersioningBehavior)(0),          // 25: temporal.api.enums.v1.VersioningBehavior
-	(v1.WorkflowIdConflictPolicy)(0),    // 26: temporal.api.enums.v1.WorkflowIdConflictPolicy
-	(*descriptorpb.ServiceOptions)(nil), // 27: google.protobuf.ServiceOptions
-	(*descriptorpb.MethodOptions)(nil),  // 28: google.protobuf.MethodOptions
-	(*descriptorpb.FieldOptions)(nil),   // 29: google.protobuf.FieldOptions
+	(*v1.Priority)(nil),                 // 25: temporal.api.common.v1.Priority
+	(v11.VersioningBehavior)(0),         // 26: temporal.api.enums.v1.VersioningBehavior
+	(v11.WorkflowIdConflictPolicy)(0),   // 27: temporal.api.enums.v1.WorkflowIdConflictPolicy
+	(*descriptorpb.ServiceOptions)(nil), // 28: google.protobuf.ServiceOptions
+	(*descriptorpb.MethodOptions)(nil),  // 29: google.protobuf.MethodOptions
+	(*descriptorpb.FieldOptions)(nil),   // 30: google.protobuf.FieldOptions
 }
 var file_temporal_v1_temporal_proto_depIdxs = []int32{
 	24, // 0: temporal.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
 	24, // 1: temporal.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
 	24, // 2: temporal.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
 	24, // 3: temporal.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
-	15, // 4: temporal.v1.ActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	8,  // 5: temporal.v1.FieldOptions.cli:type_name -> temporal.v1.CLIFlagOptions
-	3,  // 6: temporal.v1.Patch.version:type_name -> temporal.v1.Patch.Version
-	4,  // 7: temporal.v1.Patch.mode:type_name -> temporal.v1.Patch.Mode
-	7,  // 8: temporal.v1.QueryOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	20, // 9: temporal.v1.QueryOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	13, // 10: temporal.v1.QueryOptions.patches:type_name -> temporal.v1.Patch
-	24, // 11: temporal.v1.RetryPolicy.initial_interval:type_name -> google.protobuf.Duration
-	24, // 12: temporal.v1.RetryPolicy.max_interval:type_name -> google.protobuf.Duration
-	13, // 13: temporal.v1.ServiceOptions.patches:type_name -> temporal.v1.Patch
-	12, // 14: temporal.v1.ServiceOptions.nexus:type_name -> temporal.v1.NexusServiceOptions
-	7,  // 15: temporal.v1.SignalOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	20, // 16: temporal.v1.SignalOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	13, // 17: temporal.v1.SignalOptions.patches:type_name -> temporal.v1.Patch
-	7,  // 18: temporal.v1.UpdateOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	13, // 19: temporal.v1.UpdateOptions.patches:type_name -> temporal.v1.Patch
-	2,  // 20: temporal.v1.UpdateOptions.wait_for_stage:type_name -> temporal.v1.WaitPolicy
-	2,  // 21: temporal.v1.UpdateOptions.wait_policy:type_name -> temporal.v1.WaitPolicy
-	20, // 22: temporal.v1.UpdateOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	7,  // 23: temporal.v1.WorkflowOptions.cli:type_name -> temporal.v1.CLICommandOptions
-	21, // 24: temporal.v1.WorkflowOptions.query:type_name -> temporal.v1.WorkflowOptions.Query
-	22, // 25: temporal.v1.WorkflowOptions.signal:type_name -> temporal.v1.WorkflowOptions.Signal
-	23, // 26: temporal.v1.WorkflowOptions.update:type_name -> temporal.v1.WorkflowOptions.Update
-	24, // 27: temporal.v1.WorkflowOptions.execution_timeout:type_name -> google.protobuf.Duration
-	0,  // 28: temporal.v1.WorkflowOptions.id_reuse_policy:type_name -> temporal.v1.IDReusePolicy
-	11, // 29: temporal.v1.WorkflowOptions.nexus:type_name -> temporal.v1.NexusOperationOptions
-	1,  // 30: temporal.v1.WorkflowOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	13, // 31: temporal.v1.WorkflowOptions.patches:type_name -> temporal.v1.Patch
-	15, // 32: temporal.v1.WorkflowOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	24, // 33: temporal.v1.WorkflowOptions.run_timeout:type_name -> google.protobuf.Duration
-	24, // 34: temporal.v1.WorkflowOptions.task_timeout:type_name -> google.protobuf.Duration
-	25, // 35: temporal.v1.WorkflowOptions.versioning_behavior:type_name -> temporal.api.enums.v1.VersioningBehavior
-	26, // 36: temporal.v1.WorkflowOptions.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
-	20, // 37: temporal.v1.WorkflowOptions.xns:type_name -> temporal.v1.XNSActivityOptions
-	24, // 38: temporal.v1.XNSActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
-	24, // 39: temporal.v1.XNSActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
-	24, // 40: temporal.v1.XNSActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
-	24, // 41: temporal.v1.XNSActivityOptions.heartbeat_interval:type_name -> google.protobuf.Duration
-	24, // 42: temporal.v1.XNSActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
-	15, // 43: temporal.v1.XNSActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
-	1,  // 44: temporal.v1.XNSActivityOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	20, // 45: temporal.v1.WorkflowOptions.Query.xns:type_name -> temporal.v1.XNSActivityOptions
-	7,  // 46: temporal.v1.WorkflowOptions.Signal.cli:type_name -> temporal.v1.CLICommandOptions
-	20, // 47: temporal.v1.WorkflowOptions.Signal.xns:type_name -> temporal.v1.XNSActivityOptions
-	7,  // 48: temporal.v1.WorkflowOptions.Update.cli:type_name -> temporal.v1.CLICommandOptions
-	26, // 49: temporal.v1.WorkflowOptions.Update.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
-	20, // 50: temporal.v1.WorkflowOptions.Update.xns:type_name -> temporal.v1.XNSActivityOptions
-	27, // 51: temporal.v1.service:extendee -> google.protobuf.ServiceOptions
-	27, // 52: temporal.v1.cli:extendee -> google.protobuf.ServiceOptions
-	28, // 53: temporal.v1.activity:extendee -> google.protobuf.MethodOptions
-	28, // 54: temporal.v1.command:extendee -> google.protobuf.MethodOptions
-	28, // 55: temporal.v1.query:extendee -> google.protobuf.MethodOptions
-	28, // 56: temporal.v1.signal:extendee -> google.protobuf.MethodOptions
-	28, // 57: temporal.v1.update:extendee -> google.protobuf.MethodOptions
-	28, // 58: temporal.v1.workflow:extendee -> google.protobuf.MethodOptions
-	29, // 59: temporal.v1.field:extendee -> google.protobuf.FieldOptions
-	16, // 60: temporal.v1.service:type_name -> temporal.v1.ServiceOptions
-	6,  // 61: temporal.v1.cli:type_name -> temporal.v1.CLIOptions
-	5,  // 62: temporal.v1.activity:type_name -> temporal.v1.ActivityOptions
-	9,  // 63: temporal.v1.command:type_name -> temporal.v1.CommandOptions
-	14, // 64: temporal.v1.query:type_name -> temporal.v1.QueryOptions
-	17, // 65: temporal.v1.signal:type_name -> temporal.v1.SignalOptions
-	18, // 66: temporal.v1.update:type_name -> temporal.v1.UpdateOptions
-	19, // 67: temporal.v1.workflow:type_name -> temporal.v1.WorkflowOptions
-	10, // 68: temporal.v1.field:type_name -> temporal.v1.FieldOptions
-	69, // [69:69] is the sub-list for method output_type
-	69, // [69:69] is the sub-list for method input_type
-	60, // [60:69] is the sub-list for extension type_name
-	51, // [51:60] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	25, // 4: temporal.v1.ActivityOptions.priority:type_name -> temporal.api.common.v1.Priority
+	15, // 5: temporal.v1.ActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	8,  // 6: temporal.v1.FieldOptions.cli:type_name -> temporal.v1.CLIFlagOptions
+	3,  // 7: temporal.v1.Patch.version:type_name -> temporal.v1.Patch.Version
+	4,  // 8: temporal.v1.Patch.mode:type_name -> temporal.v1.Patch.Mode
+	7,  // 9: temporal.v1.QueryOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	20, // 10: temporal.v1.QueryOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	13, // 11: temporal.v1.QueryOptions.patches:type_name -> temporal.v1.Patch
+	24, // 12: temporal.v1.RetryPolicy.initial_interval:type_name -> google.protobuf.Duration
+	24, // 13: temporal.v1.RetryPolicy.max_interval:type_name -> google.protobuf.Duration
+	13, // 14: temporal.v1.ServiceOptions.patches:type_name -> temporal.v1.Patch
+	12, // 15: temporal.v1.ServiceOptions.nexus:type_name -> temporal.v1.NexusServiceOptions
+	7,  // 16: temporal.v1.SignalOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	20, // 17: temporal.v1.SignalOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	13, // 18: temporal.v1.SignalOptions.patches:type_name -> temporal.v1.Patch
+	7,  // 19: temporal.v1.UpdateOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	13, // 20: temporal.v1.UpdateOptions.patches:type_name -> temporal.v1.Patch
+	2,  // 21: temporal.v1.UpdateOptions.wait_for_stage:type_name -> temporal.v1.WaitPolicy
+	2,  // 22: temporal.v1.UpdateOptions.wait_policy:type_name -> temporal.v1.WaitPolicy
+	20, // 23: temporal.v1.UpdateOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	7,  // 24: temporal.v1.WorkflowOptions.cli:type_name -> temporal.v1.CLICommandOptions
+	21, // 25: temporal.v1.WorkflowOptions.query:type_name -> temporal.v1.WorkflowOptions.Query
+	22, // 26: temporal.v1.WorkflowOptions.signal:type_name -> temporal.v1.WorkflowOptions.Signal
+	23, // 27: temporal.v1.WorkflowOptions.update:type_name -> temporal.v1.WorkflowOptions.Update
+	24, // 28: temporal.v1.WorkflowOptions.execution_timeout:type_name -> google.protobuf.Duration
+	0,  // 29: temporal.v1.WorkflowOptions.id_reuse_policy:type_name -> temporal.v1.IDReusePolicy
+	11, // 30: temporal.v1.WorkflowOptions.nexus:type_name -> temporal.v1.NexusOperationOptions
+	1,  // 31: temporal.v1.WorkflowOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
+	13, // 32: temporal.v1.WorkflowOptions.patches:type_name -> temporal.v1.Patch
+	15, // 33: temporal.v1.WorkflowOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	24, // 34: temporal.v1.WorkflowOptions.run_timeout:type_name -> google.protobuf.Duration
+	24, // 35: temporal.v1.WorkflowOptions.task_timeout:type_name -> google.protobuf.Duration
+	26, // 36: temporal.v1.WorkflowOptions.versioning_behavior:type_name -> temporal.api.enums.v1.VersioningBehavior
+	27, // 37: temporal.v1.WorkflowOptions.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
+	20, // 38: temporal.v1.WorkflowOptions.xns:type_name -> temporal.v1.XNSActivityOptions
+	25, // 39: temporal.v1.WorkflowOptions.priority:type_name -> temporal.api.common.v1.Priority
+	24, // 40: temporal.v1.XNSActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
+	24, // 41: temporal.v1.XNSActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	24, // 42: temporal.v1.XNSActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
+	24, // 43: temporal.v1.XNSActivityOptions.heartbeat_interval:type_name -> google.protobuf.Duration
+	24, // 44: temporal.v1.XNSActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
+	15, // 45: temporal.v1.XNSActivityOptions.retry_policy:type_name -> temporal.v1.RetryPolicy
+	1,  // 46: temporal.v1.XNSActivityOptions.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
+	20, // 47: temporal.v1.WorkflowOptions.Query.xns:type_name -> temporal.v1.XNSActivityOptions
+	7,  // 48: temporal.v1.WorkflowOptions.Signal.cli:type_name -> temporal.v1.CLICommandOptions
+	20, // 49: temporal.v1.WorkflowOptions.Signal.xns:type_name -> temporal.v1.XNSActivityOptions
+	7,  // 50: temporal.v1.WorkflowOptions.Update.cli:type_name -> temporal.v1.CLICommandOptions
+	27, // 51: temporal.v1.WorkflowOptions.Update.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
+	20, // 52: temporal.v1.WorkflowOptions.Update.xns:type_name -> temporal.v1.XNSActivityOptions
+	28, // 53: temporal.v1.service:extendee -> google.protobuf.ServiceOptions
+	28, // 54: temporal.v1.cli:extendee -> google.protobuf.ServiceOptions
+	29, // 55: temporal.v1.activity:extendee -> google.protobuf.MethodOptions
+	29, // 56: temporal.v1.command:extendee -> google.protobuf.MethodOptions
+	29, // 57: temporal.v1.query:extendee -> google.protobuf.MethodOptions
+	29, // 58: temporal.v1.signal:extendee -> google.protobuf.MethodOptions
+	29, // 59: temporal.v1.update:extendee -> google.protobuf.MethodOptions
+	29, // 60: temporal.v1.workflow:extendee -> google.protobuf.MethodOptions
+	30, // 61: temporal.v1.field:extendee -> google.protobuf.FieldOptions
+	16, // 62: temporal.v1.service:type_name -> temporal.v1.ServiceOptions
+	6,  // 63: temporal.v1.cli:type_name -> temporal.v1.CLIOptions
+	5,  // 64: temporal.v1.activity:type_name -> temporal.v1.ActivityOptions
+	9,  // 65: temporal.v1.command:type_name -> temporal.v1.CommandOptions
+	14, // 66: temporal.v1.query:type_name -> temporal.v1.QueryOptions
+	17, // 67: temporal.v1.signal:type_name -> temporal.v1.SignalOptions
+	18, // 68: temporal.v1.update:type_name -> temporal.v1.UpdateOptions
+	19, // 69: temporal.v1.workflow:type_name -> temporal.v1.WorkflowOptions
+	10, // 70: temporal.v1.field:type_name -> temporal.v1.FieldOptions
+	71, // [71:71] is the sub-list for method output_type
+	71, // [71:71] is the sub-list for method input_type
+	62, // [62:71] is the sub-list for extension type_name
+	53, // [53:62] is the sub-list for extension extendee
+	0,  // [0:53] is the sub-list for field type_name
 }
 
 func init() { file_temporal_v1_temporal_proto_init() }

@@ -355,6 +355,10 @@ type ManageAWSOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -402,6 +406,18 @@ func (o *ManageAWSOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -444,6 +460,30 @@ func (o *ManageAWSOptions) WithID(id string) *ManageAWSOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *ManageAWSOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAWSOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSOptions) WithPriority(priority temporal.Priority) *ManageAWSOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSOptions) WithPriorityKey(priorityKey int) *ManageAWSOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSOptions) WithFairnessKey(fairnessKey string) *ManageAWSOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSOptions) WithFairnessWeight(fairnessWeight float32) *ManageAWSOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -556,6 +596,10 @@ type ManageAWSResourceOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -603,6 +647,18 @@ func (o *ManageAWSResourceOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -645,6 +701,30 @@ func (o *ManageAWSResourceOptions) WithID(id string) *ManageAWSResourceOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *ManageAWSResourceOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *ManageAWSResourceOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSResourceOptions) WithPriority(priority temporal.Priority) *ManageAWSResourceOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceOptions) WithPriorityKey(priorityKey int) *ManageAWSResourceOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceOptions) WithFairnessKey(fairnessKey string) *ManageAWSResourceOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceOptions) WithFairnessWeight(fairnessWeight float32) *ManageAWSResourceOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -757,6 +837,10 @@ type SomethingV1FooBarOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -804,6 +888,18 @@ func (o *SomethingV1FooBarOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -846,6 +942,30 @@ func (o *SomethingV1FooBarOptions) WithID(id string) *SomethingV1FooBarOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *SomethingV1FooBarOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *SomethingV1FooBarOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *SomethingV1FooBarOptions) WithPriority(priority temporal.Priority) *SomethingV1FooBarOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV1FooBarOptions) WithPriorityKey(priorityKey int) *SomethingV1FooBarOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV1FooBarOptions) WithFairnessKey(fairnessKey string) *SomethingV1FooBarOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV1FooBarOptions) WithFairnessWeight(fairnessWeight float32) *SomethingV1FooBarOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -958,6 +1078,10 @@ type SomethingV2FooBarOptions struct {
 	executionTimeout         *time.Duration
 	id                       *string
 	idReusePolicy            enumsv1.WorkflowIdReusePolicy
+	priority                 *temporal.Priority
+	priorityKey              *int
+	fairnessKey              *string
+	fairnessWeight           *float32
 	retryPolicy              *temporal.RetryPolicy
 	runTimeout               *time.Duration
 	searchAttributes         map[string]any
@@ -1005,6 +1129,18 @@ func (o *SomethingV2FooBarOptions) Build(req protoreflect.Message) (client.Start
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
 	}
@@ -1047,6 +1183,30 @@ func (o *SomethingV2FooBarOptions) WithID(id string) *SomethingV2FooBarOptions {
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
 func (o *SomethingV2FooBarOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *SomethingV2FooBarOptions {
 	o.idReusePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *SomethingV2FooBarOptions) WithPriority(priority temporal.Priority) *SomethingV2FooBarOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV2FooBarOptions) WithPriorityKey(priorityKey int) *SomethingV2FooBarOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV2FooBarOptions) WithFairnessKey(fairnessKey string) *SomethingV2FooBarOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV2FooBarOptions) WithFairnessWeight(fairnessWeight float32) *SomethingV2FooBarOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -1329,6 +1489,10 @@ type ManageAWSChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1390,6 +1554,18 @@ func (o *ManageAWSChildOptions) Build(ctx workflow.Context, req protoreflect.Mes
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1441,6 +1617,30 @@ func (o *ManageAWSChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReuse
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *ManageAWSChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAWSChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSChildOptions) WithPriority(priority temporal.Priority) *ManageAWSChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSChildOptions) WithPriorityKey(priorityKey int) *ManageAWSChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSChildOptions) WithFairnessKey(fairnessKey string) *ManageAWSChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSChildOptions) WithFairnessWeight(fairnessWeight float32) *ManageAWSChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -1613,6 +1813,10 @@ type ManageAWSResourceChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1674,6 +1878,18 @@ func (o *ManageAWSResourceChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -1725,6 +1941,30 @@ func (o *ManageAWSResourceChildOptions) WithIDReusePolicy(policy enumsv1.Workflo
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *ManageAWSResourceChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *ManageAWSResourceChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSResourceChildOptions) WithPriority(priority temporal.Priority) *ManageAWSResourceChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceChildOptions) WithPriorityKey(priorityKey int) *ManageAWSResourceChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceChildOptions) WithFairnessKey(fairnessKey string) *ManageAWSResourceChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceChildOptions) WithFairnessWeight(fairnessWeight float32) *ManageAWSResourceChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -1897,6 +2137,10 @@ type SomethingV1FooBarChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -1958,6 +2202,18 @@ func (o *SomethingV1FooBarChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -2009,6 +2265,30 @@ func (o *SomethingV1FooBarChildOptions) WithIDReusePolicy(policy enumsv1.Workflo
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *SomethingV1FooBarChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *SomethingV1FooBarChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *SomethingV1FooBarChildOptions) WithPriority(priority temporal.Priority) *SomethingV1FooBarChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV1FooBarChildOptions) WithPriorityKey(priorityKey int) *SomethingV1FooBarChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV1FooBarChildOptions) WithFairnessKey(fairnessKey string) *SomethingV1FooBarChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV1FooBarChildOptions) WithFairnessWeight(fairnessWeight float32) *SomethingV1FooBarChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -2181,6 +2461,10 @@ type SomethingV2FooBarChildOptions struct {
 	executionTimeout      *time.Duration
 	id                    *string
 	idReusePolicy         enumsv1.WorkflowIdReusePolicy
+	priority              *temporal.Priority
+	priorityKey           *int
+	fairnessKey           *string
+	fairnessWeight        *float32
 	retryPolicy           *temporal.RetryPolicy
 	runTimeout            *time.Duration
 	searchAttributes      map[string]any
@@ -2242,6 +2526,18 @@ func (o *SomethingV2FooBarChildOptions) Build(ctx workflow.Context, req protoref
 	if v := o.typedSearchAttributes; v != nil {
 		opts.TypedSearchAttributes = *v
 	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
+	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
 	}
@@ -2293,6 +2589,30 @@ func (o *SomethingV2FooBarChildOptions) WithIDReusePolicy(policy enumsv1.Workflo
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
 func (o *SomethingV2FooBarChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *SomethingV2FooBarChildOptions {
 	o.parentClosePolicy = policy
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *SomethingV2FooBarChildOptions) WithPriority(priority temporal.Priority) *SomethingV2FooBarChildOptions {
+	o.priority = &priority
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV2FooBarChildOptions) WithPriorityKey(priorityKey int) *SomethingV2FooBarChildOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV2FooBarChildOptions) WithFairnessKey(fairnessKey string) *SomethingV2FooBarChildOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *SomethingV2FooBarChildOptions) WithFairnessWeight(fairnessWeight float32) *SomethingV2FooBarChildOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -2493,6 +2813,10 @@ type ManageAWSResourceActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
+	priorityKey            *int
+	fairnessKey            *string
+	fairnessWeight         *float32
 	waitForCancellation    *bool
 }
 
@@ -2506,6 +2830,18 @@ func (o *ManageAWSResourceActivityOptions) Build(ctx workflow.Context) (workflow
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2571,6 +2907,30 @@ func (o *ManageAWSResourceActivityOptions) WithScheduleToStartTimeout(d time.Dur
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *ManageAWSResourceActivityOptions) WithStartToCloseTimeout(d time.Duration) *ManageAWSResourceActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSResourceActivityOptions) WithPriority(p temporal.Priority) *ManageAWSResourceActivityOptions {
+	o.priority = &p
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceActivityOptions) WithPriorityKey(priorityKey int) *ManageAWSResourceActivityOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceActivityOptions) WithFairnessKey(fairnessKey string) *ManageAWSResourceActivityOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceActivityOptions) WithFairnessWeight(fairnessWeight float32) *ManageAWSResourceActivityOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 
@@ -2753,6 +3113,10 @@ type ManageAWSResourceURNActivityOptions struct {
 	heartbeatTimeout       *time.Duration
 	scheduleToStartTimeout *time.Duration
 	taskQueue              *string
+	priority               *temporal.Priority
+	priorityKey            *int
+	fairnessKey            *string
+	fairnessWeight         *float32
 	waitForCancellation    *bool
 }
 
@@ -2766,6 +3130,18 @@ func (o *ManageAWSResourceURNActivityOptions) Build(ctx workflow.Context) (workf
 	opts := o.options
 	if v := o.heartbeatTimeout; v != nil {
 		opts.HeartbeatTimeout = *v
+	}
+	if v := o.priority; v != nil {
+		opts.Priority = *v
+	}
+	if v := o.priorityKey; v != nil {
+		opts.Priority.PriorityKey = *v
+	}
+	if v := o.fairnessKey; v != nil {
+		opts.Priority.FairnessKey = *v
+	}
+	if v := o.fairnessWeight; v != nil {
+		opts.Priority.FairnessWeight = *v
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -2831,6 +3207,30 @@ func (o *ManageAWSResourceURNActivityOptions) WithScheduleToStartTimeout(d time.
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *ManageAWSResourceURNActivityOptions) WithStartToCloseTimeout(d time.Duration) *ManageAWSResourceURNActivityOptions {
 	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithPriority sets the Priority value
+func (o *ManageAWSResourceURNActivityOptions) WithPriority(p temporal.Priority) *ManageAWSResourceURNActivityOptions {
+	o.priority = &p
+	return o
+}
+
+// WithPriorityKey sets the Priority.PriorityKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceURNActivityOptions) WithPriorityKey(priorityKey int) *ManageAWSResourceURNActivityOptions {
+	o.priorityKey = &priorityKey
+	return o
+}
+
+// WithFairnessKey sets the Priority.FairnessKey value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceURNActivityOptions) WithFairnessKey(fairnessKey string) *ManageAWSResourceURNActivityOptions {
+	o.fairnessKey = &fairnessKey
+	return o
+}
+
+// WithFairnessWeight sets the Priority.FairnessWeight value, overriding any schema default while leaving other Priority fields intact
+func (o *ManageAWSResourceURNActivityOptions) WithFairnessWeight(fairnessWeight float32) *ManageAWSResourceURNActivityOptions {
+	o.fairnessWeight = &fairnessWeight
 	return o
 }
 

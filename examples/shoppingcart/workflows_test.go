@@ -187,7 +187,6 @@ func TestShoppingCartWithUpdateCartXnsE2E(t *testing.T) {
 
 	srv, err := testsuite.StartDevServer(ctx, testsuite.DevServerOptions{
 		ExistingPath: existingPath,
-		EnableUI:     true,
 		ClientOptions: &client.Options{
 			Logger: logger,
 		},
@@ -327,7 +326,6 @@ func TestShoppingCartWithUpdateCartXnsWithCancellationE2E(t *testing.T) {
 
 	srv, err := testsuite.StartDevServer(ctx, testsuite.DevServerOptions{
 		ExistingPath: existingPath,
-		EnableUI:     true,
 		ClientOptions: &client.Options{
 			Logger: logger,
 		},

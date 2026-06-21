@@ -923,6 +923,74 @@ service Example {
 </TabItem>
 </Tabs>
 
+### WithFairnessKey
+
+Override only the activity `Priority.FairnessKey` value, leaving `PriorityKey` and `FairnessWeight` to fall back to the base options or schema default. `fairness_key` balances dispatch throughput across a set of keys (e.g. tenants). Applies to non-local activities only.
+
+<Tabs>
+<TabItem value="with-fairness-key-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithFairnessKey("tenant-a"),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-fairness-key-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      priority: { fairness_key: "tenant-a" }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithFairnessWeight
+
+Override only the activity `Priority.FairnessWeight` value, leaving `PriorityKey` and `FairnessKey` to fall back to the base options or schema default. `fairness_weight` balances dispatch throughput across a set of keys (e.g. tenants). Applies to non-local activities only.
+
+<Tabs>
+<TabItem value="with-fairness-weight-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithFairnessWeight(2.0),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-fairness-weight-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      priority: { fairness_weight: 2.0 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ### WithHeartbeatTimeout
 
 Set the activity `HeartbeatTimeout` value
@@ -954,6 +1022,80 @@ service Example {
   rpc Bar(BarInput) returns (BarOutput) {
     option (temporal.v1.activity) = {
       heartbeat_timeout: { seconds: 30 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithPriority
+
+Set the activity `Priority` value, controlling how it is dispatched within its task queue using [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness). This replaces the **entire** `Priority`; to override a single field while keeping the others, use [`WithPriorityKey`](#withprioritykey), [`WithFairnessKey`](#withfairnesskey), or [`WithFairnessWeight`](#withfairnessweight) instead. Applies to non-local activities only.
+
+Runtime values take precedence over schema defaults. Among runtime helpers, the individual field setters win over `WithPriority`, which in turn wins over a `Priority` supplied via [`WithActivityOptions`](#withactivityoptions).
+
+<Tabs>
+<TabItem value="with-priority-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithPriority(temporal.Priority{PriorityKey: 1}),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-priority-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      priority: { priority_key: 2 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithPriorityKey
+
+Override only the activity `Priority.PriorityKey` value, leaving `FairnessKey` and `FairnessWeight` to fall back to the base options or schema default. A smaller `priority_key` (a positive integer) is dispatched sooner. Applies to non-local activities only.
+
+<Tabs>
+<TabItem value="with-priority-key-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.Bar(ctx, &examplev1.BarInput{}, examplev1.NewBarActivityOptions().
+        WithPriorityKey(1),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-priority-key-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.activity) = {
+      priority: { priority_key: 2 }
     };
   }
 }

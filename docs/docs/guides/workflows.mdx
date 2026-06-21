@@ -1152,6 +1152,74 @@ service Example {
 </TabItem>
 </Tabs>
 
+### WithFairnessKey
+
+Override only the `Priority.FairnessKey` value, leaving `PriorityKey` and `FairnessWeight` to fall back to the base options or schema default. `fairness_key` balances dispatch throughput across a set of keys (e.g. tenants). See [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness).
+
+<Tabs>
+<TabItem value="with-fairness-key-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithFairnessKey("tenant-a"),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-fairness-key-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { fairness_key: "tenant-a" }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithFairnessWeight
+
+Override only the `Priority.FairnessWeight` value, leaving `PriorityKey` and `FairnessKey` to fall back to the base options or schema default. `fairness_weight` balances dispatch throughput across a set of keys (e.g. tenants). See [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness).
+
+<Tabs>
+<TabItem value="with-fairness-weight-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithFairnessWeight(2.0),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-fairness-weight-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { fairness_weight: 2.0 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
 ### WithID
 
 Set the workflow `ID` value
@@ -1215,6 +1283,76 @@ service Example {
   rpc Foo(FooInput) returns (FooOutput) {
     option (temporal.v1.workflow) = {
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithPriority
+
+Set the workflow `Priority` value, controlling how it is dispatched within its task queue using [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness). This replaces the **entire** `Priority`; to override a single field while keeping the others, use [`WithPriorityKey`](#withprioritykey), [`WithFairnessKey`](#withfairnesskey), or [`WithFairnessWeight`](#withfairnessweight) instead.
+
+Runtime values take precedence over schema defaults. Among runtime helpers, the individual field setters win over `WithPriority`, which in turn wins over a `Priority` supplied via [`WithStartWorkflowOptions`](#withstartworkflowoptions).
+
+<Tabs>
+<TabItem value="with-priority-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithPriority(temporal.Priority{PriorityKey: 1}),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-priority-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { priority_key: 2 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithPriorityKey
+
+Override only the `Priority.PriorityKey` value, leaving `FairnessKey` and `FairnessWeight` to fall back to the base options or schema default. A smaller `priority_key` (a positive integer) is dispatched sooner. See [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness).
+
+<Tabs>
+<TabItem value="with-priority-key-go" label="Go">
+```go title="example.go"
+func example(ctx context.Context, client examplev1.ExampleClient) error {
+    _, err := client.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithPriorityKey(1),
+    )
+    return err
+}
+```
+</TabItem>
+<TabItem value="with-priority-key-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { priority_key: 2 }
     };
   }
 }
@@ -1704,6 +1842,148 @@ service Example {
   rpc Bar(BarInput) returns (BarOutput) {
     option (temporal.v1.workflow) = {
       parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithPriority
+
+Sets the child workflow `Priority` value, controlling how it is dispatched within its task queue using [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness). This replaces the **entire** `Priority`; to override a single field while keeping the others, use [`WithPriorityKey`](#withprioritykey-1), [`WithFairnessKey`](#withfairnesskey-1), or [`WithFairnessWeight`](#withfairnessweight-1) instead.
+
+Runtime values take precedence over schema defaults. Among runtime helpers, the individual field setters win over `WithPriority`, which in turn wins over a `Priority` supplied via [`WithChildWorkflowOptions`](#withchildworkflowoptions).
+
+<Tabs>
+<TabItem value="with-child-priority-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithPriority(temporal.Priority{PriorityKey: 1}),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-priority-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Foo(FooInput) returns (FooOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { priority_key: 2 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithPriorityKey
+
+Override only the child workflow `Priority.PriorityKey` value, leaving `FairnessKey` and `FairnessWeight` to fall back to the base options or schema default. A smaller `priority_key` (a positive integer) is dispatched sooner. See [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness).
+
+<Tabs>
+<TabItem value="with-child-priority-key-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithPriorityKey(1),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-priority-key-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { priority_key: 2 }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithFairnessKey
+
+Override only the child workflow `Priority.FairnessKey` value, leaving `PriorityKey` and `FairnessWeight` to fall back to the base options or schema default. `fairness_key` balances dispatch throughput across a set of keys (e.g. tenants). See [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness).
+
+<Tabs>
+<TabItem value="with-child-fairness-key-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithFairnessKey("tenant-a"),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-fairness-key-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { fairness_key: "tenant-a" }
+    };
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### WithFairnessWeight
+
+Override only the child workflow `Priority.FairnessWeight` value, leaving `PriorityKey` and `FairnessKey` to fall back to the base options or schema default. `fairness_weight` balances dispatch throughput across a set of keys (e.g. tenants). See [Task Queue Priority and Fairness](https://docs.temporal.io/develop/task-queue-priority-fairness).
+
+<Tabs>
+<TabItem value="with-child-fairness-weight-go" label="Go">
+```go title="example.go"
+func (w *FooWorkflow) Execute(ctx workflow.Context) (*examplev1.FooOutput, error) {
+    _, err := examplev1.BarChild(ctx, &examplev1.BarInput{}, examplev1.NewBarChildOptions().
+        WithFairnessWeight(2.0),
+    )
+    return &examplev1.FooOutput{}, err
+}
+```
+</TabItem>
+<TabItem value="with-child-fairness-weight-schema" label="Schema">
+```protobuf title="example.proto"
+syntax="proto3";
+
+package example.v1;
+
+import "temporal/v1/temporal.proto";
+
+service Example {
+  rpc Bar(BarInput) returns (BarOutput) {
+    option (temporal.v1.workflow) = {
+      priority: { fairness_weight: 2.0 }
     };
   }
 }

@@ -1,0 +1,6 @@
+kind: Added
+body: Add support for workflow, activity priority & fairness defaults
+time: 2026-06-19T14:49:10.380962-06:00
+custom:
+    Author: fmp88
+    PullRequest: "152"
