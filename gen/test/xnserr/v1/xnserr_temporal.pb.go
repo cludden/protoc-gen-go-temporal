@@ -194,6 +194,7 @@ type SleepOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -244,6 +245,9 @@ func (o *SleepOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -344,6 +348,12 @@ func (o *SleepOptions) WithTaskQueue(tq string) *SleepOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SleepOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SleepOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SleepOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *SleepOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -1255,6 +1265,7 @@ type CallSleepOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1303,6 +1314,9 @@ func (o *CallSleepOptions) Build(req protoreflect.Message) (client.StartWorkflow
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1403,6 +1417,12 @@ func (o *CallSleepOptions) WithTaskQueue(tq string) *CallSleepOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *CallSleepOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *CallSleepOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *CallSleepOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *CallSleepOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -2043,7 +2063,7 @@ func newClientCommands(options ...*ClientCliOptions) ([]*v2.Command, error) {
 				},
 				&v2.StringFlag{
 					Name:     "start-workflow-options",
-					Usage:    "set the value of the operation's \"StartWorkflowOptions\" parameter (json-encoded: {id: <string>, taskQueue: <string>, executionTimeout: <google.protobuf.Duration>, runTimeout: <google.protobuf.Duration>, taskTimeout: <google.protobuf.Duration>, idReusePolicy: <temporal.xns.v1.IDReusePolicy>, errorWhenAlreadyStarted: <bool>, retryPolicy: <temporal.xns.v1.RetryPolicy>, memo: <google.protobuf.Struct>, searchAttirbutes: <google.protobuf.Struct>, enableEagerStart: <bool>, startDelay: <google.protobuf.Duration>, workflowIdConflictPolicy: <temporal.api.enums.v1.WorkflowIdConflictPolicy>})",
+					Usage:    "set the value of the operation's \"StartWorkflowOptions\" parameter (json-encoded: {id: <string>, taskQueue: <string>, executionTimeout: <google.protobuf.Duration>, runTimeout: <google.protobuf.Duration>, taskTimeout: <google.protobuf.Duration>, idReusePolicy: <temporal.xns.v1.IDReusePolicy>, errorWhenAlreadyStarted: <bool>, retryPolicy: <temporal.xns.v1.RetryPolicy>, memo: <google.protobuf.Struct>, searchAttirbutes: <google.protobuf.Struct>, enableEagerStart: <bool>, startDelay: <google.protobuf.Duration>, workflowIdConflictPolicy: <temporal.api.enums.v1.WorkflowIdConflictPolicy>, versioningOverride: <temporal.api.workflow.v1.VersioningOverride>, cronSchedule: <string>, staticSummary: <string>, staticDetails: <string>, priority: <temporal.api.common.v1.Priority>, typedSearchAttributes: <temporal.api.common.v1.SearchAttributes>})",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{

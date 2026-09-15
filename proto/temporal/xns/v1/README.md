@@ -104,6 +104,12 @@ go_name: NonRetryableErrorTypes</pre></td>
 <th>Description</th>
 </tr>
 <tr>
+<td>cron_schedule</td>
+<td>string</td>
+<td><pre>
+json_name: cronSchedule
+go_name: CronSchedule</pre></td>
+</tr><tr>
 <td>enable_eager_start</td>
 <td>bool</td>
 <td><pre>
@@ -140,6 +146,12 @@ go_name: IdReusePolicy</pre></td>
 json_name: memo
 go_name: Memo</pre></td>
 </tr><tr>
+<td>priority</td>
+<td><a href="../../api/common/v1/README.md#temporal-api-common-v1-priority">temporal.api.common.v1.Priority</a></td>
+<td><pre>
+json_name: priority
+go_name: Priority</pre></td>
+</tr><tr>
 <td>retry_policy</td>
 <td><a href="#temporal-xns-v1-retrypolicy">temporal.xns.v1.RetryPolicy</a></td>
 <td><pre>
@@ -164,6 +176,18 @@ go_name: SearchAttirbutes</pre></td>
 json_name: startDelay
 go_name: StartDelay</pre></td>
 </tr><tr>
+<td>static_details</td>
+<td>string</td>
+<td><pre>
+json_name: staticDetails
+go_name: StaticDetails</pre></td>
+</tr><tr>
+<td>static_summary</td>
+<td>string</td>
+<td><pre>
+json_name: staticSummary
+go_name: StaticSummary</pre></td>
+</tr><tr>
 <td>task_queue</td>
 <td>string</td>
 <td><pre>
@@ -175,6 +199,18 @@ go_name: TaskQueue</pre></td>
 <td><pre>
 json_name: taskTimeout
 go_name: TaskTimeout</pre></td>
+</tr><tr>
+<td>typed_search_attributes</td>
+<td><a href="../../api/common/v1/README.md#temporal-api-common-v1-searchattributes">temporal.api.common.v1.SearchAttributes</a></td>
+<td><pre>
+json_name: typedSearchAttributes
+go_name: TypedSearchAttributes</pre></td>
+</tr><tr>
+<td>versioning_override</td>
+<td><a href="../../api/workflow/v1/README.md#temporal-api-workflow-v1-versioningoverride">temporal.api.workflow.v1.VersioningOverride</a></td>
+<td><pre>
+json_name: versioningOverride
+go_name: VersioningOverride</pre></td>
 </tr><tr>
 <td>workflow_id_conflict_policy</td>
 <td><a href="../../api/enums/v1/README.md#temporal-api-enums-v1-workflowidconflictpolicy">temporal.api.enums.v1.WorkflowIdConflictPolicy</a></td>

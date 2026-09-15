@@ -233,6 +233,7 @@ type UpdatableTimerOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -287,6 +288,9 @@ func (o *UpdatableTimerOptions) Build(req protoreflect.Message) (client.StartWor
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -387,6 +391,12 @@ func (o *UpdatableTimerOptions) WithTaskQueue(tq string) *UpdatableTimerOptions 
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *UpdatableTimerOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *UpdatableTimerOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *UpdatableTimerOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *UpdatableTimerOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

@@ -282,6 +282,7 @@ type WorkflowWithInputOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -360,6 +361,9 @@ func (o *WorkflowWithInputOptions) Build(req protoreflect.Message) (client.Start
 		opts.EnableEagerStart = *v
 	} else {
 		opts.EnableEagerStart = true
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -466,6 +470,12 @@ func (o *WorkflowWithInputOptions) WithTaskQueue(tq string) *WorkflowWithInputOp
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *WorkflowWithInputOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *WorkflowWithInputOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *WorkflowWithInputOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *WorkflowWithInputOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

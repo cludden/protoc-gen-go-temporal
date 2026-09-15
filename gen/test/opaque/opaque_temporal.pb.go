@@ -247,6 +247,7 @@ type PutOpaqueExampleOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -295,6 +296,9 @@ func (o *PutOpaqueExampleOptions) Build(req protoreflect.Message) (client.StartW
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -395,6 +399,12 @@ func (o *PutOpaqueExampleOptions) WithTaskQueue(tq string) *PutOpaqueExampleOpti
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *PutOpaqueExampleOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *PutOpaqueExampleOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *PutOpaqueExampleOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *PutOpaqueExampleOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

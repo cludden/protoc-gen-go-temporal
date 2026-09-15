@@ -313,9 +313,27 @@
     - [mycompany.simple.common.v1.Example](test/simple/common/v1/README.md#mycompany-simple-common-v1-example)
     - [mycompany.simple.common.v1.PaginatedRequest](test/simple/common/v1/README.md#mycompany-simple-common-v1-paginatedrequest)
     - [mycompany.simple.common.v1.PaginatedResponse](test/simple/common/v1/README.md#mycompany-simple-common-v1-paginatedresponse)
+- [temporal.api.common.v1](temporal/api/common/v1/README.md)
+  - Messages
+    - [temporal.api.common.v1.Payload](temporal/api/common/v1/README.md#temporal-api-common-v1-payload)
+    - [temporal.api.common.v1.Payload.ExternalPayloadDetails](temporal/api/common/v1/README.md#temporal-api-common-v1-payload-externalpayloaddetails)
+    - [temporal.api.common.v1.Payload.MetadataEntry](temporal/api/common/v1/README.md#temporal-api-common-v1-payload-metadataentry)
+    - [temporal.api.common.v1.Priority](temporal/api/common/v1/README.md#temporal-api-common-v1-priority)
+    - [temporal.api.common.v1.SearchAttributes](temporal/api/common/v1/README.md#temporal-api-common-v1-searchattributes)
+    - [temporal.api.common.v1.SearchAttributes.IndexedFieldsEntry](temporal/api/common/v1/README.md#temporal-api-common-v1-searchattributes-indexedfieldsentry)
+- [temporal.api.deployment.v1](temporal/api/deployment/v1/README.md)
+  - Messages
+    - [temporal.api.deployment.v1.Deployment](temporal/api/deployment/v1/README.md#temporal-api-deployment-v1-deployment)
+    - [temporal.api.deployment.v1.WorkerDeploymentVersion](temporal/api/deployment/v1/README.md#temporal-api-deployment-v1-workerdeploymentversion)
 - [temporal.api.enums.v1](temporal/api/enums/v1/README.md)
   - Messages
+    - [temporal.api.enums.v1.VersioningBehavior](temporal/api/enums/v1/README.md#temporal-api-enums-v1-versioningbehavior)
     - [temporal.api.enums.v1.WorkflowIdConflictPolicy](temporal/api/enums/v1/README.md#temporal-api-enums-v1-workflowidconflictpolicy)
+- [temporal.api.workflow.v1](temporal/api/workflow/v1/README.md)
+  - Messages
+    - [temporal.api.workflow.v1.VersioningOverride](temporal/api/workflow/v1/README.md#temporal-api-workflow-v1-versioningoverride)
+    - [temporal.api.workflow.v1.VersioningOverride.PinnedOverride](temporal/api/workflow/v1/README.md#temporal-api-workflow-v1-versioningoverride-pinnedoverride)
+    - [temporal.api.workflow.v1.VersioningOverride.PinnedOverrideBehavior](temporal/api/workflow/v1/README.md#temporal-api-workflow-v1-versioningoverride-pinnedoverridebehavior)
 - [temporal.v1](temporal/v1/README.md)
   - Messages
     - [temporal.v1.RetryPolicy](temporal/v1/README.md#temporal-v1-retrypolicy)

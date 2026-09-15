@@ -265,6 +265,7 @@ type SearchAttributesOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -333,6 +334,9 @@ func (o *SearchAttributesOptions) Build(req protoreflect.Message) (client.StartW
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -436,6 +440,12 @@ func (o *SearchAttributesOptions) WithTypedSearchAttributes(tsa temporal.SearchA
 	return o
 }
 
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SearchAttributesOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *SearchAttributesOptions {
+	o.versioningOverride = versioningOverride
+	return o
+}
+
 // WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
 func (o *SearchAttributesOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SearchAttributesOptions {
 	o.workflowIdConflictPolicy = policy
@@ -516,6 +526,7 @@ type TypedSearchAttributesOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -588,6 +599,9 @@ func (o *TypedSearchAttributesOptions) Build(req protoreflect.Message) (client.S
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -688,6 +702,12 @@ func (o *TypedSearchAttributesOptions) WithTaskQueue(tq string) *TypedSearchAttr
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *TypedSearchAttributesOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *TypedSearchAttributesOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *TypedSearchAttributesOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *TypedSearchAttributesOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

@@ -1618,6 +1618,29 @@ service Example {
 </TabItem>
 </Tabs>
 
+### WithVersioningOverride
+
+Set the workflow `VersioningOverride` value, pinning an execution to a specific worker deployment version or forcing it to auto-upgrade, regardless of the current server or worker defaults. This is how a single execution is steered onto a canary build. See [Worker Versioning](https://docs.temporal.io/production-deployment/worker-deployments/worker-versioning).
+
+This helper has no schema equivalent: a pinned override names a deployment and build id, which are deployment-time values rather than schema defaults. The schema-level `versioning_behavior` option covers what a workflow declares at registration. A value set here takes precedence over one supplied via [`WithStartWorkflowOptions`](#withstartworkflowoptions).
+
+Child workflows have no equivalent, since [workflow.ChildWorkflowOptions](https://pkg.go.dev/go.temporal.io/sdk/workflow#ChildWorkflowOptions) carries no versioning override.
+
+```go title="example.go"
+func example(ctx context.Context, c examplev1.ExampleClient) error {
+    // pin this execution to a specific worker deployment version
+    _, err := c.Foo(ctx, &examplev1.FooInput{}, examplev1.NewFooOptions().
+        WithVersioningOverride(&client.PinnedVersioningOverride{
+            Version: worker.WorkerDeploymentVersion{
+                DeploymentName: "example",
+                BuildID:        "abc123",
+            },
+        }),
+    )
+    return err
+}
+```
+
 ### WithWorkflowIdConflictPolicy
 
 Set the workflow `WorkflowIdConflictPolicy` value

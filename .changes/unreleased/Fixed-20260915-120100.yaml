@@ -1,0 +1,8 @@
+kind: Fixed
+body: Carry versioning override, priority, cron schedule, static summary, static details, typed search attributes,
+  and workflow id conflict policy across the xns boundary. These `client.StartWorkflowOptions` fields were silently
+  dropped when serialized as protobuf, so schema defaults won over caller-supplied values on the remote side
+time: 2026-09-15T12:00:10.000000-06:00
+custom:
+    Author: cludden
+    PullRequest: "153"

@@ -371,6 +371,7 @@ type TestWorkflowOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -419,6 +420,9 @@ func (o *TestWorkflowOptions) Build(req protoreflect.Message) (client.StartWorkf
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -519,6 +523,12 @@ func (o *TestWorkflowOptions) WithTaskQueue(tq string) *TestWorkflowOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *TestWorkflowOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *TestWorkflowOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *TestWorkflowOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *TestWorkflowOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -2044,6 +2054,7 @@ type CallTestWorkflowOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -2092,6 +2103,9 @@ func (o *CallTestWorkflowOptions) Build(req protoreflect.Message) (client.StartW
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -2192,6 +2206,12 @@ func (o *CallTestWorkflowOptions) WithTaskQueue(tq string) *CallTestWorkflowOpti
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *CallTestWorkflowOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *CallTestWorkflowOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *CallTestWorkflowOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *CallTestWorkflowOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

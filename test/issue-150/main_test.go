@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	issue_150v1 "github.com/cludden/protoc-gen-go-temporal/gen/test/issue-150/v1"
+	"github.com/cludden/protoc-gen-go-temporal/pkg/xns"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
@@ -211,6 +212,46 @@ func TestIssue150_StartWorkflowOverrides(t *testing.T) {
 			opts, err := c.options.Build((&issue_150v1.Input{}).ProtoReflect())
 			require.NoError(t, err)
 			require.Equal(t, c.expected, opts)
+		})
+	}
+}
+
+// TestIssue150_PriorityAcrossXNS covers the xns boundary: a caller's priority is
+// serialized as protobuf, rebuilt in the remote namespace, and applied there.
+// Before the xns StartWorkflowOptions message carried priority, the caller's
+// value was dropped and the schema default always won.
+func TestIssue150_PriorityAcrossXNS(t *testing.T) {
+	cases := map[string]struct {
+		priority temporal.Priority
+		expected temporal.Priority
+	}{
+		"caller priority beats the schema default": {
+			priority: temporal.Priority{PriorityKey: 7},
+			// fields the caller left unset still fall back to the schema
+			expected: temporal.Priority{PriorityKey: 7, FairnessKey: "default", FairnessWeight: 1},
+		},
+		"caller fairness beats the schema default": {
+			priority: temporal.Priority{FairnessKey: "tenant-a", FairnessWeight: 3},
+			expected: temporal.Priority{PriorityKey: 2, FairnessKey: "tenant-a", FairnessWeight: 3},
+		},
+		"schema defaults apply when the caller sets none": {
+			priority: temporal.Priority{},
+			expected: temporal.Priority{PriorityKey: 2, FairnessKey: "default", FairnessWeight: 1},
+		},
+	}
+
+	for _, name := range workflow.DeterministicKeys(cases) {
+		c := cases[name]
+		t.Run(name, func(t *testing.T) {
+			pb, err := xns.MarshalStartWorkflowOptions(client.StartWorkflowOptions{Priority: c.priority})
+			require.NoError(t, err)
+
+			opts, err := issue_150v1.NewExplicitPriorityOptions().
+				WithStartWorkflowOptions(xns.UnmarshalStartWorkflowOptions(pb)).
+				Build((&issue_150v1.Input{}).ProtoReflect())
+			require.NoError(t, err)
+			require.Equal(t, c.expected, opts.Priority)
+			require.Equal(t, "issue-150-v1", opts.TaskQueue)
 		})
 	}
 }
