@@ -213,6 +213,7 @@ type HelloOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -267,6 +268,9 @@ func (o *HelloOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -367,6 +371,12 @@ func (o *HelloOptions) WithTaskQueue(tq string) *HelloOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *HelloOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *HelloOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *HelloOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *HelloOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

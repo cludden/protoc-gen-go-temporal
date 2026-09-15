@@ -451,6 +451,8 @@ func (w *CallingWorkflow) Execute(ctx workflow.Context) error {
 </TabItem>
 </Tabs>
 
+The `client.StartWorkflowOptions` value passed to `WithStartWorkflow` is serialized as protobuf, sent to the remote namespace as activity input, and rebuilt on the other side, so every supported field survives the boundary: workflow id and id reuse/conflict policies, task queue, execution/run/task timeouts, retry policy, memo, search attributes (both untyped and typed), eager start, start delay, cron schedule, static summary and details, priority, and versioning override. Values that arrive this way take precedence over the schema defaults declared on the remote workflow.
+
 ## XNS Error Handling
 
 Handle errors from cross-namespace operations with built-in error conversion and custom error handling.

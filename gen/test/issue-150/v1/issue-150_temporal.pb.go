@@ -201,6 +201,7 @@ type ExplicitPriorityOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -259,6 +260,9 @@ func (o *ExplicitPriorityOptions) Build(req protoreflect.Message) (client.StartW
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -359,6 +363,12 @@ func (o *ExplicitPriorityOptions) WithTaskQueue(tq string) *ExplicitPriorityOpti
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *ExplicitPriorityOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ExplicitPriorityOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *ExplicitPriorityOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *ExplicitPriorityOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

@@ -401,6 +401,7 @@ type ShoppingCartOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -455,6 +456,9 @@ func (o *ShoppingCartOptions) Build(req protoreflect.Message) (client.StartWorkf
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -555,6 +559,12 @@ func (o *ShoppingCartOptions) WithTaskQueue(tq string) *ShoppingCartOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *ShoppingCartOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *ShoppingCartOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *ShoppingCartOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *ShoppingCartOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

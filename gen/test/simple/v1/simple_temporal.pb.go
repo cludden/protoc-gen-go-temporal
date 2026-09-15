@@ -917,6 +917,7 @@ type ExampleContinueAsNewOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -971,6 +972,9 @@ func (o *ExampleContinueAsNewOptions) Build(req protoreflect.Message) (client.St
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1074,6 +1078,12 @@ func (o *ExampleContinueAsNewOptions) WithTypedSearchAttributes(tsa temporal.Sea
 	return o
 }
 
+// WithVersioningOverride sets the VersioningOverride value
+func (o *ExampleContinueAsNewOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *ExampleContinueAsNewOptions {
+	o.versioningOverride = versioningOverride
+	return o
+}
+
 // WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
 func (o *ExampleContinueAsNewOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *ExampleContinueAsNewOptions {
 	o.workflowIdConflictPolicy = policy
@@ -1158,6 +1168,7 @@ type SomeWorkflow1Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1212,6 +1223,9 @@ func (o *SomeWorkflow1Options) Build(req protoreflect.Message) (client.StartWork
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1312,6 +1326,12 @@ func (o *SomeWorkflow1Options) WithTaskQueue(tq string) *SomeWorkflow1Options {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SomeWorkflow1Options) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomeWorkflow1Options {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SomeWorkflow1Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *SomeWorkflow1Options {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -1463,6 +1483,7 @@ type SomeWorkflow2Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1517,6 +1538,9 @@ func (o *SomeWorkflow2Options) Build(req protoreflect.Message) (client.StartWork
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1617,6 +1641,12 @@ func (o *SomeWorkflow2Options) WithTaskQueue(tq string) *SomeWorkflow2Options {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SomeWorkflow2Options) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomeWorkflow2Options {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SomeWorkflow2Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *SomeWorkflow2Options {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -1724,6 +1754,7 @@ type SomeWorkflow3Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -1784,6 +1815,9 @@ func (o *SomeWorkflow3Options) Build(req protoreflect.Message) (client.StartWork
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -1889,6 +1923,12 @@ func (o *SomeWorkflow3Options) WithTypedSearchAttributes(tsa temporal.SearchAttr
 	return o
 }
 
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SomeWorkflow3Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *SomeWorkflow3Options {
+	o.versioningOverride = versioningOverride
+	return o
+}
+
 // WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
 func (o *SomeWorkflow3Options) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *SomeWorkflow3Options {
 	o.workflowIdConflictPolicy = policy
@@ -1977,6 +2017,7 @@ type SomeWorkflow4Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -2031,6 +2072,9 @@ func (o *SomeWorkflow4Options) Build(req protoreflect.Message) (client.StartWork
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -2131,6 +2175,12 @@ func (o *SomeWorkflow4Options) WithTaskQueue(tq string) *SomeWorkflow4Options {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SomeWorkflow4Options) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomeWorkflow4Options {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SomeWorkflow4Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *SomeWorkflow4Options {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -9487,6 +9537,7 @@ type OtherWorkflowOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -9541,6 +9592,9 @@ func (o *OtherWorkflowOptions) Build(req protoreflect.Message) (client.StartWork
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -9644,6 +9698,12 @@ func (o *OtherWorkflowOptions) WithTypedSearchAttributes(tsa temporal.SearchAttr
 	return o
 }
 
+// WithVersioningOverride sets the VersioningOverride value
+func (o *OtherWorkflowOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *OtherWorkflowOptions {
+	o.versioningOverride = versioningOverride
+	return o
+}
+
 // WithWorkflowIdConflictPolicy sets the WorkflowIdConflictPolicy value
 func (o *OtherWorkflowOptions) WithWorkflowIdConflictPolicy(policy enumsv1.WorkflowIdConflictPolicy) *OtherWorkflowOptions {
 	o.workflowIdConflictPolicy = policy
@@ -9728,6 +9788,7 @@ type OtherWorkflow2Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -9782,6 +9843,9 @@ func (o *OtherWorkflow2Options) Build(req protoreflect.Message) (client.StartWor
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -9882,6 +9946,12 @@ func (o *OtherWorkflow2Options) WithTaskQueue(tq string) *OtherWorkflow2Options 
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *OtherWorkflow2Options) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *OtherWorkflow2Options {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *OtherWorkflow2Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *OtherWorkflow2Options {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -12337,6 +12407,7 @@ type WhatOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -12391,6 +12462,9 @@ func (o *WhatOptions) Build(req protoreflect.Message) (client.StartWorkflowOptio
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -12491,6 +12565,12 @@ func (o *WhatOptions) WithTaskQueue(tq string) *WhatOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *WhatOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *WhatOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *WhatOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *WhatOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -13945,6 +14025,7 @@ type SomeDeprecatedWorkflow1Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -13993,6 +14074,9 @@ func (o *SomeDeprecatedWorkflow1Options) Build(req protoreflect.Message) (client
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -14093,6 +14177,12 @@ func (o *SomeDeprecatedWorkflow1Options) WithTaskQueue(tq string) *SomeDeprecate
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SomeDeprecatedWorkflow1Options) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomeDeprecatedWorkflow1Options {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SomeDeprecatedWorkflow1Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *SomeDeprecatedWorkflow1Options {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -14228,6 +14318,7 @@ type SomeDeprecatedWorkflow2Options struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -14276,6 +14367,9 @@ func (o *SomeDeprecatedWorkflow2Options) Build(req protoreflect.Message) (client
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -14376,6 +14470,12 @@ func (o *SomeDeprecatedWorkflow2Options) WithTaskQueue(tq string) *SomeDeprecate
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SomeDeprecatedWorkflow2Options) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SomeDeprecatedWorkflow2Options {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SomeDeprecatedWorkflow2Options) WithVersioningOverride(versioningOverride client.VersioningOverride) *SomeDeprecatedWorkflow2Options {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

@@ -449,6 +449,7 @@ type MutexOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -510,6 +511,9 @@ func (o *MutexOptions) Build(req protoreflect.Message) (client.StartWorkflowOpti
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -610,6 +614,12 @@ func (o *MutexOptions) WithTaskQueue(tq string) *MutexOptions {
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *MutexOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *MutexOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *MutexOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *MutexOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 
@@ -725,6 +735,7 @@ type SampleWorkflowWithMutexOptions struct {
 	taskTimeout              *time.Duration
 	typedSearchAttributes    *temporal.SearchAttributes
 	enableEagerStart         *bool
+	versioningOverride       client.VersioningOverride
 	workflowIdConflictPolicy enumsv1.WorkflowIdConflictPolicy
 }
 
@@ -779,6 +790,9 @@ func (o *SampleWorkflowWithMutexOptions) Build(req protoreflect.Message) (client
 	}
 	if v := o.enableEagerStart; v != nil {
 		opts.EnableEagerStart = *v
+	}
+	if v := o.versioningOverride; v != nil {
+		opts.VersioningOverride = v
 	}
 	if v := o.executionTimeout; v != nil {
 		opts.WorkflowExecutionTimeout = *v
@@ -879,6 +893,12 @@ func (o *SampleWorkflowWithMutexOptions) WithTaskQueue(tq string) *SampleWorkflo
 // WithTypedSearchAttributes sets the TypedSearchAttributes value
 func (o *SampleWorkflowWithMutexOptions) WithTypedSearchAttributes(tsa temporal.SearchAttributes) *SampleWorkflowWithMutexOptions {
 	o.typedSearchAttributes = &tsa
+	return o
+}
+
+// WithVersioningOverride sets the VersioningOverride value
+func (o *SampleWorkflowWithMutexOptions) WithVersioningOverride(versioningOverride client.VersioningOverride) *SampleWorkflowWithMutexOptions {
+	o.versioningOverride = versioningOverride
 	return o
 }
 

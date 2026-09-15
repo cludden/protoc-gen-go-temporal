@@ -7,8 +7,10 @@
 package xnsv1
 
 import (
-	v11 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
+	v13 "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1"
+	v12 "go.temporal.io/api/common/v1"
 	v1 "go.temporal.io/api/enums/v1"
+	v11 "go.temporal.io/api/workflow/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	_ "google.golang.org/protobuf/types/descriptorpb"
@@ -497,6 +499,12 @@ type StartWorkflowOptions struct {
 	EnableEagerStart         bool                        `protobuf:"varint,11,opt,name=enable_eager_start,json=enableEagerStart,proto3" json:"enable_eager_start,omitempty"`
 	StartDelay               *durationpb.Duration        `protobuf:"bytes,12,opt,name=start_delay,json=startDelay,proto3" json:"start_delay,omitempty"`
 	WorkflowIdConflictPolicy v1.WorkflowIdConflictPolicy `protobuf:"varint,13,opt,name=workflow_id_conflict_policy,json=workflowIdConflictPolicy,proto3,enum=temporal.api.enums.v1.WorkflowIdConflictPolicy" json:"workflow_id_conflict_policy,omitempty"`
+	VersioningOverride       *v11.VersioningOverride     `protobuf:"bytes,14,opt,name=versioning_override,json=versioningOverride,proto3" json:"versioning_override,omitempty"`
+	CronSchedule             string                      `protobuf:"bytes,15,opt,name=cron_schedule,json=cronSchedule,proto3" json:"cron_schedule,omitempty"`
+	StaticSummary            string                      `protobuf:"bytes,16,opt,name=static_summary,json=staticSummary,proto3" json:"static_summary,omitempty"`
+	StaticDetails            string                      `protobuf:"bytes,17,opt,name=static_details,json=staticDetails,proto3" json:"static_details,omitempty"`
+	Priority                 *v12.Priority               `protobuf:"bytes,18,opt,name=priority,proto3" json:"priority,omitempty"`
+	TypedSearchAttributes    *v12.SearchAttributes       `protobuf:"bytes,19,opt,name=typed_search_attributes,json=typedSearchAttributes,proto3" json:"typed_search_attributes,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -622,6 +630,48 @@ func (x *StartWorkflowOptions) GetWorkflowIdConflictPolicy() v1.WorkflowIdConfli
 	return v1.WorkflowIdConflictPolicy(0)
 }
 
+func (x *StartWorkflowOptions) GetVersioningOverride() *v11.VersioningOverride {
+	if x != nil {
+		return x.VersioningOverride
+	}
+	return nil
+}
+
+func (x *StartWorkflowOptions) GetCronSchedule() string {
+	if x != nil {
+		return x.CronSchedule
+	}
+	return ""
+}
+
+func (x *StartWorkflowOptions) GetStaticSummary() string {
+	if x != nil {
+		return x.StaticSummary
+	}
+	return ""
+}
+
+func (x *StartWorkflowOptions) GetStaticDetails() string {
+	if x != nil {
+		return x.StaticDetails
+	}
+	return ""
+}
+
+func (x *StartWorkflowOptions) GetPriority() *v12.Priority {
+	if x != nil {
+		return x.Priority
+	}
+	return nil
+}
+
+func (x *StartWorkflowOptions) GetTypedSearchAttributes() *v12.SearchAttributes {
+	if x != nil {
+		return x.TypedSearchAttributes
+	}
+	return nil
+}
+
 // UpdateRequest can be used to configure xns update activities
 type UpdateRequest struct {
 	state                 protoimpl.MessageState            `protogen:"open.v1"`
@@ -691,7 +741,7 @@ type UpdateWithStartRequest struct {
 	Detached              bool                              `protobuf:"varint,4,opt,name=detached,proto3" json:"detached,omitempty"`
 	Input                 *anypb.Any                        `protobuf:"bytes,5,opt,name=input,proto3" json:"input,omitempty"`
 	Update                *anypb.Any                        `protobuf:"bytes,6,opt,name=update,proto3" json:"update,omitempty"`
-	ParentClosePolicy     v11.ParentClosePolicy             `protobuf:"varint,7,opt,name=parent_close_policy,json=parentClosePolicy,proto3,enum=temporal.v1.ParentClosePolicy" json:"parent_close_policy,omitempty"`
+	ParentClosePolicy     v13.ParentClosePolicy             `protobuf:"varint,7,opt,name=parent_close_policy,json=parentClosePolicy,proto3,enum=temporal.v1.ParentClosePolicy" json:"parent_close_policy,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -768,11 +818,11 @@ func (x *UpdateWithStartRequest) GetUpdate() *anypb.Any {
 	return nil
 }
 
-func (x *UpdateWithStartRequest) GetParentClosePolicy() v11.ParentClosePolicy {
+func (x *UpdateWithStartRequest) GetParentClosePolicy() v13.ParentClosePolicy {
 	if x != nil {
 		return x.ParentClosePolicy
 	}
-	return v11.ParentClosePolicy(0)
+	return v13.ParentClosePolicy(0)
 }
 
 type UpdateWorkflowWithOptionsRequest struct {
@@ -869,7 +919,7 @@ type WorkflowRequest struct {
 	Request              *anypb.Any             `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`
 	Detached             bool                   `protobuf:"varint,4,opt,name=detached,proto3" json:"detached,omitempty"`
 	Signal               *anypb.Any             `protobuf:"bytes,5,opt,name=signal,proto3" json:"signal,omitempty"`
-	ParentClosePolicy    v11.ParentClosePolicy  `protobuf:"varint,6,opt,name=parent_close_policy,json=parentClosePolicy,proto3,enum=temporal.v1.ParentClosePolicy" json:"parent_close_policy,omitempty"`
+	ParentClosePolicy    v13.ParentClosePolicy  `protobuf:"varint,6,opt,name=parent_close_policy,json=parentClosePolicy,proto3,enum=temporal.v1.ParentClosePolicy" json:"parent_close_policy,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -939,18 +989,18 @@ func (x *WorkflowRequest) GetSignal() *anypb.Any {
 	return nil
 }
 
-func (x *WorkflowRequest) GetParentClosePolicy() v11.ParentClosePolicy {
+func (x *WorkflowRequest) GetParentClosePolicy() v13.ParentClosePolicy {
 	if x != nil {
 		return x.ParentClosePolicy
 	}
-	return v11.ParentClosePolicy(0)
+	return v13.ParentClosePolicy(0)
 }
 
 var File_temporal_xns_v1_xns_proto protoreflect.FileDescriptor
 
 const file_temporal_xns_v1_xns_proto_rawDesc = "" +
 	"\n" +
-	"\x19temporal/xns/v1/xns.proto\x12\x0ftemporal.xns.v1\x1a\x19google/protobuf/any.proto\x1a google/protobuf/descriptor.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a$temporal/api/enums/v1/workflow.proto\x1a\x1atemporal/v1/temporal.proto\"\xf0\x01\n" +
+	"\x19temporal/xns/v1/xns.proto\x12\x0ftemporal.xns.v1\x1a\x19google/protobuf/any.proto\x1a google/protobuf/descriptor.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a$temporal/api/common/v1/message.proto\x1a$temporal/api/enums/v1/workflow.proto\x1a&temporal/api/workflow/v1/message.proto\x1a\x1atemporal/v1/temporal.proto\"\xf0\x01\n" +
 	"\x12GetWorkflowRequest\x12H\n" +
 	"\x12heartbeat_interval\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x11heartbeatInterval\x12\x15\n" +
 	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12X\n" +
@@ -974,7 +1024,7 @@ const file_temporal_xns_v1_xns_proto_rawDesc = "" +
 	"\vworkflow_id\x18\x02 \x01(\tR\n" +
 	"workflowId\x12.\n" +
 	"\arequest\x18\x03 \x01(\v2\x14.google.protobuf.AnyR\arequest\x12H\n" +
-	"\x12heartbeat_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x11heartbeatInterval\"\x9a\x06\n" +
+	"\x12heartbeat_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x11heartbeatInterval\"\x8c\t\n" +
 	"\x14StartWorkflowOptions\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -992,7 +1042,13 @@ const file_temporal_xns_v1_xns_proto_rawDesc = "" +
 	"\x12enable_eager_start\x18\v \x01(\bR\x10enableEagerStart\x12:\n" +
 	"\vstart_delay\x18\f \x01(\v2\x19.google.protobuf.DurationR\n" +
 	"startDelay\x12n\n" +
-	"\x1bworkflow_id_conflict_policy\x18\r \x01(\x0e2/.temporal.api.enums.v1.WorkflowIdConflictPolicyR\x18workflowIdConflictPolicy\"\xf4\x01\n" +
+	"\x1bworkflow_id_conflict_policy\x18\r \x01(\x0e2/.temporal.api.enums.v1.WorkflowIdConflictPolicyR\x18workflowIdConflictPolicy\x12]\n" +
+	"\x13versioning_override\x18\x0e \x01(\v2,.temporal.api.workflow.v1.VersioningOverrideR\x12versioningOverride\x12#\n" +
+	"\rcron_schedule\x18\x0f \x01(\tR\fcronSchedule\x12%\n" +
+	"\x0estatic_summary\x18\x10 \x01(\tR\rstaticSummary\x12%\n" +
+	"\x0estatic_details\x18\x11 \x01(\tR\rstaticDetails\x12<\n" +
+	"\bpriority\x18\x12 \x01(\v2 .temporal.api.common.v1.PriorityR\bpriority\x12`\n" +
+	"\x17typed_search_attributes\x18\x13 \x01(\v2(.temporal.api.common.v1.SearchAttributesR\x15typedSearchAttributes\"\xf4\x01\n" +
 	"\rUpdateRequest\x12H\n" +
 	"\x12heartbeat_interval\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x11heartbeatInterval\x12i\n" +
 	"\x17update_workflow_options\x18\x02 \x01(\v21.temporal.xns.v1.UpdateWorkflowWithOptionsRequestR\x15updateWorkflowOptions\x12.\n" +
@@ -1072,7 +1128,10 @@ var file_temporal_xns_v1_xns_proto_goTypes = []any{
 	(*anypb.Any)(nil),                        // 14: google.protobuf.Any
 	(*structpb.Struct)(nil),                  // 15: google.protobuf.Struct
 	(v1.WorkflowIdConflictPolicy)(0),         // 16: temporal.api.enums.v1.WorkflowIdConflictPolicy
-	(v11.ParentClosePolicy)(0),               // 17: temporal.v1.ParentClosePolicy
+	(*v11.VersioningOverride)(nil),           // 17: temporal.api.workflow.v1.VersioningOverride
+	(*v12.Priority)(nil),                     // 18: temporal.api.common.v1.Priority
+	(*v12.SearchAttributes)(nil),             // 19: temporal.api.common.v1.SearchAttributes
+	(v13.ParentClosePolicy)(0),               // 20: temporal.v1.ParentClosePolicy
 }
 var file_temporal_xns_v1_xns_proto_depIdxs = []int32{
 	12, // 0: temporal.xns.v1.GetWorkflowRequest.heartbeat_interval:type_name -> google.protobuf.Duration
@@ -1092,27 +1151,30 @@ var file_temporal_xns_v1_xns_proto_depIdxs = []int32{
 	15, // 14: temporal.xns.v1.StartWorkflowOptions.search_attirbutes:type_name -> google.protobuf.Struct
 	12, // 15: temporal.xns.v1.StartWorkflowOptions.start_delay:type_name -> google.protobuf.Duration
 	16, // 16: temporal.xns.v1.StartWorkflowOptions.workflow_id_conflict_policy:type_name -> temporal.api.enums.v1.WorkflowIdConflictPolicy
-	12, // 17: temporal.xns.v1.UpdateRequest.heartbeat_interval:type_name -> google.protobuf.Duration
-	10, // 18: temporal.xns.v1.UpdateRequest.update_workflow_options:type_name -> temporal.xns.v1.UpdateWorkflowWithOptionsRequest
-	14, // 19: temporal.xns.v1.UpdateRequest.request:type_name -> google.protobuf.Any
-	12, // 20: temporal.xns.v1.UpdateWithStartRequest.heartbeat_interval:type_name -> google.protobuf.Duration
-	7,  // 21: temporal.xns.v1.UpdateWithStartRequest.start_workflow_options:type_name -> temporal.xns.v1.StartWorkflowOptions
-	10, // 22: temporal.xns.v1.UpdateWithStartRequest.update_workflow_options:type_name -> temporal.xns.v1.UpdateWorkflowWithOptionsRequest
-	14, // 23: temporal.xns.v1.UpdateWithStartRequest.input:type_name -> google.protobuf.Any
-	14, // 24: temporal.xns.v1.UpdateWithStartRequest.update:type_name -> google.protobuf.Any
-	17, // 25: temporal.xns.v1.UpdateWithStartRequest.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	2,  // 26: temporal.xns.v1.UpdateWorkflowWithOptionsRequest.wait_policy:type_name -> temporal.xns.v1.WaitPolicy
-	2,  // 27: temporal.xns.v1.UpdateWorkflowWithOptionsRequest.wait_for_stage:type_name -> temporal.xns.v1.WaitPolicy
-	12, // 28: temporal.xns.v1.WorkflowRequest.heartbeat_interval:type_name -> google.protobuf.Duration
-	7,  // 29: temporal.xns.v1.WorkflowRequest.start_workflow_options:type_name -> temporal.xns.v1.StartWorkflowOptions
-	14, // 30: temporal.xns.v1.WorkflowRequest.request:type_name -> google.protobuf.Any
-	14, // 31: temporal.xns.v1.WorkflowRequest.signal:type_name -> google.protobuf.Any
-	17, // 32: temporal.xns.v1.WorkflowRequest.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
-	33, // [33:33] is the sub-list for method output_type
-	33, // [33:33] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	17, // 17: temporal.xns.v1.StartWorkflowOptions.versioning_override:type_name -> temporal.api.workflow.v1.VersioningOverride
+	18, // 18: temporal.xns.v1.StartWorkflowOptions.priority:type_name -> temporal.api.common.v1.Priority
+	19, // 19: temporal.xns.v1.StartWorkflowOptions.typed_search_attributes:type_name -> temporal.api.common.v1.SearchAttributes
+	12, // 20: temporal.xns.v1.UpdateRequest.heartbeat_interval:type_name -> google.protobuf.Duration
+	10, // 21: temporal.xns.v1.UpdateRequest.update_workflow_options:type_name -> temporal.xns.v1.UpdateWorkflowWithOptionsRequest
+	14, // 22: temporal.xns.v1.UpdateRequest.request:type_name -> google.protobuf.Any
+	12, // 23: temporal.xns.v1.UpdateWithStartRequest.heartbeat_interval:type_name -> google.protobuf.Duration
+	7,  // 24: temporal.xns.v1.UpdateWithStartRequest.start_workflow_options:type_name -> temporal.xns.v1.StartWorkflowOptions
+	10, // 25: temporal.xns.v1.UpdateWithStartRequest.update_workflow_options:type_name -> temporal.xns.v1.UpdateWorkflowWithOptionsRequest
+	14, // 26: temporal.xns.v1.UpdateWithStartRequest.input:type_name -> google.protobuf.Any
+	14, // 27: temporal.xns.v1.UpdateWithStartRequest.update:type_name -> google.protobuf.Any
+	20, // 28: temporal.xns.v1.UpdateWithStartRequest.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
+	2,  // 29: temporal.xns.v1.UpdateWorkflowWithOptionsRequest.wait_policy:type_name -> temporal.xns.v1.WaitPolicy
+	2,  // 30: temporal.xns.v1.UpdateWorkflowWithOptionsRequest.wait_for_stage:type_name -> temporal.xns.v1.WaitPolicy
+	12, // 31: temporal.xns.v1.WorkflowRequest.heartbeat_interval:type_name -> google.protobuf.Duration
+	7,  // 32: temporal.xns.v1.WorkflowRequest.start_workflow_options:type_name -> temporal.xns.v1.StartWorkflowOptions
+	14, // 33: temporal.xns.v1.WorkflowRequest.request:type_name -> google.protobuf.Any
+	14, // 34: temporal.xns.v1.WorkflowRequest.signal:type_name -> google.protobuf.Any
+	20, // 35: temporal.xns.v1.WorkflowRequest.parent_close_policy:type_name -> temporal.v1.ParentClosePolicy
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_temporal_xns_v1_xns_proto_init() }

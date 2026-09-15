@@ -2293,6 +2293,7 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			g.Id("waitForCancellation").Op("*").Bool()
 		} else {
 			g.Id("enableEagerStart").Op("*").Bool()
+			g.Id("versioningOverride").Qual(clientPkg, "VersioningOverride")
 			g.Id("workflowIdConflictPolicy").Qual(enumsPkg, "WorkflowIdConflictPolicy")
 		}
 	})
@@ -2729,6 +2730,13 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 				}
 			}
 
+			// set VersioningOverride
+			if !child {
+				g.If(j.Id("v").Op(":=").Id("o").Dot("versioningOverride"), j.Id("v").Op("!=").Nil()).Block(
+					j.Id("opts").Dot("VersioningOverride").Op("=").Id("v"),
+				)
+			}
+
 			// set WorkflowExecutionTimeout
 			executionTimeout := g.If(j.Id("v").Op(":=").Id("o").Dot("executionTimeout"), j.Id("v").Op("!=").Nil()).Block(
 				j.Id("opts").Dot("WorkflowExecutionTimeout").Op("=").Op("*").Id("v"),
@@ -3002,6 +3010,19 @@ func (m *Manifest) genWorkflowOptions(f *j.File, workflow protoreflect.FullName,
 			Op("*").Id(typeName).
 			Block(
 				j.Id("o").Dot("waitForCancellation").Op("=").Op("&").Id("wait"),
+				j.Return(j.Id("o")),
+			)
+	}
+
+	if !child {
+		f.Comment("WithVersioningOverride sets the VersioningOverride value")
+		f.Func().
+			Params(j.Id("o").Op("*").Id(typeName)).
+			Id("WithVersioningOverride").
+			Params(j.Id("versioningOverride").Qual(clientPkg, "VersioningOverride")).
+			Op("*").Id(typeName).
+			Block(
+				j.Id("o").Dot("versioningOverride").Op("=").Id("versioningOverride"),
 				j.Return(j.Id("o")),
 			)
 	}
