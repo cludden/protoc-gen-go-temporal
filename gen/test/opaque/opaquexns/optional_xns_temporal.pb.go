@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// OptionalClientProviderInput describes a(n) test.opaque.Optional xns activity invocation and is provided to a OptionalClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type OptionalClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.opaque.Optional.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *OptionalClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// OptionalClientProvider selects the OptionalClient used to execute a given xns activity invocation
+type OptionalClientProvider func(ctx context.Context, in *OptionalClientProviderInput) (opaque.OptionalClient, error)
 
 // OptionalOptions is used to configure test.opaque.Optional xns activity registration
 type OptionalOptions struct {
@@ -37,6 +65,9 @@ type OptionalOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider OptionalClientProvider
 }
 
 // NewOptionalOptions initializes a new OptionalOptions value
@@ -53,6 +84,14 @@ func (opts *OptionalOptions) WithErrorConverter(errorConverter func(error) error
 // Filter is used to filter registered xns activities or customize their name
 func (opts *OptionalOptions) WithFilter(filter func(string) string) *OptionalOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a OptionalClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterOptionalActivities may be nil.
+func (opts *OptionalOptions) WithClientProvider(provider OptionalClientProvider) *OptionalOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *OptionalOptions) filterActivity(name string) string {
 // optionalOptions is a reference to the OptionalOptions initialized at registration
 var optionalOptions *OptionalOptions
 
-// RegisterOptionalActivities registers test.opaque.Optional cross-namespace activities
+// RegisterOptionalActivities registers test.opaque.Optional cross-namespace activities using a static client. When a
+// clientProvider is configured via NewOptionalOptions, the client argument may be nil.
 func RegisterOptionalActivities(r worker.ActivityRegistry, c opaque.OptionalClient, options ...*OptionalOptions) {
+	// default to a provider that always returns the given static client
+	provider := OptionalClientProvider(func(ctx context.Context, _ *OptionalClientProviderInput) (opaque.OptionalClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterOptionalActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterOptionalActivitiesWithClientProvider registers test.opaque.Optional cross-namespace activities, using the given OptionalClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterOptionalActivitiesWithClientProvider(r worker.ActivityRegistry, provider OptionalClientProvider, options ...*OptionalOptions) {
 	if optionalOptions == nil && len(options) > 0 && options[0] != nil {
 		optionalOptions = options[0]
 	}
-	a := &optionalActivities{c}
+	a := &optionalActivities{provider}
 	if name := optionalOptions.filterActivity("test.opaque.Optional.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -786,12 +839,21 @@ func CancelOptionalWorkflowAsync(ctx workflow.Context, workflowID string, runID 
 
 // optionalActivities provides activities that can be used to interact with a(n) Optional service's workflow, queries, signals, and updates across namespaces
 type optionalActivities struct {
-	client opaque.OptionalClient
+	getClient OptionalClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *optionalActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &OptionalClientProviderInput{
+		ActivityName: "test.opaque.Optional.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return optionalOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetPutOptionalExample retrieves a(n) test.opaque.Optional.PutOptionalExample workflow via an activity
@@ -801,9 +863,18 @@ func (a *optionalActivities) GetPutOptionalExample(ctx context.Context, input *x
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &OptionalClientProviderInput{
+		ActivityName: "test.opaque.Optional.GetPutOptionalExample",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, optionalOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetPutOptionalExample(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetPutOptionalExample(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -867,6 +938,15 @@ func (a *optionalActivities) PutOptionalExample(ctx context.Context, input *xnsv
 		))
 	}
 
+	c, err := a.getClient(ctx, &OptionalClientProviderInput{
+		ActivityName: "test.opaque.Optional.PutOptionalExample",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, optionalOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -875,7 +955,7 @@ func (a *optionalActivities) PutOptionalExample(ctx context.Context, input *xnsv
 		defer cancel()
 	}
 	var run opaque.PutOptionalExampleRun
-	run, err = a.client.PutOptionalExampleAsync(actx, &req, opaque.NewPutOptionalExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutOptionalExampleAsync(actx, &req, opaque.NewPutOptionalExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -966,6 +1046,15 @@ func (a *optionalActivities) PutOptionalExampleWithSignalOptional(ctx context.Co
 		))
 	}
 
+	c, err := a.getClient(ctx, &OptionalClientProviderInput{
+		ActivityName: "test.opaque.Optional.PutOptionalExampleWithSignalOptional",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, optionalOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -974,7 +1063,7 @@ func (a *optionalActivities) PutOptionalExampleWithSignalOptional(ctx context.Co
 		defer cancel()
 	}
 	var run opaque.PutOptionalExampleRun
-	run, err = a.client.PutOptionalExampleWithSignalOptionalAsync(actx, &req, &signal, opaque.NewPutOptionalExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutOptionalExampleWithSignalOptionalAsync(actx, &req, &signal, opaque.NewPutOptionalExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1054,10 +1143,20 @@ func (a *optionalActivities) SignalOptional(ctx context.Context, input *xnsv1.Si
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &OptionalClientProviderInput{
+		ActivityName: "test.opaque.Optional.SignalOptional",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return optionalOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SignalOptional(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SignalOptional(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 

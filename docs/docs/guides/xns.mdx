@@ -90,6 +90,7 @@ func UpdateFooProgressAsync(ctx workflow.Context, workflowID, runID string, req 
 
 // XNS activity registration
 func RegisterExampleActivities(r worker.ActivityRegistry, client ExampleClient, options ...*ExampleOptions)
+func RegisterExampleActivitiesWithClientProvider(r worker.ActivityRegistry, provider ExampleClientProvider, options ...*ExampleOptions)
 ```
 </TabItem>
 </Tabs>
@@ -189,6 +190,75 @@ func main() {
 ```
 </TabItem>
 </Tabs>
+
+## Dynamic Client Selection
+
+By default, `Register<Service>Activities` targets a single, statically-configured client (and therefore a single cluster/namespace). To route each invocation to a different cluster or namespace based on the calling context or request payload, supply a **client provider** instead of (or in addition to) a static client.
+
+A client provider is a generated per-service function type:
+
+```go
+type ExampleClientProvider func(ctx context.Context, in *ExampleClientProviderInput) (examplev1.ExampleClient, error)
+```
+
+The `ExampleClientProviderInput` describes the invocation so the provider can select a client:
+
+```go
+type ExampleClientProviderInput struct {
+    // ActivityName is the fully-qualified name of the xns activity, e.g. "example.v1.Example.CreateFoo"
+    ActivityName string
+    // WorkflowID / RunID identify the target workflow execution, when known
+    WorkflowID string
+    RunID      string
+    // Requests holds the unmarshalled request message(s): zero for cancel/get, one for most
+    // operations, and two for the signal-with-start and update-with-start variants
+    Requests []proto.Message
+}
+
+// Request returns the primary request message, or nil when there is none
+func (in *ExampleClientProviderInput) Request() proto.Message
+```
+
+Provide it either via a dedicated register function or via the options builder:
+
+<Tabs>
+<TabItem value="xns-provider-func" label="Register function" default>
+
+```go
+// Route each invocation to a per-tenant namespace based on the request payload
+clients := map[string]examplev1.ExampleClient{ /* ... */ }
+
+examplev1xns.RegisterExampleActivitiesWithClientProvider(callingWorker,
+    func(ctx context.Context, in *examplev1xns.ExampleClientProviderInput) (examplev1.ExampleClient, error) {
+        if req, ok := in.Request().(*examplev1.CreateFooRequest); ok {
+            if c, ok := clients[req.GetTenant()]; ok {
+                return c, nil
+            }
+        }
+        return nil, fmt.Errorf("no client for activity %s", in.ActivityName)
+    },
+)
+```
+
+</TabItem>
+<TabItem value="xns-provider-option" label="Options builder">
+
+```go
+// A provider set via WithClientProvider takes precedence over the static client,
+// so the client argument may be nil.
+examplev1xns.RegisterExampleActivities(callingWorker, nil,
+    examplev1xns.NewExampleOptions().WithClientProvider(
+        func(ctx context.Context, in *examplev1xns.ExampleClientProviderInput) (examplev1.ExampleClient, error) {
+            return clients[tenantFor(ctx)], nil
+        },
+    ),
+)
+```
+
+</TabItem>
+</Tabs>
+
+An error returned from the provider is converted using the same error converter applied to all xns activity errors, and the activity fails (subject to its retry policy). The existing static form — `RegisterExampleActivities(worker, examplev1.NewExampleClient(targetClient))` — continues to work unchanged and is equivalent to a provider that always returns the given client.
 
 ## XNS Workflow Execution
 

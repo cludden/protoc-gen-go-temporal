@@ -24,10 +24,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// ShoppingCartClientProviderInput describes a(n) example.shoppingcart.v1.ShoppingCart xns activity invocation and is provided to a ShoppingCartClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type ShoppingCartClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "example.shoppingcart.v1.ShoppingCart.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *ShoppingCartClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// ShoppingCartClientProvider selects the ShoppingCartClient used to execute a given xns activity invocation
+type ShoppingCartClientProvider func(ctx context.Context, in *ShoppingCartClientProviderInput) (v1.ShoppingCartClient, error)
 
 // ShoppingCartOptions is used to configure example.shoppingcart.v1.ShoppingCart xns activity registration
 type ShoppingCartOptions struct {
@@ -39,6 +67,9 @@ type ShoppingCartOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider ShoppingCartClientProvider
 }
 
 // NewShoppingCartOptions initializes a new ShoppingCartOptions value
@@ -55,6 +86,14 @@ func (opts *ShoppingCartOptions) WithErrorConverter(errorConverter func(error) e
 // Filter is used to filter registered xns activities or customize their name
 func (opts *ShoppingCartOptions) WithFilter(filter func(string) string) *ShoppingCartOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a ShoppingCartClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterShoppingCartActivities may be nil.
+func (opts *ShoppingCartOptions) WithClientProvider(provider ShoppingCartClientProvider) *ShoppingCartOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -80,12 +119,26 @@ func (opts *ShoppingCartOptions) filterActivity(name string) string {
 // shoppingCartOptions is a reference to the ShoppingCartOptions initialized at registration
 var shoppingCartOptions *ShoppingCartOptions
 
-// RegisterShoppingCartActivities registers example.shoppingcart.v1.ShoppingCart cross-namespace activities
+// RegisterShoppingCartActivities registers example.shoppingcart.v1.ShoppingCart cross-namespace activities using a static client. When a
+// clientProvider is configured via NewShoppingCartOptions, the client argument may be nil.
 func RegisterShoppingCartActivities(r worker.ActivityRegistry, c v1.ShoppingCartClient, options ...*ShoppingCartOptions) {
+	// default to a provider that always returns the given static client
+	provider := ShoppingCartClientProvider(func(ctx context.Context, _ *ShoppingCartClientProviderInput) (v1.ShoppingCartClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterShoppingCartActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterShoppingCartActivitiesWithClientProvider registers example.shoppingcart.v1.ShoppingCart cross-namespace activities, using the given ShoppingCartClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterShoppingCartActivitiesWithClientProvider(r worker.ActivityRegistry, provider ShoppingCartClientProvider, options ...*ShoppingCartOptions) {
 	if shoppingCartOptions == nil && len(options) > 0 && options[0] != nil {
 		shoppingCartOptions = options[0]
 	}
-	a := &shoppingCartActivities{c}
+	a := &shoppingCartActivities{provider}
 	if name := shoppingCartOptions.filterActivity("example.shoppingcart.v1.ShoppingCart.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -1200,12 +1253,21 @@ func CancelShoppingCartWorkflowAsync(ctx workflow.Context, workflowID string, ru
 
 // shoppingCartActivities provides activities that can be used to interact with a(n) ShoppingCart service's workflow, queries, signals, and updates across namespaces
 type shoppingCartActivities struct {
-	client v1.ShoppingCartClient
+	getClient ShoppingCartClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *shoppingCartActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return shoppingCartOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetShoppingCart retrieves a(n) example.shoppingcart.v1.ShoppingCart workflow via an activity
@@ -1215,9 +1277,18 @@ func (a *shoppingCartActivities) GetShoppingCart(ctx context.Context, input *xns
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart.GetShoppingCart",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, shoppingCartOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetShoppingCart(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetShoppingCart(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1281,6 +1352,15 @@ func (a *shoppingCartActivities) ShoppingCart(ctx context.Context, input *xnsv1.
 		))
 	}
 
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, shoppingCartOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1289,7 +1369,7 @@ func (a *shoppingCartActivities) ShoppingCart(ctx context.Context, input *xnsv1.
 		defer cancel()
 	}
 	var run v1.ShoppingCartRun
-	run, err = a.client.ShoppingCartAsync(actx, &req, v1.NewShoppingCartOptions().WithStartWorkflowOptions(
+	run, err = c.ShoppingCartAsync(actx, &req, v1.NewShoppingCartOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1380,6 +1460,15 @@ func (a *shoppingCartActivities) ShoppingCartWithUpdateCart(ctx context.Context,
 		))
 	}
 
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart.ShoppingCartWithUpdateCart",
+		Requests:     []proto.Message{&req, &update},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, shoppingCartOptions.convertError(err)
+	}
+
 	// unmarshal workflow and update options
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
@@ -1394,8 +1483,8 @@ func (a *shoppingCartActivities) ShoppingCartWithUpdateCart(ctx context.Context,
 		} else if workflowID == "" || runID == "" || updateID == "" {
 			return nil, shoppingCartOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
 		}
-		run = a.client.GetShoppingCart(ctx, workflowID, runID)
-		handle, err = a.client.GetUpdateCart(ctx, client.GetWorkflowUpdateHandleOptions{
+		run = c.GetShoppingCart(ctx, workflowID, runID)
+		handle, err = c.GetUpdateCart(ctx, client.GetWorkflowUpdateHandleOptions{
 			RunID:      runID,
 			UpdateID:   updateID,
 			WorkflowID: workflowID,
@@ -1405,7 +1494,7 @@ func (a *shoppingCartActivities) ShoppingCartWithUpdateCart(ctx context.Context,
 		}
 	} else {
 		// execute update with start asynchronously
-		handle, run, err = a.client.ShoppingCartWithUpdateCartAsync(
+		handle, run, err = c.ShoppingCartWithUpdateCartAsync(
 			ctx,
 			&req,
 			&update,
@@ -1497,10 +1586,20 @@ func (a *shoppingCartActivities) Describe(ctx context.Context, input *xnsv1.Quer
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart.Describe",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, shoppingCartOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.Describe(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		resp, err = c.Describe(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -1533,10 +1632,20 @@ func (a *shoppingCartActivities) Checkout(ctx context.Context, input *xnsv1.Sign
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart.Checkout",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return shoppingCartOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.Checkout(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.Checkout(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -1560,6 +1669,15 @@ func (a *shoppingCartActivities) Checkout(ctx context.Context, input *xnsv1.Sign
 
 // UpdateCart executes a(n) example.shoppingcart.v1.ShoppingCart.UpdateCart update via an activity
 func (a *shoppingCartActivities) UpdateCart(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.UpdateCartOutput, err error) {
+	c, err := a.getClient(ctx, &ShoppingCartClientProviderInput{
+		ActivityName: "example.shoppingcart.v1.ShoppingCart.UpdateCart",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, shoppingCartOptions.convertError(err)
+	}
+
 	var handle v1.UpdateCartHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -1569,7 +1687,7 @@ func (a *shoppingCartActivities) UpdateCart(ctx context.Context, input *xnsv1.Up
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetUpdateCart(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetUpdateCart(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -1592,7 +1710,7 @@ func (a *shoppingCartActivities) UpdateCart(ctx context.Context, input *xnsv1.Up
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.UpdateCartAsync(
+		handle, err = c.UpdateCartAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),

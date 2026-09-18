@@ -25,10 +25,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// SimpleClientProviderInput describes a(n) mycompany.simple.Simple xns activity invocation and is provided to a SimpleClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type SimpleClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "mycompany.simple.Simple.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *SimpleClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// SimpleClientProvider selects the SimpleClient used to execute a given xns activity invocation
+type SimpleClientProvider func(ctx context.Context, in *SimpleClientProviderInput) (v1.SimpleClient, error)
 
 // SimpleOptions is used to configure mycompany.simple.Simple xns activity registration
 type SimpleOptions struct {
@@ -40,6 +68,9 @@ type SimpleOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider SimpleClientProvider
 }
 
 // NewSimpleOptions initializes a new SimpleOptions value
@@ -56,6 +87,14 @@ func (opts *SimpleOptions) WithErrorConverter(errorConverter func(error) error) 
 // Filter is used to filter registered xns activities or customize their name
 func (opts *SimpleOptions) WithFilter(filter func(string) string) *SimpleOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a SimpleClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterSimpleActivities may be nil.
+func (opts *SimpleOptions) WithClientProvider(provider SimpleClientProvider) *SimpleOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -81,12 +120,26 @@ func (opts *SimpleOptions) filterActivity(name string) string {
 // simpleOptions is a reference to the SimpleOptions initialized at registration
 var simpleOptions *SimpleOptions
 
-// RegisterSimpleActivities registers mycompany.simple.Simple cross-namespace activities
+// RegisterSimpleActivities registers mycompany.simple.Simple cross-namespace activities using a static client. When a
+// clientProvider is configured via NewSimpleOptions, the client argument may be nil.
 func RegisterSimpleActivities(r worker.ActivityRegistry, c v1.SimpleClient, options ...*SimpleOptions) {
+	// default to a provider that always returns the given static client
+	provider := SimpleClientProvider(func(ctx context.Context, _ *SimpleClientProviderInput) (v1.SimpleClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterSimpleActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterSimpleActivitiesWithClientProvider registers mycompany.simple.Simple cross-namespace activities, using the given SimpleClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterSimpleActivitiesWithClientProvider(r worker.ActivityRegistry, provider SimpleClientProvider, options ...*SimpleOptions) {
 	if simpleOptions == nil && len(options) > 0 && options[0] != nil {
 		simpleOptions = options[0]
 	}
-	a := &simpleActivities{c}
+	a := &simpleActivities{provider}
 	if name := simpleOptions.filterActivity("mycompany.simple.Simple.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -3778,12 +3831,21 @@ func CancelSimpleWorkflowAsync(ctx workflow.Context, workflowID string, runID st
 
 // simpleActivities provides activities that can be used to interact with a(n) Simple service's workflow, queries, signals, and updates across namespaces
 type simpleActivities struct {
-	client v1.SimpleClient
+	getClient SimpleClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *simpleActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetExampleContinueAsNew retrieves a(n) mycompany.simple.Simple.ExampleContinueAsNew workflow via an activity
@@ -3793,9 +3855,18 @@ func (a *simpleActivities) GetExampleContinueAsNew(ctx context.Context, input *x
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.GetExampleContinueAsNew",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetExampleContinueAsNew(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetExampleContinueAsNew(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -3859,6 +3930,15 @@ func (a *simpleActivities) ExampleContinueAsNew(ctx context.Context, input *xnsv
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.ExampleContinueAsNew",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -3867,7 +3947,7 @@ func (a *simpleActivities) ExampleContinueAsNew(ctx context.Context, input *xnsv
 		defer cancel()
 	}
 	var run v1.ExampleContinueAsNewRun
-	run, err = a.client.ExampleContinueAsNewAsync(actx, &req, v1.NewExampleContinueAsNewOptions().WithStartWorkflowOptions(
+	run, err = c.ExampleContinueAsNewAsync(actx, &req, v1.NewExampleContinueAsNewOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -3943,9 +4023,18 @@ func (a *simpleActivities) GetSomeWorkflow1(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.GetSomeWorkflow1",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomeWorkflow1(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomeWorkflow1(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -4009,6 +4098,15 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.SomeWorkflow1",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -4017,7 +4115,7 @@ func (a *simpleActivities) SomeWorkflow1(ctx context.Context, input *xnsv1.Workf
 		defer cancel()
 	}
 	var run v1.SomeWorkflow1Run
-	run, err = a.client.SomeWorkflow1Async(actx, &req, v1.NewSomeWorkflow1Options().WithStartWorkflowOptions(
+	run, err = c.SomeWorkflow1Async(actx, &req, v1.NewSomeWorkflow1Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -4108,6 +4206,15 @@ func (a *simpleActivities) SomeWorkflow1WithSomeUpdate2(ctx context.Context, inp
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeWorkflow1WithSomeUpdate2",
+		Requests:     []proto.Message{&req, &update},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// unmarshal workflow and update options
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
@@ -4122,8 +4229,8 @@ func (a *simpleActivities) SomeWorkflow1WithSomeUpdate2(ctx context.Context, inp
 		} else if workflowID == "" || runID == "" || updateID == "" {
 			return nil, simpleOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
 		}
-		run = a.client.GetSomeWorkflow1(ctx, workflowID, runID)
-		handle, err = a.client.GetSomeUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
+		run = c.GetSomeWorkflow1(ctx, workflowID, runID)
+		handle, err = c.GetSomeUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
 			RunID:      runID,
 			UpdateID:   updateID,
 			WorkflowID: workflowID,
@@ -4133,7 +4240,7 @@ func (a *simpleActivities) SomeWorkflow1WithSomeUpdate2(ctx context.Context, inp
 		}
 	} else {
 		// execute update with start asynchronously
-		handle, run, err = a.client.SomeWorkflow1WithSomeUpdate2Async(
+		handle, run, err = c.SomeWorkflow1WithSomeUpdate2Async(
 			ctx,
 			&req,
 			&update,
@@ -4221,9 +4328,18 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.GetSomeWorkflow2",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomeWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomeWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -4277,6 +4393,14 @@ func (a *simpleActivities) GetSomeWorkflow2(ctx context.Context, input *xnsv1.Ge
 
 // SomeWorkflow2 executes a(n) mycompany.simple.SomeWorkflow2 workflow via an activity
 func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.SomeWorkflow2",
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -4285,7 +4409,7 @@ func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.Workf
 		defer cancel()
 	}
 	var run v1.SomeWorkflow2Run
-	run, err = a.client.SomeWorkflow2Async(actx, v1.NewSomeWorkflow2Options().WithStartWorkflowOptions(
+	run, err = c.SomeWorkflow2Async(actx, v1.NewSomeWorkflow2Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -4356,6 +4480,14 @@ func (a *simpleActivities) SomeWorkflow2(ctx context.Context, input *xnsv1.Workf
 
 // SomeWorkflow2WithSomeSignal1 sends a(n) mycompany.simple.Simple.SomeSignal1 signal to a(n) mycompany.simple.SomeWorkflow2 workflow via an activity
 func (a *simpleActivities) SomeWorkflow2WithSomeSignal1(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeWorkflow2WithSomeSignal1",
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -4364,7 +4496,7 @@ func (a *simpleActivities) SomeWorkflow2WithSomeSignal1(ctx context.Context, inp
 		defer cancel()
 	}
 	var run v1.SomeWorkflow2Run
-	run, err = a.client.SomeWorkflow2WithSomeSignal1Async(actx, v1.NewSomeWorkflow2Options().WithStartWorkflowOptions(
+	run, err = c.SomeWorkflow2WithSomeSignal1Async(actx, v1.NewSomeWorkflow2Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -4445,6 +4577,15 @@ func (a *simpleActivities) SomeWorkflow2WithSomeUpdate1(ctx context.Context, inp
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeWorkflow2WithSomeUpdate1",
+		Requests:     []proto.Message{&update},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// unmarshal workflow and update options
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
@@ -4459,8 +4600,8 @@ func (a *simpleActivities) SomeWorkflow2WithSomeUpdate1(ctx context.Context, inp
 		} else if workflowID == "" || runID == "" || updateID == "" {
 			return nil, simpleOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
 		}
-		run = a.client.GetSomeWorkflow2(ctx, workflowID, runID)
-		handle, err = a.client.GetSomeUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
+		run = c.GetSomeWorkflow2(ctx, workflowID, runID)
+		handle, err = c.GetSomeUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
 			RunID:      runID,
 			UpdateID:   updateID,
 			WorkflowID: workflowID,
@@ -4470,7 +4611,7 @@ func (a *simpleActivities) SomeWorkflow2WithSomeUpdate1(ctx context.Context, inp
 		}
 	} else {
 		// execute update with start asynchronously
-		handle, run, err = a.client.SomeWorkflow2WithSomeUpdate1Async(
+		handle, run, err = c.SomeWorkflow2WithSomeUpdate1Async(
 			ctx,
 			&update,
 			v1.NewSomeWorkflow2WithSomeUpdate1Options().WithSomeWorkflow2Options(
@@ -4561,9 +4702,18 @@ func (a *simpleActivities) GetSomeWorkflow3(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.GetSomeWorkflow3",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomeWorkflow3(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomeWorkflow3(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -4631,6 +4781,15 @@ func (a *simpleActivities) SomeWorkflow3(ctx context.Context, input *xnsv1.Workf
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeWorkflow3",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -4639,7 +4798,7 @@ func (a *simpleActivities) SomeWorkflow3(ctx context.Context, input *xnsv1.Workf
 		defer cancel()
 	}
 	var run v1.SomeWorkflow3Run
-	run, err = a.client.SomeWorkflow3Async(actx, &req, v1.NewSomeWorkflow3Options().WithStartWorkflowOptions(
+	run, err = c.SomeWorkflow3Async(actx, &req, v1.NewSomeWorkflow3Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -4734,6 +4893,15 @@ func (a *simpleActivities) SomeWorkflow3WithSomeSignal2(ctx context.Context, inp
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeWorkflow3WithSomeSignal2",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -4742,7 +4910,7 @@ func (a *simpleActivities) SomeWorkflow3WithSomeSignal2(ctx context.Context, inp
 		defer cancel()
 	}
 	var run v1.SomeWorkflow3Run
-	run, err = a.client.SomeWorkflow3WithSomeSignal2Async(actx, &req, &signal, v1.NewSomeWorkflow3Options().WithStartWorkflowOptions(
+	run, err = c.SomeWorkflow3WithSomeSignal2Async(actx, &req, &signal, v1.NewSomeWorkflow3Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -4818,9 +4986,18 @@ func (a *simpleActivities) GetSomeWorkflow4(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.GetSomeWorkflow4",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomeWorkflow4(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomeWorkflow4(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -4884,6 +5061,15 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 		))
 	}
 
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeWorkflow4",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -4892,7 +5078,7 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 		defer cancel()
 	}
 	var run v1.SomeWorkflow4Run
-	run, err = a.client.SomeWorkflow4Async(actx, &req, v1.NewSomeWorkflow4Options().WithStartWorkflowOptions(
+	run, err = c.SomeWorkflow4Async(actx, &req, v1.NewSomeWorkflow4Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -4963,10 +5149,19 @@ func (a *simpleActivities) SomeWorkflow4(ctx context.Context, input *xnsv1.Workf
 
 // SomeQuery1 executes a(n) mycompany.simple.Simple.SomeQuery1 query via an activity
 func (a *simpleActivities) SomeQuery1(ctx context.Context, input *xnsv1.QueryRequest) (resp *v1.SomeQuery1Response, err error) {
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeQuery1",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.SomeQuery1(ctx, input.GetWorkflowId(), input.GetRunId())
+		resp, err = c.SomeQuery1(ctx, input.GetWorkflowId(), input.GetRunId())
 		close(doneCh)
 	}()
 
@@ -4999,10 +5194,20 @@ func (a *simpleActivities) SomeQuery2(ctx context.Context, input *xnsv1.QueryReq
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeQuery2",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.SomeQuery2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		resp, err = c.SomeQuery2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -5026,10 +5231,19 @@ func (a *simpleActivities) SomeQuery2(ctx context.Context, input *xnsv1.QueryReq
 
 // SomeSignal1 executes a(n) mycompany.simple.Simple.SomeSignal1 signal via an activity
 func (a *simpleActivities) SomeSignal1(ctx context.Context, input *xnsv1.SignalRequest) (err error) {
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeSignal1",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SomeSignal1(ctx, input.GetWorkflowId(), input.GetRunId())
+		err = c.SomeSignal1(ctx, input.GetWorkflowId(), input.GetRunId())
 		close(doneCh)
 	}()
 
@@ -5062,10 +5276,20 @@ func (a *simpleActivities) SomeSignal2(ctx context.Context, input *xnsv1.SignalR
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeSignal2",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SomeSignal2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SomeSignal2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -5098,10 +5322,20 @@ func (a *simpleActivities) SomeSignal3(ctx context.Context, input *xnsv1.SignalR
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeSignal3",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return simpleOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SomeSignal3(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SomeSignal3(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -5125,6 +5359,15 @@ func (a *simpleActivities) SomeSignal3(ctx context.Context, input *xnsv1.SignalR
 
 // SomeUpdate1 executes a(n) mycompany.simple.Simple.SomeUpdate1 update via an activity
 func (a *simpleActivities) SomeUpdate1(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.SomeUpdate1Response, err error) {
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeUpdate1",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	var handle v1.SomeUpdate1Handle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -5134,7 +5377,7 @@ func (a *simpleActivities) SomeUpdate1(ctx context.Context, input *xnsv1.UpdateR
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetSomeUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetSomeUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -5157,7 +5400,7 @@ func (a *simpleActivities) SomeUpdate1(ctx context.Context, input *xnsv1.UpdateR
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.SomeUpdate1Async(
+		handle, err = c.SomeUpdate1Async(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
@@ -5197,6 +5440,15 @@ func (a *simpleActivities) SomeUpdate1(ctx context.Context, input *xnsv1.UpdateR
 
 // SomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update via an activity
 func (a *simpleActivities) SomeUpdate2(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.SomeUpdate2Response, err error) {
+	c, err := a.getClient(ctx, &SimpleClientProviderInput{
+		ActivityName: "mycompany.simple.Simple.SomeUpdate2",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, simpleOptions.convertError(err)
+	}
+
 	var handle v1.SomeUpdate2Handle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -5206,7 +5458,7 @@ func (a *simpleActivities) SomeUpdate2(ctx context.Context, input *xnsv1.UpdateR
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetSomeUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetSomeUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -5229,7 +5481,7 @@ func (a *simpleActivities) SomeUpdate2(ctx context.Context, input *xnsv1.UpdateR
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.SomeUpdate2Async(
+		handle, err = c.SomeUpdate2Async(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
@@ -5267,6 +5519,33 @@ func (a *simpleActivities) SomeUpdate2(ctx context.Context, input *xnsv1.UpdateR
 	}
 }
 
+// OtherClientProviderInput describes a(n) mycompany.simple.Other xns activity invocation and is provided to a OtherClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type OtherClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "mycompany.simple.Other.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *OtherClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// OtherClientProvider selects the OtherClient used to execute a given xns activity invocation
+type OtherClientProvider func(ctx context.Context, in *OtherClientProviderInput) (v1.OtherClient, error)
+
 // OtherOptions is used to configure mycompany.simple.Other xns activity registration
 type OtherOptions struct {
 	// errorConverter is used to customize error
@@ -5277,6 +5556,9 @@ type OtherOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider OtherClientProvider
 }
 
 // NewOtherOptions initializes a new OtherOptions value
@@ -5293,6 +5575,14 @@ func (opts *OtherOptions) WithErrorConverter(errorConverter func(error) error) *
 // Filter is used to filter registered xns activities or customize their name
 func (opts *OtherOptions) WithFilter(filter func(string) string) *OtherOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a OtherClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterOtherActivities may be nil.
+func (opts *OtherOptions) WithClientProvider(provider OtherClientProvider) *OtherOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -5318,12 +5608,26 @@ func (opts *OtherOptions) filterActivity(name string) string {
 // otherOptions is a reference to the OtherOptions initialized at registration
 var otherOptions *OtherOptions
 
-// RegisterOtherActivities registers mycompany.simple.Other cross-namespace activities
+// RegisterOtherActivities registers mycompany.simple.Other cross-namespace activities using a static client. When a
+// clientProvider is configured via NewOtherOptions, the client argument may be nil.
 func RegisterOtherActivities(r worker.ActivityRegistry, c v1.OtherClient, options ...*OtherOptions) {
+	// default to a provider that always returns the given static client
+	provider := OtherClientProvider(func(ctx context.Context, _ *OtherClientProviderInput) (v1.OtherClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterOtherActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterOtherActivitiesWithClientProvider registers mycompany.simple.Other cross-namespace activities, using the given OtherClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterOtherActivitiesWithClientProvider(r worker.ActivityRegistry, provider OtherClientProvider, options ...*OtherOptions) {
 	if otherOptions == nil && len(options) > 0 && options[0] != nil {
 		otherOptions = options[0]
 	}
-	a := &otherActivities{c}
+	a := &otherActivities{provider}
 	if name := otherOptions.filterActivity("mycompany.simple.Other.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -6526,12 +6830,21 @@ func CancelOtherWorkflowAsync(ctx workflow.Context, workflowID string, runID str
 
 // otherActivities provides activities that can be used to interact with a(n) Other service's workflow, queries, signals, and updates across namespaces
 type otherActivities struct {
-	client v1.OtherClient
+	getClient OtherClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *otherActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return otherOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetOtherWorkflow retrieves a(n) mycompany.simple.Other.OtherWorkflow workflow via an activity
@@ -6541,9 +6854,18 @@ func (a *otherActivities) GetOtherWorkflow(ctx context.Context, input *xnsv1.Get
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.GetOtherWorkflow",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, otherOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetOtherWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetOtherWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -6607,6 +6929,15 @@ func (a *otherActivities) OtherWorkflow(ctx context.Context, input *xnsv1.Workfl
 		))
 	}
 
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.OtherWorkflow",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, otherOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -6615,7 +6946,7 @@ func (a *otherActivities) OtherWorkflow(ctx context.Context, input *xnsv1.Workfl
 		defer cancel()
 	}
 	var run v1.OtherWorkflowRun
-	run, err = a.client.OtherWorkflowAsync(actx, &req, v1.NewOtherWorkflowOptions().WithStartWorkflowOptions(
+	run, err = c.OtherWorkflowAsync(actx, &req, v1.NewOtherWorkflowOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -6691,9 +7022,18 @@ func (a *otherActivities) GetOtherWorkflow2(ctx context.Context, input *xnsv1.Ge
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.GetOtherWorkflow2",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, otherOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetOtherWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetOtherWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -6757,6 +7097,15 @@ func (a *otherActivities) OtherWorkflow2(ctx context.Context, input *xnsv1.Workf
 		))
 	}
 
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.OtherWorkflow2",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, otherOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -6765,7 +7114,7 @@ func (a *otherActivities) OtherWorkflow2(ctx context.Context, input *xnsv1.Workf
 		defer cancel()
 	}
 	var run v1.OtherWorkflow2Run
-	run, err = a.client.OtherWorkflow2Async(actx, &req, v1.NewOtherWorkflow2Options().WithStartWorkflowOptions(
+	run, err = c.OtherWorkflow2Async(actx, &req, v1.NewOtherWorkflow2Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -6836,10 +7185,19 @@ func (a *otherActivities) OtherWorkflow2(ctx context.Context, input *xnsv1.Workf
 
 // OtherQuery executes a(n) mycompany.simple.Other.OtherQuery query via an activity
 func (a *otherActivities) OtherQuery(ctx context.Context, input *xnsv1.QueryRequest) (resp *v1.OtherQueryResponse, err error) {
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.OtherQuery",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, otherOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.OtherQuery(ctx, input.GetWorkflowId(), input.GetRunId())
+		resp, err = c.OtherQuery(ctx, input.GetWorkflowId(), input.GetRunId())
 		close(doneCh)
 	}()
 
@@ -6872,10 +7230,20 @@ func (a *otherActivities) OtherSignal(ctx context.Context, input *xnsv1.SignalRe
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.OtherSignal",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return otherOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.OtherSignal(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.OtherSignal(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -6899,6 +7267,15 @@ func (a *otherActivities) OtherSignal(ctx context.Context, input *xnsv1.SignalRe
 
 // OtherUpdate executes a(n) mycompany.simple.Other.OtherUpdate update via an activity
 func (a *otherActivities) OtherUpdate(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.OtherUpdateResponse, err error) {
+	c, err := a.getClient(ctx, &OtherClientProviderInput{
+		ActivityName: "mycompany.simple.Other.OtherUpdate",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, otherOptions.convertError(err)
+	}
+
 	var handle v1.OtherUpdateHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -6908,7 +7285,7 @@ func (a *otherActivities) OtherUpdate(ctx context.Context, input *xnsv1.UpdateRe
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetOtherUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetOtherUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -6931,7 +7308,7 @@ func (a *otherActivities) OtherUpdate(ctx context.Context, input *xnsv1.UpdateRe
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.OtherUpdateAsync(
+		handle, err = c.OtherUpdateAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
@@ -6969,6 +7346,33 @@ func (a *otherActivities) OtherUpdate(ctx context.Context, input *xnsv1.UpdateRe
 	}
 }
 
+// IgnoredClientProviderInput describes a(n) mycompany.simple.Ignored xns activity invocation and is provided to a IgnoredClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type IgnoredClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "mycompany.simple.Ignored.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *IgnoredClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// IgnoredClientProvider selects the IgnoredClient used to execute a given xns activity invocation
+type IgnoredClientProvider func(ctx context.Context, in *IgnoredClientProviderInput) (v1.IgnoredClient, error)
+
 // IgnoredOptions is used to configure mycompany.simple.Ignored xns activity registration
 type IgnoredOptions struct {
 	// errorConverter is used to customize error
@@ -6979,6 +7383,9 @@ type IgnoredOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider IgnoredClientProvider
 }
 
 // NewIgnoredOptions initializes a new IgnoredOptions value
@@ -6995,6 +7402,14 @@ func (opts *IgnoredOptions) WithErrorConverter(errorConverter func(error) error)
 // Filter is used to filter registered xns activities or customize their name
 func (opts *IgnoredOptions) WithFilter(filter func(string) string) *IgnoredOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a IgnoredClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterIgnoredActivities may be nil.
+func (opts *IgnoredOptions) WithClientProvider(provider IgnoredClientProvider) *IgnoredOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -7020,12 +7435,26 @@ func (opts *IgnoredOptions) filterActivity(name string) string {
 // ignoredOptions is a reference to the IgnoredOptions initialized at registration
 var ignoredOptions *IgnoredOptions
 
-// RegisterIgnoredActivities registers mycompany.simple.Ignored cross-namespace activities
+// RegisterIgnoredActivities registers mycompany.simple.Ignored cross-namespace activities using a static client. When a
+// clientProvider is configured via NewIgnoredOptions, the client argument may be nil.
 func RegisterIgnoredActivities(r worker.ActivityRegistry, c v1.IgnoredClient, options ...*IgnoredOptions) {
+	// default to a provider that always returns the given static client
+	provider := IgnoredClientProvider(func(ctx context.Context, _ *IgnoredClientProviderInput) (v1.IgnoredClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterIgnoredActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterIgnoredActivitiesWithClientProvider registers mycompany.simple.Ignored cross-namespace activities, using the given IgnoredClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterIgnoredActivitiesWithClientProvider(r worker.ActivityRegistry, provider IgnoredClientProvider, options ...*IgnoredOptions) {
 	if ignoredOptions == nil && len(options) > 0 && options[0] != nil {
 		ignoredOptions = options[0]
 	}
-	a := &ignoredActivities{c}
+	a := &ignoredActivities{provider}
 	if name := ignoredOptions.filterActivity("mycompany.simple.Ignored.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -7417,12 +7846,21 @@ func CancelIgnoredWorkflowAsync(ctx workflow.Context, workflowID string, runID s
 
 // ignoredActivities provides activities that can be used to interact with a(n) Ignored service's workflow, queries, signals, and updates across namespaces
 type ignoredActivities struct {
-	client v1.IgnoredClient
+	getClient IgnoredClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *ignoredActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &IgnoredClientProviderInput{
+		ActivityName: "mycompany.simple.Ignored.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return ignoredOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetWhat retrieves a(n) mycompany.simple.Ignored.What workflow via an activity
@@ -7432,9 +7870,18 @@ func (a *ignoredActivities) GetWhat(ctx context.Context, input *xnsv1.GetWorkflo
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &IgnoredClientProviderInput{
+		ActivityName: "mycompany.simple.Ignored.GetWhat",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return ignoredOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetWhat(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetWhat(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -7498,6 +7945,15 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 		))
 	}
 
+	c, err := a.getClient(ctx, &IgnoredClientProviderInput{
+		ActivityName: "mycompany.simple.Ignored.What",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return ignoredOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -7506,7 +7962,7 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 		defer cancel()
 	}
 	var run v1.WhatRun
-	run, err = a.client.WhatAsync(actx, &req, v1.NewWhatOptions().WithStartWorkflowOptions(
+	run, err = c.WhatAsync(actx, &req, v1.NewWhatOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -7575,6 +8031,33 @@ func (a *ignoredActivities) What(ctx context.Context, input *xnsv1.WorkflowReque
 	}
 }
 
+// DeprecatedClientProviderInput describes a(n) mycompany.simple.Deprecated xns activity invocation and is provided to a DeprecatedClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type DeprecatedClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "mycompany.simple.Deprecated.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *DeprecatedClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// DeprecatedClientProvider selects the DeprecatedClient used to execute a given xns activity invocation
+type DeprecatedClientProvider func(ctx context.Context, in *DeprecatedClientProviderInput) (v1.DeprecatedClient, error)
+
 // DeprecatedOptions is used to configure mycompany.simple.Deprecated xns activity registration
 type DeprecatedOptions struct {
 	// errorConverter is used to customize error
@@ -7585,6 +8068,9 @@ type DeprecatedOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider DeprecatedClientProvider
 }
 
 // NewDeprecatedOptions initializes a new DeprecatedOptions value
@@ -7601,6 +8087,14 @@ func (opts *DeprecatedOptions) WithErrorConverter(errorConverter func(error) err
 // Filter is used to filter registered xns activities or customize their name
 func (opts *DeprecatedOptions) WithFilter(filter func(string) string) *DeprecatedOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a DeprecatedClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterDeprecatedActivities may be nil.
+func (opts *DeprecatedOptions) WithClientProvider(provider DeprecatedClientProvider) *DeprecatedOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -7626,12 +8120,26 @@ func (opts *DeprecatedOptions) filterActivity(name string) string {
 // deprecatedOptions is a reference to the DeprecatedOptions initialized at registration
 var deprecatedOptions *DeprecatedOptions
 
-// RegisterDeprecatedActivities registers mycompany.simple.Deprecated cross-namespace activities
+// RegisterDeprecatedActivities registers mycompany.simple.Deprecated cross-namespace activities using a static client. When a
+// clientProvider is configured via NewDeprecatedOptions, the client argument may be nil.
 func RegisterDeprecatedActivities(r worker.ActivityRegistry, c v1.DeprecatedClient, options ...*DeprecatedOptions) {
+	// default to a provider that always returns the given static client
+	provider := DeprecatedClientProvider(func(ctx context.Context, _ *DeprecatedClientProviderInput) (v1.DeprecatedClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterDeprecatedActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterDeprecatedActivitiesWithClientProvider registers mycompany.simple.Deprecated cross-namespace activities, using the given DeprecatedClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterDeprecatedActivitiesWithClientProvider(r worker.ActivityRegistry, provider DeprecatedClientProvider, options ...*DeprecatedOptions) {
 	if deprecatedOptions == nil && len(options) > 0 && options[0] != nil {
 		deprecatedOptions = options[0]
 	}
-	a := &deprecatedActivities{c}
+	a := &deprecatedActivities{provider}
 	if name := deprecatedOptions.filterActivity("mycompany.simple.Deprecated.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -9832,12 +10340,21 @@ func CancelDeprecatedWorkflowAsync(ctx workflow.Context, workflowID string, runI
 
 // deprecatedActivities provides activities that can be used to interact with a(n) Deprecated service's workflow, queries, signals, and updates across namespaces
 type deprecatedActivities struct {
-	client v1.DeprecatedClient
+	getClient DeprecatedClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *deprecatedActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return deprecatedOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetSomeDeprecatedWorkflow1 retrieves a(n) mycompany.simple.Deprecated.SomeDeprecatedWorkflow1 workflow via an activity
@@ -9851,9 +10368,18 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow1(ctx context.Context, i
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.GetSomeDeprecatedWorkflow1",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomeDeprecatedWorkflow1(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomeDeprecatedWorkflow1(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -9921,6 +10447,15 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1(ctx context.Context, inpu
 		))
 	}
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedWorkflow1",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -9929,7 +10464,7 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1(ctx context.Context, inpu
 		defer cancel()
 	}
 	var run v1.SomeDeprecatedWorkflow1Run
-	run, err = a.client.SomeDeprecatedWorkflow1Async(actx, &req, v1.NewSomeDeprecatedWorkflow1Options().WithStartWorkflowOptions(
+	run, err = c.SomeDeprecatedWorkflow1Async(actx, &req, v1.NewSomeDeprecatedWorkflow1Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -10025,6 +10560,15 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1(
 		))
 	}
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -10033,7 +10577,7 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1(
 		defer cancel()
 	}
 	var run v1.SomeDeprecatedWorkflow1Run
-	run, err = a.client.SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1Async(actx, &req, &signal, v1.NewSomeDeprecatedWorkflow1Options().WithStartWorkflowOptions(
+	run, err = c.SomeDeprecatedWorkflow1WithSomeDeprecatedSignal1Async(actx, &req, &signal, v1.NewSomeDeprecatedWorkflow1Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -10113,9 +10657,18 @@ func (a *deprecatedActivities) GetSomeDeprecatedWorkflow2(ctx context.Context, i
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.GetSomeDeprecatedWorkflow2",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomeDeprecatedWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomeDeprecatedWorkflow2(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -10183,6 +10736,15 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2(ctx context.Context, inpu
 		))
 	}
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedWorkflow2",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -10191,7 +10753,7 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2(ctx context.Context, inpu
 		defer cancel()
 	}
 	var run v1.SomeDeprecatedWorkflow2Run
-	run, err = a.client.SomeDeprecatedWorkflow2Async(actx, &req, v1.NewSomeDeprecatedWorkflow2Options().WithStartWorkflowOptions(
+	run, err = c.SomeDeprecatedWorkflow2Async(actx, &req, v1.NewSomeDeprecatedWorkflow2Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -10287,6 +10849,15 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2(
 		))
 	}
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -10295,7 +10866,7 @@ func (a *deprecatedActivities) SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2(
 		defer cancel()
 	}
 	var run v1.SomeDeprecatedWorkflow2Run
-	run, err = a.client.SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2Async(actx, &req, &signal, v1.NewSomeDeprecatedWorkflow2Options().WithStartWorkflowOptions(
+	run, err = c.SomeDeprecatedWorkflow2WithSomeDeprecatedSignal2Async(actx, &req, &signal, v1.NewSomeDeprecatedWorkflow2Options().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -10379,10 +10950,20 @@ func (a *deprecatedActivities) SomeDeprecatedQuery1(ctx context.Context, input *
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedQuery1",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.SomeDeprecatedQuery1(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		resp, err = c.SomeDeprecatedQuery1(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -10419,10 +11000,20 @@ func (a *deprecatedActivities) SomeDeprecatedQuery2(ctx context.Context, input *
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedQuery2",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		resp, err = a.client.SomeDeprecatedQuery2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		resp, err = c.SomeDeprecatedQuery2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -10459,10 +11050,20 @@ func (a *deprecatedActivities) SomeDeprecatedSignal1(ctx context.Context, input 
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedSignal1",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return deprecatedOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SomeDeprecatedSignal1(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SomeDeprecatedSignal1(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -10499,10 +11100,20 @@ func (a *deprecatedActivities) SomeDeprecatedSignal2(ctx context.Context, input 
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedSignal2",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return deprecatedOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SomeDeprecatedSignal2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SomeDeprecatedSignal2(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -10530,6 +11141,15 @@ func (a *deprecatedActivities) SomeDeprecatedSignal2(ctx context.Context, input 
 func (a *deprecatedActivities) SomeDeprecatedUpdate1(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.SomeDeprecatedMessage, err error) {
 	activity.GetLogger(ctx).Warn("use of deprecated update detected", "update", v1.SomeDeprecatedUpdate1UpdateName)
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedUpdate1",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	var handle v1.SomeDeprecatedUpdate1Handle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -10539,7 +11159,7 @@ func (a *deprecatedActivities) SomeDeprecatedUpdate1(ctx context.Context, input 
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetSomeDeprecatedUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetSomeDeprecatedUpdate1(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -10562,7 +11182,7 @@ func (a *deprecatedActivities) SomeDeprecatedUpdate1(ctx context.Context, input 
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.SomeDeprecatedUpdate1Async(
+		handle, err = c.SomeDeprecatedUpdate1Async(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
@@ -10606,6 +11226,15 @@ func (a *deprecatedActivities) SomeDeprecatedUpdate1(ctx context.Context, input 
 func (a *deprecatedActivities) SomeDeprecatedUpdate2(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.SomeDeprecatedMessage, err error) {
 	activity.GetLogger(ctx).Warn("use of deprecated update detected", "update", v1.SomeDeprecatedUpdate2UpdateName)
 
+	c, err := a.getClient(ctx, &DeprecatedClientProviderInput{
+		ActivityName: "mycompany.simple.Deprecated.SomeDeprecatedUpdate2",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, deprecatedOptions.convertError(err)
+	}
+
 	var handle v1.SomeDeprecatedUpdate2Handle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -10615,7 +11244,7 @@ func (a *deprecatedActivities) SomeDeprecatedUpdate2(ctx context.Context, input 
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetSomeDeprecatedUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetSomeDeprecatedUpdate2(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -10638,7 +11267,7 @@ func (a *deprecatedActivities) SomeDeprecatedUpdate2(ctx context.Context, input 
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.SomeDeprecatedUpdate2Async(
+		handle, err = c.SomeDeprecatedUpdate2Async(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),

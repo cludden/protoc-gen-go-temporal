@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// HybridClientProviderInput describes a(n) test.opaque.Hybrid xns activity invocation and is provided to a HybridClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type HybridClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.opaque.Hybrid.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *HybridClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// HybridClientProvider selects the HybridClient used to execute a given xns activity invocation
+type HybridClientProvider func(ctx context.Context, in *HybridClientProviderInput) (opaque.HybridClient, error)
 
 // HybridOptions is used to configure test.opaque.Hybrid xns activity registration
 type HybridOptions struct {
@@ -37,6 +65,9 @@ type HybridOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider HybridClientProvider
 }
 
 // NewHybridOptions initializes a new HybridOptions value
@@ -53,6 +84,14 @@ func (opts *HybridOptions) WithErrorConverter(errorConverter func(error) error) 
 // Filter is used to filter registered xns activities or customize their name
 func (opts *HybridOptions) WithFilter(filter func(string) string) *HybridOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a HybridClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterHybridActivities may be nil.
+func (opts *HybridOptions) WithClientProvider(provider HybridClientProvider) *HybridOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *HybridOptions) filterActivity(name string) string {
 // hybridOptions is a reference to the HybridOptions initialized at registration
 var hybridOptions *HybridOptions
 
-// RegisterHybridActivities registers test.opaque.Hybrid cross-namespace activities
+// RegisterHybridActivities registers test.opaque.Hybrid cross-namespace activities using a static client. When a
+// clientProvider is configured via NewHybridOptions, the client argument may be nil.
 func RegisterHybridActivities(r worker.ActivityRegistry, c opaque.HybridClient, options ...*HybridOptions) {
+	// default to a provider that always returns the given static client
+	provider := HybridClientProvider(func(ctx context.Context, _ *HybridClientProviderInput) (opaque.HybridClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterHybridActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterHybridActivitiesWithClientProvider registers test.opaque.Hybrid cross-namespace activities, using the given HybridClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterHybridActivitiesWithClientProvider(r worker.ActivityRegistry, provider HybridClientProvider, options ...*HybridOptions) {
 	if hybridOptions == nil && len(options) > 0 && options[0] != nil {
 		hybridOptions = options[0]
 	}
-	a := &hybridActivities{c}
+	a := &hybridActivities{provider}
 	if name := hybridOptions.filterActivity("test.opaque.Hybrid.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -786,12 +839,21 @@ func CancelHybridWorkflowAsync(ctx workflow.Context, workflowID string, runID st
 
 // hybridActivities provides activities that can be used to interact with a(n) Hybrid service's workflow, queries, signals, and updates across namespaces
 type hybridActivities struct {
-	client opaque.HybridClient
+	getClient HybridClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *hybridActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &HybridClientProviderInput{
+		ActivityName: "test.opaque.Hybrid.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return hybridOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetPutHybridExample retrieves a(n) test.opaque.Hybrid.PutHybridExample workflow via an activity
@@ -801,9 +863,18 @@ func (a *hybridActivities) GetPutHybridExample(ctx context.Context, input *xnsv1
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &HybridClientProviderInput{
+		ActivityName: "test.opaque.Hybrid.GetPutHybridExample",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, hybridOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetPutHybridExample(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetPutHybridExample(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -867,6 +938,15 @@ func (a *hybridActivities) PutHybridExample(ctx context.Context, input *xnsv1.Wo
 		))
 	}
 
+	c, err := a.getClient(ctx, &HybridClientProviderInput{
+		ActivityName: "test.opaque.Hybrid.PutHybridExample",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, hybridOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -875,7 +955,7 @@ func (a *hybridActivities) PutHybridExample(ctx context.Context, input *xnsv1.Wo
 		defer cancel()
 	}
 	var run opaque.PutHybridExampleRun
-	run, err = a.client.PutHybridExampleAsync(actx, &req, opaque.NewPutHybridExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutHybridExampleAsync(actx, &req, opaque.NewPutHybridExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -966,6 +1046,15 @@ func (a *hybridActivities) PutHybridExampleWithSignalHybrid(ctx context.Context,
 		))
 	}
 
+	c, err := a.getClient(ctx, &HybridClientProviderInput{
+		ActivityName: "test.opaque.Hybrid.PutHybridExampleWithSignalHybrid",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, hybridOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -974,7 +1063,7 @@ func (a *hybridActivities) PutHybridExampleWithSignalHybrid(ctx context.Context,
 		defer cancel()
 	}
 	var run opaque.PutHybridExampleRun
-	run, err = a.client.PutHybridExampleWithSignalHybridAsync(actx, &req, &signal, opaque.NewPutHybridExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutHybridExampleWithSignalHybridAsync(actx, &req, &signal, opaque.NewPutHybridExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1054,10 +1143,20 @@ func (a *hybridActivities) SignalHybrid(ctx context.Context, input *xnsv1.Signal
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &HybridClientProviderInput{
+		ActivityName: "test.opaque.Hybrid.SignalHybrid",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return hybridOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SignalHybrid(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SignalHybrid(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 

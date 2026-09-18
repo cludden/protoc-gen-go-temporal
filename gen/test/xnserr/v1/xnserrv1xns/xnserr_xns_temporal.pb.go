@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// ServerClientProviderInput describes a(n) test.xnserr.v1.Server xns activity invocation and is provided to a ServerClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type ServerClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.xnserr.v1.Server.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *ServerClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// ServerClientProvider selects the ServerClient used to execute a given xns activity invocation
+type ServerClientProvider func(ctx context.Context, in *ServerClientProviderInput) (v1.ServerClient, error)
 
 // ServerOptions is used to configure test.xnserr.v1.Server xns activity registration
 type ServerOptions struct {
@@ -37,6 +65,9 @@ type ServerOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider ServerClientProvider
 }
 
 // NewServerOptions initializes a new ServerOptions value
@@ -53,6 +84,14 @@ func (opts *ServerOptions) WithErrorConverter(errorConverter func(error) error) 
 // Filter is used to filter registered xns activities or customize their name
 func (opts *ServerOptions) WithFilter(filter func(string) string) *ServerOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a ServerClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterServerActivities may be nil.
+func (opts *ServerOptions) WithClientProvider(provider ServerClientProvider) *ServerOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *ServerOptions) filterActivity(name string) string {
 // serverOptions is a reference to the ServerOptions initialized at registration
 var serverOptions *ServerOptions
 
-// RegisterServerActivities registers test.xnserr.v1.Server cross-namespace activities
+// RegisterServerActivities registers test.xnserr.v1.Server cross-namespace activities using a static client. When a
+// clientProvider is configured via NewServerOptions, the client argument may be nil.
 func RegisterServerActivities(r worker.ActivityRegistry, c v1.ServerClient, options ...*ServerOptions) {
+	// default to a provider that always returns the given static client
+	provider := ServerClientProvider(func(ctx context.Context, _ *ServerClientProviderInput) (v1.ServerClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterServerActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterServerActivitiesWithClientProvider registers test.xnserr.v1.Server cross-namespace activities, using the given ServerClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterServerActivitiesWithClientProvider(r worker.ActivityRegistry, provider ServerClientProvider, options ...*ServerOptions) {
 	if serverOptions == nil && len(options) > 0 && options[0] != nil {
 		serverOptions = options[0]
 	}
-	a := &serverActivities{c}
+	a := &serverActivities{provider}
 	if name := serverOptions.filterActivity("test.xnserr.v1.Server.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -463,12 +516,21 @@ func CancelServerWorkflowAsync(ctx workflow.Context, workflowID string, runID st
 
 // serverActivities provides activities that can be used to interact with a(n) Server service's workflow, queries, signals, and updates across namespaces
 type serverActivities struct {
-	client v1.ServerClient
+	getClient ServerClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *serverActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &ServerClientProviderInput{
+		ActivityName: "test.xnserr.v1.Server.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return serverOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetSleep retrieves a(n) test.xnserr.v1.Server.Sleep workflow via an activity
@@ -478,9 +540,18 @@ func (a *serverActivities) GetSleep(ctx context.Context, input *xnsv1.GetWorkflo
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ServerClientProviderInput{
+		ActivityName: "test.xnserr.v1.Server.GetSleep",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return serverOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSleep(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSleep(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -544,6 +615,15 @@ func (a *serverActivities) Sleep(ctx context.Context, input *xnsv1.WorkflowReque
 		))
 	}
 
+	c, err := a.getClient(ctx, &ServerClientProviderInput{
+		ActivityName: "test.xnserr.v1.Server.Sleep",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return serverOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -552,7 +632,7 @@ func (a *serverActivities) Sleep(ctx context.Context, input *xnsv1.WorkflowReque
 		defer cancel()
 	}
 	var run v1.SleepRun
-	run, err = a.client.SleepAsync(actx, &req, v1.NewSleepOptions().WithStartWorkflowOptions(
+	run, err = c.SleepAsync(actx, &req, v1.NewSleepOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -621,6 +701,33 @@ func (a *serverActivities) Sleep(ctx context.Context, input *xnsv1.WorkflowReque
 	}
 }
 
+// ClientClientProviderInput describes a(n) test.xnserr.v1.Client xns activity invocation and is provided to a ClientClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type ClientClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.xnserr.v1.Client.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *ClientClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// ClientClientProvider selects the ClientClient used to execute a given xns activity invocation
+type ClientClientProvider func(ctx context.Context, in *ClientClientProviderInput) (v1.ClientClient, error)
+
 // ClientOptions is used to configure test.xnserr.v1.Client xns activity registration
 type ClientOptions struct {
 	// errorConverter is used to customize error
@@ -631,6 +738,9 @@ type ClientOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider ClientClientProvider
 }
 
 // NewClientOptions initializes a new ClientOptions value
@@ -647,6 +757,14 @@ func (opts *ClientOptions) WithErrorConverter(errorConverter func(error) error) 
 // Filter is used to filter registered xns activities or customize their name
 func (opts *ClientOptions) WithFilter(filter func(string) string) *ClientOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a ClientClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterClientActivities may be nil.
+func (opts *ClientOptions) WithClientProvider(provider ClientClientProvider) *ClientOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -672,12 +790,26 @@ func (opts *ClientOptions) filterActivity(name string) string {
 // clientOptions is a reference to the ClientOptions initialized at registration
 var clientOptions *ClientOptions
 
-// RegisterClientActivities registers test.xnserr.v1.Client cross-namespace activities
+// RegisterClientActivities registers test.xnserr.v1.Client cross-namespace activities using a static client. When a
+// clientProvider is configured via NewClientOptions, the client argument may be nil.
 func RegisterClientActivities(r worker.ActivityRegistry, c v1.ClientClient, options ...*ClientOptions) {
+	// default to a provider that always returns the given static client
+	provider := ClientClientProvider(func(ctx context.Context, _ *ClientClientProviderInput) (v1.ClientClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterClientActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterClientActivitiesWithClientProvider registers test.xnserr.v1.Client cross-namespace activities, using the given ClientClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterClientActivitiesWithClientProvider(r worker.ActivityRegistry, provider ClientClientProvider, options ...*ClientOptions) {
 	if clientOptions == nil && len(options) > 0 && options[0] != nil {
 		clientOptions = options[0]
 	}
-	a := &clientActivities{c}
+	a := &clientActivities{provider}
 	if name := clientOptions.filterActivity("test.xnserr.v1.Client.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -1057,12 +1189,21 @@ func CancelClientWorkflowAsync(ctx workflow.Context, workflowID string, runID st
 
 // clientActivities provides activities that can be used to interact with a(n) Client service's workflow, queries, signals, and updates across namespaces
 type clientActivities struct {
-	client v1.ClientClient
+	getClient ClientClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *clientActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &ClientClientProviderInput{
+		ActivityName: "test.xnserr.v1.Client.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return clientOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetCallSleep retrieves a(n) test.xnserr.v1.Client.CallSleep workflow via an activity
@@ -1072,9 +1213,18 @@ func (a *clientActivities) GetCallSleep(ctx context.Context, input *xnsv1.GetWor
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ClientClientProviderInput{
+		ActivityName: "test.xnserr.v1.Client.GetCallSleep",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return clientOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetCallSleep(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetCallSleep(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1138,6 +1288,15 @@ func (a *clientActivities) CallSleep(ctx context.Context, input *xnsv1.WorkflowR
 		))
 	}
 
+	c, err := a.getClient(ctx, &ClientClientProviderInput{
+		ActivityName: "test.xnserr.v1.Client.CallSleep",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return clientOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1146,7 +1305,7 @@ func (a *clientActivities) CallSleep(ctx context.Context, input *xnsv1.WorkflowR
 		defer cancel()
 	}
 	var run v1.CallSleepRun
-	run, err = a.client.CallSleepAsync(actx, &req, v1.NewCallSleepOptions().WithStartWorkflowOptions(
+	run, err = c.CallSleepAsync(actx, &req, v1.NewCallSleepOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
