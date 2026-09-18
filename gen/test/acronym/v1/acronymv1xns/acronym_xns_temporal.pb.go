@@ -23,10 +23,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// AWSClientProviderInput describes a(n) test.acronym.v1.AWS xns activity invocation and is provided to a AWSClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type AWSClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.acronym.v1.AWS.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *AWSClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// AWSClientProvider selects the AWSClient used to execute a given xns activity invocation
+type AWSClientProvider func(ctx context.Context, in *AWSClientProviderInput) (v1.AWSClient, error)
 
 // AWSOptions is used to configure test.acronym.v1.AWS xns activity registration
 type AWSOptions struct {
@@ -38,6 +66,9 @@ type AWSOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider AWSClientProvider
 }
 
 // NewAWSOptions initializes a new AWSOptions value
@@ -54,6 +85,14 @@ func (opts *AWSOptions) WithErrorConverter(errorConverter func(error) error) *AW
 // Filter is used to filter registered xns activities or customize their name
 func (opts *AWSOptions) WithFilter(filter func(string) string) *AWSOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a AWSClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterAWSActivities may be nil.
+func (opts *AWSOptions) WithClientProvider(provider AWSClientProvider) *AWSOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -79,12 +118,26 @@ func (opts *AWSOptions) filterActivity(name string) string {
 // awsOptions is a reference to the AWSOptions initialized at registration
 var awsOptions *AWSOptions
 
-// RegisterAWSActivities registers test.acronym.v1.AWS cross-namespace activities
+// RegisterAWSActivities registers test.acronym.v1.AWS cross-namespace activities using a static client. When a
+// clientProvider is configured via NewAWSOptions, the client argument may be nil.
 func RegisterAWSActivities(r worker.ActivityRegistry, c v1.AWSClient, options ...*AWSOptions) {
+	// default to a provider that always returns the given static client
+	provider := AWSClientProvider(func(ctx context.Context, _ *AWSClientProviderInput) (v1.AWSClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterAWSActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterAWSActivitiesWithClientProvider registers test.acronym.v1.AWS cross-namespace activities, using the given AWSClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterAWSActivitiesWithClientProvider(r worker.ActivityRegistry, provider AWSClientProvider, options ...*AWSOptions) {
 	if awsOptions == nil && len(options) > 0 && options[0] != nil {
 		awsOptions = options[0]
 	}
-	a := &awsActivities{c}
+	a := &awsActivities{provider}
 	if name := awsOptions.filterActivity("test.acronym.v1.AWS.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -1557,12 +1610,21 @@ func CancelAWSWorkflowAsync(ctx workflow.Context, workflowID string, runID strin
 
 // awsActivities provides activities that can be used to interact with a(n) AWS service's workflow, queries, signals, and updates across namespaces
 type awsActivities struct {
-	client v1.AWSClient
+	getClient AWSClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *awsActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return awsOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetManageAWS retrieves a(n) test.acronym.v1.AWS.ManageAWS workflow via an activity
@@ -1572,9 +1634,18 @@ func (a *awsActivities) GetManageAWS(ctx context.Context, input *xnsv1.GetWorkfl
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.GetManageAWS",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetManageAWS(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetManageAWS(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1638,6 +1709,15 @@ func (a *awsActivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequ
 		))
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.ManageAWS",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1646,7 +1726,7 @@ func (a *awsActivities) ManageAWS(ctx context.Context, input *xnsv1.WorkflowRequ
 		defer cancel()
 	}
 	var run v1.ManageAWSRun
-	run, err = a.client.ManageAWSAsync(actx, &req, v1.NewManageAWSOptions().WithStartWorkflowOptions(
+	run, err = c.ManageAWSAsync(actx, &req, v1.NewManageAWSOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1722,9 +1802,18 @@ func (a *awsActivities) GetManageAWSResource(ctx context.Context, input *xnsv1.G
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.GetManageAWSResource",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetManageAWSResource(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetManageAWSResource(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1788,6 +1877,15 @@ func (a *awsActivities) ManageAWSResource(ctx context.Context, input *xnsv1.Work
 		))
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.ManageAWSResource",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1796,7 +1894,7 @@ func (a *awsActivities) ManageAWSResource(ctx context.Context, input *xnsv1.Work
 		defer cancel()
 	}
 	var run v1.ManageAWSResourceRun
-	run, err = a.client.ManageAWSResourceAsync(actx, &req, v1.NewManageAWSResourceOptions().WithStartWorkflowOptions(
+	run, err = c.ManageAWSResourceAsync(actx, &req, v1.NewManageAWSResourceOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1872,9 +1970,18 @@ func (a *awsActivities) GetSomethingV1FooBar(ctx context.Context, input *xnsv1.G
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.GetSomethingV1FooBar",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomethingV1FooBar(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomethingV1FooBar(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1938,6 +2045,15 @@ func (a *awsActivities) SomethingV1FooBar(ctx context.Context, input *xnsv1.Work
 		))
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.SomethingV1FooBar",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1946,7 +2062,7 @@ func (a *awsActivities) SomethingV1FooBar(ctx context.Context, input *xnsv1.Work
 		defer cancel()
 	}
 	var run v1.SomethingV1FooBarRun
-	run, err = a.client.SomethingV1FooBarAsync(actx, &req, v1.NewSomethingV1FooBarOptions().WithStartWorkflowOptions(
+	run, err = c.SomethingV1FooBarAsync(actx, &req, v1.NewSomethingV1FooBarOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -2022,9 +2138,18 @@ func (a *awsActivities) GetSomethingV2FooBar(ctx context.Context, input *xnsv1.G
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.GetSomethingV2FooBar",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetSomethingV2FooBar(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetSomethingV2FooBar(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -2088,6 +2213,15 @@ func (a *awsActivities) SomethingV2FooBar(ctx context.Context, input *xnsv1.Work
 		))
 	}
 
+	c, err := a.getClient(ctx, &AWSClientProviderInput{
+		ActivityName: "test.acronym.v1.AWS.SomethingV2FooBar",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, awsOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -2096,7 +2230,7 @@ func (a *awsActivities) SomethingV2FooBar(ctx context.Context, input *xnsv1.Work
 		defer cancel()
 	}
 	var run v1.SomethingV2FooBarRun
-	run, err = a.client.SomethingV2FooBarAsync(actx, &req, v1.NewSomethingV2FooBarOptions().WithStartWorkflowOptions(
+	run, err = c.SomethingV2FooBarAsync(actx, &req, v1.NewSomethingV2FooBarOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {

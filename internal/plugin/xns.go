@@ -17,6 +17,7 @@ import (
 
 const (
 	anypbPkg = "google.golang.org/protobuf/types/known/anypb"
+	protoPkg = "google.golang.org/protobuf/proto"
 	xnsv1Pkg = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/xns/v1"
 	xnsPkg   = "github.com/cludden/protoc-gen-go-temporal/pkg/xns"
 )
@@ -27,6 +28,14 @@ func (n *names) xnsActivities() string {
 
 func (n *names) xnsOptionsType() string {
 	return n.toCamel("%sOptions", n.Service.GoName)
+}
+
+func (n *names) xnsClientProviderType() string {
+	return n.toCamel("%sClientProvider", n.Service.GoName)
+}
+
+func (n *names) xnsClientProviderInputType() string {
+	return n.toCamel("%sClientProviderInput", n.Service.GoName)
 }
 
 func (n *names) xnsOptionsVar() string {
@@ -234,7 +243,7 @@ func (m *Manifest) genXNSActivities(f *j.File) {
 
 	f.Commentf("%s provides activities that can be used to interact with a(n) %s service's workflow, queries, signals, and updates across namespaces", typeName, m.GoName)
 	f.Type().Id(typeName).Struct(
-		j.Id("client").Qual(string(m.File.GoImportPath), m.toCamel("%sClient", m.GoName)),
+		j.Id("getClient").Id(m.Names().xnsClientProviderType()),
 	)
 
 	f.Comment("CancelWorkflow cancels an existing workflow execution")
@@ -249,11 +258,69 @@ func (m *Manifest) genXNSActivities(f *j.File) {
 			j.Id("runID").String(),
 		).
 		Error().
-		Block(
-			j.Return(
-				j.Id("a").Dot("client").Dot("CancelWorkflow").Call(j.Id("ctx"), j.Id("workflowID"), j.Id("runID")),
-			),
-		)
+		BlockFunc(func(g *j.Group) {
+			m.genXNSGetClient(g, fmt.Sprintf("%s.CancelWorkflow", m.Service.Desc.FullName()), j.Id("workflowID"), j.Id("runID"), nil)
+			g.Return(
+				j.Id("c").Dot("CancelWorkflow").Call(j.Id("ctx"), j.Id("workflowID"), j.Id("runID")),
+			)
+		})
+}
+
+// genXNSGetClient emits a statement block that resolves the client used to execute
+// the current xns activity invocation via the activities struct's clientProvider,
+// binding it to a local variable named "c". If the provider returns an error, the
+// activity returns early with the given zero return values followed by the converted
+// error. wfID and runID may be nil when unknown; requests holds the unmarshalled
+// request message(s) to expose to the provider.
+func (m *Manifest) genXNSGetClient(g *j.Group, activityName string, wfID, runID j.Code, requests []j.Code, zeroReturns ...j.Code) {
+	inputType := m.Names().xnsClientProviderInputType()
+	optionsVar := m.toLowerCamel("%sOptions", m.GoName)
+	g.List(j.Id("c"), j.Err()).Op(":=").Id("a").Dot("getClient").Call(
+		j.Id("ctx"),
+		j.Op("&").Id(inputType).Values(j.DictFunc(func(d j.Dict) {
+			d[j.Id("ActivityName")] = j.Lit(activityName)
+			if wfID != nil {
+				d[j.Id("WorkflowID")] = wfID
+			}
+			if runID != nil {
+				d[j.Id("RunID")] = runID
+			}
+			if len(requests) > 0 {
+				d[j.Id("Requests")] = j.Index().Qual(protoPkg, "Message").ValuesFunc(func(g *j.Group) {
+					for _, r := range requests {
+						g.Add(r)
+					}
+				})
+			}
+		})),
+	)
+	g.If(j.Err().Op("!=").Nil()).BlockFunc(func(g *j.Group) {
+		g.ReturnFunc(func(g *j.Group) {
+			for _, z := range zeroReturns {
+				g.Add(z)
+			}
+			g.Id(optionsVar).Dot("convertError").Call(j.Err())
+		})
+	})
+	g.Line()
+}
+
+// xnsRequestMessages returns a proto.Message reference (&name) for the given request
+// variable when include is true, for use as a ClientProviderInput.Requests element.
+func xnsRequestMessages(include bool, name string) []j.Code {
+	if !include {
+		return nil
+	}
+	return []j.Code{j.Op("&").Id(name)}
+}
+
+// xnsZeroReturns returns the leading zero return value(s) preceding the error return
+// for an xns activity method, i.e. a single nil when the method has an output value.
+func xnsZeroReturns(hasOutput bool) []j.Code {
+	if !hasOutput {
+		return nil
+	}
+	return []j.Code{j.Nil()}
 }
 
 func (m *Manifest) genXNSActivitiesQueryMethod(f *j.File, query protoreflect.FullName) {
@@ -305,6 +372,8 @@ func (m *Manifest) genXNSActivitiesQueryMethod(f *j.File, query protoreflect.Ful
 				)
 			}
 
+			m.genXNSGetClient(g, m.fqnForQuery(query), j.Id("input").Dot("GetWorkflowId").Call(), j.Id("input").Dot("GetRunId").Call(), xnsRequestMessages(hasInput, "req"), xnsZeroReturns(hasOutput)...)
+
 			g.Comment("execute signal in child goroutine")
 			g.Id("doneCh").Op(":=").Make(j.Chan().Struct())
 			g.Go().Func().Params().Block(
@@ -313,7 +382,7 @@ func (m *Manifest) genXNSActivitiesQueryMethod(f *j.File, query protoreflect.Ful
 						g.Id("resp")
 					}
 					g.Err()
-				}).Op("=").Id("a").Dot("client").Dot(methodName).CallFunc(func(g *j.Group) {
+				}).Op("=").Id("c").Dot(methodName).CallFunc(func(g *j.Group) {
 					g.Id("ctx")
 					g.Id("input").Dot("GetWorkflowId").Call()
 					g.Id("input").Dot("GetRunId").Call()
@@ -398,10 +467,12 @@ func (m *Manifest) genXNSActivitiesSignalMethod(f *j.File, signal protoreflect.F
 				)
 			}
 
+			m.genXNSGetClient(g, m.fqnForSignal(signal), j.Id("input").Dot("GetWorkflowId").Call(), j.Id("input").Dot("GetRunId").Call(), xnsRequestMessages(hasInput, "req"))
+
 			g.Comment("execute signal in child goroutine")
 			g.Id("doneCh").Op(":=").Make(j.Chan().Struct())
 			g.Go().Func().Params().Block(
-				j.Err().Op("=").Id("a").Dot("client").Dot(methodName).CallFunc(func(g *j.Group) {
+				j.Err().Op("=").Id("c").Dot(methodName).CallFunc(func(g *j.Group) {
 					g.Id("ctx")
 					g.Id("input").Dot("GetWorkflowId").Call()
 					g.Id("input").Dot("GetRunId").Call()
@@ -462,6 +533,7 @@ func (m *Manifest) genXNSActivitiesUpdateMethod(f *j.File, update protoreflect.F
 			if isDeprecated(method) {
 				g.Qual(activityPkg, "GetLogger").Call(j.Id("ctx")).Dot("Warn").Call(j.Lit("use of deprecated update detected"), j.Lit("update"), j.Qual(string(m.File.GoImportPath), m.toCamel("%sUpdateName", update))).Line()
 			}
+			m.genXNSGetClient(g, m.fqnForUpdate(update), j.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetWorkflowId").Call(), j.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetRunId").Call(), nil, xnsZeroReturns(hasOutput)...)
 			g.Var().Id("handle").Qual(string(m.File.GoImportPath), m.toCamel("%sHandle", update))
 			g.If(j.Qual(activityPkg, "HasHeartbeatDetails").Call(j.Id("ctx"))).Block(
 				j.Comment("extract update id from heartbeat details"),
@@ -479,7 +551,7 @@ func (m *Manifest) genXNSActivitiesUpdateMethod(f *j.File, update protoreflect.F
 				),
 				j.Line(),
 				j.Comment("retrieve handle for existing update"),
-				j.List(j.Id("handle"), j.Err()).Op("=").Id("a").Dot("client").Dot(m.toCamel("Get%s", update)).Call(
+				j.List(j.Id("handle"), j.Err()).Op("=").Id("c").Dot(m.toCamel("Get%s", update)).Call(
 					j.Id("ctx"),
 					j.Qual(clientPkg, "GetWorkflowUpdateHandleOptions").Custom(
 						multiLineValues,
@@ -527,7 +599,7 @@ func (m *Manifest) genXNSActivitiesUpdateMethod(f *j.File, update protoreflect.F
 				g.Id("uo").Dot("WaitForStage").Op("=").Qual(clientPkg, "WorkflowUpdateStageAccepted").Line()
 
 				g.Comment("initialize update execution")
-				g.List(j.Id("handle"), j.Err()).Op("=").Id("a").Dot("client").Dot(m.toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(g *j.Group) {
+				g.List(j.Id("handle"), j.Err()).Op("=").Id("c").Dot(m.toCamel("%sAsync", methodName)).CustomFunc(multiLineArgs, func(g *j.Group) {
 					g.Id("ctx")
 					g.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetWorkflowId").Call()
 					g.Id("input").Dot("GetUpdateWorkflowOptions").Call().Dot("GetRunId").Call()
@@ -699,6 +771,12 @@ func (m *Manifest) genXNSActivitiesUpdateWithStartMethod(f *j.File, workflow, up
 				g.Line()
 			}
 
+			// select the client used to execute this invocation
+			var uwsRequests []j.Code
+			uwsRequests = append(uwsRequests, xnsRequestMessages(hasWorkflowInput, "req")...)
+			uwsRequests = append(uwsRequests, xnsRequestMessages(hasUpdateInput, "update")...)
+			m.genXNSGetClient(g, fmt.Sprintf("%s.%s", string(m.Service.Desc.FullName()), methodName), j.Id("input").Dot("GetStartWorkflowOptions").Call().Dot("GetId").Call(), nil, uwsRequests, xnsZeroReturns(hasUpdateOutput)...)
+
 			// unmarshal workflow and update options
 			g.Comment("unmarshal workflow and update options")
 			g.Id("swo").Op(":=").Qual(xnsPkg, "UnmarshalStartWorkflowOptions").CallFunc(func(g *j.Group) {
@@ -755,8 +833,8 @@ func (m *Manifest) genXNSActivitiesUpdateWithStartMethod(f *j.File, workflow, up
 						})
 					})
 				})
-				g.Id("run").Op("=").Id("a").Dot("client").Dot(m.Names().clientWorkflowGet(workflow)).Call(j.Id("ctx"), j.Id("workflowID"), j.Id("runID"))
-				g.List(j.Id("handle"), j.Err()).Op("=").Id("a").Dot("client").Dot(m.Names().clientUpdateGet(update)).CallFunc(func(g *j.Group) {
+				g.Id("run").Op("=").Id("c").Dot(m.Names().clientWorkflowGet(workflow)).Call(j.Id("ctx"), j.Id("workflowID"), j.Id("runID"))
+				g.List(j.Id("handle"), j.Err()).Op("=").Id("c").Dot(m.Names().clientUpdateGet(update)).CallFunc(func(g *j.Group) {
 					g.Id("ctx")
 					g.Qual(clientPkg, "GetWorkflowUpdateHandleOptions").Values(j.DictFunc(func(d j.Dict) {
 						d[j.Id("WorkflowID")] = j.Id("workflowID")
@@ -778,7 +856,7 @@ func (m *Manifest) genXNSActivitiesUpdateWithStartMethod(f *j.File, workflow, up
 				})
 			}).Else().BlockFunc(func(g *j.Group) {
 				g.Comment("execute update with start asynchronously")
-				g.List(j.Id("handle"), j.Id("run"), j.Err()).Op("=").Id("a").Dot("client").Dot(asyncName).CustomFunc(multiLineArgs, func(g *j.Group) {
+				g.List(j.Id("handle"), j.Id("run"), j.Err()).Op("=").Id("c").Dot(asyncName).CustomFunc(multiLineArgs, func(g *j.Group) {
 					g.Id("ctx")
 					if hasWorkflowInput {
 						g.Op("&").Id("req")
@@ -1018,10 +1096,12 @@ func (m *Manifest) genXNSActivitiesWorkflowGetMethod(f *j.File, workflow protore
 			)
 			g.Line()
 
+			m.genXNSGetClient(g, fmt.Sprintf("%s.%s", string(m.Service.Desc.FullName()), get), j.Id("input").Dot("GetWorkflowId").Call(), j.Id("input").Dot("GetRunId").Call(), nil, xnsZeroReturns(hasWorkflowOutput)...)
+
 			m.debugActivity(g, "getting workflow", j.Lit("workflow_id"), j.Id("input").Dot("GetWorkflowId").Call(), j.Lit("run_id"), j.Id("input").Dot("GetRunId").Call())
 			g.List(j.Id("actx"), j.Id("cancel")).Op(":=").Qual("context", "WithCancel").Call(j.Qual("context", "Background").Call())
 			g.Defer().Id("cancel").Call()
-			g.Id("run").Op(":=").Id("a").Dot("client").Dot(clientGet).CallFunc(func(g *j.Group) {
+			g.Id("run").Op(":=").Id("c").Dot(clientGet).CallFunc(func(g *j.Group) {
 				g.Id("actx")
 				g.Id("input").Dot("GetWorkflowId").Call()
 				g.Id("input").Dot("GetRunId").Call()
@@ -1241,6 +1321,16 @@ func (m *Manifest) genXNSActivitiesWorkflowMethod(f *j.File, workflow, signal pr
 				).Line()
 			}
 
+			// select the client used to execute this invocation
+			workflowActivityName := m.fqnForWorkflow(workflow)
+			if signal.IsValid() {
+				workflowActivityName = fmt.Sprintf("%s.%s", string(m.Service.Desc.FullName()), methodName)
+			}
+			var workflowRequests []j.Code
+			workflowRequests = append(workflowRequests, xnsRequestMessages(hasInput, "req")...)
+			workflowRequests = append(workflowRequests, xnsRequestMessages(handlerInput, "signal")...)
+			m.genXNSGetClient(g, workflowActivityName, j.Id("input").Dot("GetStartWorkflowOptions").Call().Dot("GetId").Call(), nil, workflowRequests, xnsZeroReturns(hasOutput)...)
+
 			g.Comment("initialize workflow execution")
 			m.debugActivity(g, "starting workflow")
 			g.Id("actx").Op(":=").Id("ctx")
@@ -1250,7 +1340,7 @@ func (m *Manifest) genXNSActivitiesWorkflowMethod(f *j.File, workflow, signal pr
 				g.Defer().Id("cancel").Call()
 			})
 			g.Var().Id("run").Qual(string(m.File.GoImportPath), m.toCamel("%sRun", workflow))
-			g.List(j.Id("run"), j.Err()).Op("=").Id("a").Dot("client").Dot(clientMethodName).CallFunc(func(g *j.Group) {
+			g.List(j.Id("run"), j.Err()).Op("=").Id("c").Dot(clientMethodName).CallFunc(func(g *j.Group) {
 				g.Id("actx")
 				if hasInput {
 					g.Op("&").Id("req")
@@ -1462,6 +1552,50 @@ func (m *Manifest) genXNSCancelWorkflowFunction(f *j.File) {
 func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 	optionsTypeName := m.toCamel("%sOptions", m.GoName)
 	optionsName := m.toLowerCamel("%sOptions", m.GoName)
+	providerType := m.Names().xnsClientProviderType()
+	providerInputType := m.Names().xnsClientProviderInputType()
+	clientType := m.toCamel("%sClient", m.GoName)
+
+	f.Commentf("%s describes a(n) %s xns activity invocation and is provided to a %s so that a", providerInputType, string(m.Service.Desc.FullName()), providerType)
+	f.Commentf("client can be selected dynamically based on the calling context and request payload(s)")
+	f.Type().Id(providerInputType).Struct(
+		j.Comment("ActivityName is the fully-qualified name of the xns activity being executed,"),
+		j.Comment(`e.g. "`+string(m.Service.Desc.FullName())+`.CancelWorkflow"`),
+		j.Id("ActivityName").String(),
+		j.Comment("WorkflowID identifies the target workflow execution, when known"),
+		j.Id("WorkflowID").String(),
+		j.Comment("RunID identifies the target workflow run, when known"),
+		j.Id("RunID").String(),
+		j.Comment("Requests holds the unmarshalled request message(s) associated with the"),
+		j.Comment("invocation: zero for cancel/get, one for most operations, and two for the"),
+		j.Comment("signal-with-start and update-with-start variants"),
+		j.Id("Requests").Index().Qual(protoPkg, "Message"),
+	)
+
+	f.Commentf("Request returns the primary request message for the invocation, or nil when there is none")
+	f.Func().
+		Params(j.Id("in").Op("*").Id(providerInputType)).
+		Id("Request").
+		Params().
+		Qual(protoPkg, "Message").
+		Block(
+			j.If(j.Id("in").Op("==").Nil().Op("||").Len(j.Id("in").Dot("Requests")).Op("==").Lit(0)).Block(
+				j.Return(j.Nil()),
+			),
+			j.Return(j.Id("in").Dot("Requests").Index(j.Lit(0))),
+		)
+
+	f.Commentf("%s selects the %s used to execute a given xns activity invocation", providerType, clientType)
+	f.Type().Id(providerType).Func().
+		Params(
+			j.Id("ctx").Qual("context", "Context"),
+			j.Id("in").Op("*").Id(providerInputType),
+		).
+		Params(
+			j.Qual(string(m.File.GoImportPath), clientType),
+			j.Error(),
+		)
+
 	f.Commentf("%s is used to configure %s xns activity registration", optionsTypeName, string(m.Service.Desc.FullName()))
 	f.Type().Id(optionsTypeName).Struct(
 		j.Comment("errorConverter is used to customize error"),
@@ -1472,6 +1606,9 @@ func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 		j.Comment("2. a modified activity name, to override the original activity name"),
 		j.Comment("3. an empty string, to skip registration"),
 		j.Id("filter").Func().Params(j.String()).String(),
+		j.Comment("clientProvider is used to dynamically select the client used to execute an"),
+		j.Comment("xns activity based on the calling context and request payload(s)"),
+		j.Id("clientProvider").Id(providerType),
 	)
 
 	optionsConstructor := m.toCamel("New%sOptions", m.GoName)
@@ -1510,6 +1647,21 @@ func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 			j.Return(j.Id("opts")),
 		)
 
+	f.Commentf("WithClientProvider sets a %s used to dynamically select the client used to", providerType)
+	f.Comment("execute xns activities based on the calling context and request payload(s). When set,")
+	f.Commentf("the client argument to %s may be nil.", m.toCamel("Register%sActivities", m.GoName))
+	f.Func().
+		Params(j.Id("opts").Op("*").Id(optionsTypeName)).
+		Id("WithClientProvider").
+		Params(
+			j.Id("provider").Id(providerType),
+		).
+		Op("*").Id(optionsTypeName).
+		Block(
+			j.Id("opts").Dot("clientProvider").Op("=").Id("provider"),
+			j.Return(j.Id("opts")),
+		)
+
 	f.Comment("convertError is applied to all xns activity errors")
 	f.Func().
 		Params(j.Id("opts").Op("*").Id(optionsTypeName)).
@@ -1543,13 +1695,51 @@ func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 	f.Var().Id(optionsName).Op("*").Id(optionsTypeName)
 
 	funcName := m.toCamel("Register%sActivities", m.GoName)
-	f.Commentf("%s registers %s cross-namespace activities", funcName, string(m.Service.Desc.FullName()))
+	providerFuncName := m.toCamel("Register%sActivitiesWithClientProvider", m.GoName)
+
+	f.Commentf("%s registers %s cross-namespace activities using a static client. When a", funcName, string(m.Service.Desc.FullName()))
+	f.Commentf("clientProvider is configured via %s, the client argument may be nil.", m.toCamel("New%sOptions", m.GoName))
 	f.Func().
 		Id(funcName).
 		Params(
 			j.Id("r").Qual(workerPkg, "ActivityRegistry"),
-			j.Id("c").Qual(string(m.File.GoImportPath), m.toCamel("%sClient", m.GoName)),
-			j.Id("options").Op("...").Op("*").Id(m.toCamel("%sOptions", m.GoName)),
+			j.Id("c").Qual(string(m.File.GoImportPath), clientType),
+			j.Id("options").Op("...").Op("*").Id(optionsTypeName),
+		).
+		BlockFunc(func(g *j.Group) {
+			g.Comment("default to a provider that always returns the given static client")
+			g.Id("provider").Op(":=").Id(providerType).Parens(
+				j.Func().
+					Params(
+						j.Id("ctx").Qual("context", "Context"),
+						j.Id("_").Op("*").Id(providerInputType),
+					).
+					Params(
+						j.Qual(string(m.File.GoImportPath), clientType),
+						j.Error(),
+					).
+					Block(
+						j.Return(j.Id("c"), j.Nil()),
+					),
+			)
+			g.If(
+				j.Len(j.Id("options")).Op(">").Lit(0).Op("&&").
+					Id("options").Index(j.Lit(0)).Op("!=").Nil().Op("&&").
+					Id("options").Index(j.Lit(0)).Dot("clientProvider").Op("!=").Nil(),
+			).Block(
+				j.Id("provider").Op("=").Id("options").Index(j.Lit(0)).Dot("clientProvider"),
+			)
+			g.Id(providerFuncName).Call(j.Id("r"), j.Id("provider"), j.Id("options").Op("..."))
+		})
+
+	f.Commentf("%s registers %s cross-namespace activities, using the given %s to", providerFuncName, string(m.Service.Desc.FullName()), providerType)
+	f.Comment("dynamically select the client used to execute each activity invocation")
+	f.Func().
+		Id(providerFuncName).
+		Params(
+			j.Id("r").Qual(workerPkg, "ActivityRegistry"),
+			j.Id("provider").Id(providerType),
+			j.Id("options").Op("...").Op("*").Id(optionsTypeName),
 		).
 		BlockFunc(func(g *j.Group) {
 			g.If(j.Id(optionsName).Op("==").Nil().Op("&&").Len(j.Id("options")).Op(">").Lit(0).Op("&&").Id("options").Index(j.Lit(0)).Op("!=").Nil()).Block(
@@ -1557,7 +1747,7 @@ func (m *Manifest) genXNSRegisterActivities(f *j.File) {
 			)
 
 			g.Id("a").Op(":=").Op("&").Id(m.toLowerCamel("%sActivities", m.GoName)).Values(
-				j.Id("c"),
+				j.Id("provider"),
 			)
 
 			// register CancelWorkflow

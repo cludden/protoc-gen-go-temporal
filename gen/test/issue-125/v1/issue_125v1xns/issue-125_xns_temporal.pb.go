@@ -23,10 +23,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// Issue125ServiceClientProviderInput describes a(n) issue_125.v1.Issue125Service xns activity invocation and is provided to a Issue125ServiceClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type Issue125ServiceClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "issue_125.v1.Issue125Service.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *Issue125ServiceClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// Issue125ServiceClientProvider selects the Issue125ServiceClient used to execute a given xns activity invocation
+type Issue125ServiceClientProvider func(ctx context.Context, in *Issue125ServiceClientProviderInput) (v1.Issue125ServiceClient, error)
 
 // Issue125ServiceOptions is used to configure issue_125.v1.Issue125Service xns activity registration
 type Issue125ServiceOptions struct {
@@ -38,6 +66,9 @@ type Issue125ServiceOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider Issue125ServiceClientProvider
 }
 
 // NewIssue125ServiceOptions initializes a new Issue125ServiceOptions value
@@ -54,6 +85,14 @@ func (opts *Issue125ServiceOptions) WithErrorConverter(errorConverter func(error
 // Filter is used to filter registered xns activities or customize their name
 func (opts *Issue125ServiceOptions) WithFilter(filter func(string) string) *Issue125ServiceOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a Issue125ServiceClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterIssue125ServiceActivities may be nil.
+func (opts *Issue125ServiceOptions) WithClientProvider(provider Issue125ServiceClientProvider) *Issue125ServiceOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -79,12 +118,26 @@ func (opts *Issue125ServiceOptions) filterActivity(name string) string {
 // issue125ServiceOptions is a reference to the Issue125ServiceOptions initialized at registration
 var issue125ServiceOptions *Issue125ServiceOptions
 
-// RegisterIssue125ServiceActivities registers issue_125.v1.Issue125Service cross-namespace activities
+// RegisterIssue125ServiceActivities registers issue_125.v1.Issue125Service cross-namespace activities using a static client. When a
+// clientProvider is configured via NewIssue125ServiceOptions, the client argument may be nil.
 func RegisterIssue125ServiceActivities(r worker.ActivityRegistry, c v1.Issue125ServiceClient, options ...*Issue125ServiceOptions) {
+	// default to a provider that always returns the given static client
+	provider := Issue125ServiceClientProvider(func(ctx context.Context, _ *Issue125ServiceClientProviderInput) (v1.Issue125ServiceClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterIssue125ServiceActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterIssue125ServiceActivitiesWithClientProvider registers issue_125.v1.Issue125Service cross-namespace activities, using the given Issue125ServiceClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterIssue125ServiceActivitiesWithClientProvider(r worker.ActivityRegistry, provider Issue125ServiceClientProvider, options ...*Issue125ServiceOptions) {
 	if issue125ServiceOptions == nil && len(options) > 0 && options[0] != nil {
 		issue125ServiceOptions = options[0]
 	}
-	a := &issue125ServiceActivities{c}
+	a := &issue125ServiceActivities{provider}
 	if name := issue125ServiceOptions.filterActivity("issue_125.v1.Issue125Service.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -883,12 +936,21 @@ func CancelIssue125ServiceWorkflowAsync(ctx workflow.Context, workflowID string,
 
 // issue125ServiceActivities provides activities that can be used to interact with a(n) Issue125Service service's workflow, queries, signals, and updates across namespaces
 type issue125ServiceActivities struct {
-	client v1.Issue125ServiceClient
+	getClient Issue125ServiceClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *issue125ServiceActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &Issue125ServiceClientProviderInput{
+		ActivityName: "issue_125.v1.Issue125Service.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return issue125ServiceOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetFoo retrieves a(n) issue_125.v1.Issue125Service.Foo workflow via an activity
@@ -898,9 +960,18 @@ func (a *issue125ServiceActivities) GetFoo(ctx context.Context, input *xnsv1.Get
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &Issue125ServiceClientProviderInput{
+		ActivityName: "issue_125.v1.Issue125Service.GetFoo",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, issue125ServiceOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -964,6 +1035,15 @@ func (a *issue125ServiceActivities) Foo(ctx context.Context, input *xnsv1.Workfl
 		))
 	}
 
+	c, err := a.getClient(ctx, &Issue125ServiceClientProviderInput{
+		ActivityName: "issue_125.v1.Issue125Service.Foo",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, issue125ServiceOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -972,7 +1052,7 @@ func (a *issue125ServiceActivities) Foo(ctx context.Context, input *xnsv1.Workfl
 		defer cancel()
 	}
 	var run v1.FooRun
-	run, err = a.client.FooAsync(actx, &req, v1.NewFooOptions().WithStartWorkflowOptions(
+	run, err = c.FooAsync(actx, &req, v1.NewFooOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1043,6 +1123,15 @@ func (a *issue125ServiceActivities) Foo(ctx context.Context, input *xnsv1.Workfl
 
 // Bar executes a(n) issue_125.v1.Issue125Service.Bar update via an activity
 func (a *issue125ServiceActivities) Bar(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.BarOutput, err error) {
+	c, err := a.getClient(ctx, &Issue125ServiceClientProviderInput{
+		ActivityName: "issue_125.v1.Issue125Service.Bar",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, issue125ServiceOptions.convertError(err)
+	}
+
 	var handle v1.BarHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -1052,7 +1141,7 @@ func (a *issue125ServiceActivities) Bar(ctx context.Context, input *xnsv1.Update
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetBar(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetBar(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -1075,7 +1164,7 @@ func (a *issue125ServiceActivities) Bar(ctx context.Context, input *xnsv1.Update
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.BarAsync(
+		handle, err = c.BarAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
@@ -1115,6 +1204,15 @@ func (a *issue125ServiceActivities) Bar(ctx context.Context, input *xnsv1.Update
 
 // Baz executes a(n) issue_125.v1.Issue125Service.Baz update via an activity
 func (a *issue125ServiceActivities) Baz(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.BazOutput, err error) {
+	c, err := a.getClient(ctx, &Issue125ServiceClientProviderInput{
+		ActivityName: "issue_125.v1.Issue125Service.Baz",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, issue125ServiceOptions.convertError(err)
+	}
+
 	var handle v1.BazHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -1124,7 +1222,7 @@ func (a *issue125ServiceActivities) Baz(ctx context.Context, input *xnsv1.Update
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetBaz(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetBaz(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -1147,7 +1245,7 @@ func (a *issue125ServiceActivities) Baz(ctx context.Context, input *xnsv1.Update
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.BazAsync(
+		handle, err = c.BazAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),

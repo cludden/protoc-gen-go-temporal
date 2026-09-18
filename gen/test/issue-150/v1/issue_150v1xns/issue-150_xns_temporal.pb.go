@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// Issue150ServiceClientProviderInput describes a(n) issue_150.v1.Issue150Service xns activity invocation and is provided to a Issue150ServiceClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type Issue150ServiceClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "issue_150.v1.Issue150Service.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *Issue150ServiceClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// Issue150ServiceClientProvider selects the Issue150ServiceClient used to execute a given xns activity invocation
+type Issue150ServiceClientProvider func(ctx context.Context, in *Issue150ServiceClientProviderInput) (v1.Issue150ServiceClient, error)
 
 // Issue150ServiceOptions is used to configure issue_150.v1.Issue150Service xns activity registration
 type Issue150ServiceOptions struct {
@@ -37,6 +65,9 @@ type Issue150ServiceOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider Issue150ServiceClientProvider
 }
 
 // NewIssue150ServiceOptions initializes a new Issue150ServiceOptions value
@@ -53,6 +84,14 @@ func (opts *Issue150ServiceOptions) WithErrorConverter(errorConverter func(error
 // Filter is used to filter registered xns activities or customize their name
 func (opts *Issue150ServiceOptions) WithFilter(filter func(string) string) *Issue150ServiceOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a Issue150ServiceClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterIssue150ServiceActivities may be nil.
+func (opts *Issue150ServiceOptions) WithClientProvider(provider Issue150ServiceClientProvider) *Issue150ServiceOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *Issue150ServiceOptions) filterActivity(name string) string {
 // issue150ServiceOptions is a reference to the Issue150ServiceOptions initialized at registration
 var issue150ServiceOptions *Issue150ServiceOptions
 
-// RegisterIssue150ServiceActivities registers issue_150.v1.Issue150Service cross-namespace activities
+// RegisterIssue150ServiceActivities registers issue_150.v1.Issue150Service cross-namespace activities using a static client. When a
+// clientProvider is configured via NewIssue150ServiceOptions, the client argument may be nil.
 func RegisterIssue150ServiceActivities(r worker.ActivityRegistry, c v1.Issue150ServiceClient, options ...*Issue150ServiceOptions) {
+	// default to a provider that always returns the given static client
+	provider := Issue150ServiceClientProvider(func(ctx context.Context, _ *Issue150ServiceClientProviderInput) (v1.Issue150ServiceClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterIssue150ServiceActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterIssue150ServiceActivitiesWithClientProvider registers issue_150.v1.Issue150Service cross-namespace activities, using the given Issue150ServiceClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterIssue150ServiceActivitiesWithClientProvider(r worker.ActivityRegistry, provider Issue150ServiceClientProvider, options ...*Issue150ServiceOptions) {
 	if issue150ServiceOptions == nil && len(options) > 0 && options[0] != nil {
 		issue150ServiceOptions = options[0]
 	}
-	a := &issue150ServiceActivities{c}
+	a := &issue150ServiceActivities{provider}
 	if name := issue150ServiceOptions.filterActivity("issue_150.v1.Issue150Service.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -464,12 +517,21 @@ func CancelIssue150ServiceWorkflowAsync(ctx workflow.Context, workflowID string,
 
 // issue150ServiceActivities provides activities that can be used to interact with a(n) Issue150Service service's workflow, queries, signals, and updates across namespaces
 type issue150ServiceActivities struct {
-	client v1.Issue150ServiceClient
+	getClient Issue150ServiceClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *issue150ServiceActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &Issue150ServiceClientProviderInput{
+		ActivityName: "issue_150.v1.Issue150Service.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return issue150ServiceOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetExplicitPriority retrieves a(n) issue_150.v1.Issue150Service.ExplicitPriority workflow via an activity
@@ -479,9 +541,18 @@ func (a *issue150ServiceActivities) GetExplicitPriority(ctx context.Context, inp
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &Issue150ServiceClientProviderInput{
+		ActivityName: "issue_150.v1.Issue150Service.GetExplicitPriority",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, issue150ServiceOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetExplicitPriority(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetExplicitPriority(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -545,6 +616,15 @@ func (a *issue150ServiceActivities) ExplicitPriority(ctx context.Context, input 
 		))
 	}
 
+	c, err := a.getClient(ctx, &Issue150ServiceClientProviderInput{
+		ActivityName: "issue_150.v1.Issue150Service.ExplicitPriority",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, issue150ServiceOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -553,7 +633,7 @@ func (a *issue150ServiceActivities) ExplicitPriority(ctx context.Context, input 
 		defer cancel()
 	}
 	var run v1.ExplicitPriorityRun
-	run, err = a.client.ExplicitPriorityAsync(actx, &req, v1.NewExplicitPriorityOptions().WithStartWorkflowOptions(
+	run, err = c.ExplicitPriorityAsync(actx, &req, v1.NewExplicitPriorityOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {

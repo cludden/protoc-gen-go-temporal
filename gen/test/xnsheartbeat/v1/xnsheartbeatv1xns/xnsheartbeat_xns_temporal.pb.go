@@ -23,10 +23,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// XnsHeartbeatServiceClientProviderInput describes a(n) test.xnsheartbeat.v1.XnsHeartbeatService xns activity invocation and is provided to a XnsHeartbeatServiceClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type XnsHeartbeatServiceClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.xnsheartbeat.v1.XnsHeartbeatService.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *XnsHeartbeatServiceClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// XnsHeartbeatServiceClientProvider selects the XnsHeartbeatServiceClient used to execute a given xns activity invocation
+type XnsHeartbeatServiceClientProvider func(ctx context.Context, in *XnsHeartbeatServiceClientProviderInput) (v1.XnsHeartbeatServiceClient, error)
 
 // XnsHeartbeatServiceOptions is used to configure test.xnsheartbeat.v1.XnsHeartbeatService xns activity registration
 type XnsHeartbeatServiceOptions struct {
@@ -38,6 +66,9 @@ type XnsHeartbeatServiceOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider XnsHeartbeatServiceClientProvider
 }
 
 // NewXnsHeartbeatServiceOptions initializes a new XnsHeartbeatServiceOptions value
@@ -54,6 +85,14 @@ func (opts *XnsHeartbeatServiceOptions) WithErrorConverter(errorConverter func(e
 // Filter is used to filter registered xns activities or customize their name
 func (opts *XnsHeartbeatServiceOptions) WithFilter(filter func(string) string) *XnsHeartbeatServiceOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a XnsHeartbeatServiceClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterXnsHeartbeatServiceActivities may be nil.
+func (opts *XnsHeartbeatServiceOptions) WithClientProvider(provider XnsHeartbeatServiceClientProvider) *XnsHeartbeatServiceOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -79,12 +118,26 @@ func (opts *XnsHeartbeatServiceOptions) filterActivity(name string) string {
 // xnsHeartbeatServiceOptions is a reference to the XnsHeartbeatServiceOptions initialized at registration
 var xnsHeartbeatServiceOptions *XnsHeartbeatServiceOptions
 
-// RegisterXnsHeartbeatServiceActivities registers test.xnsheartbeat.v1.XnsHeartbeatService cross-namespace activities
+// RegisterXnsHeartbeatServiceActivities registers test.xnsheartbeat.v1.XnsHeartbeatService cross-namespace activities using a static client. When a
+// clientProvider is configured via NewXnsHeartbeatServiceOptions, the client argument may be nil.
 func RegisterXnsHeartbeatServiceActivities(r worker.ActivityRegistry, c v1.XnsHeartbeatServiceClient, options ...*XnsHeartbeatServiceOptions) {
+	// default to a provider that always returns the given static client
+	provider := XnsHeartbeatServiceClientProvider(func(ctx context.Context, _ *XnsHeartbeatServiceClientProviderInput) (v1.XnsHeartbeatServiceClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterXnsHeartbeatServiceActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterXnsHeartbeatServiceActivitiesWithClientProvider registers test.xnsheartbeat.v1.XnsHeartbeatService cross-namespace activities, using the given XnsHeartbeatServiceClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterXnsHeartbeatServiceActivitiesWithClientProvider(r worker.ActivityRegistry, provider XnsHeartbeatServiceClientProvider, options ...*XnsHeartbeatServiceOptions) {
 	if xnsHeartbeatServiceOptions == nil && len(options) > 0 && options[0] != nil {
 		xnsHeartbeatServiceOptions = options[0]
 	}
-	a := &xnsHeartbeatServiceActivities{c}
+	a := &xnsHeartbeatServiceActivities{provider}
 	if name := xnsHeartbeatServiceOptions.filterActivity("test.xnsheartbeat.v1.XnsHeartbeatService.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -1023,12 +1076,21 @@ func CancelXnsHeartbeatServiceWorkflowAsync(ctx workflow.Context, workflowID str
 
 // xnsHeartbeatServiceActivities provides activities that can be used to interact with a(n) XnsHeartbeatService service's workflow, queries, signals, and updates across namespaces
 type xnsHeartbeatServiceActivities struct {
-	client v1.XnsHeartbeatServiceClient
+	getClient XnsHeartbeatServiceClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *xnsHeartbeatServiceActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &XnsHeartbeatServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatService.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return xnsHeartbeatServiceOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetTestWorkflow retrieves a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow via an activity
@@ -1038,9 +1100,18 @@ func (a *xnsHeartbeatServiceActivities) GetTestWorkflow(ctx context.Context, inp
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &XnsHeartbeatServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatService.GetTestWorkflow",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, xnsHeartbeatServiceOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetTestWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetTestWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1104,6 +1175,15 @@ func (a *xnsHeartbeatServiceActivities) TestWorkflow(ctx context.Context, input 
 		))
 	}
 
+	c, err := a.getClient(ctx, &XnsHeartbeatServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, xnsHeartbeatServiceOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1112,7 +1192,7 @@ func (a *xnsHeartbeatServiceActivities) TestWorkflow(ctx context.Context, input 
 		defer cancel()
 	}
 	var run v1.TestWorkflowRun
-	run, err = a.client.TestWorkflowAsync(actx, &req, v1.NewTestWorkflowOptions().WithStartWorkflowOptions(
+	run, err = c.TestWorkflowAsync(actx, &req, v1.NewTestWorkflowOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1203,6 +1283,15 @@ func (a *xnsHeartbeatServiceActivities) TestWorkflowWithTestUpdate(ctx context.C
 		))
 	}
 
+	c, err := a.getClient(ctx, &XnsHeartbeatServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflowWithTestUpdate",
+		Requests:     []proto.Message{&req, &update},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, xnsHeartbeatServiceOptions.convertError(err)
+	}
+
 	// unmarshal workflow and update options
 	swo := xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions())
 	uwo := xns.UnmarshalUpdateWorkflowOptions(input.GetUpdateWorkflowOptions())
@@ -1217,8 +1306,8 @@ func (a *xnsHeartbeatServiceActivities) TestWorkflowWithTestUpdate(ctx context.C
 		} else if workflowID == "" || runID == "" || updateID == "" {
 			return nil, xnsHeartbeatServiceOptions.convertError(fmt.Errorf("invalid heartbeat details: workflowID=%q runID=%q updateID=%s", workflowID, runID, updateID))
 		}
-		run = a.client.GetTestWorkflow(ctx, workflowID, runID)
-		handle, err = a.client.GetTestUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
+		run = c.GetTestWorkflow(ctx, workflowID, runID)
+		handle, err = c.GetTestUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
 			RunID:      runID,
 			UpdateID:   updateID,
 			WorkflowID: workflowID,
@@ -1228,7 +1317,7 @@ func (a *xnsHeartbeatServiceActivities) TestWorkflowWithTestUpdate(ctx context.C
 		}
 	} else {
 		// execute update with start asynchronously
-		handle, run, err = a.client.TestWorkflowWithTestUpdateAsync(
+		handle, run, err = c.TestWorkflowWithTestUpdateAsync(
 			ctx,
 			&req,
 			&update,
@@ -1320,10 +1409,20 @@ func (a *xnsHeartbeatServiceActivities) TestSignal(ctx context.Context, input *x
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &XnsHeartbeatServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatService.TestSignal",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return xnsHeartbeatServiceOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.TestSignal(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.TestSignal(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
@@ -1347,6 +1446,15 @@ func (a *xnsHeartbeatServiceActivities) TestSignal(ctx context.Context, input *x
 
 // TestUpdate executes a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestUpdate update via an activity
 func (a *xnsHeartbeatServiceActivities) TestUpdate(ctx context.Context, input *xnsv1.UpdateRequest) (resp *v1.TestUpdateOutput, err error) {
+	c, err := a.getClient(ctx, &XnsHeartbeatServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatService.TestUpdate",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, xnsHeartbeatServiceOptions.convertError(err)
+	}
+
 	var handle v1.TestUpdateHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -1356,7 +1464,7 @@ func (a *xnsHeartbeatServiceActivities) TestUpdate(ctx context.Context, input *x
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetTestUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetTestUpdate(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -1379,7 +1487,7 @@ func (a *xnsHeartbeatServiceActivities) TestUpdate(ctx context.Context, input *x
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.TestUpdateAsync(
+		handle, err = c.TestUpdateAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),
@@ -1417,6 +1525,33 @@ func (a *xnsHeartbeatServiceActivities) TestUpdate(ctx context.Context, input *x
 	}
 }
 
+// XnsHeartbeatCallerServiceClientProviderInput describes a(n) test.xnsheartbeat.v1.XnsHeartbeatCallerService xns activity invocation and is provided to a XnsHeartbeatCallerServiceClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type XnsHeartbeatCallerServiceClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.xnsheartbeat.v1.XnsHeartbeatCallerService.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *XnsHeartbeatCallerServiceClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// XnsHeartbeatCallerServiceClientProvider selects the XnsHeartbeatCallerServiceClient used to execute a given xns activity invocation
+type XnsHeartbeatCallerServiceClientProvider func(ctx context.Context, in *XnsHeartbeatCallerServiceClientProviderInput) (v1.XnsHeartbeatCallerServiceClient, error)
+
 // XnsHeartbeatCallerServiceOptions is used to configure test.xnsheartbeat.v1.XnsHeartbeatCallerService xns activity registration
 type XnsHeartbeatCallerServiceOptions struct {
 	// errorConverter is used to customize error
@@ -1427,6 +1562,9 @@ type XnsHeartbeatCallerServiceOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider XnsHeartbeatCallerServiceClientProvider
 }
 
 // NewXnsHeartbeatCallerServiceOptions initializes a new XnsHeartbeatCallerServiceOptions value
@@ -1443,6 +1581,14 @@ func (opts *XnsHeartbeatCallerServiceOptions) WithErrorConverter(errorConverter 
 // Filter is used to filter registered xns activities or customize their name
 func (opts *XnsHeartbeatCallerServiceOptions) WithFilter(filter func(string) string) *XnsHeartbeatCallerServiceOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a XnsHeartbeatCallerServiceClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterXnsHeartbeatCallerServiceActivities may be nil.
+func (opts *XnsHeartbeatCallerServiceOptions) WithClientProvider(provider XnsHeartbeatCallerServiceClientProvider) *XnsHeartbeatCallerServiceOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -1468,12 +1614,26 @@ func (opts *XnsHeartbeatCallerServiceOptions) filterActivity(name string) string
 // xnsHeartbeatCallerServiceOptions is a reference to the XnsHeartbeatCallerServiceOptions initialized at registration
 var xnsHeartbeatCallerServiceOptions *XnsHeartbeatCallerServiceOptions
 
-// RegisterXnsHeartbeatCallerServiceActivities registers test.xnsheartbeat.v1.XnsHeartbeatCallerService cross-namespace activities
+// RegisterXnsHeartbeatCallerServiceActivities registers test.xnsheartbeat.v1.XnsHeartbeatCallerService cross-namespace activities using a static client. When a
+// clientProvider is configured via NewXnsHeartbeatCallerServiceOptions, the client argument may be nil.
 func RegisterXnsHeartbeatCallerServiceActivities(r worker.ActivityRegistry, c v1.XnsHeartbeatCallerServiceClient, options ...*XnsHeartbeatCallerServiceOptions) {
+	// default to a provider that always returns the given static client
+	provider := XnsHeartbeatCallerServiceClientProvider(func(ctx context.Context, _ *XnsHeartbeatCallerServiceClientProviderInput) (v1.XnsHeartbeatCallerServiceClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterXnsHeartbeatCallerServiceActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterXnsHeartbeatCallerServiceActivitiesWithClientProvider registers test.xnsheartbeat.v1.XnsHeartbeatCallerService cross-namespace activities, using the given XnsHeartbeatCallerServiceClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterXnsHeartbeatCallerServiceActivitiesWithClientProvider(r worker.ActivityRegistry, provider XnsHeartbeatCallerServiceClientProvider, options ...*XnsHeartbeatCallerServiceOptions) {
 	if xnsHeartbeatCallerServiceOptions == nil && len(options) > 0 && options[0] != nil {
 		xnsHeartbeatCallerServiceOptions = options[0]
 	}
-	a := &xnsHeartbeatCallerServiceActivities{c}
+	a := &xnsHeartbeatCallerServiceActivities{provider}
 	if name := xnsHeartbeatCallerServiceOptions.filterActivity("test.xnsheartbeat.v1.XnsHeartbeatCallerService.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -1846,12 +2006,21 @@ func CancelXnsHeartbeatCallerServiceWorkflowAsync(ctx workflow.Context, workflow
 
 // xnsHeartbeatCallerServiceActivities provides activities that can be used to interact with a(n) XnsHeartbeatCallerService service's workflow, queries, signals, and updates across namespaces
 type xnsHeartbeatCallerServiceActivities struct {
-	client v1.XnsHeartbeatCallerServiceClient
+	getClient XnsHeartbeatCallerServiceClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *xnsHeartbeatCallerServiceActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &XnsHeartbeatCallerServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatCallerService.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return xnsHeartbeatCallerServiceOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetCallTestWorkflow retrieves a(n) test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow via an activity
@@ -1861,9 +2030,18 @@ func (a *xnsHeartbeatCallerServiceActivities) GetCallTestWorkflow(ctx context.Co
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &XnsHeartbeatCallerServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatCallerService.GetCallTestWorkflow",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return xnsHeartbeatCallerServiceOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetCallTestWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetCallTestWorkflow(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1917,6 +2095,14 @@ func (a *xnsHeartbeatCallerServiceActivities) GetCallTestWorkflow(ctx context.Co
 
 // CallTestWorkflow executes a(n) test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow workflow via an activity
 func (a *xnsHeartbeatCallerServiceActivities) CallTestWorkflow(ctx context.Context, input *xnsv1.WorkflowRequest) (err error) {
+	c, err := a.getClient(ctx, &XnsHeartbeatCallerServiceClientProviderInput{
+		ActivityName: "test.xnsheartbeat.v1.XnsHeartbeatCallerService.CallTestWorkflow",
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return xnsHeartbeatCallerServiceOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1925,7 +2111,7 @@ func (a *xnsHeartbeatCallerServiceActivities) CallTestWorkflow(ctx context.Conte
 		defer cancel()
 	}
 	var run v1.CallTestWorkflowRun
-	run, err = a.client.CallTestWorkflowAsync(actx, v1.NewCallTestWorkflowOptions().WithStartWorkflowOptions(
+	run, err = c.CallTestWorkflowAsync(actx, v1.NewCallTestWorkflowOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
