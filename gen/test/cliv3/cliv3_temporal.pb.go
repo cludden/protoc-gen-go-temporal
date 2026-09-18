@@ -81,8 +81,10 @@ type ExampleServiceClient interface {
 
 	// CreateFooWithUpdateFoo executes a(n) test.cliv3.UpdateFoo update on a(n) test.cliv3.CreateFoo workflow, starting it if necessary, and blocks until update completion
 	CreateFooWithUpdateFoo(ctx context.Context, req *CreateFooInput, update *UpdateFooInput, opts ...*CreateFooWithUpdateFooOptions) (*UpdateFooOutput, CreateFooRun, error)
+
 	// CreateFooWithUpdateFooAsync starts a(n) test.cliv3.UpdateFoo update on a(n) test.cliv3.CreateFoo workflow, starting it if necessary, and returns a handle to the update execution
 	CreateFooWithUpdateFooAsync(ctx context.Context, req *CreateFooInput, update *UpdateFooInput, opts ...*CreateFooWithUpdateFooOptions) (UpdateFooHandle, CreateFooRun, error)
+
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
 

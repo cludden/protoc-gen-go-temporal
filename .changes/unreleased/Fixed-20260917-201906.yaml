@@ -1,0 +1,6 @@
+kind: Fixed
+body: Fix whitespace inconsistency in client interface
+time: 2026-09-17T20:19:06.520354-06:00
+custom:
+    Author: cludden
+    PullRequest: "154"

@@ -1288,7 +1288,8 @@ func (m *Manifest) genClientInterface(f *j.File) {
 						}
 						g.Id(runName)
 						g.Error()
-					})
+					}).
+					Line()
 
 				asyncName := m.Names().clientUpdateWithStartAsync(workflow, update)
 				commentf(g, methodSet(method, handler), "%s starts a(n) %s update on a(n) %s workflow, starting it if necessary, and returns a handle to the update execution", asyncName, m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
@@ -1303,7 +1304,8 @@ func (m *Manifest) genClientInterface(f *j.File) {
 						}
 						g.Id("opts").Op("...").Op("*").Id(optionsName)
 					}).
-					Params(j.Id(handleName), j.Id(runName), j.Error())
+					Params(j.Id(handleName), j.Id(runName), j.Error()).
+					Line()
 			}
 		}
 

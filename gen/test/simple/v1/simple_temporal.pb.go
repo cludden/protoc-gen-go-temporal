@@ -126,8 +126,10 @@ type SimpleClient interface {
 
 	// SomeWorkflow1WithSomeUpdate2 executes a(n) mycompany.simple.Simple.SomeUpdate2 update on a(n) mycompany.simple.SomeWorkflow1 workflow, starting it if necessary, and blocks until update completion
 	SomeWorkflow1WithSomeUpdate2(ctx context.Context, req *SomeWorkflow1Request, update *SomeUpdate2Request, opts ...*SomeWorkflow1WithSomeUpdate2Options) (*SomeUpdate2Response, SomeWorkflow1Run, error)
+
 	// SomeWorkflow1WithSomeUpdate2Async starts a(n) mycompany.simple.Simple.SomeUpdate2 update on a(n) mycompany.simple.SomeWorkflow1 workflow, starting it if necessary, and returns a handle to the update execution
 	SomeWorkflow1WithSomeUpdate2Async(ctx context.Context, req *SomeWorkflow1Request, update *SomeUpdate2Request, opts ...*SomeWorkflow1WithSomeUpdate2Options) (SomeUpdate2Handle, SomeWorkflow1Run, error)
+
 	// SomeWorkflow2 does some workflow thing.
 	SomeWorkflow2(ctx context.Context, opts ...*SomeWorkflow2Options) error
 
@@ -145,8 +147,10 @@ type SimpleClient interface {
 
 	// SomeWorkflow2WithSomeUpdate1 executes a(n) mycompany.simple.Simple.SomeUpdate1 update on a(n) mycompany.simple.SomeWorkflow2 workflow, starting it if necessary, and blocks until update completion
 	SomeWorkflow2WithSomeUpdate1(ctx context.Context, update *SomeUpdate1Request, opts ...*SomeWorkflow2WithSomeUpdate1Options) (*SomeUpdate1Response, SomeWorkflow2Run, error)
+
 	// SomeWorkflow2WithSomeUpdate1Async starts a(n) mycompany.simple.Simple.SomeUpdate1 update on a(n) mycompany.simple.SomeWorkflow2 workflow, starting it if necessary, and returns a handle to the update execution
 	SomeWorkflow2WithSomeUpdate1Async(ctx context.Context, update *SomeUpdate1Request, opts ...*SomeWorkflow2WithSomeUpdate1Options) (SomeUpdate1Handle, SomeWorkflow2Run, error)
+
 	// SomeWorkflow3 does some workflow thing.
 	// Deprecated: Use SomeWorkflow2 instead.
 	SomeWorkflow3(ctx context.Context, req *SomeWorkflow3Request, opts ...*SomeWorkflow3Options) error

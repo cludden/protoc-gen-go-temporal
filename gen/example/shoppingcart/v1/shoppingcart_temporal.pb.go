@@ -85,8 +85,10 @@ type ShoppingCartClient interface {
 
 	// ShoppingCartWithUpdateCart executes a(n) example.shoppingcart.v1.ShoppingCart.UpdateCart update on a(n) example.shoppingcart.v1.ShoppingCart workflow, starting it if necessary, and blocks until update completion
 	ShoppingCartWithUpdateCart(ctx context.Context, req *ShoppingCartInput, update *UpdateCartInput, opts ...*ShoppingCartWithUpdateCartOptions) (*UpdateCartOutput, ShoppingCartRun, error)
+
 	// ShoppingCartWithUpdateCartAsync starts a(n) example.shoppingcart.v1.ShoppingCart.UpdateCart update on a(n) example.shoppingcart.v1.ShoppingCart workflow, starting it if necessary, and returns a handle to the update execution
 	ShoppingCartWithUpdateCartAsync(ctx context.Context, req *ShoppingCartInput, update *UpdateCartInput, opts ...*ShoppingCartWithUpdateCartOptions) (UpdateCartHandle, ShoppingCartRun, error)
+
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
 

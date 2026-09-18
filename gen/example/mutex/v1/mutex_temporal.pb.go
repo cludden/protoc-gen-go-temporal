@@ -85,8 +85,10 @@ type ExampleClient interface {
 
 	// MutexWithAcquireLock executes a(n) mutex.v1.AcquireLock update on a(n) mutex.v1.Mutex workflow, starting it if necessary, and blocks until update completion
 	MutexWithAcquireLock(ctx context.Context, req *MutexInput, update *AcquireLockInput, opts ...*MutexWithAcquireLockOptions) (*AcquireLockOutput, MutexRun, error)
+
 	// MutexWithAcquireLockAsync starts a(n) mutex.v1.AcquireLock update on a(n) mutex.v1.Mutex workflow, starting it if necessary, and returns a handle to the update execution
 	MutexWithAcquireLockAsync(ctx context.Context, req *MutexInput, update *AcquireLockInput, opts ...*MutexWithAcquireLockOptions) (AcquireLockHandle, MutexRun, error)
+
 	// SampleWorkflowWithMutex is a sample workflow that demonstrates how to
 	// use the Mutex service.
 	SampleWorkflowWithMutex(ctx context.Context, req *SampleWorkflowWithMutexInput, opts ...*SampleWorkflowWithMutexOptions) error
