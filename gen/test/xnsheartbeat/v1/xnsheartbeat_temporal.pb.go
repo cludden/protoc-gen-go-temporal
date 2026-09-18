@@ -69,8 +69,10 @@ type XnsHeartbeatServiceClient interface {
 
 	// TestWorkflowWithTestUpdate executes a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestUpdate update on a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow, starting it if necessary, and blocks until update completion
 	TestWorkflowWithTestUpdate(ctx context.Context, req *TestWorkflowInput, update *TestUpdateInput, opts ...*TestWorkflowWithTestUpdateOptions) (*TestUpdateOutput, TestWorkflowRun, error)
+
 	// TestWorkflowWithTestUpdateAsync starts a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestUpdate update on a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow, starting it if necessary, and returns a handle to the update execution
 	TestWorkflowWithTestUpdateAsync(ctx context.Context, req *TestWorkflowInput, update *TestUpdateInput, opts ...*TestWorkflowWithTestUpdateOptions) (TestUpdateHandle, TestWorkflowRun, error)
+
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
 
