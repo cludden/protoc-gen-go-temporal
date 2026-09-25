@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// FooServiceClientProviderInput describes a(n) test.editions.FooService xns activity invocation and is provided to a FooServiceClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type FooServiceClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.editions.FooService.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *FooServiceClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// FooServiceClientProvider selects the FooServiceClient used to execute a given xns activity invocation
+type FooServiceClientProvider func(ctx context.Context, in *FooServiceClientProviderInput) (editions.FooServiceClient, error)
 
 // FooServiceOptions is used to configure test.editions.FooService xns activity registration
 type FooServiceOptions struct {
@@ -37,6 +65,9 @@ type FooServiceOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider FooServiceClientProvider
 }
 
 // NewFooServiceOptions initializes a new FooServiceOptions value
@@ -53,6 +84,14 @@ func (opts *FooServiceOptions) WithErrorConverter(errorConverter func(error) err
 // Filter is used to filter registered xns activities or customize their name
 func (opts *FooServiceOptions) WithFilter(filter func(string) string) *FooServiceOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a FooServiceClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterFooServiceActivities may be nil.
+func (opts *FooServiceOptions) WithClientProvider(provider FooServiceClientProvider) *FooServiceOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *FooServiceOptions) filterActivity(name string) string {
 // fooServiceOptions is a reference to the FooServiceOptions initialized at registration
 var fooServiceOptions *FooServiceOptions
 
-// RegisterFooServiceActivities registers test.editions.FooService cross-namespace activities
+// RegisterFooServiceActivities registers test.editions.FooService cross-namespace activities using a static client. When a
+// clientProvider is configured via NewFooServiceOptions, the client argument may be nil.
 func RegisterFooServiceActivities(r worker.ActivityRegistry, c editions.FooServiceClient, options ...*FooServiceOptions) {
+	// default to a provider that always returns the given static client
+	provider := FooServiceClientProvider(func(ctx context.Context, _ *FooServiceClientProviderInput) (editions.FooServiceClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterFooServiceActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterFooServiceActivitiesWithClientProvider registers test.editions.FooService cross-namespace activities, using the given FooServiceClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterFooServiceActivitiesWithClientProvider(r worker.ActivityRegistry, provider FooServiceClientProvider, options ...*FooServiceOptions) {
 	if fooServiceOptions == nil && len(options) > 0 && options[0] != nil {
 		fooServiceOptions = options[0]
 	}
-	a := &fooServiceActivities{c}
+	a := &fooServiceActivities{provider}
 	if name := fooServiceOptions.filterActivity("test.editions.FooService.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -464,12 +517,21 @@ func CancelFooServiceWorkflowAsync(ctx workflow.Context, workflowID string, runI
 
 // fooServiceActivities provides activities that can be used to interact with a(n) FooService service's workflow, queries, signals, and updates across namespaces
 type fooServiceActivities struct {
-	client editions.FooServiceClient
+	getClient FooServiceClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *fooServiceActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &FooServiceClientProviderInput{
+		ActivityName: "test.editions.FooService.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return fooServiceOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetFoo retrieves a(n) test.editions.FooService.Foo workflow via an activity
@@ -479,9 +541,18 @@ func (a *fooServiceActivities) GetFoo(ctx context.Context, input *xnsv1.GetWorkf
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &FooServiceClientProviderInput{
+		ActivityName: "test.editions.FooService.GetFoo",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, fooServiceOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -545,6 +616,15 @@ func (a *fooServiceActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReq
 		))
 	}
 
+	c, err := a.getClient(ctx, &FooServiceClientProviderInput{
+		ActivityName: "test.editions.FooService.Foo",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, fooServiceOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -553,7 +633,7 @@ func (a *fooServiceActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReq
 		defer cancel()
 	}
 	var run editions.FooRun
-	run, err = a.client.FooAsync(actx, &req, editions.NewFooOptions().WithStartWorkflowOptions(
+	run, err = c.FooAsync(actx, &req, editions.NewFooOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {

@@ -582,3 +582,72 @@ func TestErrorConverter(t *testing.T) {
 	require.Equal("uh oh", terr.Message())
 	require.False(terr.NonRetryable())
 }
+
+// TestClientProvider verifies that a dynamically selected client is used to execute
+// xns activities and that the provider receives the invocation's activity name and
+// unmarshalled request payload.
+func TestClientProvider(t *testing.T) {
+	var s testsuite.WorkflowTestSuite
+	env := s.NewTestWorkflowEnvironment()
+	ctx, require := context.Background(), require.New(t)
+
+	serverClient := xnserrv1mocks.NewMockServerClient(t)
+	var gotInput *xnserrv1xns.ServerClientProviderInput
+	xnserrv1xns.RegisterServerActivitiesWithClientProvider(env, func(ctx context.Context, in *xnserrv1xns.ServerClientProviderInput) (xnserrv1.ServerClient, error) {
+		gotInput = in
+		return serverClient, nil
+	})
+	client := xnserrv1.NewTestClientClient(env, &ClientWorkflows{}, nil)
+
+	run, err := client.CallSleepAsync(ctx, &xnserrv1.CallSleepRequest{
+		RetryPolicy: &xnsv1.RetryPolicy{
+			MaxAttempts: 2,
+		},
+	})
+	require.NoError(err)
+
+	serverClient.EXPECT().SleepAsync(mock.Anything, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, input *xnserrv1.SleepRequest, opts ...*xnserrv1.SleepOptions) (xnserrv1.SleepRun, error) {
+			run := xnserrv1mocks.NewMockSleepRun(t)
+			run.EXPECT().Get(mock.Anything).Return(nil)
+			return run, nil
+		})
+
+	require.NoError(run.Get(ctx))
+	require.NotNil(gotInput, "expected client provider to be invoked")
+	require.Equal(xnserrv1.SleepWorkflowName, gotInput.ActivityName)
+	require.IsType(&xnserrv1.SleepRequest{}, gotInput.Request())
+}
+
+// TestClientProviderOption verifies that a client provider configured via the options
+// builder takes precedence over the static client passed to Register*Activities.
+func TestClientProviderOption(t *testing.T) {
+	var s testsuite.WorkflowTestSuite
+	env := s.NewTestWorkflowEnvironment()
+	ctx, require := context.Background(), require.New(t)
+
+	selected := xnserrv1mocks.NewMockServerClient(t)
+	unused := xnserrv1mocks.NewMockServerClient(t)
+	xnserrv1xns.RegisterServerActivities(env, unused, xnserrv1xns.NewServerOptions().WithClientProvider(
+		func(ctx context.Context, in *xnserrv1xns.ServerClientProviderInput) (xnserrv1.ServerClient, error) {
+			return selected, nil
+		},
+	))
+	client := xnserrv1.NewTestClientClient(env, &ClientWorkflows{}, nil)
+
+	run, err := client.CallSleepAsync(ctx, &xnserrv1.CallSleepRequest{
+		RetryPolicy: &xnsv1.RetryPolicy{
+			MaxAttempts: 2,
+		},
+	})
+	require.NoError(err)
+
+	selected.EXPECT().SleepAsync(mock.Anything, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, input *xnserrv1.SleepRequest, opts ...*xnserrv1.SleepOptions) (xnserrv1.SleepRun, error) {
+			run := xnserrv1mocks.NewMockSleepRun(t)
+			run.EXPECT().Get(mock.Anything).Return(nil)
+			return run, nil
+		})
+
+	require.NoError(run.Get(ctx))
+}

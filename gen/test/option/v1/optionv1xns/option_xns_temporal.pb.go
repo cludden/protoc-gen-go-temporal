@@ -23,10 +23,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// TestClientProviderInput describes a(n) test.option.v1.Test xns activity invocation and is provided to a TestClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type TestClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.option.v1.Test.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *TestClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// TestClientProvider selects the TestClient used to execute a given xns activity invocation
+type TestClientProvider func(ctx context.Context, in *TestClientProviderInput) (v1.TestClient, error)
 
 // TestOptions is used to configure test.option.v1.Test xns activity registration
 type TestOptions struct {
@@ -38,6 +66,9 @@ type TestOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider TestClientProvider
 }
 
 // NewTestOptions initializes a new TestOptions value
@@ -54,6 +85,14 @@ func (opts *TestOptions) WithErrorConverter(errorConverter func(error) error) *T
 // Filter is used to filter registered xns activities or customize their name
 func (opts *TestOptions) WithFilter(filter func(string) string) *TestOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a TestClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterTestActivities may be nil.
+func (opts *TestOptions) WithClientProvider(provider TestClientProvider) *TestOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -79,12 +118,26 @@ func (opts *TestOptions) filterActivity(name string) string {
 // testOptions is a reference to the TestOptions initialized at registration
 var testOptions *TestOptions
 
-// RegisterTestActivities registers test.option.v1.Test cross-namespace activities
+// RegisterTestActivities registers test.option.v1.Test cross-namespace activities using a static client. When a
+// clientProvider is configured via NewTestOptions, the client argument may be nil.
 func RegisterTestActivities(r worker.ActivityRegistry, c v1.TestClient, options ...*TestOptions) {
+	// default to a provider that always returns the given static client
+	provider := TestClientProvider(func(ctx context.Context, _ *TestClientProviderInput) (v1.TestClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterTestActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterTestActivitiesWithClientProvider registers test.option.v1.Test cross-namespace activities, using the given TestClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterTestActivitiesWithClientProvider(r worker.ActivityRegistry, provider TestClientProvider, options ...*TestOptions) {
 	if testOptions == nil && len(options) > 0 && options[0] != nil {
 		testOptions = options[0]
 	}
-	a := &testActivities{c}
+	a := &testActivities{provider}
 	if name := testOptions.filterActivity("test.option.v1.Test.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -695,12 +748,21 @@ func CancelTestWorkflowAsync(ctx workflow.Context, workflowID string, runID stri
 
 // testActivities provides activities that can be used to interact with a(n) Test service's workflow, queries, signals, and updates across namespaces
 type testActivities struct {
-	client v1.TestClient
+	getClient TestClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *testActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &TestClientProviderInput{
+		ActivityName: "test.option.v1.Test.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return testOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetWorkflowWithInput retrieves a(n) test.option.v1.Test.WorkflowWithInput workflow via an activity
@@ -710,9 +772,18 @@ func (a *testActivities) GetWorkflowWithInput(ctx context.Context, input *xnsv1.
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &TestClientProviderInput{
+		ActivityName: "test.option.v1.Test.GetWorkflowWithInput",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return testOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetWorkflowWithInput(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetWorkflowWithInput(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -776,6 +847,15 @@ func (a *testActivities) WorkflowWithInput(ctx context.Context, input *xnsv1.Wor
 		))
 	}
 
+	c, err := a.getClient(ctx, &TestClientProviderInput{
+		ActivityName: "test.option.v1.Test.WorkflowWithInput",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return testOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -784,7 +864,7 @@ func (a *testActivities) WorkflowWithInput(ctx context.Context, input *xnsv1.Wor
 		defer cancel()
 	}
 	var run v1.WorkflowWithInputRun
-	run, err = a.client.WorkflowWithInputAsync(actx, &req, v1.NewWorkflowWithInputOptions().WithStartWorkflowOptions(
+	run, err = c.WorkflowWithInputAsync(actx, &req, v1.NewWorkflowWithInputOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -855,6 +935,15 @@ func (a *testActivities) WorkflowWithInput(ctx context.Context, input *xnsv1.Wor
 
 // UpdateWithInput executes a(n) test.option.v1.Test.UpdateWithInput update via an activity
 func (a *testActivities) UpdateWithInput(ctx context.Context, input *xnsv1.UpdateRequest) (err error) {
+	c, err := a.getClient(ctx, &TestClientProviderInput{
+		ActivityName: "test.option.v1.Test.UpdateWithInput",
+		RunID:        input.GetUpdateWorkflowOptions().GetRunId(),
+		WorkflowID:   input.GetUpdateWorkflowOptions().GetWorkflowId(),
+	})
+	if err != nil {
+		return testOptions.convertError(err)
+	}
+
 	var handle v1.UpdateWithInputHandle
 	if activity.HasHeartbeatDetails(ctx) {
 		// extract update id from heartbeat details
@@ -864,7 +953,7 @@ func (a *testActivities) UpdateWithInput(ctx context.Context, input *xnsv1.Updat
 		}
 
 		// retrieve handle for existing update
-		handle, err = a.client.GetUpdateWithInput(ctx, client.GetWorkflowUpdateHandleOptions{
+		handle, err = c.GetUpdateWithInput(ctx, client.GetWorkflowUpdateHandleOptions{
 			WorkflowID: input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			RunID:      input.GetUpdateWorkflowOptions().GetRunId(),
 			UpdateID:   updateID,
@@ -887,7 +976,7 @@ func (a *testActivities) UpdateWithInput(ctx context.Context, input *xnsv1.Updat
 		uo.WaitForStage = client.WorkflowUpdateStageAccepted
 
 		// initialize update execution
-		handle, err = a.client.UpdateWithInputAsync(
+		handle, err = c.UpdateWithInputAsync(
 			ctx,
 			input.GetUpdateWorkflowOptions().GetWorkflowId(),
 			input.GetUpdateWorkflowOptions().GetRunId(),

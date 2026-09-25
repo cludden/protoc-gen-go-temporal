@@ -23,10 +23,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// ExampleClientProviderInput describes a(n) test.workerversioning.v1.Example xns activity invocation and is provided to a ExampleClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type ExampleClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.workerversioning.v1.Example.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *ExampleClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// ExampleClientProvider selects the ExampleClient used to execute a given xns activity invocation
+type ExampleClientProvider func(ctx context.Context, in *ExampleClientProviderInput) (v1.ExampleClient, error)
 
 // ExampleOptions is used to configure test.workerversioning.v1.Example xns activity registration
 type ExampleOptions struct {
@@ -38,6 +66,9 @@ type ExampleOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider ExampleClientProvider
 }
 
 // NewExampleOptions initializes a new ExampleOptions value
@@ -54,6 +85,14 @@ func (opts *ExampleOptions) WithErrorConverter(errorConverter func(error) error)
 // Filter is used to filter registered xns activities or customize their name
 func (opts *ExampleOptions) WithFilter(filter func(string) string) *ExampleOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a ExampleClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterExampleActivities may be nil.
+func (opts *ExampleOptions) WithClientProvider(provider ExampleClientProvider) *ExampleOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -79,12 +118,26 @@ func (opts *ExampleOptions) filterActivity(name string) string {
 // exampleOptions is a reference to the ExampleOptions initialized at registration
 var exampleOptions *ExampleOptions
 
-// RegisterExampleActivities registers test.workerversioning.v1.Example cross-namespace activities
+// RegisterExampleActivities registers test.workerversioning.v1.Example cross-namespace activities using a static client. When a
+// clientProvider is configured via NewExampleOptions, the client argument may be nil.
 func RegisterExampleActivities(r worker.ActivityRegistry, c v1.ExampleClient, options ...*ExampleOptions) {
+	// default to a provider that always returns the given static client
+	provider := ExampleClientProvider(func(ctx context.Context, _ *ExampleClientProviderInput) (v1.ExampleClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterExampleActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterExampleActivitiesWithClientProvider registers test.workerversioning.v1.Example cross-namespace activities, using the given ExampleClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterExampleActivitiesWithClientProvider(r worker.ActivityRegistry, provider ExampleClientProvider, options ...*ExampleOptions) {
 	if exampleOptions == nil && len(options) > 0 && options[0] != nil {
 		exampleOptions = options[0]
 	}
-	a := &exampleActivities{c}
+	a := &exampleActivities{provider}
 	if name := exampleOptions.filterActivity("test.workerversioning.v1.Example.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -1557,12 +1610,21 @@ func CancelExampleWorkflowAsync(ctx workflow.Context, workflowID string, runID s
 
 // exampleActivities provides activities that can be used to interact with a(n) Example service's workflow, queries, signals, and updates across namespaces
 type exampleActivities struct {
-	client v1.ExampleClient
+	getClient ExampleClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *exampleActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return exampleOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetBar retrieves a(n) test.workerversioning.v1.Example.Bar workflow via an activity
@@ -1572,9 +1634,18 @@ func (a *exampleActivities) GetBar(ctx context.Context, input *xnsv1.GetWorkflow
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.GetBar",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetBar(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetBar(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1638,6 +1709,15 @@ func (a *exampleActivities) Bar(ctx context.Context, input *xnsv1.WorkflowReques
 		))
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.Bar",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1646,7 +1726,7 @@ func (a *exampleActivities) Bar(ctx context.Context, input *xnsv1.WorkflowReques
 		defer cancel()
 	}
 	var run v1.BarRun
-	run, err = a.client.BarAsync(actx, &req, v1.NewBarOptions().WithStartWorkflowOptions(
+	run, err = c.BarAsync(actx, &req, v1.NewBarOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1722,9 +1802,18 @@ func (a *exampleActivities) GetBaz(ctx context.Context, input *xnsv1.GetWorkflow
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.GetBaz",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetBaz(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetBaz(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1788,6 +1877,15 @@ func (a *exampleActivities) Baz(ctx context.Context, input *xnsv1.WorkflowReques
 		))
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.Baz",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1796,7 +1894,7 @@ func (a *exampleActivities) Baz(ctx context.Context, input *xnsv1.WorkflowReques
 		defer cancel()
 	}
 	var run v1.BazRun
-	run, err = a.client.BazAsync(actx, &req, v1.NewBazOptions().WithStartWorkflowOptions(
+	run, err = c.BazAsync(actx, &req, v1.NewBazOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1872,9 +1970,18 @@ func (a *exampleActivities) GetFoo(ctx context.Context, input *xnsv1.GetWorkflow
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.GetFoo",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetFoo(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -1938,6 +2045,15 @@ func (a *exampleActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReques
 		))
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.Foo",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -1946,7 +2062,7 @@ func (a *exampleActivities) Foo(ctx context.Context, input *xnsv1.WorkflowReques
 		defer cancel()
 	}
 	var run v1.FooRun
-	run, err = a.client.FooAsync(actx, &req, v1.NewFooOptions().WithStartWorkflowOptions(
+	run, err = c.FooAsync(actx, &req, v1.NewFooOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -2022,9 +2138,18 @@ func (a *exampleActivities) GetQux(ctx context.Context, input *xnsv1.GetWorkflow
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.GetQux",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetQux(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetQux(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -2088,6 +2213,15 @@ func (a *exampleActivities) Qux(ctx context.Context, input *xnsv1.WorkflowReques
 		))
 	}
 
+	c, err := a.getClient(ctx, &ExampleClientProviderInput{
+		ActivityName: "test.workerversioning.v1.Example.Qux",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, exampleOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -2096,7 +2230,7 @@ func (a *exampleActivities) Qux(ctx context.Context, input *xnsv1.WorkflowReques
 		defer cancel()
 	}
 	var run v1.QuxRun
-	run, err = a.client.QuxAsync(actx, &req, v1.NewQuxOptions().WithStartWorkflowOptions(
+	run, err = c.QuxAsync(actx, &req, v1.NewQuxOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {

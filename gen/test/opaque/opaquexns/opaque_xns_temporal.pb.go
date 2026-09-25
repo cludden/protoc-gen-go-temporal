@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// OpaqueClientProviderInput describes a(n) test.opaque.Opaque xns activity invocation and is provided to a OpaqueClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type OpaqueClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.opaque.Opaque.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *OpaqueClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// OpaqueClientProvider selects the OpaqueClient used to execute a given xns activity invocation
+type OpaqueClientProvider func(ctx context.Context, in *OpaqueClientProviderInput) (opaque.OpaqueClient, error)
 
 // OpaqueOptions is used to configure test.opaque.Opaque xns activity registration
 type OpaqueOptions struct {
@@ -37,6 +65,9 @@ type OpaqueOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider OpaqueClientProvider
 }
 
 // NewOpaqueOptions initializes a new OpaqueOptions value
@@ -53,6 +84,14 @@ func (opts *OpaqueOptions) WithErrorConverter(errorConverter func(error) error) 
 // Filter is used to filter registered xns activities or customize their name
 func (opts *OpaqueOptions) WithFilter(filter func(string) string) *OpaqueOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a OpaqueClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterOpaqueActivities may be nil.
+func (opts *OpaqueOptions) WithClientProvider(provider OpaqueClientProvider) *OpaqueOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *OpaqueOptions) filterActivity(name string) string {
 // opaqueOptions is a reference to the OpaqueOptions initialized at registration
 var opaqueOptions *OpaqueOptions
 
-// RegisterOpaqueActivities registers test.opaque.Opaque cross-namespace activities
+// RegisterOpaqueActivities registers test.opaque.Opaque cross-namespace activities using a static client. When a
+// clientProvider is configured via NewOpaqueOptions, the client argument may be nil.
 func RegisterOpaqueActivities(r worker.ActivityRegistry, c opaque.OpaqueClient, options ...*OpaqueOptions) {
+	// default to a provider that always returns the given static client
+	provider := OpaqueClientProvider(func(ctx context.Context, _ *OpaqueClientProviderInput) (opaque.OpaqueClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterOpaqueActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterOpaqueActivitiesWithClientProvider registers test.opaque.Opaque cross-namespace activities, using the given OpaqueClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterOpaqueActivitiesWithClientProvider(r worker.ActivityRegistry, provider OpaqueClientProvider, options ...*OpaqueOptions) {
 	if opaqueOptions == nil && len(options) > 0 && options[0] != nil {
 		opaqueOptions = options[0]
 	}
-	a := &opaqueActivities{c}
+	a := &opaqueActivities{provider}
 	if name := opaqueOptions.filterActivity("test.opaque.Opaque.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -786,12 +839,21 @@ func CancelOpaqueWorkflowAsync(ctx workflow.Context, workflowID string, runID st
 
 // opaqueActivities provides activities that can be used to interact with a(n) Opaque service's workflow, queries, signals, and updates across namespaces
 type opaqueActivities struct {
-	client opaque.OpaqueClient
+	getClient OpaqueClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *opaqueActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &OpaqueClientProviderInput{
+		ActivityName: "test.opaque.Opaque.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return opaqueOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetPutOpaqueExample retrieves a(n) test.opaque.Opaque.PutOpaqueExample workflow via an activity
@@ -801,9 +863,18 @@ func (a *opaqueActivities) GetPutOpaqueExample(ctx context.Context, input *xnsv1
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &OpaqueClientProviderInput{
+		ActivityName: "test.opaque.Opaque.GetPutOpaqueExample",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, opaqueOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetPutOpaqueExample(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetPutOpaqueExample(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -867,6 +938,15 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 		))
 	}
 
+	c, err := a.getClient(ctx, &OpaqueClientProviderInput{
+		ActivityName: "test.opaque.Opaque.PutOpaqueExample",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, opaqueOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -875,7 +955,7 @@ func (a *opaqueActivities) PutOpaqueExample(ctx context.Context, input *xnsv1.Wo
 		defer cancel()
 	}
 	var run opaque.PutOpaqueExampleRun
-	run, err = a.client.PutOpaqueExampleAsync(actx, &req, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutOpaqueExampleAsync(actx, &req, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -966,6 +1046,15 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 		))
 	}
 
+	c, err := a.getClient(ctx, &OpaqueClientProviderInput{
+		ActivityName: "test.opaque.Opaque.PutOpaqueExampleWithSignalOpaque",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, opaqueOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -974,7 +1063,7 @@ func (a *opaqueActivities) PutOpaqueExampleWithSignalOpaque(ctx context.Context,
 		defer cancel()
 	}
 	var run opaque.PutOpaqueExampleRun
-	run, err = a.client.PutOpaqueExampleWithSignalOpaqueAsync(actx, &req, &signal, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutOpaqueExampleWithSignalOpaqueAsync(actx, &req, &signal, opaque.NewPutOpaqueExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1054,10 +1143,20 @@ func (a *opaqueActivities) SignalOpaque(ctx context.Context, input *xnsv1.Signal
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &OpaqueClientProviderInput{
+		ActivityName: "test.opaque.Opaque.SignalOpaque",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return opaqueOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SignalOpaque(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SignalOpaque(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 

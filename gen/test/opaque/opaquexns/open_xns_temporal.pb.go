@@ -22,10 +22,38 @@ import (
 	temporal "go.temporal.io/sdk/temporal"
 	worker "go.temporal.io/sdk/worker"
 	workflow "go.temporal.io/sdk/workflow"
+	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	"time"
 )
+
+// OpenClientProviderInput describes a(n) test.opaque.Open xns activity invocation and is provided to a OpenClientProvider so that a
+// client can be selected dynamically based on the calling context and request payload(s)
+type OpenClientProviderInput struct {
+	// ActivityName is the fully-qualified name of the xns activity being executed,
+	// e.g. "test.opaque.Open.CancelWorkflow"
+	ActivityName string
+	// WorkflowID identifies the target workflow execution, when known
+	WorkflowID string
+	// RunID identifies the target workflow run, when known
+	RunID string
+	// Requests holds the unmarshalled request message(s) associated with the
+	// invocation: zero for cancel/get, one for most operations, and two for the
+	// signal-with-start and update-with-start variants
+	Requests []proto.Message
+}
+
+// Request returns the primary request message for the invocation, or nil when there is none
+func (in *OpenClientProviderInput) Request() proto.Message {
+	if in == nil || len(in.Requests) == 0 {
+		return nil
+	}
+	return in.Requests[0]
+}
+
+// OpenClientProvider selects the OpenClient used to execute a given xns activity invocation
+type OpenClientProvider func(ctx context.Context, in *OpenClientProviderInput) (opaque.OpenClient, error)
 
 // OpenOptions is used to configure test.opaque.Open xns activity registration
 type OpenOptions struct {
@@ -37,6 +65,9 @@ type OpenOptions struct {
 	// 2. a modified activity name, to override the original activity name
 	// 3. an empty string, to skip registration
 	filter func(string) string
+	// clientProvider is used to dynamically select the client used to execute an
+	// xns activity based on the calling context and request payload(s)
+	clientProvider OpenClientProvider
 }
 
 // NewOpenOptions initializes a new OpenOptions value
@@ -53,6 +84,14 @@ func (opts *OpenOptions) WithErrorConverter(errorConverter func(error) error) *O
 // Filter is used to filter registered xns activities or customize their name
 func (opts *OpenOptions) WithFilter(filter func(string) string) *OpenOptions {
 	opts.filter = filter
+	return opts
+}
+
+// WithClientProvider sets a OpenClientProvider used to dynamically select the client used to
+// execute xns activities based on the calling context and request payload(s). When set,
+// the client argument to RegisterOpenActivities may be nil.
+func (opts *OpenOptions) WithClientProvider(provider OpenClientProvider) *OpenOptions {
+	opts.clientProvider = provider
 	return opts
 }
 
@@ -78,12 +117,26 @@ func (opts *OpenOptions) filterActivity(name string) string {
 // openOptions is a reference to the OpenOptions initialized at registration
 var openOptions *OpenOptions
 
-// RegisterOpenActivities registers test.opaque.Open cross-namespace activities
+// RegisterOpenActivities registers test.opaque.Open cross-namespace activities using a static client. When a
+// clientProvider is configured via NewOpenOptions, the client argument may be nil.
 func RegisterOpenActivities(r worker.ActivityRegistry, c opaque.OpenClient, options ...*OpenOptions) {
+	// default to a provider that always returns the given static client
+	provider := OpenClientProvider(func(ctx context.Context, _ *OpenClientProviderInput) (opaque.OpenClient, error) {
+		return c, nil
+	})
+	if len(options) > 0 && options[0] != nil && options[0].clientProvider != nil {
+		provider = options[0].clientProvider
+	}
+	RegisterOpenActivitiesWithClientProvider(r, provider, options...)
+}
+
+// RegisterOpenActivitiesWithClientProvider registers test.opaque.Open cross-namespace activities, using the given OpenClientProvider to
+// dynamically select the client used to execute each activity invocation
+func RegisterOpenActivitiesWithClientProvider(r worker.ActivityRegistry, provider OpenClientProvider, options ...*OpenOptions) {
 	if openOptions == nil && len(options) > 0 && options[0] != nil {
 		openOptions = options[0]
 	}
-	a := &openActivities{c}
+	a := &openActivities{provider}
 	if name := openOptions.filterActivity("test.opaque.Open.CancelWorkflow"); name != "" {
 		r.RegisterActivityWithOptions(a.CancelWorkflow, activity.RegisterOptions{Name: name})
 	}
@@ -786,12 +839,21 @@ func CancelOpenWorkflowAsync(ctx workflow.Context, workflowID string, runID stri
 
 // openActivities provides activities that can be used to interact with a(n) Open service's workflow, queries, signals, and updates across namespaces
 type openActivities struct {
-	client opaque.OpenClient
+	getClient OpenClientProvider
 }
 
 // CancelWorkflow cancels an existing workflow execution
 func (a *openActivities) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	return a.client.CancelWorkflow(ctx, workflowID, runID)
+	c, err := a.getClient(ctx, &OpenClientProviderInput{
+		ActivityName: "test.opaque.Open.CancelWorkflow",
+		RunID:        runID,
+		WorkflowID:   workflowID,
+	})
+	if err != nil {
+		return openOptions.convertError(err)
+	}
+
+	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // GetPutOpenExample retrieves a(n) test.opaque.Open.PutOpenExample workflow via an activity
@@ -801,9 +863,18 @@ func (a *openActivities) GetPutOpenExample(ctx context.Context, input *xnsv1.Get
 		heartbeatInterval = time.Second * 30
 	}
 
+	c, err := a.getClient(ctx, &OpenClientProviderInput{
+		ActivityName: "test.opaque.Open.GetPutOpenExample",
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return nil, openOptions.convertError(err)
+	}
+
 	actx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	run := a.client.GetPutOpenExample(actx, input.GetWorkflowId(), input.GetRunId())
+	run := c.GetPutOpenExample(actx, input.GetWorkflowId(), input.GetRunId())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -867,6 +938,15 @@ func (a *openActivities) PutOpenExample(ctx context.Context, input *xnsv1.Workfl
 		))
 	}
 
+	c, err := a.getClient(ctx, &OpenClientProviderInput{
+		ActivityName: "test.opaque.Open.PutOpenExample",
+		Requests:     []proto.Message{&req},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, openOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -875,7 +955,7 @@ func (a *openActivities) PutOpenExample(ctx context.Context, input *xnsv1.Workfl
 		defer cancel()
 	}
 	var run opaque.PutOpenExampleRun
-	run, err = a.client.PutOpenExampleAsync(actx, &req, opaque.NewPutOpenExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutOpenExampleAsync(actx, &req, opaque.NewPutOpenExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -966,6 +1046,15 @@ func (a *openActivities) PutOpenExampleWithSignalOpen(ctx context.Context, input
 		))
 	}
 
+	c, err := a.getClient(ctx, &OpenClientProviderInput{
+		ActivityName: "test.opaque.Open.PutOpenExampleWithSignalOpen",
+		Requests:     []proto.Message{&req, &signal},
+		WorkflowID:   input.GetStartWorkflowOptions().GetId(),
+	})
+	if err != nil {
+		return nil, openOptions.convertError(err)
+	}
+
 	// initialize workflow execution
 	actx := ctx
 	if !input.GetDetached() {
@@ -974,7 +1063,7 @@ func (a *openActivities) PutOpenExampleWithSignalOpen(ctx context.Context, input
 		defer cancel()
 	}
 	var run opaque.PutOpenExampleRun
-	run, err = a.client.PutOpenExampleWithSignalOpenAsync(actx, &req, &signal, opaque.NewPutOpenExampleOptions().WithStartWorkflowOptions(
+	run, err = c.PutOpenExampleWithSignalOpenAsync(actx, &req, &signal, opaque.NewPutOpenExampleOptions().WithStartWorkflowOptions(
 		xns.UnmarshalStartWorkflowOptions(input.GetStartWorkflowOptions()),
 	))
 	if err != nil {
@@ -1054,10 +1143,20 @@ func (a *openActivities) SignalOpen(ctx context.Context, input *xnsv1.SignalRequ
 			err,
 		))
 	}
+	c, err := a.getClient(ctx, &OpenClientProviderInput{
+		ActivityName: "test.opaque.Open.SignalOpen",
+		Requests:     []proto.Message{&req},
+		RunID:        input.GetRunId(),
+		WorkflowID:   input.GetWorkflowId(),
+	})
+	if err != nil {
+		return openOptions.convertError(err)
+	}
+
 	// execute signal in child goroutine
 	doneCh := make(chan struct{})
 	go func() {
-		err = a.client.SignalOpen(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
+		err = c.SignalOpen(ctx, input.GetWorkflowId(), input.GetRunId(), &req)
 		close(doneCh)
 	}()
 
