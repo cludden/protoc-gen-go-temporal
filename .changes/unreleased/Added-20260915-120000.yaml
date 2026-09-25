@@ -1,7 +1,0 @@
-kind: Added
-body: Add `WithVersioningOverride` to generated workflow options, plumbing `client.StartWorkflowOptions.VersioningOverride`
-  through the generated clients
-time: 2026-09-15T12:00:00.000000-06:00
-custom:
-    Author: cludden
-    PullRequest: "153"
