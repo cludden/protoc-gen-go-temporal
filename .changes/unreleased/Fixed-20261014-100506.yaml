@@ -1,6 +1,0 @@
-kind: Fixed
-body: Add missing WithDetached method for xns update-with-start options
-time: 2026-10-14T10:05:06.801651-06:00
-custom:
-    Author: cludden
-    PullRequest: "157"
