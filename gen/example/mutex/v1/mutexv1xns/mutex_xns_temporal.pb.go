@@ -571,6 +571,7 @@ func (o *GetMutexOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy
 // MutexWithAcquireLockOptions are used to configure a(n) mutex.v1.AcquireLock update for a(n) mutex.v1.Mutex workflow
 type MutexWithAcquireLockOptions struct {
 	activityOptions   *workflow.ActivityOptions
+	detached          bool
 	heartbeatInterval time.Duration
 	updateOptions     *AcquireLockUpdateOptions
 	parentClosePolicy enumsv1.ParentClosePolicy
@@ -628,6 +629,7 @@ func (o *MutexWithAcquireLockOptions) Build(ctx workflow.Context, input *v1.Mute
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	return ctx, &xnsv1.UpdateWithStartRequest{
+		Detached:              o.detached || swreq.GetDetached(),
 		HeartbeatInterval:     durationpb.New(o.heartbeatInterval),
 		Input:                 swreq.GetRequest(),
 		ParentClosePolicy:     convert.ToParentClosePolicy(o.parentClosePolicy),
@@ -640,6 +642,12 @@ func (o *MutexWithAcquireLockOptions) Build(ctx workflow.Context, input *v1.Mute
 // WithActivityOptions can be used to customize the activity options
 func (o *MutexWithAcquireLockOptions) WithActivityOptions(ao workflow.ActivityOptions) *MutexWithAcquireLockOptions {
 	o.activityOptions = &ao
+	return o
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (o *MutexWithAcquireLockOptions) WithDetached(d bool) *MutexWithAcquireLockOptions {
+	o.detached = d
 	return o
 }
 

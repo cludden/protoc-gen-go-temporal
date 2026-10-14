@@ -1015,6 +1015,7 @@ func (o *GetSomeWorkflow1Options) WithParentClosePolicy(policy enumsv1.ParentClo
 // SomeWorkflow1WithSomeUpdate2Options are used to configure a(n) mycompany.simple.Simple.SomeUpdate2 update for a(n) mycompany.simple.SomeWorkflow1 workflow
 type SomeWorkflow1WithSomeUpdate2Options struct {
 	activityOptions   *workflow.ActivityOptions
+	detached          bool
 	heartbeatInterval time.Duration
 	updateOptions     *SomeUpdate2UpdateOptions
 	parentClosePolicy enumsv1.ParentClosePolicy
@@ -1072,6 +1073,7 @@ func (o *SomeWorkflow1WithSomeUpdate2Options) Build(ctx workflow.Context, input 
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	return ctx, &xnsv1.UpdateWithStartRequest{
+		Detached:              o.detached || swreq.GetDetached(),
 		HeartbeatInterval:     durationpb.New(o.heartbeatInterval),
 		Input:                 swreq.GetRequest(),
 		ParentClosePolicy:     convert.ToParentClosePolicy(o.parentClosePolicy),
@@ -1084,6 +1086,12 @@ func (o *SomeWorkflow1WithSomeUpdate2Options) Build(ctx workflow.Context, input 
 // WithActivityOptions can be used to customize the activity options
 func (o *SomeWorkflow1WithSomeUpdate2Options) WithActivityOptions(ao workflow.ActivityOptions) *SomeWorkflow1WithSomeUpdate2Options {
 	o.activityOptions = &ao
+	return o
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (o *SomeWorkflow1WithSomeUpdate2Options) WithDetached(d bool) *SomeWorkflow1WithSomeUpdate2Options {
+	o.detached = d
 	return o
 }
 
@@ -1716,6 +1724,7 @@ func SomeWorkflow2WithSomeSignal1Async(ctx workflow.Context, opts ...*SomeWorkfl
 // SomeWorkflow2WithSomeUpdate1Options are used to configure a(n) mycompany.simple.Simple.SomeUpdate1 update for a(n) mycompany.simple.SomeWorkflow2 workflow
 type SomeWorkflow2WithSomeUpdate1Options struct {
 	activityOptions   *workflow.ActivityOptions
+	detached          bool
 	heartbeatInterval time.Duration
 	updateOptions     *SomeUpdate1UpdateOptions
 	parentClosePolicy enumsv1.ParentClosePolicy
@@ -1773,6 +1782,7 @@ func (o *SomeWorkflow2WithSomeUpdate1Options) Build(ctx workflow.Context, update
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	return ctx, &xnsv1.UpdateWithStartRequest{
+		Detached:              o.detached || swreq.GetDetached(),
 		HeartbeatInterval:     durationpb.New(o.heartbeatInterval),
 		ParentClosePolicy:     convert.ToParentClosePolicy(o.parentClosePolicy),
 		StartWorkflowOptions:  swreq.GetStartWorkflowOptions(),
@@ -1784,6 +1794,12 @@ func (o *SomeWorkflow2WithSomeUpdate1Options) Build(ctx workflow.Context, update
 // WithActivityOptions can be used to customize the activity options
 func (o *SomeWorkflow2WithSomeUpdate1Options) WithActivityOptions(ao workflow.ActivityOptions) *SomeWorkflow2WithSomeUpdate1Options {
 	o.activityOptions = &ao
+	return o
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (o *SomeWorkflow2WithSomeUpdate1Options) WithDetached(d bool) *SomeWorkflow2WithSomeUpdate1Options {
+	o.detached = d
 	return o
 }
 

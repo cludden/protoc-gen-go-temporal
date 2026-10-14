@@ -629,6 +629,7 @@ func (o *GetShoppingCartOptions) WithParentClosePolicy(policy enumsv1.ParentClos
 // ShoppingCartWithUpdateCartOptions are used to configure a(n) example.shoppingcart.v1.ShoppingCart.UpdateCart update for a(n) example.shoppingcart.v1.ShoppingCart workflow
 type ShoppingCartWithUpdateCartOptions struct {
 	activityOptions   *workflow.ActivityOptions
+	detached          bool
 	heartbeatInterval time.Duration
 	updateOptions     *UpdateCartUpdateOptions
 	parentClosePolicy enumsv1.ParentClosePolicy
@@ -690,6 +691,7 @@ func (o *ShoppingCartWithUpdateCartOptions) Build(ctx workflow.Context, input *v
 	}
 
 	return ctx, &xnsv1.UpdateWithStartRequest{
+		Detached:              o.detached || swreq.GetDetached(),
 		HeartbeatInterval:     durationpb.New(o.heartbeatInterval),
 		Input:                 swreq.GetRequest(),
 		ParentClosePolicy:     convert.ToParentClosePolicy(o.parentClosePolicy),
@@ -702,6 +704,12 @@ func (o *ShoppingCartWithUpdateCartOptions) Build(ctx workflow.Context, input *v
 // WithActivityOptions can be used to customize the activity options
 func (o *ShoppingCartWithUpdateCartOptions) WithActivityOptions(ao workflow.ActivityOptions) *ShoppingCartWithUpdateCartOptions {
 	o.activityOptions = &ao
+	return o
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (o *ShoppingCartWithUpdateCartOptions) WithDetached(d bool) *ShoppingCartWithUpdateCartOptions {
+	o.detached = d
 	return o
 }
 
