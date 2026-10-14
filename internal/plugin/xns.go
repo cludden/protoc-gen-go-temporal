@@ -3741,6 +3741,7 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 	commentf(f, methodSet(method, handler), "%s are used to configure a(n) %s update for a(n) %s workflow", m.Names().clientUpdateWithStartOptions(workflow, update), m.fqnForUpdate(update), m.fqnForWorkflow(workflow))
 	f.Type().Id(options).StructFunc(func(g *j.Group) {
 		g.Id("activityOptions").Op("*").Qual(workflowPkg, "ActivityOptions")
+		g.Id("detached").Bool()
 		g.Id("heartbeatInterval").Qual("time", "Duration")
 		g.Id("updateOptions").Op("*").Id(updateOptions)
 		g.Id("parentClosePolicy").Qual(enumsPkg, "ParentClosePolicy")
@@ -3945,6 +3946,7 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 			g.ReturnFunc(func(g *j.Group) {
 				g.Id("ctx")
 				g.Op("&").Qual(xnsv1Pkg, "UpdateWithStartRequest").Values(j.DictFunc(func(d j.Dict) {
+					d[j.Id("Detached")] = j.Id("o").Dot("detached").Op("||").Id("swreq").Dot("GetDetached").Call()
 					d[j.Id("HeartbeatInterval")] = j.Qual(durationpbPkg, "New").Call(j.Id("o").Dot("heartbeatInterval"))
 					if hasWorkflowInput {
 						d[j.Id("Input")] = j.Id("swreq").Dot("GetRequest").Call()
@@ -3974,6 +3976,23 @@ func (m *Manifest) genXNSUpdateWithStartOptions(f *j.File, workflow, update prot
 		}).
 		BlockFunc(func(g *j.Group) {
 			g.Id("o").Dot("activityOptions").Op("=").Op("&").Id("ao")
+			g.Return(j.Id("o"))
+		})
+
+	f.Comment("WithDetached can be used to start a workflow execution and exit immediately")
+	f.Func().
+		ParamsFunc(func(g *j.Group) {
+			g.Id("o").Op("*").Id(options)
+		}).
+		Id("WithDetached").
+		ParamsFunc(func(g *j.Group) {
+			g.Id("d").Bool()
+		}).
+		ParamsFunc(func(g *j.Group) {
+			g.Op("*").Id(options)
+		}).
+		BlockFunc(func(g *j.Group) {
+			g.Id("o").Dot("detached").Op("=").Id("d")
 			g.Return(j.Id("o"))
 		})
 

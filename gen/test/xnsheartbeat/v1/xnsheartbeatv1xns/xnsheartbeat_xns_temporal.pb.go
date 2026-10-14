@@ -597,6 +597,7 @@ func (o *GetTestWorkflowOptions) WithParentClosePolicy(policy enumsv1.ParentClos
 // TestWorkflowWithTestUpdateOptions are used to configure a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestUpdate update for a(n) test.xnsheartbeat.v1.XnsHeartbeatService.TestWorkflow workflow
 type TestWorkflowWithTestUpdateOptions struct {
 	activityOptions   *workflow.ActivityOptions
+	detached          bool
 	heartbeatInterval time.Duration
 	updateOptions     *TestUpdateUpdateOptions
 	parentClosePolicy enumsv1.ParentClosePolicy
@@ -654,6 +655,7 @@ func (o *TestWorkflowWithTestUpdateOptions) Build(ctx workflow.Context, input *v
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	return ctx, &xnsv1.UpdateWithStartRequest{
+		Detached:              o.detached || swreq.GetDetached(),
 		HeartbeatInterval:     durationpb.New(o.heartbeatInterval),
 		Input:                 swreq.GetRequest(),
 		ParentClosePolicy:     convert.ToParentClosePolicy(o.parentClosePolicy),
@@ -666,6 +668,12 @@ func (o *TestWorkflowWithTestUpdateOptions) Build(ctx workflow.Context, input *v
 // WithActivityOptions can be used to customize the activity options
 func (o *TestWorkflowWithTestUpdateOptions) WithActivityOptions(ao workflow.ActivityOptions) *TestWorkflowWithTestUpdateOptions {
 	o.activityOptions = &ao
+	return o
+}
+
+// WithDetached can be used to start a workflow execution and exit immediately
+func (o *TestWorkflowWithTestUpdateOptions) WithDetached(d bool) *TestWorkflowWithTestUpdateOptions {
+	o.detached = d
 	return o
 }
 
