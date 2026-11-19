@@ -523,7 +523,7 @@ func Parse(p *protogen.Plugin) (*Data, error) {
 						},
 						HeartbeatTimeout:       opts.GetHeartbeatTimeout().AsDuration(),
 						RetryPolicy:            parseRetryPolicy(opts.GetRetryPolicy()),
-						ScheduleToCloseTimeout: opts.GetHeartbeatTimeout().AsDuration(),
+						ScheduleToCloseTimeout: opts.GetScheduleToCloseTimeout().AsDuration(),
 						ScheduleToStartTimeout: opts.GetScheduleToStartTimeout().AsDuration(),
 						StartToCloseTimeout:    opts.GetStartToCloseTimeout().AsDuration(),
 						WaitForCancellation:    opts.GetWaitForCancellation(),
