@@ -151,7 +151,7 @@ go_name: Result</pre></td>
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>heartbeat_timeout</td><td>30 seconds</td></tr>
 <tr><td>retry_policy.max_interval</td><td>5 seconds</td></tr>
-<tr><td>schedule_to_close_timeout</td><td>30 seconds</td></tr>
+<tr><td>schedule_to_close_timeout</td><td>2 minutes</td></tr>
 <tr><td>schedule_to_start_timeout</td><td>10 seconds</td></tr>
 <tr><td>start_to_close_timeout</td><td>1 minute</td></tr>
 <tr><td>wait_for_cancellation</td><td>true</td></tr>

@@ -1511,7 +1511,7 @@ SomeActivity4 does some activity thing.
 <tr><th>Name</th><th>Value</th></tr>
 <tr><td>heartbeat_timeout</td><td>30 seconds</td></tr>
 <tr><td>retry_policy.max_attempts</td><td>5</td></tr>
-<tr><td>schedule_to_close_timeout</td><td>30 seconds</td></tr>
+<tr><td>schedule_to_close_timeout</td><td>5 minutes</td></tr>
 <tr><td>schedule_to_start_timeout</td><td>5 seconds</td></tr>
 <tr><td>start_to_close_timeout</td><td>1 minute</td></tr>
 <tr><td>wait_for_cancellation</td><td>true</td></tr>
